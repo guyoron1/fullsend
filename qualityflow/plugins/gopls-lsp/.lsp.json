@@ -1,0 +1,10 @@
+{
+  "languages": [
+    {
+      "languageId": "go",
+      "command": ["gopls", "serve"],
+      "filePatterns": ["**/*.go"],
+      "initializationOptions": {}
+    }
+  ]
+}

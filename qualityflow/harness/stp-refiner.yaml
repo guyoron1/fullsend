@@ -1,0 +1,33 @@
+# harness/stp-refiner.yaml — Iteratively review and fix an STP until APPROVED.
+#
+# Needs Jira (curl) and GitHub (gh CLI) for re-verification against source data.
+agent: agents/stp-refiner.md
+model: opus
+image: images/qf-code
+policy: policies/qf-full.yaml
+agent_input: config
+
+host_files:
+  - src: env/gcp-vertex.env
+    dest: /tmp/workspace/.env.d/gcp-vertex.env
+    expand: true
+  - src: env/qf-credentials.env
+    dest: /tmp/workspace/.env.d/qf-credentials.env
+    expand: true
+  - src: ${GOOGLE_APPLICATION_CREDENTIALS}
+    dest: /tmp/workspace/.gcp-credentials.json
+
+skills:
+  - skills/project-resolver
+  - skills/review-rules-extractor
+  - skills/stp-reviewer
+  - skills/scenario-builder
+  - skills/output-validator
+  - skills/jira-parser
+  - skills/pr-analyzer
+
+validation_loop:
+  script: scripts/validate-review.sh
+  max_iterations: 3
+
+timeout_minutes: 25
