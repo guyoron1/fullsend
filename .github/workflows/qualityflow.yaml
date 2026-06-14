@@ -91,7 +91,11 @@ jobs:
 
       - name: Mint qualityflow token
         id: app-token
-        run: echo "token=${{ secrets.GITHUB_TOKEN }}" >> "$GITHUB_OUTPUT"
+        uses: ./.defaults/.github/actions/mint-token
+        with:
+          role: coder
+          repos: ${{ steps.repo-parts.outputs.name }}
+          mint_url: ${{ vars.FULLSEND_MINT_URL }}
 
       - name: Extract PR info
         id: pr-info
