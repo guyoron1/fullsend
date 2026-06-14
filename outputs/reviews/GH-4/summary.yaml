@@ -2,21 +2,23 @@ status: success
 jira_id: GH-4
 verdict: NEEDS_REVISION
 confidence: MEDIUM
-weighted_score: 9
+weighted_score: 69
 findings:
-  critical: 9
-  major: 7
-  minor: 3
-  actionable: 16
-  total: 19
-reviewed: outputs/stp/GH-4/GH-4_test_plan.md
-report: GH-4_stp_review.md
+  critical: 3
+  major: 9
+  minor: 5
+  actionable: 15
+  total: 17
+artifacts_reviewed:
+  std_yaml: true
+  go_stubs: true
+  python_stubs: false
+  stp_available: true
 dimension_scores:
-  rule_compliance: 15
-  requirement_coverage: 0
-  scenario_quality: 10
-  risk_accuracy: 10
-  scope_boundary: 0
-  strategy: 40
-  metadata: 15
-scope_downgrade: false
+  traceability: 80
+  yaml_structure: 65
+  pattern_matching: 70
+  step_quality: 68
+  content_policy: 40
+  pse_quality: 72
+  codegen_readiness: 78
