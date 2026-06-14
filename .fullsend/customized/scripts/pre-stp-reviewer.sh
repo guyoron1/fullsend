@@ -14,7 +14,10 @@ source "${SCRIPT_DIR}/lib/common.sh"
 echo "::notice::QualityFlow stp-reviewer: ${JIRA_TICKET:-unset}"
 
 errors=0
-require_env JIRA_TICKET JIRA_BASE_URL JIRA_API_TOKEN JIRA_USER_EMAIL || errors=$((errors + $?))
+require_env JIRA_TICKET || errors=$((errors + $?))
+if [[ "${ISSUE_SOURCE:-jira}" != "github" ]]; then
+  require_env JIRA_BASE_URL JIRA_API_TOKEN JIRA_USER_EMAIL || errors=$((errors + $?))
+fi
 require_jira_format || errors=$((errors + $?))
 require_config || errors=$((errors + $?))
 
