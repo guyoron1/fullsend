@@ -1,0 +1,7 @@
+version: "1.0"
+
+routes:
+  - prefix: "GH"
+    project: "fullsend"
+
+default_project: null

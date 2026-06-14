@@ -1,0 +1,11 @@
+instance:
+  url: "https://github.com"
+  browse_pattern: "https://github.com/fullsend-ai/fullsend/issues/{key}"
+  source: "github"
+
+prefixes:
+  - "GH"
+
+custom_fields: {}
+
+pr_url_scan_pattern: "https://github.com/.*/pull/\\d+"

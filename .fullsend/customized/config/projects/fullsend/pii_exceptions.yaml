@@ -1,0 +1,14 @@
+allowed_product_names:
+  - "FullSend"
+
+allowed_project_names:
+  - "GitHub"
+  - "Ginkgo"
+  - "Go"
+  - "GCP"
+  - "Claude"
+
+allowed_technical_standards: []
+
+vendor_replacements:
+  cloud: "Cloud Provider"

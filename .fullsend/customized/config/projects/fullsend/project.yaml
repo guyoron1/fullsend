@@ -1,0 +1,60 @@
+project_id: "fullsend"
+display_name: "FullSend"
+description: "Fully autonomous agentic engineering platform"
+
+feature_toggles:
+  polarion: false
+  tier1_tests: true
+  tier2_tests: true
+  lsp_analysis: true
+  pii_sanitization: false
+  repo_files_fetch: false
+  ticket_validation: false
+  stp_generation: true
+  std_generation: true
+  stp_review: true
+  std_review: true
+
+versioning:
+  product_name: "FullSend"
+  platform_name: "GitHub Actions"
+  current_version: "0.x"
+
+stp_document:
+  header: "FullSend Test Plan"
+
+scope_boundaries:
+  validation_gate: "Would removing FullSend's core orchestration make this test meaningless?"
+  in_scope_resources:
+    - "Agent"
+    - "Sandbox"
+    - "Harness"
+    - "Skill"
+    - "Plugin"
+    - "Workflow"
+    - "Dispatch"
+    - "Scaffold"
+    - "Mint"
+    - "Forge"
+  out_of_scope_if_only:
+    - "Pod"
+    - "Container"
+    - "ConfigMap"
+    - "Secret"
+  cli_tools:
+    - "fullsend"
+    - "gh"
+  domain_vocabulary:
+    - "agent"
+    - "sandbox"
+    - "harness"
+    - "skill"
+    - "plugin"
+    - "dispatch"
+    - "scaffold"
+    - "WIF"
+    - "OIDC"
+    - "mint"
+    - "forge"
+    - "openshell"
+    - "sticky"
