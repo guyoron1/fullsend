@@ -63,6 +63,8 @@ jobs:
           for dir in ${LAYERED_DIRS}; do
             if [[ -d "${SRC}/${dir}" ]]; then
               mkdir -p "${dir}"
+              # Remove symlinks that would conflict with scaffold directories.
+              find "${dir}" -maxdepth 1 -type l -exec rm {} +
               cp -r "${SRC}/${dir}/." "${dir}/"
             fi
           done
