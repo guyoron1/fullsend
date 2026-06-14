@@ -1,0 +1,34 @@
+status: success
+jira_id: GH-4
+std_source: outputs/std/GH-4/GH-4_test_description.yaml
+test_files:
+  - test_vibe_to_spec_workflow.py
+  - test_review_agent_enforcement.py
+  - test_ai_feature_file_generation.py
+  - conftest.py
+test_count: 9
+scenario_mapping:
+  TS-GH-4-001: test_vibe_to_spec_workflow.py::TestVibeToSpecWorkflow::test_ts_gh_4_001_generate_valid_spec_from_prototype
+  TS-GH-4-002: test_vibe_to_spec_workflow.py::TestVibeToSpecWorkflow::test_ts_gh_4_002_cleanup_exploration_artifacts
+  TS-GH-4-003: test_vibe_to_spec_workflow.py::TestVibeToSpecWorkflow::test_ts_gh_4_003_error_for_no_testable_behavior
+  TS-GH-4-004: test_review_agent_enforcement.py::TestReviewAgentEnforcement::test_ts_gh_4_004_block_non_compliant_code
+  TS-GH-4-005: test_review_agent_enforcement.py::TestReviewAgentEnforcement::test_ts_gh_4_005_approve_compliant_code
+  TS-GH-4-006: test_review_agent_enforcement.py::TestReviewAgentEnforcement::test_ts_gh_4_006_detect_scope_creep
+  TS-GH-4-007: test_ai_feature_file_generation.py::TestAiFeatureFileGeneration::test_ts_gh_4_007_generate_functional_requirements_section
+  TS-GH-4-008: test_ai_feature_file_generation.py::TestAiFeatureFileGeneration::test_ts_gh_4_008_generate_acceptance_scenarios_with_criteria
+  TS-GH-4-009: test_vibe_to_spec_workflow.py::TestVibeToSpecWorkflow::test_ts_gh_4_009_error_for_ambiguous_prototype
+lsp_patterns_used: false
+conftest_generated: true
+file_grouping:
+  test_vibe_to_spec_workflow.py:
+    - TS-GH-4-001 (P0, MVP)
+    - TS-GH-4-002 (P1)
+    - TS-GH-4-003 (P1)
+    - TS-GH-4-009 (P1)
+  test_review_agent_enforcement.py:
+    - TS-GH-4-004 (P0, MVP)
+    - TS-GH-4-005 (P0, MVP)
+    - TS-GH-4-006 (P0, MVP)
+  test_ai_feature_file_generation.py:
+    - TS-GH-4-007 (P1)
+    - TS-GH-4-008 (P1)
