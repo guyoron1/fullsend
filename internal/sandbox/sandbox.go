@@ -18,11 +18,20 @@ const (
 	// SandboxClaudeConfig is the Claude config directory inside the sandbox.
 	SandboxClaudeConfig = "/tmp/claude-config" //nolint:gosec // not a credential
 
-	createTimeout   = 65 * time.Second
-	readyTimeout    = 60 * time.Second
-	readyPoll       = 2 * time.Second
-	transferTimeout = 5 * time.Minute
+	defaultCreateTimeout = 65 * time.Second
+	defaultReadyTimeout  = 60 * time.Second
+	readyPoll            = 2 * time.Second
+	transferTimeout      = 5 * time.Minute
 )
+
+func resolveTimeout(envKey string, fallback time.Duration) time.Duration {
+	if v := os.Getenv(envKey); v != "" {
+		if d, err := time.ParseDuration(v); err == nil && d > 0 {
+			return d
+		}
+	}
+	return fallback
+}
 
 func sanitizeDownload(localDir string) error {
 	return filepath.WalkDir(localDir, func(path string, d fs.DirEntry, err error) error {
@@ -127,6 +136,7 @@ func EnsureGateway() error {
 // non-empty, it is passed as --from to start the sandbox from a container image.
 // If policy is non-empty, it is applied at creation time via --policy.
 func Create(name string, providers []string, image, policy string) error {
+	createTimeout := resolveTimeout("FULLSEND_SANDBOX_TIMEOUT", defaultCreateTimeout)
 	ctx, cancel := context.WithTimeout(context.Background(), createTimeout)
 	defer cancel()
 
@@ -162,6 +172,7 @@ func Create(name string, providers []string, image, policy string) error {
 	}
 
 	// Wait for sandbox to be fully ready (image pull can take a while).
+	readyTimeout := resolveTimeout("FULLSEND_SANDBOX_READY_TIMEOUT", defaultReadyTimeout)
 	deadline := time.Now().Add(readyTimeout)
 	for time.Now().Before(deadline) {
 		check := exec.Command("openshell", "sandbox", "get", name)
