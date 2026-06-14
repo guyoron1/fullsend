@@ -91,11 +91,7 @@ jobs:
 
       - name: Mint qualityflow token
         id: app-token
-        uses: ./.defaults/.github/actions/mint-token
-        with:
-          role: coder
-          repos: ${{ steps.repo-parts.outputs.name }}
-          mint_url: ${{ vars.FULLSEND_MINT_URL }}
+        run: echo "token=${{ secrets.GITHUB_TOKEN }}" >> "$GITHUB_OUTPUT"
 
       - name: Extract PR info
         id: pr-info
@@ -714,11 +710,7 @@ jobs:
 
       - name: Refresh qualityflow token (mid-pipeline)
         id: mid-token
-        uses: ./.defaults/.github/actions/mint-token
-        with:
-          role: coder
-          repos: ${{ steps.repo-parts.outputs.name }}
-          mint_url: ${{ vars.FULLSEND_MINT_URL }}
+        run: echo "token=${{ secrets.GITHUB_TOKEN }}" >> "$GITHUB_OUTPUT"
 
       # --- Stage 5: STD Reviewer ---
 
@@ -1084,11 +1076,7 @@ jobs:
       - name: Refresh token for post-pipeline steps
         if: always()
         id: post-token
-        uses: ./.defaults/.github/actions/mint-token
-        with:
-          role: coder
-          repos: ${{ steps.repo-parts.outputs.name }}
-          mint_url: ${{ vars.FULLSEND_MINT_URL }}
+        run: echo "token=${{ secrets.GITHUB_TOKEN }}" >> "$GITHUB_OUTPUT"
 
       - name: Restore PR checkout (post-Stage 8)
         env:
