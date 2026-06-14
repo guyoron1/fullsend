@@ -1,0 +1,25 @@
+status: success
+jira_id: GH-4
+std_source: outputs/std/GH-4/GH-4_test_description.yaml
+test_files:
+  - vibe_to_spec_workflow_test.go
+  - review_agent_enforcement_test.go
+  - ai_feature_file_generation_test.go
+test_count: 9
+scenarios_total: 9
+scenarios_covered: 9
+coverage: "100%"
+lsp_patterns_used: false
+framework: ginkgo-v2
+package: e2e
+file_groups:
+  vibe_to_spec_workflow:
+    scenarios: ["TS-GH-4-001", "TS-GH-4-002", "TS-GH-4-003", "TS-GH-4-009"]
+    lines: 413
+  review_agent_enforcement:
+    scenarios: ["TS-GH-4-004", "TS-GH-4-005", "TS-GH-4-006"]
+    lines: 426
+  ai_feature_file_generation:
+    scenarios: ["TS-GH-4-007", "TS-GH-4-008"]
+    lines: 278
+total_lines: 1117
