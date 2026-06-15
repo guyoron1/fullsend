@@ -264,7 +264,12 @@ if [ -n "$ENABLED_REPOS" ]; then
       EXPECTED_B64=$(shim_content_b64)
       # GitHub returns base64 with newlines; strip them for comparison.
       REMOTE_B64=$(printf '%s' "$REMOTE_CONTENT" | tr -d '\r\n')
-      if [ "$REMOTE_B64" = "$EXPECTED_B64" ]; then
+      # Compare decoded text instead of re-encoded base64 to avoid
+      # false-positive drift detection from encoding differences
+      # (trailing newlines, line wrapping in command substitution).
+      EXPECTED_DECODED=$(printf '%s' "$EXPECTED_B64" | base64 -d | tr -d '\r')
+      REMOTE_DECODED=$(printf '%s' "$REMOTE_B64" | base64 -d | tr -d '\r')
+      if [ "$REMOTE_DECODED" = "$EXPECTED_DECODED" ]; then
         echo "✓ $REPO already enrolled (shim up to date)"
         SKIPPED=$((SKIPPED + 1))
         continue

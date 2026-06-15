@@ -140,3 +140,45 @@ if grep -q "contents/.github/workflows/fullsend.yaml.*--method PUT" "${GH_LOG}";
 fi
 
 echo "PASS: stale shim branch update is atomic"
+
+# ===========================
+# Test: identical content with different trailing newlines is not flagged as stale
+# ===========================
+# Regression test for issue #2247: the old base64 comparison produced
+# false-positive drift detection when content was logically identical but
+# encoded with different trailing newlines (GitHub content API quirk).
+
+rm -f "${GH_LOG}"
+
+IDENTICAL_MANAGED=$(cat "${CONFIG_DIR}/templates/shim-workflow-call.yaml")
+IDENTICAL_REMOTE=$(printf '%s\n\n' "$IDENTICAL_MANAGED")
+IDENTICAL_B64=$(printf '%s' "$IDENTICAL_REMOTE" | /usr/bin/base64 | tr -d '\r\n')
+
+cat > "${MOCK_BIN}/gh" <<'EOFTEST'
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ "$1" == "api" ]]; then
+  case "$2" in
+    repos/test-org/test-repo/contents/.github/workflows/fullsend.yaml)
+      jq_filter=""
+      for a in "$@"; do [[ "$prev" == "--jq" ]] && jq_filter="$a"; prev="$a"; done
+      json="{\"content\":\"${IDENTICAL_B64}\",\"sha\":\"file-sha\"}"
+      if [[ -n "$jq_filter" ]]; then printf '%s' "$json" | jq -r "$jq_filter"; else printf '%s\n' "$json"; fi
+      ;;
+    repos/test-org/test-repo) echo '{"default_branch":"main","private":false}' ;;
+  esac
+fi
+EOFTEST
+chmod +x "${MOCK_BIN}/gh"
+# Inject the base64 value into the mock script.
+sed -i'' "s|\${IDENTICAL_B64}|${IDENTICAL_B64}|g" "${MOCK_BIN}/gh"
+
+bash "${RECONCILE_SCRIPT}" "${CONFIG_DIR}" > "${TMPDIR}/stdout-newline.log" 2>&1 || true
+
+if grep -q "shim is stale" "${TMPDIR}/stdout-newline.log"; then
+  echo "FAIL: identical content with different trailing newline was flagged as stale"
+  cat "${TMPDIR}/stdout-newline.log"
+  exit 1
+fi
+
+echo "PASS: identical content with different trailing newlines not flagged as stale"
