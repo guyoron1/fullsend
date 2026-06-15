@@ -1,0 +1,946 @@
+---
+# Software Test Description (STD) — GH-8
+# Generated: 2026-06-15
+# Source: outputs/stp/GH-8/GH-8_test_plan.md
+
+document_metadata:
+  std_version: "2.1-enhanced"
+  generated_date: "2026-06-15"
+  jira_issue: "GH-8"
+  jira_summary: "fix(#2247): compare decoded text in shim drift detection"
+  source_bugs:
+    - "fullsend-ai#2247"
+  stp_reference:
+    file: "outputs/stp/GH-8/GH-8_test_plan.md"
+    version: "v1"
+    sections_covered: "Section III - Requirements-to-Tests Mapping"
+  related_prs:
+    - repo: "guyoron1/fullsend"
+      pr_number: 8
+      url: "https://github.com/guyoron1/fullsend/pull/8"
+      title: "fix(#2247): compare decoded text in shim drift detection"
+      merged: false
+  total_scenarios: 6
+  functional_count: 6
+  e2e_count: 0
+  p0_count: 4
+  p1_count: 2
+
+code_generation_config:
+  std_version: "2.1-enhanced"
+  framework: "ginkgo-v2"
+  assertion_library: "gomega"
+  language: "go"
+  package_name: "e2e"
+  context_init: "context.Background()"
+  imports:
+    dot_imports:
+      - "github.com/onsi/ginkgo/v2"
+      - "github.com/onsi/gomega"
+    standard:
+      - "context"
+      - "os"
+      - "os/exec"
+      - "path/filepath"
+      - "strings"
+      - "encoding/base64"
+
+common_preconditions:
+  infrastructure:
+    - name: "Bash shell"
+      requirement: "Bash 4.0+ with GNU coreutils"
+      validation: "bash --version"
+    - name: "GitHub CLI"
+      requirement: "gh CLI authenticated (mocked in tests)"
+      validation: "gh --version"
+    - name: "reconcile-repos.sh script"
+      requirement: "Script available in scaffold/templates/"
+      validation: "test -f hack/reconcile-repos.sh"
+
+  operators: []
+
+  cluster_configuration:
+    topology: "None"
+    cpu_features: "Standard"
+    storage: "Ephemeral filesystem"
+    network: "GitHub API access (mocked in unit tests)"
+
+  rbac_requirements: []
+
+  test_environment:
+    platform: "GitHub Actions Ubuntu runner (latest)"
+    compute: "Standard GitHub Actions runner"
+    special_hardware: "None"
+    special_configs: "Mocked gh, yq, base64 commands in test PATH"
+
+scenarios:
+  - scenario_id: "001"
+    test_id: "TS-GH-8-001"
+    tier: "Functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-8"
+
+    variables:
+      closure_scope:
+        - name: "managedContent"
+          type: "string"
+          initialized_in: "BeforeEach"
+          used_in: ["BeforeEach", "It"]
+          comment: "The expected (managed) shim content"
+        - name: "remoteContent"
+          type: "string"
+          initialized_in: "BeforeEach"
+          used_in: ["BeforeEach", "It"]
+          comment: "The remote (GitHub-hosted) shim content with different trailing newlines"
+        - name: "isStale"
+          type: "bool"
+          initialized_in: "It"
+          used_in: ["It"]
+          comment: "Result of drift detection comparison"
+        - name: "err"
+          type: "error"
+          initialized_in: "It"
+          used_in: ["It"]
+          comment: "Error from comparison operation"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Shim drift detection"
+      context:
+        description: "when managed and remote content are identical but have different trailing newlines"
+        decorators: []
+      it:
+        description: "should not flag content as stale"
+        test_id_format: "[test_id:TS-GH-8-001]"
+
+    code_structure: |
+      Context("when managed and remote content are identical but have different trailing newlines", func() {
+        It("[test_id:TS-GH-8-001] should not flag content as stale", func() {
+          // Encode identical content with and without trailing newline
+          // Run comparison logic
+          // Assert no stale detection
+        })
+      })
+
+    test_objective:
+      title: "Verify identical content with different trailing newlines is not flagged as stale"
+      what: |
+        Tests the core fix for issue #2247. Creates two versions of the same shim
+        content where one has trailing newlines and the other does not. Encodes both
+        to base64 and runs the drift detection comparison. Verifies that the decoded
+        text comparison correctly identifies the content as identical.
+      why: |
+        This is the primary regression test for the bug. Before the fix, Bash command
+        substitution stripped trailing newlines from decoded base64, causing re-encoded
+        base64 to differ. This led to false-positive drift detection and bogus update
+        PRs being created for enrolled repositories.
+      acceptance_criteria:
+        - "Identical shim content with different trailing newlines MUST NOT be flagged as stale"
+        - "Comparison function returns false (not stale) for logically identical content"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go/Ginkgo test with mocked shell commands"
+
+    specific_preconditions:
+      - name: "Base64 encoding utility"
+        requirement: "GNU base64 command available"
+        validation: "which base64"
+
+    test_data:
+      resource_definitions:
+        - name: "managed_shim_content"
+          type: "string"
+          yaml: |
+            content: |
+              name: fullsend-shim
+              on:
+                workflow_dispatch:
+              jobs:
+                shim:
+                  uses: fullsend-ai/fullsend/.github/workflows/shim.yml@main
+        - name: "remote_shim_content_with_trailing_newline"
+          type: "string"
+          yaml: |
+            # Same content as managed_shim_content but with trailing \n
+            content: |
+              name: fullsend-shim
+              on:
+                workflow_dispatch:
+              jobs:
+                shim:
+                  uses: fullsend-ai/fullsend/.github/workflows/shim.yml@main
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Prepare managed shim content string"
+          command: "managedContent = shimYAMLContent"
+          validation: "Content string is non-empty"
+        - step_id: "SETUP-02"
+          action: "Prepare remote shim content with trailing newlines appended"
+          command: "remoteContent = shimYAMLContent + trailingNewlines"
+          validation: "Remote content differs in raw bytes but is logically identical"
+        - step_id: "SETUP-03"
+          action: "Base64-encode both content strings"
+          command: "managedB64 = base64.Encode(managedContent); remoteB64 = base64.Encode(remoteContent)"
+          validation: "Base64 strings differ due to trailing newline differences"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run drift detection comparison using decoded text"
+          command: "isStale = compareDecodedContent(managedB64, remoteB64)"
+          validation: "Comparison decodes both base64 strings, strips CR, and compares text"
+        - step_id: "TEST-02"
+          action: "Verify comparison result is not stale"
+          command: "assert isStale == false"
+          validation: "Content is correctly identified as identical"
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Drift detection returns not-stale for identical content with different encoding"
+        condition: "isStale == false"
+        failure_impact: "False positive drift detection causes bogus update PRs (issue #2247)"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "No error during comparison"
+        condition: "err == nil"
+        failure_impact: "Comparison failure would block reconciliation entirely"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "base64 (GNU coreutils)"
+      scenario_specific_rbac: []
+
+  - scenario_id: "002"
+    test_id: "TS-GH-8-002"
+    tier: "Functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-8"
+
+    variables:
+      closure_scope:
+        - name: "managedContent"
+          type: "string"
+          initialized_in: "BeforeEach"
+          used_in: ["BeforeEach", "It"]
+          comment: "The expected (managed) shim content"
+        - name: "staleRemoteContent"
+          type: "string"
+          initialized_in: "BeforeEach"
+          used_in: ["BeforeEach", "It"]
+          comment: "Genuinely different remote shim content"
+        - name: "isStale"
+          type: "bool"
+          initialized_in: "It"
+          used_in: ["It"]
+          comment: "Result of drift detection comparison"
+        - name: "err"
+          type: "error"
+          initialized_in: "It"
+          used_in: ["It"]
+          comment: "Error from comparison operation"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Shim drift detection"
+      context:
+        description: "when remote content is genuinely different from managed content"
+        decorators: []
+      it:
+        description: "should correctly flag content as stale"
+        test_id_format: "[test_id:TS-GH-8-002]"
+
+    code_structure: |
+      Context("when remote content is genuinely different from managed content", func() {
+        It("[test_id:TS-GH-8-002] should correctly flag content as stale", func() {
+          // Encode different content
+          // Run comparison logic
+          // Assert stale detection
+        })
+      })
+
+    test_objective:
+      title: "Verify genuinely stale shim content is correctly detected"
+      what: |
+        Tests that the drift detection correctly identifies genuinely different shim
+        content as stale. Creates managed content and a modified remote version with
+        actual content differences (not just whitespace). Runs the comparison and
+        verifies the content is flagged as needing an update.
+      why: |
+        While the fix addresses false positives, it must not introduce false negatives.
+        If genuinely stale content is not detected, enrolled repositories would run
+        outdated shim workflows, potentially breaking the FullSend enrollment pipeline.
+      acceptance_criteria:
+        - "Genuinely different shim content MUST be flagged as stale"
+        - "Comparison function returns true (stale) for content with real differences"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go/Ginkgo test with mocked shell commands"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions:
+        - name: "managed_shim_content"
+          type: "string"
+          yaml: |
+            content: |
+              name: fullsend-shim
+              on:
+                workflow_dispatch:
+              jobs:
+                shim:
+                  uses: fullsend-ai/fullsend/.github/workflows/shim.yml@main
+        - name: "stale_remote_content"
+          type: "string"
+          yaml: |
+            # Different content — old version of shim
+            content: |
+              name: fullsend-shim
+              on:
+                workflow_dispatch:
+              jobs:
+                shim:
+                  uses: fullsend-ai/fullsend/.github/workflows/shim.yml@v0.9
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Prepare managed shim content"
+          command: "managedContent = currentShimYAML"
+          validation: "Content is the current expected shim"
+        - step_id: "SETUP-02"
+          action: "Prepare stale remote content with actual differences"
+          command: "staleRemoteContent = outdatedShimYAML"
+          validation: "Remote content has genuine differences (e.g., old version ref)"
+        - step_id: "SETUP-03"
+          action: "Base64-encode both content strings"
+          command: "managedB64 = base64.Encode(managedContent); remoteB64 = base64.Encode(staleRemoteContent)"
+          validation: "Base64 strings differ due to content differences"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run drift detection comparison using decoded text"
+          command: "isStale = compareDecodedContent(managedB64, remoteB64)"
+          validation: "Comparison correctly identifies content difference"
+        - step_id: "TEST-02"
+          action: "Verify comparison result is stale"
+          command: "assert isStale == true"
+          validation: "Content is correctly flagged for update"
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Drift detection returns stale for genuinely different content"
+        condition: "isStale == true"
+        failure_impact: "False negative would leave enrolled repos running outdated shim workflows"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "No error during comparison"
+        condition: "err == nil"
+        failure_impact: "Comparison failure would block reconciliation"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "base64 (GNU coreutils)"
+      scenario_specific_rbac: []
+
+  - scenario_id: "003"
+    test_id: "TS-GH-8-003"
+    tier: "Functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-8"
+
+    variables:
+      closure_scope:
+        - name: "contentWithCRLF"
+          type: "string"
+          initialized_in: "BeforeEach"
+          used_in: ["BeforeEach", "It"]
+          comment: "Shim content with Windows-style CR/LF line endings"
+        - name: "contentWithLF"
+          type: "string"
+          initialized_in: "BeforeEach"
+          used_in: ["BeforeEach", "It"]
+          comment: "Same shim content with Unix-style LF line endings"
+        - name: "isStale"
+          type: "bool"
+          initialized_in: "It"
+          used_in: ["It"]
+          comment: "Result of drift detection comparison"
+        - name: "err"
+          type: "error"
+          initialized_in: "It"
+          used_in: ["It"]
+          comment: "Error from comparison operation"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Shim drift detection"
+      context:
+        description: "when content has mixed CR/LF encoding variations"
+        decorators: []
+      it:
+        description: "should normalize line endings and not flag as stale"
+        test_id_format: "[test_id:TS-GH-8-003]"
+
+    code_structure: |
+      Context("when content has mixed CR/LF encoding variations", func() {
+        It("[test_id:TS-GH-8-003] should normalize line endings and not flag as stale", func() {
+          // Prepare content with CRLF and LF line endings
+          // Run comparison logic
+          // Assert no stale detection after CR stripping
+        })
+      })
+
+    test_objective:
+      title: "Verify comparison handles CR/LF encoding variations"
+      what: |
+        Tests that the drift detection correctly handles content where one version
+        uses Windows-style CR/LF line endings and the other uses Unix-style LF. The
+        fix includes a `tr -d '\r'` step that strips carriage returns before comparing,
+        ensuring platform encoding differences do not trigger false drift.
+      why: |
+        GitHub API may return content with different line ending conventions depending
+        on the repository's .gitattributes or platform. The CR stripping ensures
+        cross-platform compatibility and prevents false positives from line ending
+        normalization differences.
+      acceptance_criteria:
+        - "Content with CR/LF line endings MUST be treated as identical to LF-only content"
+        - "The tr -d '\\r' normalization correctly strips carriage returns before comparison"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go/Ginkgo test with mocked shell commands"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions:
+        - name: "content_with_crlf"
+          type: "string"
+          yaml: |
+            # Content with \r\n line endings
+            content: "name: fullsend-shim\r\non:\r\n  workflow_dispatch:\r\n"
+        - name: "content_with_lf"
+          type: "string"
+          yaml: |
+            # Same content with \n line endings
+            content: "name: fullsend-shim\non:\n  workflow_dispatch:\n"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Prepare shim content with CRLF line endings"
+          command: "contentWithCRLF = strings.ReplaceAll(shimContent, LF, CRLF)"
+          validation: "Content contains \\r\\n sequences"
+        - step_id: "SETUP-02"
+          action: "Prepare same shim content with LF-only line endings"
+          command: "contentWithLF = shimContent"
+          validation: "Content contains only \\n sequences"
+        - step_id: "SETUP-03"
+          action: "Base64-encode both versions"
+          command: "crlfB64 = base64.Encode(contentWithCRLF); lfB64 = base64.Encode(contentWithLF)"
+          validation: "Base64 strings differ due to CR bytes"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run drift detection comparison"
+          command: "isStale = compareDecodedContent(crlfB64, lfB64)"
+          validation: "Comparison strips CR before comparing, treats content as identical"
+        - step_id: "TEST-02"
+          action: "Verify comparison result is not stale"
+          command: "assert isStale == false"
+          validation: "CR/LF differences are normalized away"
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "CR/LF vs LF content is treated as identical after normalization"
+        condition: "isStale == false"
+        failure_impact: "Line ending differences would cause false drift on cross-platform repos"
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "No error during CR stripping and comparison"
+        condition: "err == nil"
+        failure_impact: "Error in normalization would block reconciliation"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "base64 (GNU coreutils)"
+        - "tr (GNU coreutils)"
+      scenario_specific_rbac: []
+
+  - scenario_id: "004"
+    test_id: "TS-GH-8-004"
+    tier: "Functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-8"
+
+    variables:
+      closure_scope:
+        - name: "scriptPath"
+          type: "string"
+          initialized_in: "BeforeEach"
+          used_in: ["BeforeEach", "It"]
+          comment: "Path to reconcile-repos.sh script"
+        - name: "mockDir"
+          type: "string"
+          initialized_in: "BeforeEach"
+          used_in: ["BeforeEach", "It", "AfterEach"]
+          comment: "Temporary directory for mock commands"
+        - name: "output"
+          type: "string"
+          initialized_in: "It"
+          used_in: ["It"]
+          comment: "Script stdout output"
+        - name: "err"
+          type: "error"
+          initialized_in: "It"
+          used_in: ["It"]
+          comment: "Error from script execution"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Shim enrollment workflow"
+      context:
+        description: "when a repo has an up-to-date shim"
+        decorators: []
+      it:
+        description: "should skip the repo without creating an update PR"
+        test_id_format: "[test_id:TS-GH-8-004]"
+
+    code_structure: |
+      Context("when a repo has an up-to-date shim", func() {
+        BeforeEach(func() {
+          // Set up mock commands returning identical content
+        })
+        It("[test_id:TS-GH-8-004] should skip the repo without creating an update PR", func() {
+          // Run reconcile-repos.sh
+          // Assert no PR creation attempted
+        })
+        AfterEach(func() {
+          // Clean up mock directory
+        })
+      })
+
+    test_objective:
+      title: "Verify enrollment skips repos with up-to-date shim"
+      what: |
+        Tests the end-to-end enrollment flow when a repository already has the
+        current shim workflow. The mock GitHub API returns base64 content that is
+        identical (after decoding) to the managed content. Verifies that the script
+        skips the repo and does not attempt to create an update PR.
+      why: |
+        When enrolled repos already have the correct shim, no action should be taken.
+        Creating unnecessary PRs wastes maintainer attention and pollutes PR history.
+        This was the user-facing symptom of issue #2247.
+      acceptance_criteria:
+        - "Script output indicates repo was skipped (up-to-date)"
+        - "No gh pr create command is invoked"
+        - "Script exits successfully"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go/Ginkgo test executing shell script with mocked commands"
+
+    specific_preconditions:
+      - name: "Mock gh command"
+        requirement: "Mock gh that returns base64-encoded shim content"
+        validation: "Mock script exists in test PATH"
+      - name: "Mock yq command"
+        requirement: "Mock yq that returns repo list from config"
+        validation: "Mock script exists in test PATH"
+
+    test_data:
+      resource_definitions:
+        - name: "config_yaml"
+          type: "file"
+          yaml: |
+            repos:
+              - name: "test-repo"
+                org: "test-org"
+                enrolled: true
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create temporary directory for mock commands"
+          command: "mockDir = os.MkdirTemp('', 'shim-test-*')"
+          validation: "Temp directory created"
+        - step_id: "SETUP-02"
+          action: "Create mock gh command returning current shim content"
+          command: "Write mock script that returns base64-encoded managed content"
+          validation: "Mock gh is executable and returns expected base64"
+        - step_id: "SETUP-03"
+          action: "Create mock yq command returning enrolled repo list"
+          command: "Write mock script that returns test repo config"
+          validation: "Mock yq is executable"
+        - step_id: "SETUP-04"
+          action: "Prepend mock directory to PATH"
+          command: "os.Setenv('PATH', mockDir + ':' + os.Getenv('PATH'))"
+          validation: "Mock commands take precedence"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute reconcile-repos.sh"
+          command: "output, err = exec.Command('bash', scriptPath).CombinedOutput()"
+          validation: "Script executes without error"
+        - step_id: "TEST-02"
+          action: "Verify script output indicates skip"
+          command: "assert output contains 'up-to-date' or 'skipping'"
+          validation: "Repo was correctly identified as current"
+        - step_id: "TEST-03"
+          action: "Verify no PR creation was attempted"
+          command: "assert mock gh log does not contain 'pr create'"
+          validation: "No update PR was created"
+
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Remove temporary mock directory"
+          command: "os.RemoveAll(mockDir)"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Script exits successfully"
+        condition: "err == nil"
+        failure_impact: "Script failure would break reconciliation workflow"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "No update PR created for up-to-date repo"
+        condition: "output does not contain 'Creating PR' or mock gh log has no 'pr create'"
+        failure_impact: "Bogus PRs created for repos with current shim (issue #2247)"
+      - assertion_id: "ASSERT-03"
+        priority: "P1"
+        description: "Script output indicates repo was skipped"
+        condition: "output contains skip/up-to-date message"
+        failure_impact: "Missing log output makes debugging harder"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "bash 4.0+"
+        - "base64 (GNU coreutils)"
+      scenario_specific_rbac: []
+
+  - scenario_id: "005"
+    test_id: "TS-GH-8-005"
+    tier: "Functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-8"
+
+    variables:
+      closure_scope:
+        - name: "scriptPath"
+          type: "string"
+          initialized_in: "BeforeEach"
+          used_in: ["BeforeEach", "It"]
+          comment: "Path to reconcile-repos.sh script"
+        - name: "mockDir"
+          type: "string"
+          initialized_in: "BeforeEach"
+          used_in: ["BeforeEach", "It", "AfterEach"]
+          comment: "Temporary directory for mock commands"
+        - name: "output"
+          type: "string"
+          initialized_in: "It"
+          used_in: ["It"]
+          comment: "Script stdout output"
+        - name: "err"
+          type: "error"
+          initialized_in: "It"
+          used_in: ["It"]
+          comment: "Error from script execution"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Shim enrollment workflow"
+      context:
+        description: "when a repo has a stale shim"
+        decorators: []
+      it:
+        description: "should create an update PR for the repo"
+        test_id_format: "[test_id:TS-GH-8-005]"
+
+    code_structure: |
+      Context("when a repo has a stale shim", func() {
+        BeforeEach(func() {
+          // Set up mock commands returning outdated content
+        })
+        It("[test_id:TS-GH-8-005] should create an update PR for the repo", func() {
+          // Run reconcile-repos.sh
+          // Assert PR creation was attempted
+        })
+        AfterEach(func() {
+          // Clean up mock directory
+        })
+      })
+
+    test_objective:
+      title: "Verify enrollment creates update PR for stale shim"
+      what: |
+        Tests the end-to-end enrollment flow when a repository has an outdated shim
+        workflow. The mock GitHub API returns base64 content that differs from the
+        managed content after decoding. Verifies that the script detects the drift
+        and creates an update PR.
+      why: |
+        The update PR flow is the primary mechanism for keeping enrolled repos on the
+        current shim version. If stale detection fails, repos would silently run
+        outdated workflows, potentially breaking FullSend integration.
+      acceptance_criteria:
+        - "Script detects stale shim content"
+        - "Script invokes gh pr create (or equivalent) to update the shim"
+        - "Script exits successfully after creating the PR"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go/Ginkgo test executing shell script with mocked commands"
+
+    specific_preconditions:
+      - name: "Mock gh command"
+        requirement: "Mock gh returning outdated base64-encoded shim content"
+        validation: "Mock script exists in test PATH"
+      - name: "Mock yq command"
+        requirement: "Mock yq returning repo list from config"
+        validation: "Mock script exists in test PATH"
+
+    test_data:
+      resource_definitions:
+        - name: "config_yaml"
+          type: "file"
+          yaml: |
+            repos:
+              - name: "test-repo"
+                org: "test-org"
+                enrolled: true
+        - name: "outdated_shim"
+          type: "string"
+          yaml: |
+            content: |
+              name: fullsend-shim
+              on:
+                workflow_dispatch:
+              jobs:
+                shim:
+                  uses: fullsend-ai/fullsend/.github/workflows/shim.yml@v0.9
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create temporary directory for mock commands"
+          command: "mockDir = os.MkdirTemp('', 'shim-test-*')"
+          validation: "Temp directory created"
+        - step_id: "SETUP-02"
+          action: "Create mock gh command returning outdated shim content"
+          command: "Write mock script returning base64-encoded outdated shim"
+          validation: "Mock gh returns content that differs from current managed shim"
+        - step_id: "SETUP-03"
+          action: "Create mock yq and other required commands"
+          command: "Write mock scripts for yq, base64 if needed"
+          validation: "All mock commands are executable"
+        - step_id: "SETUP-04"
+          action: "Prepend mock directory to PATH"
+          command: "os.Setenv('PATH', mockDir + ':' + os.Getenv('PATH'))"
+          validation: "Mock commands take precedence"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute reconcile-repos.sh"
+          command: "output, err = exec.Command('bash', scriptPath).CombinedOutput()"
+          validation: "Script executes without error"
+        - step_id: "TEST-02"
+          action: "Verify script detected stale content"
+          command: "assert output contains 'stale' or 'updating'"
+          validation: "Drift was detected in script output"
+        - step_id: "TEST-03"
+          action: "Verify PR creation was attempted"
+          command: "assert mock gh log contains 'pr create'"
+          validation: "Update PR was created for stale repo"
+
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Remove temporary mock directory"
+          command: "os.RemoveAll(mockDir)"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Script exits successfully"
+        condition: "err == nil"
+        failure_impact: "Script failure would break reconciliation"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "Update PR created for stale repo"
+        condition: "mock gh log contains 'pr create' invocation"
+        failure_impact: "Stale repos would not be updated, breaking enrollment pipeline"
+      - assertion_id: "ASSERT-03"
+        priority: "P1"
+        description: "Script output indicates drift was detected"
+        condition: "output contains stale/drift/update message"
+        failure_impact: "Missing log makes debugging harder"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "bash 4.0+"
+        - "base64 (GNU coreutils)"
+      scenario_specific_rbac: []
+
+  - scenario_id: "006"
+    test_id: "TS-GH-8-006"
+    tier: "Functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-8"
+
+    variables:
+      closure_scope:
+        - name: "testScriptPath"
+          type: "string"
+          initialized_in: "BeforeEach"
+          used_in: ["BeforeEach", "It"]
+          comment: "Path to reconcile-repos-test.sh"
+        - name: "output"
+          type: "string"
+          initialized_in: "It"
+          used_in: ["It"]
+          comment: "Test script stdout output"
+        - name: "exitCode"
+          type: "int"
+          initialized_in: "It"
+          used_in: ["It"]
+          comment: "Test script exit code"
+        - name: "err"
+          type: "error"
+          initialized_in: "It"
+          used_in: ["It"]
+          comment: "Error from test script execution"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Shim drift detection regression test"
+      context:
+        description: "when running the reconcile-repos-test.sh regression suite"
+        decorators: []
+      it:
+        description: "should pass all regression tests end-to-end"
+        test_id_format: "[test_id:TS-GH-8-006]"
+
+    code_structure: |
+      Context("when running the reconcile-repos-test.sh regression suite", func() {
+        It("[test_id:TS-GH-8-006] should pass all regression tests end-to-end", func() {
+          // Execute reconcile-repos-test.sh
+          // Assert exit code 0
+          // Assert all test cases passed
+        })
+      })
+
+    test_objective:
+      title: "Verify reconcile-repos-test.sh regression test passes end-to-end"
+      what: |
+        Executes the existing reconcile-repos-test.sh regression test script that was
+        added as part of the fix for issue #2247. This test script contains multiple
+        test cases including the specific regression test for trailing-newline encoding
+        and the existing stale-shim atomic update test.
+      why: |
+        The regression test script is the primary CI gate for the shim reconciliation
+        logic. Running it end-to-end validates that both the fix and all existing
+        functionality work correctly together. This serves as the integration validation
+        for the entire reconcile-repos.sh change set.
+      acceptance_criteria:
+        - "reconcile-repos-test.sh exits with code 0"
+        - "All test cases within the script pass"
+        - "No error output or failed assertions in script output"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go/Ginkgo test executing shell test script"
+
+    specific_preconditions:
+      - name: "reconcile-repos-test.sh"
+        requirement: "Test script present and executable"
+        validation: "test -x hack/reconcile-repos-test.sh"
+      - name: "reconcile-repos.sh"
+        requirement: "Subject script present (sourced by test)"
+        validation: "test -f hack/reconcile-repos.sh"
+
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Locate reconcile-repos-test.sh in the repo"
+          command: "testScriptPath = filepath.Join(repoRoot, 'hack', 'reconcile-repos-test.sh')"
+          validation: "Script file exists and is executable"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute reconcile-repos-test.sh"
+          command: "output, err = exec.Command('bash', testScriptPath).CombinedOutput()"
+          validation: "Script runs to completion"
+        - step_id: "TEST-02"
+          action: "Check exit code"
+          command: "exitCode = cmd.ProcessState.ExitCode()"
+          validation: "Exit code is 0"
+        - step_id: "TEST-03"
+          action: "Verify no failures in output"
+          command: "assert output does not contain 'FAIL' or 'ERROR'"
+          validation: "All test cases passed"
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Regression test script exits with code 0"
+        condition: "exitCode == 0"
+        failure_impact: "Regression test failure indicates the fix is broken or incomplete"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "No test failures in script output"
+        condition: "output does not contain 'FAIL'"
+        failure_impact: "Individual test case failure indicates specific regression"
+      - assertion_id: "ASSERT-03"
+        priority: "P1"
+        description: "Script output shows all tests passed"
+        condition: "output contains pass/success indicators"
+        failure_impact: "Missing pass indicators may indicate silent failures"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "bash 4.0+"
+        - "base64 (GNU coreutils)"
+      scenario_specific_rbac: []
+---
