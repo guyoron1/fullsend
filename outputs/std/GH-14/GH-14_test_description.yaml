@@ -1,0 +1,1667 @@
+---
+# Software Test Description (STD) — GH-14
+# Generated: 2026-06-15
+# Source: outputs/stp/GH-14/GH-14_test_plan.md
+
+document_metadata:
+  std_version: "2.1-enhanced"
+  generated_date: "2026-06-15"
+  jira_issue: "GH-14"
+  jira_summary: "Add Testing-Agents Problem Document"
+  source_bugs: []
+  stp_reference:
+    file: "outputs/stp/GH-14/GH-14_test_plan.md"
+    version: "v1"
+    sections_covered: "Section III - Requirements-to-Tests Mapping"
+  related_prs:
+    - repo: "fullsend-ai/fullsend"
+      pr_number: 14
+      url: "https://github.com/fullsend-ai/fullsend/pull/14"
+      title: "Add Testing-Agents Problem Document"
+      merged: true
+  total_scenarios: 15
+  functional_count: 15
+  e2e_count: 0
+  p0_count: 5
+  p1_count: 6
+  p2_count: 4
+
+code_generation_config:
+  std_version: "2.1-enhanced"
+  framework: "testing"
+  assertion_library: "testify"
+  language: "go"
+  package_name: "tests"
+  context_init: "context.Background()"
+  imports:
+    standard:
+      - "context"
+      - "testing"
+      - "os"
+      - "path/filepath"
+      - "strings"
+      - "fmt"
+    test_framework:
+      - path: "github.com/stretchr/testify/assert"
+      - path: "github.com/stretchr/testify/require"
+    project:
+      - "github.com/fullsend-ai/fullsend/internal/config"
+  timeout_constants:
+    default: "30s"
+    setup: "10s"
+  helper_library_imports: []
+
+common_preconditions:
+  infrastructure:
+    - name: "Repository checkout"
+      requirement: "Git clone of fullsend-ai/fullsend with PR #14 and PR #2009 merged"
+      validation: "git log --oneline | head -5"
+    - name: "Go toolchain"
+      requirement: "Go 1.23+"
+      validation: "go version"
+  operators: []
+  cluster_configuration:
+    topology: "None"
+    cpu_features: "Standard"
+    storage: "N/A"
+    network: "N/A"
+  rbac_requirements: []
+
+scenarios:
+  # ============================================================
+  # Requirement Group 1: Agent testing approaches documentation
+  # ============================================================
+  - scenario_id: "001"
+    test_id: "TS-GH-14-001"
+    tier: "Functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-14"
+
+    variables:
+      closure_scope:
+        - name: "docPath"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "Test"]
+          comment: "Path to testing-agents.md"
+        - name: "content"
+          type: "[]byte"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Raw document content"
+        - name: "err"
+          type: "error"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Error from file operations"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "TestFunction"
+        description: "TestDocumentApproachesCoverage"
+      context:
+        description: "testing-agents document covers all four testing approaches"
+        decorators: []
+      it:
+        description: "should contain golden-set, behavioral contracts, canary, and mutation testing sections"
+        test_id_format: "[test_id:TS-GH-14-001]"
+
+    code_structure: |
+      func TestDocumentApproachesCoverage(t *testing.T) {
+        // Setup: locate testing-agents.md
+        // Test: verify all four approaches are present with trade-off sections
+      }
+
+    test_objective:
+      title: "Verify all four testing approaches are documented with trade-offs"
+      what: |
+        Reads testing-agents.md and verifies that all four proposed testing
+        approaches — golden-set evaluation, behavioral contract testing,
+        canary deployments, and mutation testing — are documented with their
+        respective trade-offs analysis.
+      why: |
+        The problem document must comprehensively cover all proposed testing
+        approaches so the team can make informed decisions about which approach
+        to adopt. Missing an approach would lead to incomplete evaluation.
+      acceptance_criteria:
+        - "Document contains a section for golden-set evaluation"
+        - "Document contains a section for behavioral contract testing"
+        - "Document contains a section for canary deployments"
+        - "Document contains a section for mutation testing"
+        - "Each section includes trade-off or pros/cons analysis"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "go test with testify"
+
+    specific_preconditions:
+      - name: "testing-agents.md exists"
+        requirement: "docs/problems/testing-agents.md must be present in the repository"
+        validation: "test -f docs/problems/testing-agents.md"
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Locate testing-agents.md in repository"
+          command: "filepath.Join(repoRoot, 'docs/problems/testing-agents.md')"
+          validation: "File exists and is readable"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Read document content"
+          command: "os.ReadFile(docPath)"
+          validation: "No error reading file"
+        - step_id: "TEST-02"
+          action: "Check for golden-set evaluation section"
+          command: "strings.Contains(content, 'golden-set') or strings.Contains(content, 'Golden')"
+          validation: "Section found in document"
+        - step_id: "TEST-03"
+          action: "Check for behavioral contract testing section"
+          command: "strings.Contains(content, 'behavioral contract') or strings.Contains(content, 'contract test')"
+          validation: "Section found in document"
+        - step_id: "TEST-04"
+          action: "Check for canary deployment section"
+          command: "strings.Contains(content, 'canary')"
+          validation: "Section found in document"
+        - step_id: "TEST-05"
+          action: "Check for mutation testing section"
+          command: "strings.Contains(content, 'mutation test')"
+          validation: "Section found in document"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "All four testing approaches are documented"
+        condition: "Document contains sections for golden-set, behavioral contracts, canary, and mutation testing"
+        failure_impact: "Incomplete problem exploration leads to uninformed testing strategy decisions"
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "Trade-offs are documented for each approach"
+        condition: "Each approach section contains trade-off or comparison analysis"
+        failure_impact: "Team cannot weigh pros and cons of each approach"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Scenario 002: CI pipeline stages
+  # ============================================================
+  - scenario_id: "002"
+    test_id: "TS-GH-14-002"
+    tier: "Functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-14"
+
+    variables:
+      closure_scope:
+        - name: "docPath"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "Test"]
+          comment: "Path to testing-agents.md"
+        - name: "content"
+          type: "[]byte"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Raw document content"
+        - name: "err"
+          type: "error"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Error from file operations"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "TestFunction"
+        description: "TestCIPipelineStages"
+      context:
+        description: "CI pipeline section references all five pipeline stages"
+        decorators: []
+      it:
+        description: "should reference all five CI pipeline stages"
+        test_id_format: "[test_id:TS-GH-14-002]"
+
+    code_structure: |
+      func TestCIPipelineStages(t *testing.T) {
+        // Setup: locate testing-agents.md
+        // Test: verify all five pipeline stages are referenced
+      }
+
+    test_objective:
+      title: "Verify CI pipeline section references all five pipeline stages"
+      what: |
+        Reads testing-agents.md and verifies the CI pipeline section references
+        all five expected pipeline stages for CI-for-prompts integration.
+      why: |
+        Complete pipeline stage coverage ensures the document provides a full
+        picture of how agent testing integrates into the CI/CD workflow.
+      acceptance_criteria:
+        - "CI pipeline section exists in the document"
+        - "All five pipeline stages are referenced"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "go test with testify"
+
+    specific_preconditions:
+      - name: "testing-agents.md exists"
+        requirement: "docs/problems/testing-agents.md must be present in the repository"
+        validation: "test -f docs/problems/testing-agents.md"
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Locate testing-agents.md in repository"
+          command: "filepath.Join(repoRoot, 'docs/problems/testing-agents.md')"
+          validation: "File exists and is readable"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Read document content"
+          command: "os.ReadFile(docPath)"
+          validation: "No error reading file"
+        - step_id: "TEST-02"
+          action: "Verify CI pipeline section references all five stages"
+          command: "Search for pipeline stage keywords in document content"
+          validation: "All five pipeline stages found"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "CI pipeline section references all stages"
+        condition: "All five pipeline stages are mentioned in the CI pipeline section"
+        failure_impact: "Incomplete pipeline documentation leaves gaps in CI integration planning"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Scenario 003: Missing approach section (negative)
+  # ============================================================
+  - scenario_id: "003"
+    test_id: "TS-GH-14-003"
+    tier: "Functional"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-14"
+
+    variables:
+      closure_scope:
+        - name: "content"
+          type: "string"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Simulated document content with missing section"
+        - name: "err"
+          type: "error"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Error from validation"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "TestFunction"
+        description: "TestMissingApproachSection"
+      context:
+        description: "[NEGATIVE] approach section is missing or incomplete"
+        decorators: []
+      it:
+        description: "should detect missing or incomplete approach section"
+        test_id_format: "[test_id:TS-GH-14-003]"
+
+    code_structure: |
+      func TestMissingApproachSection(t *testing.T) {
+        // Setup: create test content with a missing approach section
+        // Test: verify validation detects the gap
+      }
+
+    test_objective:
+      title: "Verify error when approach section is missing or incomplete"
+      what: |
+        Validates that a document missing one or more of the four testing
+        approach sections is detected as incomplete. Tests the negative case
+        where the document structure is deficient.
+      why: |
+        Ensures the validation logic catches incomplete documentation before
+        it is accepted, maintaining quality standards for problem documents.
+      acceptance_criteria:
+        - "Validation detects when an approach section is missing"
+        - "Clear error or warning is produced identifying the missing section"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "go test with testify"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Prepare document content with a missing approach section"
+          command: "Construct test string missing one of the four approaches"
+          validation: "Test content is ready"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run approach coverage validation on incomplete content"
+          command: "Validate content for all four approach keywords"
+          validation: "Validation reports missing section"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Missing approach is detected"
+        condition: "Validation function returns false or error for incomplete content"
+        failure_impact: "Incomplete documents could pass validation silently"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Scenario 004: Internal document links resolve (P0)
+  # ============================================================
+  - scenario_id: "004"
+    test_id: "TS-GH-14-004"
+    tier: "Functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-14"
+
+    variables:
+      closure_scope:
+        - name: "repoRoot"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "Test"]
+          comment: "Repository root directory"
+        - name: "docPath"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "Test"]
+          comment: "Path to document under test"
+        - name: "content"
+          type: "[]byte"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Raw document content"
+        - name: "err"
+          type: "error"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Error from file operations"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "TestFunction"
+        description: "TestInternalLinksResolve"
+      context:
+        description: "all internal document links resolve correctly"
+        decorators: []
+      it:
+        description: "should verify all internal markdown links resolve to existing files"
+        test_id_format: "[test_id:TS-GH-14-004]"
+
+    code_structure: |
+      func TestInternalLinksResolve(t *testing.T) {
+        // Setup: locate testing-agents.md, read content
+        // Test: extract all markdown links, verify each resolves to a file
+      }
+
+    test_objective:
+      title: "Verify all internal document links resolve correctly"
+      what: |
+        Extracts all internal markdown links (relative file references) from
+        testing-agents.md and verifies that each link target exists in the
+        repository. This ensures cross-references between problem documents
+        are valid.
+      why: |
+        Broken internal links degrade document usability and indicate
+        structural problems in the documentation set. P0 because broken
+        links immediately impact any reader navigating the documents.
+      acceptance_criteria:
+        - "All relative markdown links in the document resolve to existing files"
+        - "No broken internal cross-references"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "go test with testify"
+
+    specific_preconditions:
+      - name: "testing-agents.md exists"
+        requirement: "docs/problems/testing-agents.md must be present"
+        validation: "test -f docs/problems/testing-agents.md"
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Determine repository root and document path"
+          command: "filepath.Join(repoRoot, 'docs/problems/testing-agents.md')"
+          validation: "Document exists"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Read document content"
+          command: "os.ReadFile(docPath)"
+          validation: "No error reading file"
+        - step_id: "TEST-02"
+          action: "Extract all internal markdown links using regex"
+          command: "regexp.FindAllString for markdown link pattern [text](path)"
+          validation: "Links extracted successfully"
+        - step_id: "TEST-03"
+          action: "For each internal link, verify target file exists"
+          command: "os.Stat(filepath.Join(docDir, linkTarget))"
+          validation: "All link targets exist"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "All internal links resolve to existing files"
+        condition: "Every relative link target exists in the repository"
+        failure_impact: "Broken links prevent readers from navigating between related documents"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Scenario 005: Broken cross-reference detection
+  # ============================================================
+  - scenario_id: "005"
+    test_id: "TS-GH-14-005"
+    tier: "Functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-14"
+
+    variables:
+      closure_scope:
+        - name: "content"
+          type: "string"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Simulated content with broken link"
+        - name: "brokenLinks"
+          type: "[]string"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "List of broken links found"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "TestFunction"
+        description: "TestBrokenCrossReferenceDetection"
+      context:
+        description: "[NEGATIVE] broken cross-reference is detected and reported"
+        decorators: []
+      it:
+        description: "should detect and report broken cross-references"
+        test_id_format: "[test_id:TS-GH-14-005]"
+
+    code_structure: |
+      func TestBrokenCrossReferenceDetection(t *testing.T) {
+        // Setup: create content with a known broken link
+        // Test: verify link validation detects and reports the broken reference
+      }
+
+    test_objective:
+      title: "Verify broken cross-reference is detected and reported"
+      what: |
+        Tests the negative case where a document contains a broken
+        cross-reference link pointing to a non-existent file. Validates
+        that the link checking logic identifies and reports the broken link.
+      why: |
+        Detection of broken references is essential for maintaining document
+        integrity over time as files are renamed or removed.
+      acceptance_criteria:
+        - "Broken link to non-existent file is detected"
+        - "Report identifies the specific broken link"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "go test with testify"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create test content with a known broken link"
+          command: "Construct markdown with link to non-existent-file.md"
+          validation: "Test content prepared"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run link validation against test content"
+          command: "Extract links and check existence"
+          validation: "Validation runs without crash"
+        - step_id: "TEST-02"
+          action: "Verify broken link is reported"
+          command: "Check validation result for the broken link"
+          validation: "Broken link appears in error list"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Broken link is detected"
+        condition: "Link validation identifies the non-existent target"
+        failure_impact: "Silent broken links erode documentation quality over time"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Scenario 006: Eval framework capabilities and gaps
+  # ============================================================
+  - scenario_id: "006"
+    test_id: "TS-GH-14-006"
+    tier: "Functional"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-14"
+
+    variables:
+      closure_scope:
+        - name: "docPath"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "Test"]
+          comment: "Path to testing-agents.md"
+        - name: "content"
+          type: "[]byte"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Raw document content"
+        - name: "err"
+          type: "error"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Error from file operations"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "TestFunction"
+        description: "TestEvalFrameworkCoverage"
+      context:
+        description: "each eval framework section describes capabilities and gaps"
+        decorators: []
+      it:
+        description: "should describe capabilities and gaps for promptfoo, deepeval, and lightspeed-evaluation"
+        test_id_format: "[test_id:TS-GH-14-006]"
+
+    code_structure: |
+      func TestEvalFrameworkCoverage(t *testing.T) {
+        // Setup: locate testing-agents.md
+        // Test: verify each framework section describes capabilities and gaps
+      }
+
+    test_objective:
+      title: "Verify each framework section describes capabilities and gaps"
+      what: |
+        Reads testing-agents.md and verifies that sections for promptfoo,
+        deepeval, and lightspeed-evaluation each describe both capabilities
+        and gaps/limitations of the respective framework.
+      why: |
+        Complete capability and gap analysis for each eval framework enables
+        the team to select the most appropriate tool for their testing needs.
+      acceptance_criteria:
+        - "promptfoo section describes capabilities and gaps"
+        - "deepeval section describes capabilities and gaps"
+        - "lightspeed-evaluation section describes capabilities and gaps"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "go test with testify"
+
+    specific_preconditions:
+      - name: "testing-agents.md exists"
+        requirement: "docs/problems/testing-agents.md must be present"
+        validation: "test -f docs/problems/testing-agents.md"
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Locate testing-agents.md"
+          command: "filepath.Join(repoRoot, 'docs/problems/testing-agents.md')"
+          validation: "File exists"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Read document content"
+          command: "os.ReadFile(docPath)"
+          validation: "No error"
+        - step_id: "TEST-02"
+          action: "Check for promptfoo section with capabilities and gaps"
+          command: "Search for promptfoo keyword and analyze surrounding content"
+          validation: "Section found with capability and gap descriptions"
+        - step_id: "TEST-03"
+          action: "Check for deepeval section with capabilities and gaps"
+          command: "Search for deepeval keyword and analyze surrounding content"
+          validation: "Section found with capability and gap descriptions"
+        - step_id: "TEST-04"
+          action: "Check for lightspeed-evaluation section with capabilities and gaps"
+          command: "Search for lightspeed-evaluation keyword and analyze surrounding content"
+          validation: "Section found with capability and gap descriptions"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "All three eval frameworks are documented with capabilities and gaps"
+        condition: "promptfoo, deepeval, and lightspeed-evaluation sections present with analysis"
+        failure_impact: "Incomplete framework analysis hinders tool selection decisions"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Scenario 007: Input expansion from seed sets
+  # ============================================================
+  - scenario_id: "007"
+    test_id: "TS-GH-14-007"
+    tier: "Functional"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-14"
+
+    variables:
+      closure_scope:
+        - name: "docPath"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "Test"]
+          comment: "Path to testing-agents.md"
+        - name: "content"
+          type: "[]byte"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Raw document content"
+        - name: "err"
+          type: "error"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Error from file operations"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "TestFunction"
+        description: "TestInputExpansionPattern"
+      context:
+        description: "input expansion from seed sets pattern is documented"
+        decorators: []
+      it:
+        description: "should document the input expansion from seed sets pattern"
+        test_id_format: "[test_id:TS-GH-14-007]"
+
+    code_structure: |
+      func TestInputExpansionPattern(t *testing.T) {
+        // Setup: locate testing-agents.md
+        // Test: verify input expansion pattern is documented
+      }
+
+    test_objective:
+      title: "Verify input expansion from seed sets pattern is documented"
+      what: |
+        Reads testing-agents.md and verifies that the input expansion
+        from seed sets pattern is documented, describing how initial seed
+        test cases are expanded into broader test coverage.
+      why: |
+        Input expansion is a key technique for scaling agent testing from
+        a small golden set to comprehensive coverage. Its documentation
+        ensures the team understands this scaling mechanism.
+      acceptance_criteria:
+        - "Document contains description of input expansion from seed sets"
+        - "Pattern explains how seeds are expanded into broader test cases"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "go test with testify"
+
+    specific_preconditions:
+      - name: "testing-agents.md exists"
+        requirement: "docs/problems/testing-agents.md must be present"
+        validation: "test -f docs/problems/testing-agents.md"
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Locate testing-agents.md"
+          command: "filepath.Join(repoRoot, 'docs/problems/testing-agents.md')"
+          validation: "File exists"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Read document content"
+          command: "os.ReadFile(docPath)"
+          validation: "No error"
+        - step_id: "TEST-02"
+          action: "Search for input expansion / seed set pattern description"
+          command: "strings.Contains(content, 'seed') and related expansion keywords"
+          validation: "Pattern description found"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Input expansion pattern is documented"
+        condition: "Document describes input expansion from seed sets"
+        failure_impact: "Missing scaling strategy documentation limits test coverage planning"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Scenario 008: Codebase hooks match document (P0)
+  # ============================================================
+  - scenario_id: "008"
+    test_id: "TS-GH-14-008"
+    tier: "Functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-14"
+
+    variables:
+      closure_scope:
+        - name: "docPath"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "Test"]
+          comment: "Path to tool-call-risk-assessment.md"
+        - name: "content"
+          type: "[]byte"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Raw document content"
+        - name: "err"
+          type: "error"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Error from file operations"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "TestFunction"
+        description: "TestCodebaseHooksDocumented"
+      context:
+        description: "document references match codebase security hooks"
+        decorators: []
+      it:
+        description: "should reference Tirith, SSRF, canary, unicode, tool allowlist, secret redactor, context suppressor"
+        test_id_format: "[test_id:TS-GH-14-008]"
+
+    code_structure: |
+      func TestCodebaseHooksDocumented(t *testing.T) {
+        // Setup: locate tool-call-risk-assessment.md
+        // Test: verify all seven security hooks are referenced
+      }
+
+    test_objective:
+      title: "Verify document references match codebase hooks"
+      what: |
+        Reads the tool call risk assessment document and verifies it
+        references all known security hooks: Tirith, SSRF validator,
+        canary token detection, unicode normalizer, tool allowlist,
+        secret redactor, and context suppressor.
+      why: |
+        The risk assessment document must accurately reflect the existing
+        security hook architecture. Missing hook references indicate the
+        document is out of date and could mislead security decisions.
+      acceptance_criteria:
+        - "Document references Tirith hook"
+        - "Document references SSRF validator"
+        - "Document references canary token detection"
+        - "Document references unicode normalizer"
+        - "Document references tool allowlist"
+        - "Document references secret redactor"
+        - "Document references context suppressor"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "go test with testify"
+
+    specific_preconditions:
+      - name: "tool-call-risk-assessment.md exists"
+        requirement: "docs/problems/tool-call-risk-assessment.md must be present"
+        validation: "test -f docs/problems/tool-call-risk-assessment.md"
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Locate tool-call-risk-assessment.md"
+          command: "filepath.Join(repoRoot, 'docs/problems/tool-call-risk-assessment.md')"
+          validation: "File exists"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Read document content"
+          command: "os.ReadFile(docPath)"
+          validation: "No error"
+        - step_id: "TEST-02"
+          action: "Check for all seven security hook references"
+          command: "strings.Contains for each hook name"
+          validation: "All hooks found in document"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "All security hooks are referenced in document"
+        condition: "Document contains references to all seven hooks"
+        failure_impact: "Missing hook references mean the security architecture is incompletely documented"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Scenario 009: Hook descriptions align with struct fields (P0)
+  # ============================================================
+  - scenario_id: "009"
+    test_id: "TS-GH-14-009"
+    tier: "Functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-14"
+
+    variables:
+      closure_scope:
+        - name: "docPath"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "Test"]
+          comment: "Path to tool-call-risk-assessment.md"
+        - name: "harnessPath"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "Test"]
+          comment: "Path to internal/harness/harness.go"
+        - name: "docContent"
+          type: "[]byte"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Document content"
+        - name: "codeContent"
+          type: "[]byte"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Source code content"
+        - name: "err"
+          type: "error"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Error from file operations"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "TestFunction"
+        description: "TestHookDescriptionsAlignWithCode"
+      context:
+        description: "hook descriptions align with SecurityConfig and SandboxHooks struct fields"
+        decorators: []
+      it:
+        description: "should align hook descriptions with SecurityConfig and SandboxHooks struct fields in harness.go"
+        test_id_format: "[test_id:TS-GH-14-009]"
+
+    code_structure: |
+      func TestHookDescriptionsAlignWithCode(t *testing.T) {
+        // Setup: locate document and harness.go
+        // Test: extract struct field names, verify document references them
+      }
+
+    test_objective:
+      title: "Verify hook descriptions align with SecurityConfig and SandboxHooks struct fields"
+      what: |
+        Cross-references the tool call risk assessment document against the
+        actual Go source code in internal/harness/harness.go. Verifies that
+        hook descriptions align with the SecurityConfig and SandboxHooks
+        struct field names and semantics.
+      why: |
+        Documentation that diverges from the actual codebase creates confusion
+        and could lead to incorrect security assumptions. P0 because security
+        architecture accuracy is critical.
+      acceptance_criteria:
+        - "Document hook descriptions align with SecurityConfig struct fields"
+        - "Document hook descriptions align with SandboxHooks struct fields"
+        - "No hooks described in document that do not exist in code"
+
+    classification:
+      test_type: "Functional"
+      scope: "Multi-component"
+      automation_approach: "go test with testify"
+
+    specific_preconditions:
+      - name: "tool-call-risk-assessment.md exists"
+        requirement: "docs/problems/tool-call-risk-assessment.md must be present"
+        validation: "test -f docs/problems/tool-call-risk-assessment.md"
+      - name: "harness.go exists"
+        requirement: "internal/harness/harness.go must be present"
+        validation: "test -f internal/harness/harness.go"
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Locate document and harness.go"
+          command: "filepath.Join for both paths"
+          validation: "Both files exist"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Read both document and source file"
+          command: "os.ReadFile for both"
+          validation: "No errors"
+        - step_id: "TEST-02"
+          action: "Extract SecurityConfig and SandboxHooks struct field names from harness.go"
+          command: "regexp extraction of struct fields"
+          validation: "Field names extracted"
+        - step_id: "TEST-03"
+          action: "Verify document references each struct field"
+          command: "strings.Contains for each field name"
+          validation: "All fields referenced in document"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Document aligns with codebase struct fields"
+        condition: "All SecurityConfig and SandboxHooks fields are referenced in the document"
+        failure_impact: "Misalignment between docs and code creates security blind spots"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Scenario 010: Hook description mismatch detection (negative)
+  # ============================================================
+  - scenario_id: "010"
+    test_id: "TS-GH-14-010"
+    tier: "Functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-14"
+
+    variables:
+      closure_scope:
+        - name: "content"
+          type: "string"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Simulated content with mismatched hook description"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "TestFunction"
+        description: "TestHookDescriptionMismatchDetection"
+      context:
+        description: "[NEGATIVE] hook description mismatches codebase implementation"
+        decorators: []
+      it:
+        description: "should detect when hook description mismatches codebase implementation"
+        test_id_format: "[test_id:TS-GH-14-010]"
+
+    code_structure: |
+      func TestHookDescriptionMismatchDetection(t *testing.T) {
+        // Setup: create test content with a mismatched hook description
+        // Test: verify mismatch is detected
+      }
+
+    test_objective:
+      title: "Verify error when hook description mismatches codebase implementation"
+      what: |
+        Tests the negative case where a document describes a security hook
+        with incorrect details that do not match the codebase implementation.
+        Validates that the cross-reference validation detects the mismatch.
+      why: |
+        Ensuring mismatch detection works prevents incorrect security
+        documentation from going unnoticed, maintaining trust in the docs.
+      acceptance_criteria:
+        - "Validation detects mismatch between document and codebase"
+        - "Specific mismatch is identified in error output"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "go test with testify"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create test content with intentionally mismatched hook description"
+          command: "Construct test string with wrong hook semantics"
+          validation: "Test content ready"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run cross-reference validation"
+          command: "Compare test content against codebase hooks"
+          validation: "Mismatch detected"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Hook description mismatch is detected"
+        condition: "Validation identifies the specific mismatched hook"
+        failure_impact: "Undetected mismatches erode documentation trustworthiness"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Scenario 011: Risk assessment spectrum coverage
+  # ============================================================
+  - scenario_id: "011"
+    test_id: "TS-GH-14-011"
+    tier: "Functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-14"
+
+    variables:
+      closure_scope:
+        - name: "docPath"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "Test"]
+          comment: "Path to tool-call-risk-assessment.md"
+        - name: "content"
+          type: "[]byte"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Raw document content"
+        - name: "err"
+          type: "error"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Error from file operations"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "TestFunction"
+        description: "TestRiskAssessmentSpectrumCoverage"
+      context:
+        description: "four approaches cover the risk assessment spectrum"
+        decorators: []
+      it:
+        description: "should cover deterministic through semantic risk assessment approaches"
+        test_id_format: "[test_id:TS-GH-14-011]"
+
+    code_structure: |
+      func TestRiskAssessmentSpectrumCoverage(t *testing.T) {
+        // Setup: locate tool-call-risk-assessment.md
+        // Test: verify four approaches span deterministic to semantic
+      }
+
+    test_objective:
+      title: "Verify four approaches cover the risk assessment spectrum (deterministic through semantic)"
+      what: |
+        Reads the tool call risk assessment document and verifies it
+        describes four approaches spanning the full risk assessment spectrum
+        from deterministic rule-based methods to semantic LLM-based analysis.
+      why: |
+        Complete spectrum coverage ensures the document provides a thorough
+        analysis of available risk assessment methodologies, enabling the
+        team to select the appropriate approach for each use case.
+      acceptance_criteria:
+        - "Document describes deterministic (rule-based) approach"
+        - "Document describes semantic (LLM-based) approach"
+        - "At least four distinct approaches are documented"
+        - "Approaches span from deterministic to semantic"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "go test with testify"
+
+    specific_preconditions:
+      - name: "tool-call-risk-assessment.md exists"
+        requirement: "docs/problems/tool-call-risk-assessment.md must be present"
+        validation: "test -f docs/problems/tool-call-risk-assessment.md"
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Locate tool-call-risk-assessment.md"
+          command: "filepath.Join(repoRoot, 'docs/problems/tool-call-risk-assessment.md')"
+          validation: "File exists"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Read document content"
+          command: "os.ReadFile(docPath)"
+          validation: "No error"
+        - step_id: "TEST-02"
+          action: "Identify the four risk assessment approaches"
+          command: "Search for approach headings or descriptions"
+          validation: "Four distinct approaches found"
+        - step_id: "TEST-03"
+          action: "Verify spectrum coverage from deterministic to semantic"
+          command: "Check for deterministic and semantic keywords"
+          validation: "Both ends of spectrum represented"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Four risk assessment approaches documented"
+        condition: "Document contains four distinct approaches spanning deterministic to semantic"
+        failure_impact: "Incomplete spectrum analysis limits approach selection decisions"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Scenario 012: Hybrid approach references
+  # ============================================================
+  - scenario_id: "012"
+    test_id: "TS-GH-14-012"
+    tier: "Functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-14"
+
+    variables:
+      closure_scope:
+        - name: "docPath"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "Test"]
+          comment: "Path to tool-call-risk-assessment.md"
+        - name: "content"
+          type: "[]byte"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Raw document content"
+        - name: "err"
+          type: "error"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Error from file operations"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "TestFunction"
+        description: "TestHybridApproachReferences"
+      context:
+        description: "hybrid approach references deterministic and LLM-judge components"
+        decorators: []
+      it:
+        description: "should correctly reference both deterministic and LLM-judge components"
+        test_id_format: "[test_id:TS-GH-14-012]"
+
+    code_structure: |
+      func TestHybridApproachReferences(t *testing.T) {
+        // Setup: locate tool-call-risk-assessment.md
+        // Test: verify hybrid approach references both components
+      }
+
+    test_objective:
+      title: "Verify hybrid approach correctly references deterministic and LLM-judge components"
+      what: |
+        Reads the tool call risk assessment document and verifies the hybrid
+        approach section correctly references both deterministic rule-based
+        components and LLM-as-judge components, showing how they combine.
+      why: |
+        The hybrid approach is the recommended path and must accurately
+        describe its constituent components. Incorrect references would
+        mislead implementation efforts.
+      acceptance_criteria:
+        - "Hybrid approach section references deterministic component"
+        - "Hybrid approach section references LLM-judge component"
+        - "Description explains how the two components combine"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "go test with testify"
+
+    specific_preconditions:
+      - name: "tool-call-risk-assessment.md exists"
+        requirement: "docs/problems/tool-call-risk-assessment.md must be present"
+        validation: "test -f docs/problems/tool-call-risk-assessment.md"
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Locate tool-call-risk-assessment.md"
+          command: "filepath.Join(repoRoot, 'docs/problems/tool-call-risk-assessment.md')"
+          validation: "File exists"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Read document content"
+          command: "os.ReadFile(docPath)"
+          validation: "No error"
+        - step_id: "TEST-02"
+          action: "Locate hybrid approach section"
+          command: "Search for 'hybrid' in document"
+          validation: "Hybrid section found"
+        - step_id: "TEST-03"
+          action: "Verify deterministic component reference"
+          command: "Check hybrid section references deterministic/rule-based"
+          validation: "Deterministic reference found"
+        - step_id: "TEST-04"
+          action: "Verify LLM-judge component reference"
+          command: "Check hybrid section references LLM-judge/LLM-as-judge"
+          validation: "LLM-judge reference found"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Hybrid approach references both components"
+        condition: "Document hybrid section mentions both deterministic and LLM-judge"
+        failure_impact: "Incomplete hybrid description could lead to partial implementations"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Scenario 013: README link to testing-agents.md (P0)
+  # ============================================================
+  - scenario_id: "013"
+    test_id: "TS-GH-14-013"
+    tier: "Functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-14"
+
+    variables:
+      closure_scope:
+        - name: "readmePath"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "Test"]
+          comment: "Path to README.md or docs index"
+        - name: "content"
+          type: "[]byte"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Raw README content"
+        - name: "err"
+          type: "error"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Error from file operations"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "TestFunction"
+        description: "TestReadmeLinkTestingAgents"
+      context:
+        description: "README link to testing-agents.md resolves"
+        decorators: []
+      it:
+        description: "should contain a working link to testing-agents.md"
+        test_id_format: "[test_id:TS-GH-14-013]"
+
+    code_structure: |
+      func TestReadmeLinkTestingAgents(t *testing.T) {
+        // Setup: locate README.md
+        // Test: verify it contains a link to testing-agents.md that resolves
+      }
+
+    test_objective:
+      title: "Verify README link to testing-agents.md resolves"
+      what: |
+        Reads README.md (or the docs index) and verifies it contains a link
+        to testing-agents.md, and that the link target file actually exists
+        in the repository.
+      why: |
+        The README is the primary entry point for developers. A missing or
+        broken link to the testing-agents problem document makes it
+        undiscoverable. P0 because discoverability is essential.
+      acceptance_criteria:
+        - "README contains a link to testing-agents.md"
+        - "The link target file exists in the repository"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "go test with testify"
+
+    specific_preconditions:
+      - name: "README.md exists"
+        requirement: "README.md must be present at repository root"
+        validation: "test -f README.md"
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Locate README.md"
+          command: "filepath.Join(repoRoot, 'README.md')"
+          validation: "File exists"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Read README content"
+          command: "os.ReadFile(readmePath)"
+          validation: "No error"
+        - step_id: "TEST-02"
+          action: "Search for link to testing-agents.md"
+          command: "strings.Contains(content, 'testing-agents.md')"
+          validation: "Link found"
+        - step_id: "TEST-03"
+          action: "Verify link target file exists"
+          command: "os.Stat on resolved link path"
+          validation: "Target file exists"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "README links to testing-agents.md"
+        condition: "README contains link and target file exists"
+        failure_impact: "Problem document is undiscoverable from main README"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Scenario 014: README link to tool-call-risk-assessment.md (P0)
+  # ============================================================
+  - scenario_id: "014"
+    test_id: "TS-GH-14-014"
+    tier: "Functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-14"
+
+    variables:
+      closure_scope:
+        - name: "readmePath"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "Test"]
+          comment: "Path to README.md or docs index"
+        - name: "content"
+          type: "[]byte"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Raw README content"
+        - name: "err"
+          type: "error"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Error from file operations"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "TestFunction"
+        description: "TestReadmeLinkToolCallRiskAssessment"
+      context:
+        description: "README link to tool-call-risk-assessment.md resolves"
+        decorators: []
+      it:
+        description: "should contain a working link to tool-call-risk-assessment.md"
+        test_id_format: "[test_id:TS-GH-14-014]"
+
+    code_structure: |
+      func TestReadmeLinkToolCallRiskAssessment(t *testing.T) {
+        // Setup: locate README.md
+        // Test: verify it contains a link to tool-call-risk-assessment.md that resolves
+      }
+
+    test_objective:
+      title: "Verify README link to tool-call-risk-assessment.md resolves"
+      what: |
+        Reads README.md (or the docs index) and verifies it contains a link
+        to tool-call-risk-assessment.md, and that the link target file
+        actually exists in the repository.
+      why: |
+        The README is the primary entry point for developers. A missing or
+        broken link to the tool call risk assessment document makes it
+        undiscoverable. P0 because discoverability is essential.
+      acceptance_criteria:
+        - "README contains a link to tool-call-risk-assessment.md"
+        - "The link target file exists in the repository"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "go test with testify"
+
+    specific_preconditions:
+      - name: "README.md exists"
+        requirement: "README.md must be present at repository root"
+        validation: "test -f README.md"
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Locate README.md"
+          command: "filepath.Join(repoRoot, 'README.md')"
+          validation: "File exists"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Read README content"
+          command: "os.ReadFile(readmePath)"
+          validation: "No error"
+        - step_id: "TEST-02"
+          action: "Search for link to tool-call-risk-assessment.md"
+          command: "strings.Contains(content, 'tool-call-risk-assessment.md')"
+          validation: "Link found"
+        - step_id: "TEST-03"
+          action: "Verify link target file exists"
+          command: "os.Stat on resolved link path"
+          validation: "Target file exists"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "README links to tool-call-risk-assessment.md"
+        condition: "README contains link and target file exists"
+        failure_impact: "Problem document is undiscoverable from main README"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Scenario 015: Broken README link detection (P0)
+  # ============================================================
+  - scenario_id: "015"
+    test_id: "TS-GH-14-015"
+    tier: "Functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-14"
+
+    variables:
+      closure_scope:
+        - name: "content"
+          type: "string"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Simulated README with broken link"
+        - name: "brokenLinks"
+          type: "[]string"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "List of broken links detected"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "TestFunction"
+        description: "TestBrokenReadmeLinkDetection"
+      context:
+        description: "[NEGATIVE] broken README link is detected"
+        decorators: []
+      it:
+        description: "should detect a broken README link to a non-existent document"
+        test_id_format: "[test_id:TS-GH-14-015]"
+
+    code_structure: |
+      func TestBrokenReadmeLinkDetection(t *testing.T) {
+        // Setup: create README content with a broken link
+        // Test: verify link validation detects the broken link
+      }
+
+    test_objective:
+      title: "Verify broken README link is detected"
+      what: |
+        Tests the negative case where a README contains a link to a
+        non-existent problem document file. Validates that the link
+        checking logic identifies and reports the broken link.
+      why: |
+        README link integrity is critical for documentation navigation.
+        Broken links must be caught to maintain developer experience.
+        P0 because the README is the most-visited document.
+      acceptance_criteria:
+        - "Broken link to non-existent file is detected"
+        - "Detection reports the specific broken link path"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "go test with testify"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create README content with broken link"
+          command: "Construct markdown with link to non-existent-problem.md"
+          validation: "Test content prepared"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run link validation"
+          command: "Extract and check link targets"
+          validation: "Validation completes"
+        - step_id: "TEST-02"
+          action: "Verify broken link detected"
+          command: "Check validation result"
+          validation: "Broken link appears in error list"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Broken README link is detected"
+        condition: "Link validation identifies the non-existent target"
+        failure_impact: "Broken README links create poor first impressions for new contributors"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+---
