@@ -12,7 +12,7 @@
 
 ---
 
-## Verdict: APPROVED_WITH_FINDINGS
+## Verdict: APPROVED
 
 ## Summary
 
@@ -20,11 +20,11 @@
 |:-------|:------|
 | Dimensions reviewed | 7/7 |
 | Critical findings | 0 |
-| Major findings | 4 |
+| Major findings | 0 |
 | Minor findings | 3 |
-| Actionable findings | 6 |
+| Actionable findings | 1 |
 | Confidence | MEDIUM |
-| Weighted score | 80/100 |
+| Weighted score | 95/100 |
 
 ## Traceability Summary
 
@@ -41,7 +41,7 @@
 
 ## Findings by Dimension
 
-### Dimension 1: STP-STD Traceability (Weight: 30%) -- Score: 90/100
+### Dimension 1: STP-STD Traceability (Weight: 30%) -- Score: 95/100
 
 #### 1a. Forward Traceability (STP -> STD)
 
@@ -65,8 +65,8 @@ All 6 STD scenarios trace back to STP Section III entries. All STD scenarios use
 | Metadata Claim | Actual Count | Status |
 |:---------------|:-------------|:-------|
 | total_scenarios: 6 | 6 scenarios in array | PASS |
-| functional_count: 6 | 6 with tier: "Functional" | PASS |
-| e2e_count: 0 | 0 with tier: "E2E" | PASS |
+| tier_1_count: 6 | 6 with tier: "Tier 1" | PASS |
+| tier_2_count: 0 | 0 with tier: "Tier 2" | PASS |
 | p0_count: 4 | 4 with priority: "P0" (001, 002, 003, 006) | PASS |
 | p1_count: 2 | 2 with priority: "P1" (004, 005) | PASS |
 
@@ -88,11 +88,11 @@ All P0 scenarios (001, 002, 003, 006) are fully testable with clear acceptance c
 > - **Description:** STP Section III has two requirement groups with empty Requirement ID fields (for TS-004/005 and TS-006). The STD compensates by assigning `requirement_id: "GH-8"` to all scenarios, which is reasonable but creates a weak traceability link for those scenarios.
 > - **Evidence:** STP Section III second requirement group: `"- **Requirement ID:**"` (empty), third group same.
 > - **Remediation:** Update STP Section III to assign explicit requirement IDs (e.g., `GH-8` or sub-requirements) to all test scenario groups.
-> - **Actionable:** true
+> - **Actionable:** false (STP fix, not STD fix)
 
 ---
 
-### Dimension 2: STD YAML Structure (Weight: 20%) -- Score: 65/100
+### Dimension 2: STD YAML Structure (Weight: 20%) -- Score: 100/100
 
 #### 2a. Document-Level Structure
 
@@ -111,10 +111,10 @@ All P0 scenarios (001, 002, 003, 006) are fully testable with clear acceptance c
 |:------|:-------------------|:-------|
 | scenario_id | Yes | PASS |
 | test_id | Yes (TS-GH-8-NNN format) | PASS |
-| tier | Yes, but values are "Functional" | FAIL |
+| tier | Yes, all "Tier 1" | PASS |
 | priority | Yes (P0/P1) | PASS |
 | requirement_id | Yes | PASS |
-| patterns | **No -- missing from all scenarios** | FAIL |
+| patterns | Yes, all scenarios have primary pattern | PASS |
 | variables | Yes | PASS |
 | test_structure | Yes | PASS |
 | code_structure | Yes | PASS |
@@ -127,52 +127,35 @@ All P0 scenarios (001, 002, 003, 006) are fully testable with clear acceptance c
 
 | Check | Status | Notes |
 |:------|:-------|:------|
-| Ordered decorator in decorators | FAIL | `decorators: []` in all scenarios |
+| Ordered decorator in decorators | PASS | `decorators: ["Ordered"]` in all scenarios |
 | closure_scope includes ctx | N/A | Shell script tests -- ctx/namespace not applicable |
 | No `:=` for closure variables | PASS | code_structure uses `=` assignment |
 
-#### Findings
-
-> **D2-2b-001** (MAJOR)
-> - **Severity:** MAJOR
-> - **Dimension:** STD YAML Structure
-> - **Description:** All 6 scenarios use `tier: "Functional"` instead of the v2.1-enhanced specification values `"Tier 1"` or `"Tier 2"`. The spec requires tier values from {Tier 1, Tier 2}. "Functional" is a test type classification, not a tier.
-> - **Evidence:** `tier: "Functional"` in all 6 scenarios. Project config has both `tier1.yaml` (Go/Ginkgo) and `tier2.yaml` (Python/pytest).
-> - **Remediation:** Change `tier` to `"Tier 1"` for all 6 scenarios since they target Go/Ginkgo framework. Update `document_metadata` counts from `functional_count`/`e2e_count` to `tier_1_count`/`tier_2_count`.
-> - **Actionable:** true
-
-> **D2-2b-002** (MAJOR)
-> - **Severity:** MAJOR
-> - **Dimension:** STD YAML Structure
-> - **Description:** The `patterns` field is missing from all 6 scenarios. The v2.1-enhanced specification lists `patterns` (primary pattern + helpers) as a required per-scenario field.
-> - **Evidence:** No `patterns:` key found in any scenario block. Searched all 6 scenario definitions.
-> - **Remediation:** Add a `patterns` block to each scenario with at least a `primary` pattern identifier. For this STD, suggested patterns: scenarios 001-003 could use a "comparison-validation" or "data-integrity" pattern; scenarios 004-005 could use "workflow-integration"; scenario 006 could use "regression-suite".
-> - **Actionable:** true
-
-> **D2-2c-001** (MAJOR)
-> - **Severity:** MAJOR
-> - **Dimension:** STD YAML Structure
-> - **Description:** All scenarios have `test_structure.context.decorators: []` (empty). The v2.1-enhanced specification requires the `Ordered` decorator for Ginkgo v2 test contexts to ensure deterministic execution order within a Context block.
-> - **Evidence:** `decorators: []` in all 6 scenarios' `test_structure.context`.
-> - **Remediation:** Add `decorators: ["Ordered"]` to each scenario's `test_structure.context` since the test framework is Ginkgo v2 and scenarios within a Context block should execute in declaration order.
-> - **Actionable:** true
+No findings.
 
 ---
 
-### Dimension 3: Pattern Matching Correctness (Weight: 10%) -- Score: 50/100
+### Dimension 3: Pattern Matching Correctness (Weight: 10%) -- Score: 85/100
 
-Since the `patterns` field is entirely absent from all scenarios (see D2-2b-002), pattern matching cannot be evaluated against actual assignments. No pattern library exists for this project (`patterns/tier1_patterns.yaml` not found).
+All scenarios now have pattern assignments. No pattern library exists for this project (`patterns/tier1_patterns.yaml` not found), so validation is based on heuristic keyword matching.
 
 | Scenario | Primary Pattern | Helpers | Decorators | Status |
 |:---------|:----------------|:--------|:-----------|:-------|
-| 001 | N/A (missing) | N/A | 0 | FAIL |
-| 002 | N/A (missing) | N/A | 0 | FAIL |
-| 003 | N/A (missing) | N/A | 0 | FAIL |
-| 004 | N/A (missing) | N/A | 0 | FAIL |
-| 005 | N/A (missing) | N/A | 0 | FAIL |
-| 006 | N/A (missing) | N/A | 0 | FAIL |
+| 001 | comparison-validation | 0 | 1 (Ordered) | PASS |
+| 002 | comparison-validation | 0 | 1 (Ordered) | PASS |
+| 003 | comparison-validation | 0 | 1 (Ordered) | PASS |
+| 004 | workflow-integration | 0 | 1 (Ordered) | PASS |
+| 005 | workflow-integration | 0 | 1 (Ordered) | PASS |
+| 006 | regression-suite | 0 | 1 (Ordered) | PASS |
 
-No additional findings beyond D2-2b-002 (pattern field missing). Score set to 50 (structural absence, not incorrect assignment).
+Pattern assignments are consistent with scenario objectives:
+- Scenarios 001-003 compare base64-encoded content → "comparison-validation" is appropriate
+- Scenarios 004-005 test end-to-end enrollment workflow → "workflow-integration" is appropriate
+- Scenario 006 runs regression test suite → "regression-suite" is appropriate
+
+Score set to 85 (no pattern library available for formal validation, but heuristic match is strong).
+
+No findings.
 
 ---
 
@@ -189,18 +172,13 @@ No additional findings beyond D2-2b-002 (pattern field missing). Score set to 50
 
 #### 4a. Step Completeness
 
-Scenarios 001-003 have no cleanup steps. These are unit-level comparison tests that create in-memory strings and perform base64 encoding -- no external resources are allocated. Cleanup is not strictly required here but is noted.
+Scenarios 001-003 have no cleanup steps. These are unit-level comparison tests that create in-memory strings and perform base64 encoding -- no external resources are allocated. Cleanup is not strictly required here.
 
 Scenario 006 has no cleanup, which is acceptable since it only executes an existing test script.
 
 #### 4b. Step Quality
 
-Steps are specific and actionable across all scenarios. Each step has:
-- Clear action descriptions (e.g., "Prepare managed shim content string", "Run drift detection comparison using decoded text")
-- Pseudocode commands showing the operation
-- Validation criteria describing expected outcomes
-
-Step IDs follow sequential SETUP-NN, TEST-NN, CLEANUP-NN patterns consistently.
+Steps are specific and actionable across all scenarios. Each step has clear action descriptions, pseudocode commands, and validation criteria. Step IDs follow sequential SETUP-NN, TEST-NN, CLEANUP-NN patterns consistently.
 
 #### 4c. Logical Flow
 
@@ -222,25 +200,12 @@ All scenarios have 2-3 assertions with specific descriptions, measurable conditi
 
 ---
 
-### Dimension 4.5: STD Content Policy (Weight: 10%) -- Score: 75/100
+### Dimension 4.5: STD Content Policy (Weight: 10%) -- Score: 100/100
 
 #### 4.5a. Banned Content in STD YAML
 
-> **D4.5-4.5a-001** (MAJOR)
-> - **Severity:** MAJOR
-> - **Dimension:** STD Content Policy
-> - **Description:** `document_metadata.related_prs` contains PR URLs, which are implementation artifacts. The STD describes *what* to test, not *what code changed*. PR references belong in the STP (Section I), not the STD.
-> - **Evidence:**
->   ```yaml
->   related_prs:
->     - repo: "guyoron1/fullsend"
->       pr_number: 8
->       url: "https://github.com/guyoron1/fullsend/pull/8"
->       title: "fix(#2247): compare decoded text in shim drift detection"
->       merged: false
->   ```
-> - **Remediation:** Remove the `related_prs` section from `document_metadata`. The STP already references the PR in Section I (Enhancement/Feature Tracking links).
-> - **Actionable:** true
+No `related_prs` section found in `document_metadata`. PASS.
+No PR URLs, branch names, or commit SHAs in metadata. PASS.
 
 #### 4.5b. No Implementation Details in Stubs
 
@@ -250,9 +215,11 @@ Go stubs contain only `PendingIt()` with `Skip("Phase 1: Design only - awaiting 
 
 No infrastructure setup, cluster configuration, or feature gate code in stubs. PASS.
 
+No findings.
+
 ---
 
-### Dimension 5: PSE Docstring Quality (Weight: 10%) -- Score: 88/100
+### Dimension 5: PSE Docstring Quality (Weight: 10%) -- Score: 93/100
 
 #### Go Stubs
 
@@ -264,6 +231,9 @@ STP Reference: outputs/stp/GH-8/GH-8_test_plan.md
 Jira: GH-8
 ```
 References STP file correctly, no PR URLs. PASS.
+
+**Import completeness:**
+Both `ginkgo/v2` and `gomega` are imported as dot imports. PASS.
 
 **Per-test PSE quality:**
 
@@ -286,17 +256,15 @@ References STP file correctly, no PR URLs. PASS.
 2. "when running the enrollment workflow" (004-005)
 3. "when validating the regression test suite" (006)
 
-**Markers section:** The Describe-level comment includes a `Markers: - tier1` annotation. This is additional metadata beyond standard PSE and is acceptable.
-
 #### Findings
 
 > **D5-5a-001** (MINOR)
 > - **Severity:** MINOR
 > - **Dimension:** PSE Docstring Quality
-> - **Description:** Go stub file uses `gomega` assertion library per `code_generation_config` but only imports `ginkgo/v2` (dot import). The `gomega` dot import is missing from the stub file, which would cause compilation issues if stubs were compiled directly.
-> - **Evidence:** Stub imports: `import (. "github.com/onsi/ginkgo/v2")` -- missing `gomega`.
-> - **Remediation:** Add `. "github.com/onsi/gomega"` to the stub file imports. Since stubs use `PendingIt`/`Skip` (Ginkgo-only), this is not blocking, but completeness improves code generation readiness.
-> - **Actionable:** true
+> - **Description:** The `_ = gomega` blank import is present via dot import but no gomega assertions are used in the stubs (only `PendingIt`/`Skip` which are Ginkgo-only). This is not incorrect since the stubs are design artifacts, but it is noted for completeness awareness.
+> - **Evidence:** Stub imports: `import (. "github.com/onsi/ginkgo/v2"; . "github.com/onsi/gomega")` -- gomega is imported for code generation readiness.
+> - **Remediation:** No change needed. The gomega import is correct for code generation readiness — generated tests will use gomega assertions. Keep as-is.
+> - **Actionable:** false
 
 #### Python Stubs
 
@@ -304,7 +272,7 @@ No Python stubs generated. Project has `python_tests` toggle not explicitly set 
 
 ---
 
-### Dimension 6: Code Generation Readiness (Weight: 5%) -- Score: 88/100
+### Dimension 6: Code Generation Readiness (Weight: 5%) -- Score: 95/100
 
 #### 6a. Variable Declarations
 
@@ -319,14 +287,14 @@ No invalid declarations found. PASS.
 
 `code_generation_config.imports` includes:
 - Dot imports: ginkgo/v2, gomega
-- Standard: context, os, os/exec, path/filepath, strings, encoding/base64
+- Standard: os, os/exec, path/filepath, strings, encoding/base64
 
 Cross-referencing against scenario needs:
 - Scenarios 001-003 use base64 encoding/strings -- covered by `encoding/base64`, `strings`
 - Scenarios 004-005 use exec.Command, os.MkdirTemp -- covered by `os/exec`, `os`
 - Scenario 006 uses filepath.Join, exec.Command -- covered by `path/filepath`, `os/exec`
 
-All imports accounted for. PASS.
+All imports accounted for. Unused `context` import has been removed. PASS.
 
 #### 6c. Code Structure Validity
 
@@ -344,17 +312,9 @@ No explicit timeout references in test steps. These are unit-level and script-ex
 - Scenarios 004-005: Shell script execution with mocked commands (seconds)
 - Scenario 006: Test script execution (seconds)
 
-Default timeouts are appropriate for these operations. No oversized or missing timeouts. PASS.
+Default timeouts are appropriate for these operations. PASS.
 
-#### Findings
-
-> **D6-6b-001** (MINOR)
-> - **Severity:** MINOR
-> - **Dimension:** Code Generation Readiness
-> - **Description:** `code_generation_config.imports.standard` includes `"context"` but no scenario's `closure_scope` declares a `ctx` variable or references `context.Background()`. The import may be unnecessary for this specific STD.
-> - **Evidence:** `context_init: "context.Background()"` in config but no scenario uses a context variable.
-> - **Remediation:** Remove `"context"` from imports if not needed by the generated code framework scaffolding. If the Ginkgo suite setup requires it, keep it.
-> - **Actionable:** true
+No findings.
 
 ---
 
@@ -362,34 +322,26 @@ Default timeouts are appropriate for these operations. No oversized or missing t
 
 | Dimension | Weight | Score | Weighted |
 |:----------|:-------|:------|:---------|
-| 1. STP-STD Traceability | 30% | 90 | 27.0 |
-| 2. STD YAML Structure | 20% | 65 | 13.0 |
-| 3. Pattern Matching | 10% | 50 | 5.0 |
+| 1. STP-STD Traceability | 30% | 95 | 28.5 |
+| 2. STD YAML Structure | 20% | 100 | 20.0 |
+| 3. Pattern Matching | 10% | 85 | 8.5 |
 | 4. Test Step Quality | 15% | 90 | 13.5 |
-| 4.5. Content Policy | 10% | 75 | 7.5 |
-| 5. PSE Docstring Quality | 10% | 88 | 8.8 |
-| 6. Code Gen Readiness | 5% | 88 | 4.4 |
-| **Total** | **100%** | | **79.2** |
+| 4.5. Content Policy | 10% | 100 | 10.0 |
+| 5. PSE Docstring Quality | 10% | 93 | 9.3 |
+| 6. Code Gen Readiness | 5% | 95 | 4.75 |
+| **Total** | **100%** | | **94.6** |
 
-**Rounded weighted score: 80/100**
+**Rounded weighted score: 95/100**
 
 ---
 
 ## Recommendations
 
-1. **[MAJOR] D2-2b-001** -- Change `tier` from `"Functional"` to `"Tier 1"` in all scenarios and update metadata field names. -- **Remediation:** Replace `tier: "Functional"` with `tier: "Tier 1"` in all 6 scenarios; rename `functional_count` to `tier_1_count` and `e2e_count` to `tier_2_count` in metadata. -- **Actionable:** yes
+1. **[MINOR] D1-1a-001** -- STP has empty Requirement IDs for 3 scenarios. -- **Remediation:** Update STP Section III to assign explicit requirement IDs. -- **Actionable:** false (STP fix, not STD fix)
 
-2. **[MAJOR] D2-2b-002** -- Add `patterns` field to all scenarios with primary pattern and optional helpers. -- **Remediation:** Add `patterns: { primary: "<pattern-id>" }` to each scenario. Suggested: `"comparison-validation"` for 001-003, `"workflow-integration"` for 004-005, `"regression-suite"` for 006. -- **Actionable:** yes
+2. **[MINOR] D4-4a-001** -- Scenarios 001-003 have empty cleanup arrays. -- **Remediation:** No code change needed; optionally add explanatory comment. -- **Actionable:** false
 
-3. **[MAJOR] D2-2c-001** -- Add `Ordered` decorator to all scenario context blocks. -- **Remediation:** Change `decorators: []` to `decorators: ["Ordered"]` in all 6 scenarios' `test_structure.context`. -- **Actionable:** yes
-
-4. **[MAJOR] D4.5-4.5a-001** -- Remove `related_prs` from STD metadata. -- **Remediation:** Delete the `related_prs` block from `document_metadata`. PR traceability is already in the STP. -- **Actionable:** yes
-
-5. **[MINOR] D1-1a-001** -- STP has empty Requirement IDs for 3 scenarios. -- **Remediation:** Update STP Section III to assign explicit requirement IDs. -- **Actionable:** true (STP fix, not STD fix)
-
-6. **[MINOR] D5-5a-001** -- Go stub missing `gomega` import. -- **Remediation:** Add `. "github.com/onsi/gomega"` to stub file imports. -- **Actionable:** yes
-
-7. **[MINOR] D6-6b-001** -- Unused `context` import in code_generation_config. -- **Remediation:** Remove if not required by framework scaffolding. -- **Actionable:** yes
+3. **[MINOR] D5-5a-001** -- Gomega import present but not used in stub bodies. -- **Remediation:** No change needed; import is correct for code generation readiness. -- **Actionable:** false
 
 ---
 
@@ -405,4 +357,4 @@ Default timeouts are appropriate for these operations. No oversized or missing t
 | All scenarios reviewed | YES |
 | Project review rules loaded | PARTIAL (dynamic extraction, no static override) |
 
-**Confidence rationale:** MEDIUM confidence. STP and STD YAML are both available and parseable, enabling full traceability review. Go stubs are present and well-formed. However, no pattern library exists for this project (Dimension 3 partially evaluated), no Python stubs were generated (Dimension 5 partially evaluated), and review rules were dynamically extracted with ~55% of keys using generic defaults. Review precision is reduced for pattern-matching checks. Consider adding a project-specific `review_rules.yaml` or `patterns/tier1_patterns.yaml` to improve future review precision.
+**Confidence rationale:** MEDIUM confidence. STP and STD YAML are both available and parseable, enabling full traceability review. Go stubs are present and well-formed with correct imports (ginkgo/v2 + gomega). However, no pattern library exists for this project (Dimension 3 uses heuristic validation), no Python stubs were generated (Dimension 5 partially evaluated), and review rules were dynamically extracted with ~55% of keys using generic defaults. Consider adding a project-specific `review_rules.yaml` or `patterns/tier1_patterns.yaml` to improve future review precision.
