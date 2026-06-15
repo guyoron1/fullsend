@@ -25,8 +25,7 @@ Steps:
     1. Execute runAgent which internally calls EnsureProvider
 
 Expected:
-    - runAgent completes without error
-    - Agent run proceeds past provider setup phase
+    - runAgent returns nil error
 */
 func TestRunAgent_ProviderAlreadyExists_Succeeds(t *testing.T) {
 	// [test_id:TS-GH-10-009]

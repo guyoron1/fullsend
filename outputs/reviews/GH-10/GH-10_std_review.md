@@ -8,11 +8,11 @@
 
 **Date:** 2026-06-15
 **Reviewer:** QualityFlow Automated Review (v1.1.0)
-**Review Rules Schema:** N/A (dynamically extracted, ~45% defaults -> MEDIUM confidence)
+**Review Rules Schema:** N/A (dynamically extracted, ~55% defaults -> MEDIUM confidence)
 
 ---
 
-## Verdict: APPROVED_WITH_FINDINGS
+## Verdict: APPROVED
 
 ## Summary
 
@@ -20,11 +20,11 @@
 |:-------|:------|
 | Dimensions reviewed | 7/7 |
 | Critical findings | 0 |
-| Major findings | 3 |
-| Minor findings | 3 |
-| Actionable findings | 5 |
+| Major findings | 0 |
+| Minor findings | 1 |
+| Actionable findings | 0 |
 | Confidence | MEDIUM |
-| Weighted score | 85 |
+| Weighted score | 96 |
 
 ## Traceability Summary
 
@@ -70,8 +70,8 @@ All 11 STD scenarios reference requirement IDs that exist in STP Section 2.
 - `total_scenarios=11`: Actual count = 11. MATCH.
 - `unit_count=8`: Actual Unit scenarios = 8. MATCH.
 - `functional_count=3`: Actual Tier1/Functional scenarios = 3. MATCH.
-- `p0_count=11`: Actual P0 = 11. MATCH.
-- `p1_count=0`: Actual P1 = 0. MATCH.
+- `p0_count=9`: Actual P0 = 9. MATCH.
+- `p1_count=2`: Actual P1 = 2. MATCH.
 
 **1d. STP Reference:** PASS
 
@@ -79,13 +79,13 @@ All 11 STD scenarios reference requirement IDs that exist in STP Section 2.
 
 **1e. Priority-Testability Consistency:** PASS
 
-All 11 P0 scenarios describe concrete, testable operations. None are marked as untestable or deferred.
+All 9 P0 scenarios describe concrete, testable operations. The 2 P1 scenarios (006, 007) are edge-case scenarios appropriately prioritized. None are marked as untestable or deferred.
 
 No findings for Dimension 1.
 
 ---
 
-### Dimension 2: STD YAML Structure (Weight: 20%) -- Score: 85/100
+### Dimension 2: STD YAML Structure (Weight: 20%) -- Score: 100/100
 
 **2a. Document-Level Structure:** PASS
 
@@ -99,54 +99,12 @@ No findings for Dimension 1.
 
 **2b. Per-Scenario Required Fields:**
 
-All 11 scenarios contain: `scenario_id`, `test_id`, `tier`, `priority`, `requirement_id`, `variables`, `test_structure`, `test_objective`, `test_data`, `test_steps`, `assertions`. PASS for core fields.
+All 11 scenarios contain: `scenario_id`, `test_id`, `tier`, `priority`, `requirement_id`, `patterns`, `variables`, `test_structure`, `code_structure`, `test_objective`, `test_data`, `test_steps`, `assertions`. PASS for all fields.
 
-| Finding | Details |
-|:--------|:-------|
-| D2-2b-001 | See below |
-| D2-2b-002 | See below |
-
-```yaml
-- finding_id: "D2-2b-001"
-  severity: "MAJOR"
-  dimension: "STD YAML Structure"
-  description: >
-    Scenarios are missing the `patterns` field (primary pattern + helpers_required).
-    The v2.1-enhanced schema requires a `patterns` block per scenario with `primary`
-    and `helpers_required` keys. Instead, the STD uses a `classification` field which
-    is not part of the v2.1-enhanced specification.
-  evidence: >
-    All 11 scenarios use `classification: {test_type, scope, automation_approach}`
-    instead of `patterns: {primary, helpers_required}`.
-  remediation: >
-    Add a `patterns` block to each scenario. For this Go testing project (non-Ginkgo),
-    set `primary` to a descriptive pattern ID (e.g., "idempotent-operation",
-    "error-handling", "input-sanitization") and `helpers_required` to an empty list
-    or relevant helpers. The `classification` field may be retained alongside but
-    does not substitute for `patterns`.
-  actionable: true
-```
-
-```yaml
-- finding_id: "D2-2b-002"
-  severity: "MAJOR"
-  dimension: "STD YAML Structure"
-  description: >
-    Scenarios are missing the `code_structure` field. The v2.1-enhanced schema requires
-    a `code_structure` block per scenario containing the test framework structure hint
-    (e.g., describe/context/it for Ginkgo, or function/subtest for Go testing).
-  evidence: >
-    All 11 scenarios have `test_structure` (which contains function_name and subtest
-    boolean) but no `code_structure` field. The `test_structure` field partially
-    overlaps but does not satisfy the `code_structure` requirement.
-  remediation: >
-    Add a `code_structure` block to each scenario. For Go `testing` framework, use:
-    `code_structure: {type: "function", function_name: "<name>", body: "t.Run or flat"}`.
-    Alternatively, since this project uses Go `testing` (not Ginkgo), the existing
-    `test_structure` field may be formally aliased to `code_structure` if the project
-    convention documents this substitution.
-  actionable: true
-```
+- All `test_id` values follow `TS-GH-10-{NUM:03d}` format. PASS.
+- No duplicate `scenario_id` or `test_id` values. PASS.
+- All `patterns` blocks contain `primary` and `helpers_required` keys. PASS.
+- All `code_structure` blocks contain `type`, `function_name`, and `body` keys. PASS.
 
 **2c. v2.1-Specific Checks:**
 
@@ -155,25 +113,51 @@ All 11 scenarios contain: `scenario_id`, `test_id`, `tier`, `priority`, `require
 - Closure scope variables: All scenarios declare appropriate variables. Unit tests use `sb`, `err`, and domain-specific vars. Tier1 tests use `ctx`, `err`. PASS for Go `testing` convention.
 - Cleanup: Scenarios 005-007 have `cleanup: []` -- acceptable for pure function tests with no resource allocation.
 
+No findings for Dimension 2.
+
 ---
 
-### Dimension 3: Pattern Matching Correctness (Weight: 10%) -- Score: N/A (50/100 adjusted)
+### Dimension 3: Pattern Matching Correctness (Weight: 10%) -- Score: 95/100
 
-**3a-3c. Pattern Matching:** NOT ASSESSABLE
+**3a. Primary Pattern Matching:** PASS
 
-The `patterns` field is absent from all scenarios (see D2-2b-001). Without pattern assignments, Dimension 3 sub-checks (primary pattern matching, helper library mapping, decorator assignment) cannot be evaluated.
+| Scenario | Primary Pattern | Keywords Match | Status |
+|:---------|:----------------|:---------------|:-------|
+| 001 | idempotent-operation | "succeeds on first call", "no conflict" | PASS |
+| 002 | idempotent-operation | "AlreadyExists, deletes, recreates" | PASS |
+| 003 | error-handling | "returns error when delete fails" | PASS |
+| 004 | error-handling | "returns error for non-AlreadyExists" | PASS |
+| 005 | input-sanitization | "replaces all known secret values" | PASS |
+| 006 | input-sanitization | "empty secrets list" | PASS |
+| 007 | input-sanitization | "multiple secrets redacts all" | PASS |
+| 008 | error-handling | "failed recreate...redacted output" | PASS |
+| 009 | idempotent-operation | "provider already exists completes" | PASS |
+| 010 | error-handling | "create failure aborts with clear error" | PASS |
+| 011 | idempotent-operation | "sequential calls reuse providers" | PASS |
+
+All primary patterns are semantically consistent with scenario objectives.
+
+**3b. Helper Library Mapping:** PASS
+
+- Scenarios 002, 008 require `stateful-mock` -- correct, these tests use stateful fake scripts.
+- Scenarios 009, 010, 011 require `mock-gateway` -- correct, these are integration tests with mock environments.
+- Remaining scenarios require no helpers -- correct for simple unit tests.
+
+**3c. Decorator Assignment:** N/A
+
+No decorator system (project uses Go `testing`, not Ginkgo). No SIG-to-decorator mappings configured.
 
 **3d. Pattern Library Validation:** SKIPPED
 
 No `tier1_patterns.yaml` found at project config directory.
 
-Adjusted score of 50/100 reflects the structural gap (missing `patterns` field) rather than incorrect pattern matching.
+Score of 95/100 reflects minor reduction for absent pattern library (unable to validate pattern IDs against library).
 
-No additional findings beyond D2-2b-001.
+No findings for Dimension 3.
 
 ---
 
-### Dimension 4: Test Step Quality (Weight: 15%) -- Score: 90/100
+### Dimension 4: Test Step Quality (Weight: 15%) -- Score: 100/100
 
 **Step Completeness Summary:**
 
@@ -205,53 +189,19 @@ No additional findings beyond D2-2b-001.
 
 **4e. Test Dependency Structure:** PASS. No inter-scenario dependencies exist. All 11 scenarios are independently verifiable.
 
-**4f. Assertion Quality:**
+**4f. Assertion Quality:** PASS.
 
-```yaml
-- finding_id: "D4-4f-001"
-  severity: "MINOR"
-  dimension: "Test Step Quality"
-  description: >
-    All 11 scenarios have priority P0 with 0 P1 assertions. While this is
-    understandable for a focused bug fix with security implications (secret leakage),
-    it is flagged as a minor concern per review heuristics.
-  evidence: "p0_count=11, p1_count=0"
-  remediation: >
-    Consider whether edge-case scenarios (e.g., 006 redactSecrets with empty list,
-    007 redactSecrets with multiple secrets) could be P1 rather than P0 to
-    differentiate criticality.
-  actionable: true
-```
+Priority distribution is now 9 P0 / 2 P1, which appropriately differentiates core functionality (P0) from edge cases (P1). All assertions have specific descriptions and measurable conditions.
+
+No findings for Dimension 4.
 
 ---
 
-### Dimension 4.5: STD Content Policy (Weight: 10%) -- Score: 70/100
+### Dimension 4.5: STD Content Policy (Weight: 10%) -- Score: 100/100
 
-**4.5a. Banned Content in STD YAML:**
+**4.5a. Banned Content in STD YAML:** PASS
 
-```yaml
-- finding_id: "D45-a-001"
-  severity: "MAJOR"
-  dimension: "STD Content Policy"
-  description: >
-    The `document_metadata.related_prs` field contains PR URLs. PR URLs are
-    implementation artifacts that belong in the STP (which references them in
-    Section 1), not in the STD. The STD describes what to test, not what code
-    changed.
-  evidence: |
-    related_prs:
-      - repo: "fullsend-ai/fullsend"
-        pr_number: 2296
-        url: "https://github.com/fullsend-ai/fullsend/pull/2296"
-        title: "fix(#2294): make EnsureProvider idempotent via delete-and-recreate"
-        merged: true
-  remediation: >
-    Remove the `related_prs` field from `document_metadata`. The STP already
-    references the PR in its Overview section. The STD should reference the STP
-    via `stp_reference` (which it already does correctly) rather than duplicating
-    PR metadata.
-  actionable: true
-```
+No `related_prs` field in `document_metadata`. No PR URLs, branch names, commit SHAs, or code review links present. The `source_bugs` field references `#2294` by issue number only, which is acceptable.
 
 **4.5b. No Implementation Details in Stubs:** PASS
 
@@ -265,9 +215,11 @@ All stub files contain only:
 
 Stubs do not include infrastructure setup, cluster configuration, or feature gate enablement code.
 
+No findings for Dimension 4.5.
+
 ---
 
-### Dimension 5: PSE Docstring Quality (Weight: 10%) -- Score: 92/100
+### Dimension 5: PSE Docstring Quality (Weight: 10%) -- Score: 98/100
 
 **Go Stubs:**
 
@@ -299,32 +251,32 @@ Stubs do not include infrastructure setup, cluster configuration, or feature gat
 
 - Module-level comment references STP file correctly. PASS.
 - Package name `cli` matches `component_package_map`. PASS.
+- PSE Expected in TS-GH-10-009 is now concrete: "runAgent returns nil error". PASS.
 
 ```yaml
 - finding_id: "D5-5a-001"
   severity: "MINOR"
   dimension: "PSE Docstring Quality"
   description: >
-    The Expected section in TestRunAgent_ProviderAlreadyExists_Succeeds (TS-GH-10-009)
-    states "Agent run proceeds past provider setup phase" without specifying HOW to
-    verify this. The verification method is unclear -- does the test check logs, return
-    value, or side effects?
+    The `source_bugs` field in `document_metadata` references issue `#2294` by
+    number only. Including the full issue URL (e.g.,
+    "https://github.com/fullsend-ai/fullsend/issues/2294") would improve
+    traceability for readers unfamiliar with the repository. This is
+    informational only.
   evidence: |
-    Expected:
-        - runAgent completes without error
-        - Agent run proceeds past provider setup phase
+    source_bugs:
+      - "#2294"
   remediation: >
-    Clarify the verification method: e.g., "runAgent returns nil error AND the agent
-    output directory contains expected artifacts" or simply remove the vague second
-    bullet and rely on the concrete "returns nil error" assertion.
-  actionable: true
+    Optionally update to include the full URL. This is a minor style
+    preference and does not affect functionality or test quality.
+  actionable: false
 ```
 
 **Python Stubs:** N/A (no python-tests directory).
 
 ---
 
-### Dimension 6: Code Generation Readiness (Weight: 5%) -- Score: 85/100
+### Dimension 6: Code Generation Readiness (Weight: 5%) -- Score: 95/100
 
 **6a. Variable Declarations:** PASS
 
@@ -339,7 +291,9 @@ All `closure_scope` variables use valid Go types (`*sandbox.Sandbox`, `string`, 
 
 These cover the imports needed for the 8 unit test scenarios. The Tier1 tests (009-011) target `internal/cli/` which is not in the imports list, but this is acceptable because those tests use a separate stub file with package `cli`.
 
-**6c. Code Structure Validity:** See D2-2b-002 (missing `code_structure` field). The existing `test_structure` provides function names and subtest indicators, which is sufficient for Go `testing` code generation but does not satisfy the formal schema requirement.
+**6c. Code Structure Validity:** PASS
+
+All 11 scenarios now have `code_structure` blocks with valid `type: "function"`, `function_name`, and `body: "flat"` — consistent with Go `testing` framework conventions.
 
 **6d. Timeout Appropriateness:** N/A. No timeout references in unit test steps. Tier1 tests do not specify explicit timeouts, which is acceptable for Go testing where `go test -timeout` is used at the runner level.
 
@@ -349,17 +303,7 @@ No additional findings for Dimension 6.
 
 ## Recommendations
 
-1. **[MAJOR] D45-a-001** -- Remove `related_prs` from STD YAML `document_metadata`. PR URLs are implementation artifacts belonging in the STP, not the STD. -- **Remediation:** Delete the `related_prs` block (lines 13-18 of the YAML). -- **Actionable:** yes
-
-2. **[MAJOR] D2-2b-001** -- Add `patterns` field to all 11 scenarios. The v2.1-enhanced schema requires a `patterns` block with `primary` and `helpers_required` keys per scenario. -- **Remediation:** Add `patterns: {primary: "<pattern-id>", helpers_required: []}` to each scenario. -- **Actionable:** yes
-
-3. **[MAJOR] D2-2b-002** -- Add `code_structure` field to all 11 scenarios. The v2.1-enhanced schema requires this for code generation hints. -- **Remediation:** Add `code_structure: {type: "function", function_name: "<name>", body: "flat"}` to each scenario, or document the `test_structure` -> `code_structure` aliasing convention for Go `testing` projects. -- **Actionable:** yes
-
-4. **[MINOR] D4-4f-001** -- All 11 scenarios are P0 with zero P1. Consider differentiating priority for edge-case scenarios (005-007). -- **Remediation:** Evaluate whether redactSecrets edge cases (empty list, multiple secrets) warrant P1 instead of P0. -- **Actionable:** yes
-
-5. **[MINOR] D5-5a-001** -- PSE Expected in TS-GH-10-009 includes a vague verification ("proceeds past provider setup phase") without specifying the verification method. -- **Remediation:** Replace with measurable outcome or remove in favor of the concrete "returns nil error" assertion. -- **Actionable:** yes
-
-6. **[MINOR] D45-a-002** -- Note: `source_bugs` references `#2294` by number only. This is acceptable but could include the full issue URL for traceability. This is informational only. -- **Actionable:** no
+1. **[MINOR] D5-5a-001** -- `source_bugs` uses `#2294` by number only. Optionally include full issue URL for traceability. -- **Actionable:** no
 
 ---
 
@@ -368,15 +312,34 @@ No additional findings for Dimension 6.
 | Dimension | Weight | Score | Weighted |
 |:----------|:-------|:------|:---------|
 | 1. STP-STD Traceability | 30% | 100 | 30.0 |
-| 2. STD YAML Structure | 20% | 85 | 17.0 |
-| 3. Pattern Matching | 10% | 50 | 5.0 |
-| 4. Test Step Quality | 15% | 90 | 13.5 |
-| 4.5. Content Policy | 10% | 70 | 7.0 |
-| 5. PSE Docstring Quality | 10% | 92 | 9.2 |
-| 6. Code Generation Readiness | 5% | 85 | 4.25 |
-| **Total** | **100%** | | **85.95** |
+| 2. STD YAML Structure | 20% | 100 | 20.0 |
+| 3. Pattern Matching | 10% | 95 | 9.5 |
+| 4. Test Step Quality | 15% | 100 | 15.0 |
+| 4.5. Content Policy | 10% | 100 | 10.0 |
+| 5. PSE Docstring Quality | 10% | 98 | 9.8 |
+| 6. Code Generation Readiness | 5% | 95 | 4.75 |
+| **Total** | **100%** | | **99.05** |
 
-Rounded weighted score: **86**
+Rounded weighted score: **99**
+
+---
+
+## Refinement Delta (vs. Prior Review)
+
+| Metric | Before | After | Delta |
+|:-------|:-------|:------|:------|
+| Verdict | APPROVED_WITH_FINDINGS | APPROVED | ✅ Upgraded |
+| Critical findings | 0 | 0 | — |
+| Major findings | 3 | 0 | -3 ✅ |
+| Minor findings | 3 | 1 | -2 ✅ |
+| Weighted score | 86 | 99 | +13 ✅ |
+
+**Resolved findings:**
+- D2-2b-001 (MAJOR): `patterns` field added to all 11 scenarios ✅
+- D2-2b-002 (MAJOR): `code_structure` field added to all 11 scenarios ✅
+- D45-a-001 (MAJOR): `related_prs` removed from `document_metadata` ✅
+- D4-4f-001 (MINOR): Priority differentiation applied (scenarios 006, 007 → P1) ✅
+- D5-5a-001 (MINOR): Vague PSE Expected in TS-GH-10-009 replaced with concrete assertion ✅
 
 ---
 
@@ -390,6 +353,6 @@ Rounded weighted score: **86**
 | Python stubs present | NO (not expected; tier2_tests=false) |
 | Pattern library available | NO |
 | All scenarios reviewed | YES |
-| Project review rules loaded | PARTIAL (config extracted, ~45% defaults) |
+| Project review rules loaded | PARTIAL (config extracted, ~55% defaults) |
 
-**Confidence rationale:** MEDIUM. The STD YAML is valid and the STP is available, enabling full traceability review. Go stubs are present and well-structured. However, no pattern library exists (`tier1_patterns.yaml` not found) and review rules rely on ~45% defaults, reducing project-specific precision for Dimensions 3 and 6. Python stubs are absent but correctly so (project `tier2_tests` is false). The confidence would be HIGH if a pattern library and full review rules were available.
+**Confidence rationale:** MEDIUM. The STD YAML is valid and the STP is available, enabling full traceability review. Go stubs are present and well-structured. However, no pattern library exists (`tier1_patterns.yaml` not found) and review rules rely on ~55% defaults, reducing project-specific precision for Dimensions 3 and 6. Python stubs are absent but correctly so (project `tier2_tests` is false). The confidence would be HIGH if a pattern library and full review rules were available.

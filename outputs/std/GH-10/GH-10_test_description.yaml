@@ -10,17 +10,11 @@ document_metadata:
     file: "outputs/stp/GH-10/GH-10_test_plan.md"
     version: "v1"
     sections_covered: "Section III - Test Scenarios"
-  related_prs:
-    - repo: "fullsend-ai/fullsend"
-      pr_number: 2296
-      url: "https://github.com/fullsend-ai/fullsend/pull/2296"
-      title: "fix(#2294): make EnsureProvider idempotent via delete-and-recreate"
-      merged: true
   total_scenarios: 11
   functional_count: 3
   unit_count: 8
-  p0_count: 11
-  p1_count: 0
+  p0_count: 9
+  p1_count: 2
 
 code_generation_config:
   std_version: "2.1-enhanced"
@@ -96,6 +90,15 @@ scenarios:
           initialized_in: "test execution"
           used_in: ["assertion"]
           comment: "Error returned by EnsureProvider"
+
+    patterns:
+      primary: "idempotent-operation"
+      helpers_required: []
+
+    code_structure:
+      type: "function"
+      function_name: "TestEnsureProvider_Success_NoConflict"
+      body: "flat"
 
     test_structure:
       type: "single"
@@ -186,6 +189,15 @@ scenarios:
           initialized_in: "test execution"
           used_in: ["assertion"]
           comment: "Error returned by EnsureProvider"
+
+    patterns:
+      primary: "idempotent-operation"
+      helpers_required: ["stateful-mock"]
+
+    code_structure:
+      type: "function"
+      function_name: "TestEnsureProvider_AlreadyExists_DeleteAndRecreate"
+      body: "flat"
 
     test_structure:
       type: "single"
@@ -290,6 +302,15 @@ scenarios:
           used_in: ["assertion"]
           comment: "Error returned by EnsureProvider"
 
+    patterns:
+      primary: "error-handling"
+      helpers_required: []
+
+    code_structure:
+      type: "function"
+      function_name: "TestEnsureProvider_AlreadyExists_DeleteFails"
+      body: "flat"
+
     test_structure:
       type: "single"
       function_name: "TestEnsureProvider_AlreadyExists_DeleteFails"
@@ -390,6 +411,15 @@ scenarios:
           initialized_in: "test execution"
           used_in: ["assertion"]
           comment: "Error returned by EnsureProvider"
+
+    patterns:
+      primary: "error-handling"
+      helpers_required: []
+
+    code_structure:
+      type: "function"
+      function_name: "TestEnsureProvider_CreateFails_NotAlreadyExists"
+      body: "flat"
 
     test_structure:
       type: "single"
@@ -496,6 +526,15 @@ scenarios:
           used_in: ["assertion"]
           comment: "Redacted output string"
 
+    patterns:
+      primary: "input-sanitization"
+      helpers_required: []
+
+    code_structure:
+      type: "function"
+      function_name: "TestRedactSecrets_ReplacesAllSecrets"
+      body: "flat"
+
     test_structure:
       type: "single"
       function_name: "TestRedactSecrets_ReplacesAllSecrets"
@@ -560,7 +599,7 @@ scenarios:
   - scenario_id: "006"
     test_id: "TS-GH-10-006"
     tier: "Unit"
-    priority: "P0"
+    priority: "P1"
     mvp: true
     requirement_id: "REQ-005"
 
@@ -576,6 +615,15 @@ scenarios:
           initialized_in: "test execution"
           used_in: ["assertion"]
           comment: "Output from redactSecrets"
+
+    patterns:
+      primary: "input-sanitization"
+      helpers_required: []
+
+    code_structure:
+      type: "function"
+      function_name: "TestRedactSecrets_EmptySecretsList"
+      body: "flat"
 
     test_structure:
       type: "single"
@@ -633,7 +681,7 @@ scenarios:
   - scenario_id: "007"
     test_id: "TS-GH-10-007"
     tier: "Unit"
-    priority: "P0"
+    priority: "P1"
     mvp: true
     requirement_id: "REQ-005"
 
@@ -654,6 +702,15 @@ scenarios:
           initialized_in: "test execution"
           used_in: ["assertion"]
           comment: "Redacted output string"
+
+    patterns:
+      primary: "input-sanitization"
+      helpers_required: []
+
+    code_structure:
+      type: "function"
+      function_name: "TestRedactSecrets_MultipleSecrets"
+      body: "flat"
 
     test_structure:
       type: "single"
@@ -733,6 +790,15 @@ scenarios:
           initialized_in: "test setup"
           used_in: ["assertion"]
           comment: "Secret value that must not appear in error"
+
+    patterns:
+      primary: "error-handling"
+      helpers_required: ["stateful-mock"]
+
+    code_structure:
+      type: "function"
+      function_name: "TestEnsureProvider_RecreateCreateFails_RedactedError"
+      body: "flat"
 
     test_structure:
       type: "single"
@@ -838,6 +904,15 @@ scenarios:
           used_in: ["assertion"]
           comment: "Error from runAgent"
 
+    patterns:
+      primary: "idempotent-operation"
+      helpers_required: ["mock-gateway"]
+
+    code_structure:
+      type: "function"
+      function_name: "TestRunAgent_ProviderAlreadyExists_Succeeds"
+      body: "flat"
+
     test_structure:
       type: "single"
       function_name: "TestRunAgent_ProviderAlreadyExists_Succeeds"
@@ -853,8 +928,7 @@ scenarios:
         This is the user-visible fix for issue #2294. Users expect sequential
         fullsend runs to work without manual provider cleanup between runs.
       acceptance_criteria:
-        - "runAgent completes without error"
-        - "Agent run proceeds past provider setup phase"
+        - "runAgent returns nil error"
         - "No manual cleanup required between runs"
 
     classification:
@@ -915,6 +989,15 @@ scenarios:
           initialized_in: "test execution"
           used_in: ["assertion"]
           comment: "Error from runAgent"
+
+    patterns:
+      primary: "error-handling"
+      helpers_required: ["mock-gateway"]
+
+    code_structure:
+      type: "function"
+      function_name: "TestRunAgent_ProviderCreateFails_AbortsWithClearError"
+      body: "flat"
 
     test_structure:
       type: "single"
@@ -1004,6 +1087,15 @@ scenarios:
           initialized_in: "test execution"
           used_in: ["assertion"]
           comment: "Error from second runAgent call"
+
+    patterns:
+      primary: "idempotent-operation"
+      helpers_required: ["mock-gateway"]
+
+    code_structure:
+      type: "function"
+      function_name: "TestRunAgent_SequentialCalls_ReuseProviders"
+      body: "flat"
 
     test_structure:
       type: "single"
