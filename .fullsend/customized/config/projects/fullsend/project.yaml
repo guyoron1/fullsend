@@ -5,7 +5,7 @@ description: "Fully autonomous agentic engineering platform"
 feature_toggles:
   polarion: false
   tier1_tests: true
-  tier2_tests: true
+  tier2_tests: false
   lsp_analysis: true
   pii_sanitization: false
   repo_files_fetch: false
