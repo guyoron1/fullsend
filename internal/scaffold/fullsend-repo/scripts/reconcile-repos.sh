@@ -260,11 +260,10 @@ if [ -n "$ENABLED_REPOS" ]; then
     # Fetch content and SHA in one call to avoid race between reads.
     REMOTE_CONTENT=$(gh api "repos/$ORG/$REPO/contents/$SHIM_PATH" --jq .content 2>/dev/null || true)
     if [ -n "$REMOTE_CONTENT" ]; then
-      # File exists — compare content against current template.
-      EXPECTED_B64=$(shim_content_b64)
-      # GitHub returns base64 with newlines; strip them for comparison.
-      REMOTE_B64=$(printf '%s' "$REMOTE_CONTENT" | tr -d '\r\n')
-      if [ "$REMOTE_B64" = "$EXPECTED_B64" ]; then
+      # File exists — compare decoded text to avoid base64 encoding differences.
+      EXPECTED_TEXT=$(shim_content_b64 | base64 -d)
+      REMOTE_TEXT=$(printf '%s' "$REMOTE_CONTENT" | base64 -d)
+      if [ "$REMOTE_TEXT" = "$EXPECTED_TEXT" ]; then
         echo "✓ $REPO already enrolled (shim up to date)"
         SKIPPED=$((SKIPPED + 1))
         continue
