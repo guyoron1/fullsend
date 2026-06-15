@@ -14,10 +14,10 @@ Markers:
     - tier1
 
 Preconditions:
-    - Repository checkout with PR #14 merged
+    - Repository checkout at HEAD of main branch
     - Go 1.23+ installed
     - docs/problems/tool-call-risk-assessment.md exists in the repository
-    - internal/harness/harness.go exists in the repository
+    - Harness module security configuration accessible in the repository
 */
 
 /*
@@ -45,14 +45,14 @@ func TestCodebaseHooksDocumented(t *testing.T) {
 /*
 Preconditions:
     - docs/problems/tool-call-risk-assessment.md exists and is readable
-    - internal/harness/harness.go exists and is readable
+    - Harness module security configuration source is accessible
 
 Steps:
     1. Read tool-call-risk-assessment.md content
-    2. Read internal/harness/harness.go source code
-    3. Extract SecurityConfig struct field names from harness.go
-    4. Extract SandboxHooks struct field names from harness.go
-    5. Verify document references each extracted struct field
+    2. Read harness module source code containing SecurityConfig and SandboxHooks
+    3. Extract SecurityConfig struct field names using regexp
+    4. Extract SandboxHooks struct field names using regexp
+    5. Check document references each extracted struct field
 
 Expected:
     - Document hook descriptions align with SecurityConfig struct fields
@@ -67,13 +67,14 @@ func TestHookDescriptionsAlignWithCode(t *testing.T) {
 /*
 [NEGATIVE]
 Preconditions:
-    - Test content constructed with intentionally mismatched hook description
+    - Test content describing a fictional hook 'DataExfiltrationBlocker' not present in SecurityConfig or SandboxHooks
 
 Steps:
-    1. Run cross-reference validation between test content and codebase hooks
+    1. Extract actual SecurityConfig/SandboxHooks field names from harness module source
+    2. Cross-reference test content hook names against extracted field names
 
 Expected:
-    - Validation detects mismatch between document and codebase
+    - Validation detects that 'DataExfiltrationBlocker' does not exist in codebase structs
     - Specific mismatch is identified in error output
 */
 func TestHookDescriptionMismatchDetection(t *testing.T) {

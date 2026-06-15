@@ -14,7 +14,7 @@ Markers:
     - tier1
 
 Preconditions:
-    - Repository checkout with PR #14 merged
+    - Repository checkout at HEAD of main branch
     - Go 1.23+ installed
     - docs/problems/testing-agents.md exists in the repository
 */
@@ -26,9 +26,9 @@ Preconditions:
 
 Steps:
     1. Read testing-agents.md content
-    2. Extract all internal markdown links using regex
-    3. For each relative link, resolve path against document directory
-    4. Check that each resolved path exists in the repository
+    2. Extract all internal markdown links using regexp.MustCompile(`\[.*?\]\((.*?\.md)\)`)
+    3. For each relative link, resolve path against document directory using filepath.Join
+    4. Check that each resolved path exists using os.Stat
 
 Expected:
     - All relative markdown links resolve to existing files
@@ -42,14 +42,14 @@ func TestInternalLinksResolve(t *testing.T) {
 /*
 [NEGATIVE]
 Preconditions:
-    - Test content constructed with a known broken link to non-existent-file.md
+    - Test content: markdown string containing [see details](non-existent-file.md)
 
 Steps:
-    1. Run link validation against test content with broken link
-    2. Check validation result for broken link entries
+    1. Extract markdown links from test content using regexp
+    2. Check file existence for link target non-existent-file.md
 
 Expected:
-    - Broken link to non-existent file is detected
+    - Broken link to non-existent-file.md is detected
     - Report identifies the specific broken link path
 */
 func TestBrokenCrossReferenceDetection(t *testing.T) {

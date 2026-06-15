@@ -14,7 +14,7 @@ Markers:
     - tier1
 
 Preconditions:
-    - Repository checkout with PR #14 merged
+    - Repository checkout at HEAD of main branch
     - Go 1.23+ installed
     - README.md exists at repository root
 */
@@ -27,7 +27,6 @@ Steps:
     1. Read README.md content
     2. Search for link containing testing-agents.md
     3. Resolve link target path relative to README location
-    4. Verify target file exists in the repository
 
 Expected:
     - README contains a link to testing-agents.md
@@ -46,7 +45,6 @@ Steps:
     1. Read README.md content
     2. Search for link containing tool-call-risk-assessment.md
     3. Resolve link target path relative to README location
-    4. Verify target file exists in the repository
 
 Expected:
     - README contains a link to tool-call-risk-assessment.md
@@ -60,14 +58,14 @@ func TestReadmeLinkToolCallRiskAssessment(t *testing.T) {
 /*
 [NEGATIVE]
 Preconditions:
-    - Test content constructed with a broken link to non-existent-problem.md
+    - Test content: README with broken link [Problem Doc](docs/problems/non-existent-problem.md)
 
 Steps:
-    1. Run link validation on README content with broken link
-    2. Check validation result for broken link entries
+    1. Extract markdown links with regexp from test README content
+    2. Check file existence for each extracted link target
 
 Expected:
-    - Broken link to non-existent file is detected
+    - Broken link to non-existent-problem.md is detected
     - Detection reports the specific broken link path
 */
 func TestBrokenReadmeLinkDetection(t *testing.T) {

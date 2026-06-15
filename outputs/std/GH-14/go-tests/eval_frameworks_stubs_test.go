@@ -14,7 +14,7 @@ Markers:
     - tier1
 
 Preconditions:
-    - Repository checkout with PR #14 merged
+    - Repository checkout at HEAD of main branch
     - Go 1.23+ installed
     - docs/problems/testing-agents.md exists in the repository
 */
@@ -25,9 +25,9 @@ Preconditions:
 
 Steps:
     1. Read testing-agents.md content
-    2. Locate promptfoo section and verify capabilities and gaps described
-    3. Locate deepeval section and verify capabilities and gaps described
-    4. Locate lightspeed-evaluation section and verify capabilities and gaps described
+    2. Locate promptfoo section using strings.Contains(string(content), "promptfoo")
+    3. Locate deepeval section using strings.Contains(string(content), "deepeval")
+    4. Locate lightspeed-evaluation section using strings.Contains(string(content), "lightspeed-evaluation")
 
 Expected:
     - promptfoo section describes capabilities and gaps
