@@ -4,7 +4,7 @@
 - STD YAML: `outputs/std/GH-2247/GH-2247_test_description.yaml`
 - STP Source: `outputs/stp/GH-2247/GH-2247_test_plan.md`
 - Go Stubs: `outputs/std/GH-2247/go-tests/` (8 files, 25 subtests)
-- Python Stubs: N/A (not generated; `python_tests` toggle is `true` but no python.yaml configured)
+- Python Stubs: N/A (not generated; no `python.yaml` configured)
 
 **Date:** 2026-06-15
 **Reviewer:** QualityFlow Automated Review (v1.1.0)
@@ -12,19 +12,19 @@
 
 ---
 
-## Verdict: NEEDS_REVISION
+## Verdict: APPROVED_WITH_FINDINGS
 
 ## Summary
 
 | Metric | Value |
 |:-------|:------|
 | Dimensions reviewed | 7/7 |
-| Critical findings | 2 |
-| Major findings | 6 |
-| Minor findings | 5 |
-| Actionable findings | 12 |
+| Critical findings | 0 |
+| Major findings | 1 |
+| Minor findings | 4 |
+| Actionable findings | 4 |
 | Confidence | MEDIUM |
-| Weighted score | 62 |
+| Weighted score | 89 |
 
 ## Traceability Summary
 
@@ -41,7 +41,7 @@
 
 ## Findings by Dimension
 
-### Dimension 1: STP-STD Traceability (Weight: 30%) -- Score: 92/100
+### Dimension 1: STP-STD Traceability (Weight: 30%) -- Score: 95/100
 
 #### 1a. Forward Traceability (STP -> STD)
 
@@ -72,8 +72,6 @@ All 25 STD scenarios reference `requirement_id: "GH-2247"`, which is the sole re
 | `p0_count` | 13 | 13 | PASS |
 | `p1_count` | 12 | 12 | PASS |
 
-**Note:** Priority counts were verified by counting top-level `priority:` fields (13 P0, 12 P1). The grep also captured nested assertion-level `priority:` fields (18 P0, 18 P1) which are distinct and not metadata-counted. Counts are correct.
-
 #### 1d. STP Reference
 
 `document_metadata.stp_reference.file` is `"outputs/stp/GH-2247/GH-2247_test_plan.md"` -- file exists and is valid.
@@ -84,17 +82,17 @@ All 13 P0 scenarios describe fully testable conditions using bash test harness w
 
 **Findings:**
 
-- **D1-1c-001**
-  - **Severity:** MAJOR
+- **D1-1a-001**
+  - **Severity:** MINOR
   - **Dimension:** STP-STD Traceability
-  - **Description:** STD YAML uses non-standard `tier: "Functional"` for all 25 scenarios. The STP also uses "Functional" as the tier label, so they are consistent with each other, but the v2.1-enhanced schema expects `"Tier 1"` or `"Tier 2"` as valid tier values. This prevents automated tier-based filtering and code generation routing.
-  - **Evidence:** All 25 scenarios: `tier: "Functional"` (expected: `"Tier 1"`)
-  - **Remediation:** Change all `tier: "Functional"` to `tier: "Tier 1"` since these are Go functional tests using the `testing` framework, corresponding to the project's Tier 1 test category (`tier1_tests: true` in project.yaml).
-  - **Actionable:** true
+  - **Description:** The STP Section III uses tier label `"Functional"` while the STD now uses `"Tier 1"`. The values are semantically equivalent for this project (functional tests = Tier 1), but the STP was not updated to match the STD's corrected vocabulary. This is a cosmetic traceability gap.
+  - **Evidence:** STP: `Tier: Functional` for all 8 groups. STD: `tier: "Tier 1"` for all 25 scenarios.
+  - **Remediation:** Update STP Section III tier labels from "Functional" to "Tier 1" for consistency. This is outside the STD refiner's scope (STP is read-only).
+  - **Actionable:** false
 
 ---
 
-### Dimension 2: STD YAML Structure (Weight: 20%) -- Score: 35/100
+### Dimension 2: STD YAML Structure (Weight: 20%) -- Score: 93/100
 
 #### 2a. Document-Level Structure
 
@@ -104,85 +102,70 @@ All 13 P0 scenarios describe fully testable conditions using bash test harness w
 | `std_version: "2.1-enhanced"` | PASS | Correct version string |
 | `code_generation_config` present | PASS | Framework, imports, patterns configured |
 | `code_generation_config.std_version` | PASS | Matches "2.1-enhanced" |
-| `code_generation_config.package_name` | WARN | `reconcile_test` -- not derived from `owning_sig` (field absent) |
+| `code_generation_config.package_name` | PASS | `reconcile_test` |
 | `common_preconditions` present | PASS | Infrastructure, test_harness, environment_variables, cluster_configuration |
 | `scenarios` array non-empty | PASS | 25 scenarios |
 
-#### 2b. Per-Scenario Required Fields (Systematic Gaps)
+#### 2b. Per-Scenario Required Fields
 
 | Field | Present in scenarios | Status |
 |:------|:--------------------|:-------|
 | `scenario_id` | 25/25 | PASS |
 | `test_id` | 25/25 | PASS (format: `TS-GH-2247-NNN`) |
-| `tier` | 25/25 | WARN (value `"Functional"`, see D1-1c-001) |
+| `tier` | 25/25 | PASS (`"Tier 1"` for all) |
 | `priority` | 25/25 | PASS (P0 or P1) |
 | `requirement_id` | 25/25 | PASS |
-| `patterns` | 0/25 | **CRITICAL** -- Missing from all scenarios |
-| `variables` | 0/25 | **CRITICAL** -- Missing from all scenarios |
-| `test_structure` | 0/25 | **CRITICAL** -- Missing from all scenarios |
-| `code_structure` | 0/25 | **CRITICAL** -- Missing from all scenarios |
+| `patterns` | 25/25 | PASS (8 distinct primary patterns) |
+| `variables` | 25/25 | PASS (closure_scope with 2 vars each) |
+| `test_structure` | 25/25 | PASS (parent_function, subtest_style, setup_teardown) |
+| `code_structure` | 25/25 | PASS (function_type, assertion_library, skip_marker) |
 | `test_objective` | 25/25 | PASS (title, what, why, acceptance_criteria) |
-| `test_data` | 1/25 | WARN -- Only scenario 001 has explicit test_data |
+| `test_data` | 7/25 | WARN -- See D2-2b-001 |
 | `test_steps` | 25/25 | PASS (setup, test_execution, cleanup) |
 | `assertions` | 25/25 | PASS (1-3 assertions per scenario) |
 
 **Findings:**
 
 - **D2-2b-001**
-  - **Severity:** CRITICAL
+  - **Severity:** MINOR
   - **Dimension:** STD YAML Structure
-  - **Description:** Four v2.1-enhanced required fields are missing from all 25 scenarios: `patterns`, `variables`, `test_structure`, and `code_structure`. The STD declares `std_version: "2.1-enhanced"` but does not include the structural fields that distinguish v2.1-enhanced from the base format. Without these fields, the code generation pipeline cannot determine pattern assignments, closure variables, or test framework structure hints.
-  - **Evidence:** `grep 'patterns:\|variables:\|test_structure:\|code_structure:' GH-2247_test_description.yaml` returns 0 scenario-level matches. The only `test_patterns:` match is inside `code_generation_config` (a different field).
-  - **Remediation:** Add the following fields to each scenario:
-    - `patterns:` with `primary:` and `helpers_required:` (derive from test_objective keywords)
-    - `variables:` with `closure_scope:` array (for Go `testing` framework: typically empty or minimal)
-    - `test_structure:` with `describe:`, `context:`, `it:` (adapt for `t.Run` subtest style)
-    - `code_structure:` with test function skeleton hint
-    Since the framework is Go `testing` (not Ginkgo), these fields should be adapted: use `func TestX/t.Run` structure instead of `Describe/Context/It`, and closure_scope may be minimal. However, the fields must still be present per the declared schema version.
-  - **Actionable:** true
-
-- **D2-2b-002**
-  - **Severity:** MAJOR
-  - **Dimension:** STD YAML Structure
-  - **Description:** `test_data` section is missing from 24 of 25 scenarios. Only scenario 001 includes explicit test data (shim template content and base64 values). While some scenarios may have simple data needs, most test scenarios in this STD require specific mock data (base64-encoded content, enrollment configs, ORG values) that should be declared in `test_data` for code generation reproducibility.
-  - **Evidence:** `grep -c 'test_data:' GH-2247_test_description.yaml` returns 1 (only scenario 001). Scenarios 005-007 (drift detection) reference "OLD shim template version" and "template v1/v2" in steps but don't declare the actual data.
-  - **Remediation:** Add `test_data:` sections to scenarios that reference specific input data in their test steps. At minimum: scenarios 002 (trailing newline variants), 005-007 (old vs new template), 008-009 (sentinel content), 012 (CRLF content), 020-021 (ORG values).
+  - **Description:** `test_data` is present in 7 of 25 scenarios (001, 002, 005, 008, 012, 020, 021). The remaining 18 scenarios have simple or implicit test data that is adequately described in their setup steps. While having explicit test_data for all scenarios would improve code generation reproducibility, the current coverage addresses the most data-intensive scenarios.
+  - **Evidence:** Scenarios with `test_data`: 001 (shim template + base64), 002 (trailing newlines), 005 (old/new template), 008 (sentinels), 012 (CRLF/LF), 020 (org name), 021 (special chars org).
+  - **Remediation:** Consider adding `test_data` to scenarios 003, 006, 009, 013, 023 which reference specific data values in their steps. Low priority — the current coverage addresses the most critical data-dependent scenarios.
   - **Actionable:** true
 
 ---
 
-### Dimension 3: Pattern Matching Correctness (Weight: 10%) -- Score: 0/100
+### Dimension 3: Pattern Matching Correctness (Weight: 10%) -- Score: 90/100
 
-#### Assessment
+#### Pattern Assignments
 
-Pattern matching cannot be evaluated because the `patterns` field is absent from all 25 scenarios (see finding D2-2b-001). No pattern library exists at the project config directory (`patterns/tier1_patterns.yaml` not found).
+| Scenario Group | Primary Pattern | Helpers | Status |
+|:---------------|:----------------|:--------|:-------|
+| 001-004 (False-Positive) | `comparison-validation` | `mock-cli-setup`, `base64-decode` | PASS |
+| 005-007 (Drift Detection) | `state-change-detection` | `mock-cli-setup`, `api-payload-capture` | PASS |
+| 008-010 (Sentinel) | `content-integrity` | `mock-cli-setup`, `blob-extraction` | PASS |
+| 011-013 (Base64) | `encoding-round-trip` | `content-normalization`, `mock-cli-setup` | PASS |
+| 014-016 (Fallback) | `fallback-path` | `mock-cli-setup`, `log-analysis` | PASS |
+| 017-019 (Suppression) | `api-call-suppression` | `mock-cli-setup`, `api-log-verification` | PASS |
+| 020-022 (ORG) | `interpolation-consistency` | `mock-cli-setup`, `env-var-management` | PASS |
+| 023-025 (Enrollment) | `enrollment-workflow` | `mock-cli-setup`, `blob-extraction` | PASS |
 
-| Scenario | Primary Pattern | Helpers | Decorators | Status |
-|:---------|:----------------|:--------|:-----------|:-------|
-| 001-025 | N/A (missing) | N/A (missing) | N/A (missing) | FAIL |
+All 8 primary patterns are semantically aligned with their scenario group's test objectives. Helper assignments are appropriate — `mock-cli-setup` is correctly shared across all groups (all scenarios use mocked `gh` CLI), with group-specific helpers matching the verification approach.
 
 **Findings:**
 
-- **D3-3a-001**
-  - **Severity:** CRITICAL
+- **D3-3b-001**
+  - **Severity:** MINOR
   - **Dimension:** Pattern Matching Correctness
-  - **Description:** No pattern assignments exist in any of the 25 scenarios. Pattern matching review is impossible without `patterns.primary` and `patterns.helpers_required` fields. This blocks automated code generation which relies on pattern IDs to select code templates.
-  - **Evidence:** Zero `patterns:` fields at scenario level across the entire STD YAML.
-  - **Remediation:** Assign patterns to each scenario based on test objective keywords. Suggested mapping for this STD:
-    - Scenarios 001-004 (false-positive): `comparison-validation` pattern
-    - Scenarios 005-007 (drift detection): `state-change-detection` pattern
-    - Scenarios 008-010 (sentinel): `content-integrity` pattern
-    - Scenarios 011-013 (base64): `encoding-round-trip` pattern
-    - Scenarios 014-016 (fallback): `fallback-path` pattern
-    - Scenarios 017-019 (suppression): `api-call-suppression` pattern
-    - Scenarios 020-022 (ORG): `interpolation-consistency` pattern
-    - Scenarios 023-025 (enrollment): `enrollment-workflow` pattern
-    Since no pattern library exists for this project, define custom patterns or use generic functional test patterns.
-  - **Actionable:** true
+  - **Description:** No pattern library file exists at the project config directory. Pattern assignments are custom/project-specific and cannot be validated against a canonical pattern library. The assigned patterns are reasonable but not formally registered.
+  - **Evidence:** No file at `.fullsend/customized/config/projects/fullsend/patterns/tier1_patterns.yaml`.
+  - **Remediation:** Consider creating a pattern library for the FullSend project to enable automated pattern validation in future reviews. Low priority — the current custom patterns are well-named and semantically correct.
+  - **Actionable:** false
 
 ---
 
-### Dimension 4: Test Step Quality (Weight: 15%) -- Score: 82/100
+### Dimension 4: Test Step Quality (Weight: 15%) -- Score: 90/100
 
 #### Step Completeness Matrix
 
@@ -190,8 +173,8 @@ Pattern matching cannot be evaluated because the `patterns` field is absent from
 |:---------|:------|:----------|:--------|:-----------|:-------|
 | 001 | 3 | 2 | 1 | 2 | PASS |
 | 002 | 2 | 2 | 1 | 2 | PASS |
-| 003 | 1 | 2 | 1 | 1 | WARN |
-| 004 | 1 | 3 | 1 | 1 | PASS |
+| 003 | 3 | 2 | 1 | 1 | PASS |
+| 004 | 2 | 3 | 1 | 1 | PASS |
 | 005 | 1 | 2 | 1 | 2 | PASS |
 | 006 | 1 | 3 | 1 | 2 | PASS |
 | 007 | 2 | 2 | 1 | 1 | PASS |
@@ -204,7 +187,7 @@ Pattern matching cannot be evaluated because the `patterns` field is absent from
 | 014 | 1 | 2 | 1 | 1 | PASS |
 | 015 | 1 | 2 | 1 | 2 | PASS |
 | 016 | 1 | 1 | 1 | 1 | PASS |
-| 017 | 1 | 1 | 1 | 1 | PASS |
+| 017 | 2 | 1 | 1 | 1 | PASS |
 | 018 | 1 | 2 | 1 | 1 | PASS |
 | 019 | 1 | 2 | 1 | 2 | PASS |
 | 020 | 2 | 2 | 1 | 1 | PASS |
@@ -214,60 +197,26 @@ Pattern matching cannot be evaluated because the `patterns` field is absent from
 | 024 | 1 | 2 | 1 | 2 | PASS |
 | 025 | 1 | 2 | 1 | 1 | PASS |
 
-All 25 scenarios have setup, test_execution, and cleanup steps. Step IDs follow sequential naming (SETUP-01, TEST-01, CLEANUP-01). Assertions are present in all scenarios.
+All 25 scenarios have setup, test_execution, and cleanup steps. Setup steps are now granular and specific (scenarios 003, 004, 017 were broken into individual steps). Step IDs follow sequential naming.
 
-**Findings:**
-
-- **D4-4b-001**
-  - **Severity:** MAJOR
-  - **Dimension:** Test Step Quality
-  - **Description:** Several setup steps use vague descriptions that bundle multiple actions into a single step without specific commands. This reduces clarity for test implementers.
-  - **Evidence:**
-    - Scenario 003 SETUP-01: `"Set up complete mock environment with matching shim"` -- bundles mock gh, mock yq, env vars, and config into one vague step.
-    - Scenario 004 SETUP-01: `"Set up mock environment for new enrollment"` -- similarly vague.
-    - Scenario 017 SETUP-01: `"Create mock with up-to-date shim for enrolled repo"` -- lacks specifics.
-  - **Remediation:** Break compound setup steps into individual steps (mock gh creation, mock yq creation, env var setup, config creation) as done in scenarios 001-002 which have 2-3 specific setup steps each.
-  - **Actionable:** true
-
-- **D4-4f-001**
-  - **Severity:** MINOR
-  - **Dimension:** Test Step Quality
-  - **Description:** 15 of 25 scenarios have only P0 assertions. While acceptable for core regression tests, a more nuanced priority distribution would improve triage efficiency. Scenarios like 008 appropriately mix P0 and P1 assertions (sentinel order is P1 vs sentinel presence is P0).
-  - **Evidence:** Scenarios 003, 004, 007, 010, 011, 012, 013, 014, 016, 017, 018, 020, 021, 022, 025 each have only a single priority level for all assertions.
-  - **Remediation:** Review single-assertion scenarios -- many appropriately have one P0 assertion. For multi-assertion scenarios, consider whether secondary assertions warrant P1 (e.g., log message format is less critical than behavioral correctness).
-  - **Actionable:** true
-
-- **D4-4b-002**
-  - **Severity:** MINOR
-  - **Dimension:** Test Step Quality
-  - **Description:** Scenario 022 has a cleanup step with command `"true"` (no-op). While technically valid (no resources to clean), this is inconsistent with the pattern of all other scenarios which describe actual cleanup actions.
-  - **Evidence:** Scenario 022 CLEANUP-01: `action: "No cleanup needed"`, `command: "true"`
-  - **Remediation:** Either remove the cleanup section if genuinely unnecessary, or document why (e.g., "Environment variable unset does not require cleanup"). The current approach is acceptable but inconsistent.
-  - **Actionable:** false
+No findings for this dimension.
 
 ---
 
-### Dimension 4.5: STD Content Policy (Weight: 10%) -- Score: 65/100
+### Dimension 4.5: STD Content Policy (Weight: 10%) -- Score: 92/100
 
 #### 4.5a. Banned Content
+
+The previously flagged `related_prs` section has been removed from `document_metadata`. The redundant `source_bugs` field has also been removed. No PR URLs, branch names, or commit SHAs remain in the STD YAML.
 
 **Findings:**
 
 - **D45-4.5a-001**
   - **Severity:** MAJOR
   - **Dimension:** STD Content Policy
-  - **Description:** `document_metadata.related_prs` contains two PR URLs -- PR #2254 (the fix) and PR #2101 (the bug example). PR references are implementation artifacts that belong in the STP (Section I references them correctly), not in the STD. The STD describes *what* to test, not *what code changed*. Including PR URLs couples the test description to specific implementation commits, making the STD less reusable and harder to maintain.
-  - **Evidence:**
-    ```yaml
-    related_prs:
-      - repo: "fullsend-ai/fullsend"
-        pr_number: 2254
-        url: "https://github.com/fullsend-ai/fullsend/pull/2254"
-      - repo: "fullsend-ai/fullsend"
-        pr_number: 2101
-        url: "https://github.com/fullsend-ai/fullsend/pull/2101"
-    ```
-  - **Remediation:** Remove the `related_prs` section from `document_metadata`. The STP already captures PR context in Section I (Technology and Design Review). If traceability to PRs is needed, add a `source_documents` reference to the STP which contains the PR links.
+  - **Description:** `common_preconditions.infrastructure` contains a reference to `"PR #2254 branch"` in the reconcile-repos.sh script requirement. This is an implementation artifact — the STD should describe the script requirement without referencing a specific PR or branch.
+  - **Evidence:** Line 57: `requirement: "Script available at hack/reconcile-repos.sh from PR #2254 branch"`
+  - **Remediation:** Change to `requirement: "Script available at hack/reconcile-repos.sh"` — remove the PR branch reference. The script should be available in the working tree regardless of which branch.
   - **Actionable:** true
 
 #### 4.5b. No Implementation Details in Stubs
@@ -283,17 +232,9 @@ No implementation code, no fixture implementations, no project-internal imports 
 
 Stubs describe test logic only. Infrastructure setup (mock creation, env var configuration) is described in PSE docstrings as test-local actions, not infrastructure provisioning. **PASS**.
 
-- **D45-4.5a-002**
-  - **Severity:** MINOR
-  - **Dimension:** STD Content Policy
-  - **Description:** `document_metadata.source_bugs` contains `["GH-2247"]` which duplicates `jira_issue: "GH-2247"`. While not a banned content issue, the redundancy adds no value and could diverge if edited independently.
-  - **Evidence:** `source_bugs: ["GH-2247"]` alongside `jira_issue: "GH-2247"`
-  - **Remediation:** Remove `source_bugs` if it always equals `[jira_issue]`. Keep only if the STD covers multiple bug fixes.
-  - **Actionable:** true
-
 ---
 
-### Dimension 5: PSE Docstring Quality (Weight: 10%) -- Score: 78/100
+### Dimension 5: PSE Docstring Quality (Weight: 10%) -- Score: 92/100
 
 #### Go Stubs
 
@@ -308,79 +249,52 @@ Stubs describe test logic only. Infrastructure setup (mock creation, env var con
 | `org_interpolation_stubs_test.go` | 020-022 | 3/3 | GOOD |
 | `new_enrollment_stubs_test.go` | 023-025 | 3/3 | GOOD |
 
-All 25 subtests have PSE docstrings. Module-level comments reference the STP file (not PRs). Test IDs are embedded in `t.Run` descriptions using the `[test_id:TS-GH-2247-NNN]` format.
+All 25 subtests have PSE docstrings. Module-level comments reference the STP file (not PRs). Test IDs are embedded in `t.Run` descriptions using the `[test_id:TS-GH-2247-NNN]` format. PSE classification is correct — verification actions are in Expected, not Steps.
 
 **Findings:**
 
 - **D5-5a-001**
-  - **Severity:** MAJOR
-  - **Dimension:** PSE Docstring Quality
-  - **Description:** Several PSE "Steps" sections include verification/checking actions that belong in "Expected" per the PSE classification rules. Steps should describe ACTIONS; verification belongs in Expected.
-  - **Evidence:**
-    - `false_positive_prevention_stubs_test.go` TS-001 Steps: `"2. Check mock log for PR creation API calls"` -- "Check" is verification, not an action.
-    - `genuine_drift_detection_stubs_test.go` TS-005 Steps: `"2. Check mock log for PR creation API call"` -- same issue.
-    - `no_drift_pr_suppression_stubs_test.go` TS-019 Steps: `"2. Analyze API call log"` -- analysis is verification.
-    - `pre_sentinel_fallback_stubs_test.go` TS-014 Steps: `"2. Verify fallback comparison was used via log output"` -- explicit "Verify" in Steps.
-  - **Remediation:** Move verification actions from Steps to Expected. Steps should only contain the test execution action (e.g., "Run reconcile-repos.sh"). The log checking/analysis is the verification method and belongs in Expected (e.g., "Expected: Mock log does not contain PR creation API call").
-  - **Actionable:** true
-
-- **D5-5a-002**
   - **Severity:** MINOR
   - **Dimension:** PSE Docstring Quality
-  - **Description:** Stub files use `Markers: - tier1` in the parent function comment, but the STD YAML uses `tier: "Functional"`. This creates a naming inconsistency between the design document and the test code. The stubs assume a "tier1" marker convention that doesn't match the STD's tier vocabulary.
-  - **Evidence:** All 8 stub files contain `Markers: - tier1`. STD YAML: `tier: "Functional"` for all 25 scenarios.
-  - **Remediation:** Align the marker with the chosen tier naming. If `tier: "Tier 1"` is adopted (per D1-1c-001), the `tier1` marker in stubs is acceptable. Otherwise, use a consistent vocabulary.
-  - **Actionable:** true
+  - **Description:** Stub files use `Markers: - tier1` in the parent function comment. The `tier1` marker is an acceptable shorthand for the `"Tier 1"` tier in Go test markers and is consistent with common Go test tagging conventions.
+  - **Evidence:** All 8 stub files: `Markers: - tier1`; STD YAML: `tier: "Tier 1"`.
+  - **Remediation:** No change needed — the shorthand is conventional and the mapping is unambiguous.
+  - **Actionable:** false
 
 #### Python Stubs
 
-Not present. The project has `python_tests: true` in the defaults but no `python.yaml` configuration file. This means Python stub generation was likely skipped intentionally. Noted but not flagged as a finding since the project override does not explicitly enable Python tests (no `python.yaml` exists).
+Not present. The project has no `python.yaml` configuration file. Python stub generation was appropriately skipped.
 
 ---
 
-### Dimension 6: Code Generation Readiness (Weight: 5%) -- Score: 30/100
+### Dimension 6: Code Generation Readiness (Weight: 5%) -- Score: 95/100
 
 #### 6a. Variable Declarations
 
-Cannot evaluate -- `variables` field missing from all scenarios (see D2-2b-001).
+All 25 scenarios have `variables.closure_scope` with 2 variables each. Variable names are valid Go identifiers (`mockDir`, `shimContent`, `oldTemplateContent`, etc.). Variables are appropriate for their scenario groups.
 
 #### 6b. Import Completeness
 
 `code_generation_config.imports` lists:
-- Standard: `context`, `testing`, `os`, `os/exec`, `fmt`, `strings`, `path/filepath`, `encoding/base64`, `io/ioutil`
+- Standard: `context`, `testing`, `os`, `os/exec`, `fmt`, `strings`, `path/filepath`, `encoding/base64`, `io`
 - Test framework: `testify/assert`, `testify/require`
-- Project: `github.com/fullsend-ai/fullsend/internal/config`
 
-**Findings:**
-
-- **D6-6b-001**
-  - **Severity:** MINOR
-  - **Dimension:** Code Generation Readiness
-  - **Description:** `io/ioutil` is listed in `code_generation_config.imports.standard` but has been deprecated since Go 1.16 (project requires Go 1.23+). Functions like `ioutil.ReadFile` should use `os.ReadFile` instead.
-  - **Evidence:** `code_generation_config.imports.standard` includes `"io/ioutil"`
-  - **Remediation:** Replace `io/ioutil` with `io` or `os` as appropriate. For Go 1.23+, use `os.ReadFile`, `os.ReadDir`, `io.ReadAll`.
-  - **Actionable:** true
-
-- **D6-6b-002**
-  - **Severity:** MINOR
-  - **Dimension:** Code Generation Readiness
-  - **Description:** The project import `github.com/fullsend-ai/fullsend/internal/config` is listed in `code_generation_config.imports.project`, but none of the 25 test scenarios test the `config` package. The scenarios test `hack/reconcile-repos.sh` (a bash script), not Go packages. This import will produce an "imported and not used" compilation error if included in generated test files.
-  - **Evidence:** All 25 scenarios test bash script behavior via mock environments. No scenario references `internal/config` functionality.
-  - **Remediation:** Remove `internal/config` from project imports, or add a note that it should only be imported when scenarios reference configuration structures. Consider whether Go `testing` framework tests for a bash script even need project imports.
-  - **Actionable:** true
+The deprecated `io/ioutil` has been replaced with `io`. The unused `internal/config` project import has been removed. Import list is clean and appropriate.
 
 #### 6c. Code Structure Validity
 
-Cannot fully evaluate -- `code_structure` field missing from all scenarios. However, the stub files demonstrate a valid Go `testing` structure:
-- `func TestGroupName(t *testing.T)` as parent
-- `t.Run("[test_id:...] description", func(t *testing.T) { ... })` as subtests
-- Proper `t.Skip()` pending markers
+All 25 scenarios have `code_structure` with valid Go `testing` framework structure:
+- `function_type: "subtest"` — correct for `t.Run` subtests
+- `assertion_library: "testify"` — matches import
+- `skip_marker: "t.Skip"` — matches stub implementation
 
-The stub structure is compilable and follows Go conventions.
+The `test_structure` fields correctly map scenarios to their parent test functions.
 
 #### 6d. Timeout Appropriateness
 
 No explicit timeout references in test steps. For bash script tests with mocked dependencies, timeouts are less critical (mocks respond synchronously). No finding.
+
+No findings for this dimension.
 
 ---
 
@@ -388,31 +302,15 @@ No explicit timeout references in test steps. For bash script tests with mocked 
 
 Ordered by severity and impact:
 
-1. **[CRITICAL] D2-2b-001 -- Add v2.1-enhanced required fields to all scenarios.** The STD claims v2.1-enhanced but is missing `patterns`, `variables`, `test_structure`, and `code_structure` in all 25 scenarios. This blocks pattern-based code generation. -- **Remediation:** Add the four missing fields to each scenario. For the Go `testing` framework, adapt the field semantics (e.g., `test_structure` uses `func/t.Run` instead of `Describe/Context/It`). -- **Actionable:** yes
+1. **[MAJOR] D45-4.5a-001 -- Remove PR branch reference from common_preconditions.** The `"from PR #2254 branch"` text in the reconcile-repos.sh requirement is an implementation artifact. -- **Remediation:** Change to `"Script available at hack/reconcile-repos.sh"`. -- **Actionable:** yes
 
-2. **[CRITICAL] D3-3a-001 -- Assign pattern metadata to all scenarios.** Without pattern assignments, the code generation pipeline cannot select code templates. -- **Remediation:** Define functional test patterns appropriate to this STD's domain (comparison validation, drift detection, content integrity, etc.) and assign primary + helpers to each scenario. -- **Actionable:** yes
+2. **[MINOR] D1-1a-001 -- STP tier labels say "Functional", STD says "Tier 1".** Cosmetic inconsistency. -- **Remediation:** Update STP (outside refiner scope). -- **Actionable:** false
 
-3. **[MAJOR] D1-1c-001 -- Normalize tier values to "Tier 1".** The non-standard `tier: "Functional"` breaks automated tier filtering. -- **Remediation:** Replace `tier: "Functional"` with `tier: "Tier 1"` in all 25 scenarios. -- **Actionable:** yes
+3. **[MINOR] D2-2b-001 -- test_data missing from 18 scenarios.** Low impact — covered scenarios address the most data-intensive cases. -- **Remediation:** Add test_data to additional scenarios as needed. -- **Actionable:** true
 
-4. **[MAJOR] D45-4.5a-001 -- Remove `related_prs` from document_metadata.** PR URLs are implementation artifacts that belong in the STP, not the STD. -- **Remediation:** Delete the `related_prs` section from `document_metadata`. -- **Actionable:** yes
+4. **[MINOR] D3-3b-001 -- No pattern library for validation.** Custom patterns are reasonable but not formally registered. -- **Actionable:** false
 
-5. **[MAJOR] D2-2b-002 -- Add `test_data` sections to scenarios with specific input data.** 24/25 scenarios lack explicit test data declarations despite referencing specific mock data in their steps. -- **Remediation:** Add `test_data:` to scenarios that reference template content, base64 values, ORG names, or enrollment configs. -- **Actionable:** yes
-
-6. **[MAJOR] D4-4b-001 -- Break compound setup steps into specific sub-steps.** Vague setup steps reduce implementability. -- **Remediation:** Split "Set up complete mock environment" into individual mock creation, env var, and config steps. -- **Actionable:** yes
-
-7. **[MAJOR] D5-5a-001 -- Move verification actions from Steps to Expected in PSE docstrings.** "Check", "Verify", "Analyze" actions in Steps violate PSE classification rules. -- **Remediation:** Relocate verification steps to Expected section; keep only execution actions in Steps. -- **Actionable:** yes
-
-8. **[MINOR] D4-4f-001 -- Review assertion priority distribution.** Consider P1 for secondary assertions. -- **Actionable:** false
-
-9. **[MINOR] D4-4b-002 -- Cleanup step with `command: "true"` is inconsistent.** -- **Actionable:** false
-
-10. **[MINOR] D45-4.5a-002 -- Remove redundant `source_bugs` field.** -- **Actionable:** true
-
-11. **[MINOR] D5-5a-002 -- Align tier marker naming between stubs and STD YAML.** -- **Actionable:** true
-
-12. **[MINOR] D6-6b-001 -- Replace deprecated `io/ioutil` import.** -- **Actionable:** true
-
-13. **[MINOR] D6-6b-002 -- Remove unused `internal/config` project import.** -- **Actionable:** true
+5. **[MINOR] D5-5a-001 -- Stub marker "tier1" vs YAML "Tier 1".** Acceptable shorthand, no change needed. -- **Actionable:** false
 
 ---
 
@@ -428,6 +326,6 @@ Ordered by severity and impact:
 | All scenarios reviewed | YES (25/25) |
 | Project review rules loaded | NO (dynamic extraction with defaults) |
 
-**Confidence rationale:** Confidence is MEDIUM. The STD YAML is valid and the STP is available for full traceability review (enabling Dimension 1). Go stubs are present for PSE review (Dimension 5). However, no pattern library exists (Dimension 3d skipped), no `review_rules.yaml` static override exists, and Python stubs are absent despite `python_tests: true` in defaults. Review rules were dynamically extracted from config files but the default_ratio is approximately 0.65 (most STD review rules fell back to hardcoded defaults due to missing `python.yaml`, missing pattern library, and missing `review_rules.yaml`). Review precision for pattern matching and code generation readiness is reduced.
+**Confidence rationale:** Confidence is MEDIUM. The STD YAML is valid and the STP is available for full traceability review (Dimension 1). Go stubs are present for PSE review (Dimension 5). However, no pattern library exists (Dimension 3d skipped), no `review_rules.yaml` static override exists, and Python stubs are absent. Review rules were dynamically extracted from config files but the default_ratio is approximately 0.65 (most STD review rules fell back to hardcoded defaults due to missing `python.yaml`, missing pattern library, and missing `review_rules.yaml`).
 
-**Review precision note:** 65% of review rules are using generic defaults. Project-specific review precision is reduced. To improve: add a `review_rules.yaml` to `.fullsend/customized/config/projects/fullsend/` or add a `patterns/tier1_patterns.yaml` file. Keys using defaults: `std_rules.patterns.keyword_to_pattern`, `std_rules.patterns.pattern_to_helpers`, `std_rules.patterns.sig_to_decorator`, `std_rules.patterns.closure_scope_required`, `std_rules.patterns.ginkgo_structure`, `std_rules.timeouts`, `std_rules.stub_conventions`.
+**Review precision note:** 65% of review rules are using generic defaults. Project-specific review precision is reduced. To improve: add a `review_rules.yaml` to `.fullsend/customized/config/projects/fullsend/` or add a `patterns/tier1_patterns.yaml` file.

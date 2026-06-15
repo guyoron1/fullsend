@@ -67,12 +67,12 @@ func TestNoDriftPRSuppression(t *testing.T) {
 
 	Steps:
 	    1. Run reconcile-repos.sh with up-to-date repo
-	    2. Analyze API call log
 
 	Expected:
 	    - No git/blobs API call for identical content
 	    - No git/trees API call for identical content
 	    - No POST to pulls endpoint
+	    - Only content fetch API call made (to get current shim)
 	*/
 	t.Run("[test_id:TS-GH-2247-019] should not make blob API call for identical content", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")

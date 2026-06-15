@@ -33,10 +33,9 @@ func TestPreSentinelFallback(t *testing.T) {
 
 	Steps:
 	    1. Run reconcile-repos.sh
-	    2. Verify fallback comparison was used via log output
 
 	Expected:
-	    - Fallback to full decoded content comparison activates
+	    - Fallback to full decoded content comparison activates (log indicates fallback path)
 	    - Script completes without error
 	*/
 	t.Run("[test_id:TS-GH-2247-014] should fall back to full content when no sentinel found", func(t *testing.T) {

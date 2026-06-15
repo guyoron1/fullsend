@@ -34,10 +34,9 @@ func TestGenuineDriftDetection(t *testing.T) {
 
 	Steps:
 	    1. Run reconcile-repos.sh
-	    2. Check mock log for PR creation API call
 
 	Expected:
-	    - Update PR created for genuinely stale shim
+	    - Update PR created for genuinely stale shim (mock log contains POST to pulls)
 	    - PR title indicates shim update
 	*/
 	t.Run("[test_id:TS-GH-2247-005] should trigger update PR for stale shim", func(t *testing.T) {

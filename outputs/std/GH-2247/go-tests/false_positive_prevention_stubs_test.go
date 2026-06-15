@@ -35,10 +35,9 @@ func TestFalsePositivePrevention(t *testing.T) {
 
 	Steps:
 	    1. Run reconcile-repos.sh against the enrolled repo
-	    2. Check mock log for PR creation API calls
 
 	Expected:
-	    - No update PR created for identical shim content
+	    - No update PR created for identical shim content (mock log has no POST to pulls)
 	    - Script reports shim as up-to-date
 	*/
 	t.Run("[test_id:TS-GH-2247-001] should not flag identical shim as stale", func(t *testing.T) {
@@ -53,10 +52,9 @@ func TestFalsePositivePrevention(t *testing.T) {
 
 	Steps:
 	    1. Run reconcile-repos.sh
-	    2. Check mock log for absence of PR creation
 
 	Expected:
-	    - Trailing newline difference does not trigger stale detection
+	    - Trailing newline difference does not trigger stale detection (no PR creation API call)
 	    - Comparison operates on decoded text, not base64 strings
 	*/
 	t.Run("[test_id:TS-GH-2247-002] should treat trailing newline variations as identical", func(t *testing.T) {
