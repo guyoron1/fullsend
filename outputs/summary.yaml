@@ -1,0 +1,33 @@
+status: success
+jira_id: GH-14
+file_path: /sandbox/workspace/output/GH-14_test_plan.md
+test_counts:
+  tier1: 16
+  tier2: 0
+  total: 16
+validation:
+  structure: pass
+  list_items: pass
+  content: pass
+  total_checks: 18
+  passed: 18
+  failed: 0
+  warnings: 0
+pr_data:
+  primary_pr: 14
+  companion_pr: 2009
+  pr_type: documentation
+  files_changed:
+    - docs/problems/testing-agents.md
+    - docs/problems/tool-call-risk-assessment.md
+    - README.md
+lsp_analysis:
+  files_analyzed:
+    - internal/security/hooks.go
+    - internal/harness/harness.go
+    - internal/sandbox/sandbox.go
+    - internal/security/injection.go
+    - internal/security/ssrf.go
+  symbols_discovered: 45
+  references_traced: 64
+  incoming_calls_traced: 10
