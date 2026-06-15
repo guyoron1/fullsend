@@ -23,8 +23,7 @@ Preconditions:
 
 /*
 Preconditions:
-    - mcp-config-drift.md content loaded
-    - Reference problem document (security-threat-model.md) content loaded for comparison
+    - Reference problem document (security-threat-model.md) exists for structural comparison
 
 Steps:
     1. Extract section headings from mcp-config-drift.md
@@ -42,7 +41,7 @@ func TestDocumentStructureFormat(t *testing.T) {
 
 /*
 Preconditions:
-    - mcp-config-drift.md content loaded
+    (No additional preconditions beyond module-level)
 
 Steps:
     1. Identify and extract the four attack scenarios from the document
@@ -60,7 +59,7 @@ func TestAttackScenariosDistinct(t *testing.T) {
 
 /*
 Preconditions:
-    - mcp-config-drift.md content loaded
+    (No additional preconditions beyond module-level)
 
 Steps:
     1. Scan document for specific endpoint URLs (http://, https:// with specific hosts)
@@ -79,7 +78,7 @@ func TestNoSensitiveDisclosure(t *testing.T) {
 
 /*
 Preconditions:
-    - mcp-config-drift.md content loaded
+    (No additional preconditions beyond module-level)
 
 Steps:
     1. Locate and extract Open Questions section from the document

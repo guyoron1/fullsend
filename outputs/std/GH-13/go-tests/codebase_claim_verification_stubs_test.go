@@ -24,8 +24,8 @@ Preconditions:
 
 /*
 Preconditions:
-    - Document's claims about ToolAllowlistPreToolHook extracted
-    - ToolAllowlistPreToolHook implementation located in internal/security/hooks.go
+    - mcp-config-drift.md contains claims about ToolAllowlistPreToolHook filtering mechanism
+    - internal/security/hooks.go exists and contains ToolAllowlistPreToolHook definition
 
 Steps:
     1. Read the ToolAllowlistPreToolHook implementation source code
@@ -43,8 +43,8 @@ func TestToolAllowlistHookClaims(t *testing.T) {
 
 /*
 Preconditions:
-    - Document's claims about SSRF validation scope extracted
-    - SSRF validator implementation located in the codebase
+    - mcp-config-drift.md contains claims about SSRF validation scope covering Bash and WebFetch but not MCP connections
+    - SSRF validator implementation exists in the codebase
 
 Steps:
     1. Verify SSRF validator is applied to Bash tool execution path
@@ -62,8 +62,8 @@ func TestSSRFValidatorCoverageClaims(t *testing.T) {
 
 /*
 Preconditions:
-    - Document's references to Harness struct and SecurityConfig extracted
-    - internal/harness/harness.go must exist
+    - mcp-config-drift.md contains references to Harness struct and SecurityConfig type
+    - internal/harness/harness.go exists
 
 Steps:
     1. Search for Harness struct definition in internal/harness/
@@ -81,8 +81,8 @@ func TestHarnessArchitectureReferences(t *testing.T) {
 
 /*
 Preconditions:
-    - Document's Approach 2 (immutable harness input) description extracted
-    - Harness initialization function identifiable in the codebase
+    - mcp-config-drift.md describes Approach 2 (immutable harness input) with MCP config injection pattern
+    - Harness initialization function exists in the codebase (internal/harness/)
 
 Steps:
     1. Locate harness initialization function in internal/harness/

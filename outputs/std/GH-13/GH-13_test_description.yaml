@@ -11,21 +11,9 @@ document_metadata:
     version: "v1"
     sections_covered: "Section III - Requirements-to-Tests Mapping"
 
-  related_prs:
-    - repo: "fullsend-ai/fullsend"
-      pr_number: 2011
-      url: "https://github.com/fullsend-ai/fullsend/pull/2011"
-      title: "MCP Configuration Drift Problem Document"
-      merged: false
-    - repo: "guyoron1/fullsend"
-      pr_number: 13
-      url: "https://github.com/guyoron1/fullsend/pull/13"
-      title: "MCP Configuration Drift Problem Document (fork)"
-      merged: false
-
   total_scenarios: 11
-  functional_count: 11
-  e2e_count: 0
+  tier_1_count: 11
+  tier_2_count: 0
   p0_count: 3
   p1_count: 5
   p2_count: 3
@@ -42,7 +30,9 @@ code_generation_config:
     standard:
       - "context"
       - "os"
+      - "os/exec"
       - "path/filepath"
+      - "regexp"
       - "strings"
       - "testing"
     test_framework:
@@ -86,7 +76,7 @@ common_preconditions:
 scenarios:
   - scenario_id: "1"
     test_id: "TS-GH-13-001"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-13"
@@ -153,7 +143,7 @@ scenarios:
         - "References to security-threat-model.md and agent-architecture.md resolve correctly"
 
     classification:
-      test_type: "Functional"
+      test_type: "Tier 1"
       scope: "Single-component"
       automation_approach: "Go test with file system validation"
 
@@ -213,7 +203,7 @@ scenarios:
 
   - scenario_id: "2"
     test_id: "TS-GH-13-002"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-13"
@@ -279,7 +269,7 @@ scenarios:
         - "The hook does NOT filter by server endpoints, consistent with document claims"
 
     classification:
-      test_type: "Functional"
+      test_type: "Tier 1"
       scope: "Single-component"
       automation_approach: "Go test with source code analysis"
 
@@ -339,7 +329,7 @@ scenarios:
 
   - scenario_id: "3"
     test_id: "TS-GH-13-003"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-13"
@@ -401,7 +391,7 @@ scenarios:
         - "SSRF validator is NOT integrated with MCP connection establishment"
 
     classification:
-      test_type: "Functional"
+      test_type: "Tier 1"
       scope: "Single-component"
       automation_approach: "Go test with source code analysis"
 
@@ -466,7 +456,7 @@ scenarios:
 
   - scenario_id: "4"
     test_id: "TS-GH-13-004"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-13"
@@ -527,7 +517,7 @@ scenarios:
         - "The entry maintains consistent ordering with adjacent entries"
 
     classification:
-      test_type: "Functional"
+      test_type: "Tier 1"
       scope: "Single-component"
       automation_approach: "Go test with file content validation"
 
@@ -582,7 +572,7 @@ scenarios:
 
   - scenario_id: "5"
     test_id: "TS-GH-13-005"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-13"
@@ -647,7 +637,7 @@ scenarios:
         - "Open questions section follows the established format"
 
     classification:
-      test_type: "Functional"
+      test_type: "Tier 1"
       scope: "Single-component"
       automation_approach: "Go test with markdown structure analysis"
 
@@ -706,7 +696,7 @@ scenarios:
 
   - scenario_id: "6"
     test_id: "TS-GH-13-006"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-13"
@@ -767,7 +757,7 @@ scenarios:
         - "Scenarios are consistent with the MCP protocol communication model"
 
     classification:
-      test_type: "Functional"
+      test_type: "Tier 1"
       scope: "Single-component"
       automation_approach: "Go test with content analysis"
 
@@ -791,7 +781,7 @@ scenarios:
           validation: "Four attack scenarios found"
         - step_id: "TEST-02"
           action: "Verify each scenario describes a distinct attack vector"
-          command: "Compare scenario descriptions for overlap"
+          command: "For each pair of scenarios, extract key threat terms and compare using strings.Contains; verify no two scenarios share the same primary attack mechanism keyword (injection, replacement, escalation, drift)"
           validation: "Scenarios are non-overlapping: injection vs replacement vs escalation vs drift"
         - step_id: "TEST-03"
           action: "Verify scenarios align with MCP protocol model"
@@ -819,7 +809,7 @@ scenarios:
 
   - scenario_id: "7"
     test_id: "TS-GH-13-007"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-13"
@@ -879,7 +869,7 @@ scenarios:
         - "Document references to these types are consistent with actual definitions"
 
     classification:
-      test_type: "Functional"
+      test_type: "Tier 1"
       scope: "Single-component"
       automation_approach: "Go test with source code analysis"
 
@@ -935,7 +925,7 @@ scenarios:
 
   - scenario_id: "8"
     test_id: "TS-GH-13-008"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P2"
     mvp: false
     requirement_id: "GH-13"
@@ -995,7 +985,7 @@ scenarios:
         - "Proposed injection point aligns with existing initialization sequence"
 
     classification:
-      test_type: "Functional"
+      test_type: "Tier 1"
       scope: "Single-component"
       automation_approach: "Go test with initialization flow analysis"
 
@@ -1051,7 +1041,7 @@ scenarios:
 
   - scenario_id: "9"
     test_id: "TS-GH-13-009"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-13"
@@ -1111,7 +1101,7 @@ scenarios:
         - "Document uses generalized descriptions rather than specific implementation details"
 
     classification:
-      test_type: "Functional"
+      test_type: "Tier 1"
       scope: "Single-component"
       automation_approach: "Go test with content scanning"
 
@@ -1163,7 +1153,7 @@ scenarios:
 
   - scenario_id: "10"
     test_id: "TS-GH-13-010"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P2"
     mvp: false
     requirement_id: "GH-13"
@@ -1224,7 +1214,7 @@ scenarios:
         - "No redundant questions that ask the same thing in different words"
 
     classification:
-      test_type: "Functional"
+      test_type: "Tier 1"
       scope: "Single-component"
       automation_approach: "Go test with content analysis"
 
@@ -1248,7 +1238,7 @@ scenarios:
           validation: "Open Questions section found and extracted"
         - step_id: "TEST-02"
           action: "Verify questions are actionable"
-          command: "Check each question for specificity (references to scenarios/approaches)"
+          command: "For each question, use strings.Contains to verify it references at least one specific attack scenario keyword or defense approach name; reject questions that contain only generic phrasing without concrete references"
           validation: "Each question drives toward a concrete decision or action"
         - step_id: "TEST-03"
           action: "Check for redundancy"
@@ -1276,7 +1266,7 @@ scenarios:
 
   - scenario_id: "11"
     test_id: "TS-GH-13-011"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P2"
     mvp: false
     requirement_id: "GH-13"
@@ -1334,7 +1324,10 @@ scenarios:
         Performs comprehensive validation of all relative markdown links in mcp-config-drift.md,
         verifying each link target exists as a file in the repository. Also validates that
         markdown formatting is correct and renders properly (no broken syntax, unclosed tags,
-        or malformed link references).
+        or malformed link references). Note: This is a superset validation that complements
+        Scenario 1 (TS-GH-13-001). While Scenario 1 focuses on named cross-references to
+        specific documents (security-threat-model.md, agent-architecture.md, ADRs 0016/0017),
+        this scenario covers all relative links exhaustively and adds markdown formatting checks.
       why: |
         Broken links degrade document usability and signal maintenance issues. Formatting errors
         can make sections unreadable when rendered in GitHub or documentation systems, reducing
@@ -1345,7 +1338,7 @@ scenarios:
         - "Document renders correctly as valid markdown"
 
     classification:
-      test_type: "Functional"
+      test_type: "Tier 1"
       scope: "Single-component"
       automation_approach: "Go test with markdown parsing"
 

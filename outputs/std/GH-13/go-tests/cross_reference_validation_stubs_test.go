@@ -24,8 +24,6 @@ Preconditions:
 
 /*
 Preconditions:
-    - Repository root directory determined
-    - mcp-config-drift.md content loaded
     - ADR 0016 and ADR 0017 files exist in docs/adrs/ or equivalent directory
 
 Steps:
@@ -62,7 +60,7 @@ func TestReadmeIndexEntry(t *testing.T) {
 
 /*
 Preconditions:
-    - mcp-config-drift.md content loaded
+    (No additional preconditions beyond module-level)
 
 Steps:
     1. Extract all relative markdown links using regex pattern \[.*?\]\(((?!http)[^)]+)\)

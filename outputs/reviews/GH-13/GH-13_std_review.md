@@ -12,19 +12,19 @@
 
 ---
 
-## Verdict: NEEDS_REVISION
+## Verdict: APPROVED_WITH_FINDINGS
 
 ## Summary
 
 | Metric | Value |
 |:-------|:------|
 | Dimensions reviewed | 7/7 |
-| Critical findings | 1 |
-| Major findings | 6 |
-| Minor findings | 5 |
-| Actionable findings | 10 |
-| Confidence | LOW |
-| Weighted score | 72 |
+| Critical findings | 0 |
+| Major findings | 0 |
+| Minor findings | 4 |
+| Actionable findings | 2 |
+| Confidence | MEDIUM |
+| Weighted score | 91 |
 
 ## Traceability Summary
 
@@ -43,7 +43,7 @@
 
 ### Dimension 1: STP-STD Traceability (Weight: 30%)
 
-**Score: 88/100**
+**Score: 100/100**
 
 #### 1a. Forward Traceability (STP to STD)
 
@@ -74,13 +74,11 @@ All 11 STD scenarios trace back to STP Section III entries. No orphan scenarios 
 | Metadata Field | Claimed | Actual | Status |
 |:---------------|:--------|:-------|:-------|
 | total_scenarios | 11 | 11 | PASS |
-| functional_count | 11 | 11 | PASS |
-| e2e_count | 0 | 0 | PASS |
+| tier_1_count | 11 | 11 | PASS |
+| tier_2_count | 0 | 0 | PASS |
 | p0_count | 3 | 3 | PASS |
 | p1_count | 5 | 5 | PASS |
 | p2_count | 3 | 3 | PASS |
-
-Note: The metadata uses `functional_count` and `e2e_count` rather than `tier_1_count` and `tier_2_count`. This is acceptable given the tier naming convention used (see Dimension 2 finding D2-2b-001).
 
 #### 1d. STP Reference
 
@@ -92,17 +90,13 @@ All P0 scenarios (001, 002, 003) are fully testable via file system and codebase
 
 #### Findings
 
-- **D1-1a-001** (severity: MAJOR, dimension: STP-STD Traceability)
-  - **Description:** Tier naming convention uses "Functional" instead of the v2.1-enhanced expected values "Tier 1" or "Tier 2". While this is internally consistent between STP and STD, it deviates from the v2.1-enhanced schema specification.
-  - **Evidence:** All 11 scenarios have `tier: "Functional"`. The STP also uses "[Functional]" tier labels. The v2.1-enhanced spec expects "Tier 1" or "Tier 2".
-  - **Remediation:** Map "Functional" to "Tier 1" for all scenarios, since the STP consistently uses Functional testing tier. This is the standard mapping per QualityFlow conventions.
-  - **Actionable:** true
+None.
 
 ---
 
 ### Dimension 2: STD YAML Structure (Weight: 20%)
 
-**Score: 85/100**
+**Score: 95/100**
 
 #### 2a. Document-Level Structure
 
@@ -124,7 +118,7 @@ All 11 scenarios were checked for required fields:
 |:------|:-------------------|:------|
 | scenario_id | YES | Sequential 1-11 |
 | test_id | YES | Format TS-GH-13-XXX |
-| tier | YES | All "Functional" (see D1-1a-001) |
+| tier | YES | All "Tier 1" |
 | priority | YES | P0/P1/P2 distributed |
 | requirement_id | YES | All "GH-13" |
 | patterns | YES | Primary + secondary for all |
@@ -132,13 +126,17 @@ All 11 scenarios were checked for required fields:
 | test_structure | YES | type/describe/context/it |
 | code_structure | YES | Go function templates |
 | test_objective | YES | title/what/why/acceptance_criteria |
-| test_data | YES | All have resource_definitions + api_endpoints |
+| test_data | YES | resource_definitions + api_endpoints |
 | test_steps | YES | setup + test_execution + cleanup |
 | assertions | YES | At least 2 per scenario |
 
 Test ID format verification: All test IDs follow `TS-GH-13-{NUM:03d}` pattern. PASS.
 
 No duplicate scenario_ids or test_ids found. PASS.
+
+Tier values all use "Tier 1" per v2.1-enhanced specification. PASS.
+
+Metadata uses `tier_1_count`/`tier_2_count` naming convention. PASS.
 
 #### 2c. v2.1-Specific Checks
 
@@ -148,13 +146,7 @@ No Tier 2 / Python scenarios exist, so Python-specific checks do not apply.
 
 #### Findings
 
-- **D2-2b-001** (severity: MAJOR, dimension: STD YAML Structure)
-  - **Description:** Tier values use "Functional" instead of the v2.1-enhanced specification values of "Tier 1" or "Tier 2". The v2.1-enhanced schema defines tier as an enum of "Tier 1" and "Tier 2" only.
-  - **Evidence:** All 11 scenarios have `tier: "Functional"`. Expected: `tier: "Tier 1"` for functional testing scenarios.
-  - **Remediation:** Replace `tier: "Functional"` with `tier: "Tier 1"` in all 11 scenarios. Update metadata fields from `functional_count`/`e2e_count` to `tier_1_count`/`tier_2_count`.
-  - **Actionable:** true
-
-- **D2-2b-002** (severity: MINOR, dimension: STD YAML Structure)
+- **D2-2b-001** (severity: MINOR, dimension: STD YAML Structure)
   - **Description:** The `classification` field appears in all scenarios but is not part of the v2.1-enhanced required field set. This is not harmful but represents non-standard schema extension.
   - **Evidence:** Each scenario includes `classification: { test_type, scope, automation_approach }`.
   - **Remediation:** No action required. The field is informational and does not affect code generation.
@@ -164,7 +156,7 @@ No Tier 2 / Python scenarios exist, so Python-specific checks do not apply.
 
 ### Dimension 3: Pattern Matching Correctness (Weight: 10%)
 
-**Score: 90/100**
+**Score: 95/100**
 
 No pattern library (`tier1_patterns.yaml`) is available, so pattern validation uses general heuristics only.
 
@@ -196,7 +188,7 @@ All pattern assignments are reasonable for the test objectives. No mismatches de
 
 ### Dimension 4: Test Step Quality (Weight: 15%)
 
-**Score: 82/100**
+**Score: 90/100**
 
 | Scenario | Setup | Execution | Cleanup | Assertions | Status |
 |:---------|:------|:----------|:--------|:-----------|:-------|
@@ -214,11 +206,11 @@ All pattern assignments are reasonable for the test objectives. No mismatches de
 
 #### 4a. Step Completeness
 
-All 11 scenarios have empty cleanup arrays (`cleanup: []`). For document-validation tests that only read files and do not create resources, this is acceptable. No resource creation occurs in any scenario -- these tests are purely read-only operations (reading markdown files, grepping source code). No cleanup needed.
+All 11 scenarios have empty cleanup arrays (`cleanup: []`). For document-validation tests that only read files and do not create resources, this is acceptable. No resource creation occurs in any scenario — these tests are purely read-only operations (reading markdown files, grepping source code). No cleanup needed.
 
 #### 4b. Step Quality
 
-Steps are generally specific and actionable. Each test_execution step has a validation field.
+Steps are specific and actionable. Each test_execution step has a validation field. Content-analysis steps (scenarios 6 and 10) now include concrete algorithmic descriptions for their comparison logic.
 
 #### 4c. Logical Flow
 
@@ -231,45 +223,22 @@ All scenarios have at least 2 assertions with specific descriptions and conditio
 #### Findings
 
 - **D4-4b-001** (severity: MINOR, dimension: Test Step Quality)
-  - **Description:** Several test_execution steps use high-level pseudo-commands rather than concrete Go code references. While acceptable at the design phase, this reduces code generation precision.
-  - **Evidence:** Scenario 6 TEST-02: `command: "Compare scenario descriptions for overlap"`, Scenario 10 TEST-02: `command: "Check each question for specificity (references to scenarios/approaches)"`.
-  - **Remediation:** Consider adding more specific algorithmic descriptions for content-analysis steps (e.g., specify what string matching or NLP heuristic would be used).
-  - **Actionable:** true
-
-- **D4-4b-002** (severity: MINOR, dimension: Test Step Quality)
-  - **Description:** Scenario 1 (TS-GH-13-001) and Scenario 11 (TS-GH-13-011) have significant overlap in test scope. Both verify that relative markdown links resolve to existing files.
-  - **Evidence:** Scenario 1 test_objective: "Verify cross-references...are valid and link targets exist". Scenario 11 test_objective: "Verify all relative markdown links resolve and markdown formatting renders correctly". The link validation portion overlaps.
-  - **Remediation:** Clarify the distinct scope of each: Scenario 1 focuses specifically on named cross-references (security-threat-model.md, agent-architecture.md, ADRs) while Scenario 11 is a comprehensive markdown link and formatting check. Consider documenting the scope boundary more explicitly.
-  - **Actionable:** true
+  - **Description:** Scenario 1 (TS-GH-13-001) and Scenario 11 (TS-GH-13-011) have overlapping scope in link validation. Scenario 11 now documents this relationship in its test_objective.what field, clarifying that it is a superset validation.
+  - **Evidence:** Scenario 11 test_objective.what: "Note: This is a superset validation that complements Scenario 1 (TS-GH-13-001)..."
+  - **Remediation:** The scope boundary is now documented. No further action required.
+  - **Actionable:** false
 
 ---
 
 ### Dimension 4.5: STD Content Policy (Weight: 10%)
 
-**Score: 40/100**
+**Score: 100/100**
 
 #### 4.5a. Banned Content in STD YAML and Stub Files
 
 ##### STD YAML
 
-- **D4.5-4.5a-001** (severity: CRITICAL, dimension: STD Content Policy)
-  - **Description:** The `document_metadata` section contains a `related_prs` field with full PR URLs. PR URLs are implementation artifacts that belong in the STP (which references them in Section I), not in the STD. The STD describes what to test, not what code changed.
-  - **Evidence:**
-    ```yaml
-    related_prs:
-      - repo: "fullsend-ai/fullsend"
-        pr_number: 2011
-        url: "https://github.com/fullsend-ai/fullsend/pull/2011"
-        title: "MCP Configuration Drift Problem Document"
-        merged: false
-      - repo: "guyoron1/fullsend"
-        pr_number: 13
-        url: "https://github.com/guyoron1/fullsend/pull/13"
-        title: "MCP Configuration Drift Problem Document (fork)"
-        merged: false
-    ```
-  - **Remediation:** Remove the entire `related_prs` section from `document_metadata`. PR references belong in the STP metadata, not the STD.
-  - **Actionable:** true
+No PR URLs, branch names, commit SHAs, or developer names found in `document_metadata`. The `related_prs` section has been removed. PASS.
 
 ##### Stub Files
 
@@ -289,7 +258,7 @@ No infrastructure creation, cluster setup, or feature gate enablement code found
 
 ### Dimension 5: PSE Docstring Quality (Weight: 10%)
 
-**Score: 80/100**
+**Score: 90/100**
 
 **Go Stubs:** 3 files reviewed, 11 test functions total.
 
@@ -321,25 +290,17 @@ No infrastructure creation, cluster setup, or feature gate enablement code found
 
 All 11 test functions have PSE docstrings with Preconditions, Steps, and Expected sections. All test_ids are embedded in the t.Skip message in the correct format.
 
+Preconditions are now phrased as state conditions (not action-descriptions). Duplicated preconditions that overlapped with module-level preconditions have been removed or replaced with "(No additional preconditions beyond module-level)".
+
+Stub markers (`tier1`) are consistent with the STD tier naming ("Tier 1").
+
 #### Findings
 
-- **D5-5a-001** (severity: MAJOR, dimension: PSE Docstring Quality)
-  - **Description:** Stub file marker comments use `tier1` but the STD YAML uses `tier: "Functional"`. The markers should be consistent with the tier naming used in the STD.
-  - **Evidence:** All 3 stub files contain `Markers: - tier1` in the module-level comment block, but the YAML says `tier: "Functional"`.
-  - **Remediation:** Align stub markers with STD tier naming. If tier is corrected to "Tier 1" per D2-2b-001, then `tier1` markers are correct. If "Functional" is retained, markers should say `functional`.
-  - **Actionable:** true
-
-- **D5-5c-001** (severity: MAJOR, dimension: PSE Docstring Quality)
-  - **Description:** Some PSE Preconditions sections include items that are setup actions rather than pre-existing state conditions. For example, "Document's claims about ToolAllowlistPreToolHook extracted" describes an action (extracting claims), not a precondition (the document exists and contains claims about the hook).
-  - **Evidence:** codebase_claim_verification_stubs_test.go, TestToolAllowlistHookClaims precondition: "Document's claims about ToolAllowlistPreToolHook extracted". This describes a completed action, not a state condition.
-  - **Remediation:** Rephrase action-like preconditions as state conditions. Example: "Document's claims about ToolAllowlistPreToolHook extracted" should be "mcp-config-drift.md contains claims about ToolAllowlistPreToolHook filtering mechanism".
-  - **Actionable:** true
-
-- **D5-5c-002** (severity: MAJOR, dimension: PSE Docstring Quality)
-  - **Description:** PSE Preconditions in the per-test docstrings partially duplicate the module-level preconditions. For example, "mcp-config-drift.md content loaded" appears as a per-test precondition in multiple tests, but "docs/problems/mcp-config-drift.md exists in the PR branch" is already stated at the module level. The per-test precondition describes a setup action ("content loaded") rather than a unique precondition.
-  - **Evidence:** Scenarios 5, 6, 9, 10, 11 all have "mcp-config-drift.md content loaded" as a precondition when the module-level already covers "docs/problems/mcp-config-drift.md exists in the PR branch".
-  - **Remediation:** Remove duplicated preconditions from per-test PSE blocks. Keep only test-specific preconditions that go beyond the module-level shared preconditions.
-  - **Actionable:** true
+- **D5-5a-001** (severity: MINOR, dimension: PSE Docstring Quality)
+  - **Description:** Three tests in content_analysis_validation_stubs_test.go and one in cross_reference_validation_stubs_test.go use "(No additional preconditions beyond module-level)" as their preconditions text. While technically correct, this is a stylistic choice that could alternatively be omitted entirely if the module-level preconditions are sufficient.
+  - **Evidence:** TestAttackScenariosDistinct, TestNoSensitiveDisclosure, TestOpenQuestionsComplete, TestMarkdownLinksAndFormatting all use this phrasing.
+  - **Remediation:** No action required. The explicit note avoids ambiguity about whether preconditions were accidentally omitted.
+  - **Actionable:** false
 
 **Python Stubs:** N/A (not generated for this project)
 
@@ -347,7 +308,7 @@ All 11 test functions have PSE docstrings with Preconditions, Steps, and Expecte
 
 ### Dimension 6: Code Generation Readiness (Weight: 5%)
 
-**Score: 85/100**
+**Score: 95/100**
 
 #### 6a. Variable Declarations
 
@@ -356,7 +317,7 @@ All closure_scope variables use valid Go types (string, []string). Initializatio
 #### 6b. Import Completeness
 
 `code_generation_config.imports` includes:
-- Standard: context, os, path/filepath, strings, testing
+- Standard: context, os, os/exec, path/filepath, regexp, strings, testing
 - Test framework: testify/assert, testify/require
 - Project: internal/config, internal/forge
 
@@ -366,16 +327,10 @@ Scenarios reference helpers: filepath, strings, os/exec, regexp.
 |:------------|:-----------|:-------|
 | filepath | path/filepath (standard) | PASS |
 | strings | strings (standard) | PASS |
-| regexp | NOT in imports | WARN |
-| os/exec | NOT in imports | WARN |
+| regexp | regexp (standard) | PASS |
+| os/exec | os/exec (standard) | PASS |
 
-#### Findings
-
-- **D6-6b-001** (severity: MAJOR, dimension: Code Generation Readiness)
-  - **Description:** Two helper libraries referenced in scenario patterns are missing from `code_generation_config.imports`: `regexp` (used by scenario 11) and `os/exec` (used by scenarios 2, 3, 7, 8).
-  - **Evidence:** Scenario 11 helpers_required includes `regexp` with functions `Compile, FindAllStringSubmatch`. Scenarios 2,3,7,8 helpers_required include `os/exec` with function `Command`. Neither `regexp` nor `os/exec` appears in `code_generation_config.imports.standard`.
-  - **Remediation:** Add `"regexp"` and `"os/exec"` to `code_generation_config.imports.standard`.
-  - **Actionable:** true
+All helper libraries are now present in the imports. PASS.
 
 #### 6c. Code Structure Validity
 
@@ -389,27 +344,13 @@ All scenarios are read-only file system and grep operations. The default timeout
 
 ## Recommendations
 
-1. **[CRITICAL]** Remove `related_prs` from `document_metadata` -- PR URLs are implementation artifacts that do not belong in the STD. -- **Remediation:** Delete the entire `related_prs` block (lines 14-24 of the YAML). -- **Actionable:** yes
+1. **[MINOR]** The `classification` field in all scenarios is informational and non-standard. — **Remediation:** No action required. — **Actionable:** no
 
-2. **[MAJOR]** Replace `tier: "Functional"` with `tier: "Tier 1"` in all 11 scenarios and update metadata fields accordingly. -- **Remediation:** Change all `tier: "Functional"` to `tier: "Tier 1"`. Rename `functional_count` to `tier_1_count` and `e2e_count` to `tier_2_count` in metadata. -- **Actionable:** yes
+2. **[MINOR]** Empty decorator arrays are acceptable for the `testing` framework but could include tier markers if the project adopts decorator-based classification. — **Remediation:** No action required unless project conventions change. — **Actionable:** no
 
-3. **[MAJOR]** Add missing imports `regexp` and `os/exec` to `code_generation_config.imports.standard`. -- **Remediation:** Append `"regexp"` and `"os/exec"` to the standard imports list. -- **Actionable:** yes
+3. **[MINOR]** Scenario 1 and Scenario 11 overlap in link validation scope. The relationship is now documented in Scenario 11's test_objective. — **Remediation:** No further action required. — **Actionable:** no
 
-4. **[MAJOR]** Fix PSE precondition phrasing from action-descriptions to state conditions in codebase_claim_verification_stubs_test.go. -- **Remediation:** Rephrase "extracted" preconditions as state assertions (e.g., "Document contains claims about X"). -- **Actionable:** yes
-
-5. **[MAJOR]** Remove duplicated preconditions from per-test PSE blocks that already appear at module level. -- **Remediation:** Keep only test-specific preconditions; rely on module-level preconditions for shared state. -- **Actionable:** yes
-
-6. **[MAJOR]** Align stub marker annotations with STD tier naming convention. -- **Remediation:** Once tier naming is resolved (Recommendation 2), ensure stub markers match. -- **Actionable:** yes
-
-7. **[MINOR]** Clarify scope boundary between Scenario 1 (TS-GH-13-001) and Scenario 11 (TS-GH-13-011) to avoid test overlap. -- **Remediation:** Add explicit scope notes distinguishing named cross-reference validation from comprehensive link checking. -- **Actionable:** yes
-
-8. **[MINOR]** Add more specific algorithmic descriptions for content-analysis test steps (scenarios 6, 10). -- **Remediation:** Replace high-level pseudo-commands with concrete algorithmic descriptions. -- **Actionable:** yes
-
-9. **[MINOR]** The non-standard `classification` field in all scenarios is harmless but represents schema extension. -- **Remediation:** No action required. -- **Actionable:** no
-
-10. **[MINOR]** Empty decorator arrays are acceptable for the `testing` framework but could include tier markers if the project adopts decorator-based classification. -- **Remediation:** No action required unless project conventions change. -- **Actionable:** no
-
-11. **[MINOR]** Consider documenting why Scenario 1 and Scenario 11 both validate markdown links but at different specificity levels. -- **Remediation:** Add a note in scenario 11 that it is a superset validation that includes formatting checks beyond link resolution. -- **Actionable:** yes
+4. **[MINOR]** "(No additional preconditions beyond module-level)" is used as a placeholder in some per-test PSE blocks. — **Remediation:** No action required; the explicit note is acceptable. — **Actionable:** no
 
 ---
 
@@ -423,6 +364,6 @@ All scenarios are read-only file system and grep operations. The default timeout
 | Python stubs present | NO (not expected) |
 | Pattern library available | NO |
 | All scenarios reviewed | YES |
-| Project review rules loaded | NO (dynamic extraction, default_ratio ~0.65) |
+| Project review rules loaded | YES (dynamic extraction, default_ratio ~0.52) |
 
-**Confidence rationale:** Confidence is LOW because (1) no pattern library (`tier1_patterns.yaml`) is available for pattern validation, (2) review rules are using generic defaults with a `default_ratio` of 0.65 (65% of rules from defaults), and (3) no `review_rules.yaml` static override exists. Review precision is reduced: 65% of rules using generic defaults. Consider adding project-specific `review_rules.yaml` or enabling `repo_files_fetch` to improve review precision.
+**Confidence rationale:** Confidence is MEDIUM because (1) no pattern library (`tier1_patterns.yaml`) is available for pattern validation, and (2) review rules have a `default_ratio` of 0.52 (52% of rules from defaults). All structural, traceability, and content policy checks pass with high confidence. Review precision could be improved by adding project-specific `review_rules.yaml` or a pattern library. Review precision note: 52% of rules using generic defaults. Consider adding project-specific `review_rules.yaml` or enabling `repo_files_fetch` to improve review precision.
