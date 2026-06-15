@@ -1,0 +1,14 @@
+status: success
+jira_id: GH-13
+file_path: /sandbox/workspace/output/GH-13_test_plan.md
+test_counts:
+  tier1: 8
+  tier2: 0
+  total: 8
+notes: >
+  Documentation-only PR — MCP configuration drift problem document.
+  All test scenarios are Functional (document accuracy and cross-reference validation).
+  No End-to-End scenarios needed as there are no code changes.
+  LSP analysis confirmed security hooks architecture (ToolAllowlistPreToolHook,
+  SSRFPreToolHook, GenerateClaudeSettings) in internal/security/hooks.go
+  with callers in internal/cli/run.go.
