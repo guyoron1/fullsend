@@ -1,0 +1,24 @@
+status: success
+jira_id: GH-2247
+file_path: /sandbox/workspace/output/GH-2247_test_plan.md
+test_counts:
+  functional: 25
+  end_to_end: 0
+  total: 25
+requirements_count: 8
+validation:
+  structure: pass
+  content: pass
+  warnings:
+    - "All scenarios classified as Functional — no End-to-End scenarios (appropriate for shell script bug fix)"
+source_data:
+  issue: https://github.com/fullsend-ai/fullsend/issues/2247
+  fix_pr: https://github.com/fullsend-ai/fullsend/pull/2254
+  bogus_pr: https://github.com/fullsend-ai/fullsend/pull/2101
+  lsp_calls: 4
+  files_analyzed:
+    - internal/scaffold/fullsend-repo/scripts/reconcile-repos.sh
+    - internal/scaffold/fullsend-repo/scripts/reconcile-repos-test.sh
+    - internal/scaffold/fullsend-repo/templates/shim-workflow-call.yaml
+    - internal/scaffold/scaffold.go
+    - internal/dispatch/dispatch.go
