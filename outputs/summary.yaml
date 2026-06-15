@@ -1,0 +1,17 @@
+status: success
+jira_id: GH-11
+file_path: /sandbox/workspace/output/GH-11_test_plan.md
+test_counts:
+  functional: 11
+  end_to_end: 0
+  total: 11
+lsp_analysis: true
+lsp_findings:
+  - "gcp.Client has no QuotaProject field (compilation error)"
+  - "GetProjectNumber called by provisionSelfManaged in provisioner.go:310"
+  - "3 existing test cases in gcp_test.go cover success, empty, and error paths"
+key_observations:
+  - "PR will not compile as written - gcp.Client struct missing QuotaProject field"
+  - "Change is mirrored from upstream PR #2231 which likely includes the struct change"
+  - "Single file modified: internal/dispatch/gcf/gcp.go"
+  - "Single function modified: (*LiveGCFClient).GetProjectNumber"
