@@ -1,0 +1,12 @@
+status: success
+jira_id: GH-10
+file_path: /sandbox/workspace/output/GH-10_test_plan.md
+test_counts:
+  unit: 8
+  tier1: 3
+  tier2: 0
+  total: 11
+requirements_covered: 5
+changed_files:
+  - internal/sandbox/sandbox.go
+  - internal/sandbox/sandbox_test.go

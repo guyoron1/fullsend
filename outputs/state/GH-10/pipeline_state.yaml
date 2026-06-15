@@ -1,0 +1,61 @@
+version: 1
+ticket_id: "GH-10"
+project_id: "fullsend"
+display_name: "FullSend"
+created: "2026-06-15T14:45:00Z"
+updated: "2026-06-15T14:50:00Z"
+
+phases:
+  stp:
+    status: completed
+    started: "2026-06-15T14:45:00Z"
+    completed: "2026-06-15T14:50:00Z"
+    output: "outputs/stp/GH-10/GH-10_test_plan.md"
+    output_checksum: "sha256:6ef6156cf7e38cd954705a2db431c663ee9702b678390b6bdec9baa205367d3f"
+    skills_used:
+      - project-resolver
+      - pr-analyzer
+      - lsp-tracer
+      - requirement-mapper
+      - scenario-builder
+      - tier-classifier
+      - template-engine
+      - table-generator
+      - output-validator
+    error: null
+
+  stp_review:
+    status: pending
+    verdict: null
+    findings: null
+    error: null
+
+  stp_refine:
+    status: pending
+    error: null
+
+  std:
+    status: pending
+    output: null
+    error: null
+
+  std_review:
+    status: pending
+    verdict: null
+    findings: null
+    error: null
+
+  go_codegen:
+    status: pending
+    output: null
+    error: null
+
+  python_codegen:
+    status: pending
+    output: null
+    error: null
+
+  cluster_tests:
+    status: pending
+    output: null
+    error: null
