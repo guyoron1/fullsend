@@ -1,0 +1,1396 @@
+---
+document_metadata:
+  std_version: "2.1-enhanced"
+  generated_date: "2026-06-15"
+  jira_issue: "GH-13"
+  jira_summary: "MCP Configuration Drift Problem Document - Quality Engineering Plan"
+  source_bugs: []
+
+  stp_reference:
+    file: "outputs/stp/GH-13/GH-13_test_plan.md"
+    version: "v1"
+    sections_covered: "Section III - Requirements-to-Tests Mapping"
+
+  related_prs:
+    - repo: "fullsend-ai/fullsend"
+      pr_number: 2011
+      url: "https://github.com/fullsend-ai/fullsend/pull/2011"
+      title: "MCP Configuration Drift Problem Document"
+      merged: false
+    - repo: "guyoron1/fullsend"
+      pr_number: 13
+      url: "https://github.com/guyoron1/fullsend/pull/13"
+      title: "MCP Configuration Drift Problem Document (fork)"
+      merged: false
+
+  total_scenarios: 11
+  functional_count: 11
+  e2e_count: 0
+  p0_count: 3
+  p1_count: 5
+  p2_count: 3
+
+---
+code_generation_config:
+  std_version: "2.1-enhanced"
+  framework: "testing"
+  assertion_library: "testify"
+  language: "go"
+  package_name: "tests"
+  context_init: "context.Background()"
+  imports:
+    standard:
+      - "context"
+      - "os"
+      - "path/filepath"
+      - "strings"
+      - "testing"
+    test_framework:
+      - "github.com/stretchr/testify/assert"
+      - "github.com/stretchr/testify/require"
+    project:
+      - "github.com/fullsend-ai/fullsend/internal/config"
+      - "github.com/fullsend-ai/fullsend/internal/forge"
+  timeout_constants:
+    default: "30s"
+    long: "60s"
+
+---
+common_preconditions:
+  infrastructure:
+    - name: "Repository source code"
+      requirement: "Full clone of fullsend-ai/fullsend repository"
+      validation: "git rev-parse --is-inside-work-tree"
+
+    - name: "Problem document"
+      requirement: "docs/problems/mcp-config-drift.md exists in the PR branch"
+      validation: "test -f docs/problems/mcp-config-drift.md"
+
+    - name: "Referenced documents"
+      requirement: "Existing problem docs and ADRs referenced by the document must be present"
+      validation: "test -f docs/problems/security-threat-model.md && test -f docs/problems/agent-architecture.md"
+
+  operators: []
+
+  cluster_configuration:
+    topology: "N/A"
+    cpu_features: "N/A"
+    storage: "N/A"
+    network: "N/A"
+    special_requirements:
+      - "Access to repository source code for cross-reference validation"
+
+  rbac_requirements: []
+
+---
+scenarios:
+  - scenario_id: "1"
+    test_id: "TS-GH-13-001"
+    tier: "Functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-13"
+
+    patterns:
+      primary: "doc-cross-reference-validation"
+      secondary:
+        - "file-existence-check"
+        - "link-resolution"
+      helpers_required:
+        - name: "filepath"
+          functions: ["Join", "Glob"]
+          purpose: "Resolve relative file paths for cross-reference validation"
+      decorators: []
+
+    variables:
+      closure_scope:
+        - name: "repoRoot"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "TestExecution"]
+          comment: "Root directory of the repository"
+        - name: "docPath"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestExecution"]
+          comment: "Path to the MCP config drift document"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "TestMCPConfigDriftDocument"
+        description: "MCP Configuration Drift Problem Document Validation"
+        decorators: []
+      context:
+        description: "Cross-reference validation"
+        decorators: []
+      it:
+        description: "should verify all cross-references to security-threat-model.md, agent-architecture.md, and ADRs 0016/0017 are valid"
+        test_id_format: "[test_id:TS-GH-13-001]"
+
+    code_structure: |
+      func TestCrossReferencesValid(t *testing.T) {
+        // Setup: locate repo root and document
+        // Test: parse markdown links, verify each target file exists
+        // Assert: all referenced files exist
+      }
+
+    test_objective:
+      title: "Verify cross-references to security-threat-model.md, agent-architecture.md, and ADRs 0016/0017 are valid and link targets exist"
+      what: |
+        Validates that all cross-references within the MCP configuration drift problem document
+        point to existing files in the repository. This includes references to security-threat-model.md,
+        agent-architecture.md, governance.md, ADR 0016 (unidirectional control flow), and ADR 0017
+        (credential isolation). Each relative markdown link is resolved and verified to exist on disk.
+      why: |
+        Broken cross-references undermine the document's value as a security analysis resource.
+        If links to foundational ADRs or related problem docs are invalid, readers cannot follow
+        the analytical chain from problem description to architectural decisions, reducing the
+        document's utility for informing future defense implementations.
+      acceptance_criteria:
+        - "All relative markdown links in mcp-config-drift.md resolve to existing files"
+        - "ADR 0016 and ADR 0017 references point to valid ADR files in the docs/adrs/ directory"
+        - "References to security-threat-model.md and agent-architecture.md resolve correctly"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with file system validation"
+
+    specific_preconditions:
+      - name: "ADR files"
+        requirement: "ADR 0016 and ADR 0017 must exist in docs/adrs/ or equivalent directory"
+        validation: "find docs/ -name '*0016*' -o -name '*0017*'"
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Determine repository root directory"
+          command: "git rev-parse --show-toplevel"
+          validation: "Returns valid directory path"
+        - step_id: "SETUP-02"
+          action: "Read mcp-config-drift.md content"
+          command: "cat docs/problems/mcp-config-drift.md"
+          validation: "File content loaded successfully"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Extract all relative markdown links from the document"
+          command: "Parse markdown for [text](relative/path) patterns"
+          validation: "List of relative paths extracted"
+        - step_id: "TEST-02"
+          action: "Resolve each relative link against the document's directory"
+          command: "filepath.Join(docDir, relativePath) for each link"
+          validation: "All paths resolved to absolute paths"
+        - step_id: "TEST-03"
+          action: "Verify each resolved path exists on the filesystem"
+          command: "os.Stat(resolvedPath) for each path"
+          validation: "All referenced files exist (no ENOENT errors)"
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "All cross-referenced documents exist in the repository"
+        condition: "Every relative link in mcp-config-drift.md resolves to an existing file"
+        failure_impact: "Broken links indicate document references stale or incorrect paths"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "ADR 0016 and ADR 0017 are referenced and exist"
+        condition: "Files matching ADR 0016 and 0017 naming patterns exist in the ADR directory"
+        failure_impact: "Missing ADRs break the security architecture reference chain"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "git"
+      scenario_specific_rbac: []
+
+  - scenario_id: "2"
+    test_id: "TS-GH-13-002"
+    tier: "Functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-13"
+
+    patterns:
+      primary: "codebase-claim-verification"
+      secondary:
+        - "source-code-grep"
+        - "struct-field-analysis"
+      helpers_required:
+        - name: "os/exec"
+          functions: ["Command"]
+          purpose: "Execute grep/search commands against codebase"
+      decorators: []
+
+    variables:
+      closure_scope:
+        - name: "repoRoot"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestExecution"]
+          comment: "Root directory of the repository"
+        - name: "hooksSource"
+          type: "string"
+          initialized_in: "TestExecution"
+          used_in: ["TestExecution"]
+          comment: "Content of security hooks source file"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "TestMCPConfigDriftDocument"
+        description: "MCP Configuration Drift Problem Document Validation"
+        decorators: []
+      context:
+        description: "Tool allowlist hook accuracy"
+        decorators: []
+      it:
+        description: "should verify document claims about tool allowlist hook operating mechanism match the codebase"
+        test_id_format: "[test_id:TS-GH-13-002]"
+
+    code_structure: |
+      func TestToolAllowlistHookClaims(t *testing.T) {
+        // Setup: read document claims about ToolAllowlistPreToolHook
+        // Test: grep codebase for ToolAllowlistPreToolHook implementation
+        // Assert: hook filters by tool names (not server endpoints) as claimed
+      }
+
+    test_objective:
+      title: "Verify the document's claims about the tool allowlist hook's operating mechanism are accurate"
+      what: |
+        Validates that the MCP config drift document's claims about ToolAllowlistPreToolHook are accurate.
+        Specifically, the document asserts that this hook filters by tool names rather than server endpoints.
+        This test reads the actual source code of the hook implementation and verifies the filtering mechanism
+        matches the document's description.
+      why: |
+        Inaccurate claims about security hook behavior could lead engineers to build defenses on false
+        assumptions. If the document incorrectly describes how the tool allowlist operates, subsequent
+        security implementations based on this analysis would have architectural gaps.
+      acceptance_criteria:
+        - "ToolAllowlistPreToolHook exists in the codebase"
+        - "The hook implementation confirms it filters by tool names"
+        - "The hook does NOT filter by server endpoints, consistent with document claims"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with source code analysis"
+
+    specific_preconditions:
+      - name: "Security hooks source"
+        requirement: "internal/security/hooks.go must exist"
+        validation: "test -f internal/security/hooks.go"
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Read the document's claims about ToolAllowlistPreToolHook"
+          command: "Parse mcp-config-drift.md for tool allowlist hook references"
+          validation: "Claims extracted: hook filters by tool names, not server endpoints"
+        - step_id: "SETUP-02"
+          action: "Locate the ToolAllowlistPreToolHook implementation"
+          command: "grep -r 'ToolAllowlistPreToolHook\\|ToolAllowlist' internal/"
+          validation: "Hook implementation file found"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Read the hook implementation source code"
+          command: "cat internal/security/hooks.go"
+          validation: "Source code loaded"
+        - step_id: "TEST-02"
+          action: "Analyze the hook's filtering mechanism"
+          command: "Search for tool name filtering logic (e.g., tool.Name, allowedTools)"
+          validation: "Hook filters based on tool name identifiers"
+        - step_id: "TEST-03"
+          action: "Verify no server endpoint filtering exists in the hook"
+          command: "Search for server URL/endpoint filtering in hook implementation"
+          validation: "No endpoint-based filtering found in the hook"
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "ToolAllowlistPreToolHook exists in the codebase"
+        condition: "grep finds ToolAllowlistPreToolHook definition in internal/security/"
+        failure_impact: "Document references a non-existent security mechanism"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "Hook filters by tool names as documented"
+        condition: "Hook implementation contains tool-name-based filtering logic"
+        failure_impact: "Document misrepresents the hook's filtering mechanism"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "grep"
+      scenario_specific_rbac: []
+
+  - scenario_id: "3"
+    test_id: "TS-GH-13-003"
+    tier: "Functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-13"
+
+    patterns:
+      primary: "codebase-claim-verification"
+      secondary:
+        - "source-code-grep"
+        - "ssrf-validator-analysis"
+      helpers_required:
+        - name: "os/exec"
+          functions: ["Command"]
+          purpose: "Execute search commands against codebase"
+      decorators: []
+
+    variables:
+      closure_scope:
+        - name: "repoRoot"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestExecution"]
+          comment: "Root directory of the repository"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "TestMCPConfigDriftDocument"
+        description: "MCP Configuration Drift Problem Document Validation"
+        decorators: []
+      context:
+        description: "SSRF validator coverage accuracy"
+        decorators: []
+      it:
+        description: "should verify document claims about SSRF validation scope are accurate"
+        test_id_format: "[test_id:TS-GH-13-003]"
+
+    code_structure: |
+      func TestSSRFValidatorCoverageClaims(t *testing.T) {
+        // Setup: read document claims about SSRF validation scope
+        // Test: analyze codebase for SSRF validator usage
+        // Assert: SSRF covers Bash/WebFetch but not MCP connections as claimed
+      }
+
+    test_objective:
+      title: "Verify the document's claims about SSRF validation scope are accurate"
+      what: |
+        Validates that the document's assertions about SSRF validation coverage are correct.
+        The document claims SSRF validation covers Bash and WebFetch tools but does not extend
+        to MCP connections. This test examines the actual SSRF validator implementation and its
+        integration points to confirm this scope.
+      why: |
+        If the SSRF validation scope is incorrectly documented, the gap analysis for MCP connections
+        would be flawed. Accurate understanding of current SSRF coverage is essential for determining
+        what additional protections MCP connections require.
+      acceptance_criteria:
+        - "SSRF validator exists in the codebase"
+        - "SSRF validator is integrated with Bash tool execution"
+        - "SSRF validator is integrated with WebFetch tool execution"
+        - "SSRF validator is NOT integrated with MCP connection establishment"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with source code analysis"
+
+    specific_preconditions:
+      - name: "SSRF validator source"
+        requirement: "SSRF validation code must exist in the codebase"
+        validation: "grep -r 'SSRF\\|ssrf' internal/"
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Read the document's claims about SSRF validation scope"
+          command: "Parse mcp-config-drift.md for SSRF references"
+          validation: "Claims extracted: SSRF covers Bash and WebFetch but not MCP"
+        - step_id: "SETUP-02"
+          action: "Locate SSRF validator implementation in codebase"
+          command: "grep -r 'SSRF\\|ssrf\\|SSRFValidator' internal/"
+          validation: "SSRF validator files located"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify SSRF validator is applied to Bash tool"
+          command: "Search for SSRF validation in Bash tool handler"
+          validation: "SSRF validation present in Bash execution path"
+        - step_id: "TEST-02"
+          action: "Verify SSRF validator is applied to WebFetch tool"
+          command: "Search for SSRF validation in WebFetch tool handler"
+          validation: "SSRF validation present in WebFetch execution path"
+        - step_id: "TEST-03"
+          action: "Verify SSRF validator is NOT applied to MCP connections"
+          command: "Search for SSRF validation in MCP connection/transport code"
+          validation: "No SSRF validation found in MCP connection path"
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "SSRF validator covers Bash tool as documented"
+        condition: "SSRF validation code found in Bash tool execution path"
+        failure_impact: "Document incorrectly claims SSRF coverage for Bash"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "SSRF validator covers WebFetch tool as documented"
+        condition: "SSRF validation code found in WebFetch tool execution path"
+        failure_impact: "Document incorrectly claims SSRF coverage for WebFetch"
+      - assertion_id: "ASSERT-03"
+        priority: "P0"
+        description: "SSRF validator does NOT cover MCP connections as documented"
+        condition: "No SSRF validation found in MCP connection/transport code"
+        failure_impact: "Document incorrectly claims MCP is unprotected by SSRF validation"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "grep"
+      scenario_specific_rbac: []
+
+  - scenario_id: "4"
+    test_id: "TS-GH-13-004"
+    tier: "Functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-13"
+
+    patterns:
+      primary: "doc-index-validation"
+      secondary:
+        - "readme-link-check"
+        - "ordering-validation"
+      helpers_required:
+        - name: "strings"
+          functions: ["Contains", "Index"]
+          purpose: "Validate link presence and ordering in README"
+      decorators: []
+
+    variables:
+      closure_scope:
+        - name: "readmeContent"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestExecution"]
+          comment: "Content of the README.md file"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "TestMCPConfigDriftDocument"
+        description: "MCP Configuration Drift Problem Document Validation"
+        decorators: []
+      context:
+        description: "README index entry validation"
+        decorators: []
+      it:
+        description: "should verify README.md index entry links correctly to mcp-config-drift.md"
+        test_id_format: "[test_id:TS-GH-13-004]"
+
+    code_structure: |
+      func TestReadmeIndexEntry(t *testing.T) {
+        // Setup: read README.md
+        // Test: find MCP config drift entry, verify link target
+        // Assert: link resolves and ordering is correct
+      }
+
+    test_objective:
+      title: "Verify the MCP Configuration Drift entry in README.md links correctly and maintains ordering"
+      what: |
+        Validates that the README.md file contains an index entry for the MCP Configuration Drift
+        problem document that correctly links to docs/problems/mcp-config-drift.md. Also verifies
+        that the entry maintains alphabetical or logical ordering with adjacent entries in the
+        problems index.
+      why: |
+        The README serves as the primary navigation index for problem documents. A broken or
+        misplaced entry would make the new document difficult to discover, reducing its value
+        as a shared security analysis resource.
+      acceptance_criteria:
+        - "README.md contains an entry referencing mcp-config-drift.md"
+        - "The link in the entry resolves to the actual document path"
+        - "The entry maintains consistent ordering with adjacent entries"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with file content validation"
+
+    specific_preconditions:
+      - name: "README.md"
+        requirement: "README.md must exist at repository root"
+        validation: "test -f README.md"
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Read README.md content"
+          command: "cat README.md"
+          validation: "README content loaded"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Search for MCP Configuration Drift entry in README"
+          command: "grep -i 'mcp.*config.*drift\\|mcp-config-drift' README.md"
+          validation: "Entry found in README"
+        - step_id: "TEST-02"
+          action: "Extract link target from the entry"
+          command: "Parse markdown link syntax to get target path"
+          validation: "Link target is docs/problems/mcp-config-drift.md or equivalent"
+        - step_id: "TEST-03"
+          action: "Verify link target file exists"
+          command: "test -f <extracted_path>"
+          validation: "Linked file exists"
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "README.md contains MCP config drift entry"
+        condition: "Entry mentioning MCP configuration drift exists in README"
+        failure_impact: "Document not discoverable via main README index"
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "Entry link resolves to actual document"
+        condition: "Markdown link target path resolves to existing file"
+        failure_impact: "README has broken link to the new document"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: "5"
+    test_id: "TS-GH-13-005"
+    tier: "Functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-13"
+
+    patterns:
+      primary: "doc-structure-validation"
+      secondary:
+        - "heading-extraction"
+        - "section-comparison"
+      helpers_required:
+        - name: "strings"
+          functions: ["Split", "Contains", "HasPrefix"]
+          purpose: "Parse and compare markdown heading structures"
+      decorators: []
+
+    variables:
+      closure_scope:
+        - name: "mcpDocHeadings"
+          type: "[]string"
+          initialized_in: "TestExecution"
+          used_in: ["TestExecution"]
+          comment: "Section headings from mcp-config-drift.md"
+        - name: "referenceDocHeadings"
+          type: "[]string"
+          initialized_in: "TestExecution"
+          used_in: ["TestExecution"]
+          comment: "Section headings from existing problem doc for comparison"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "TestMCPConfigDriftDocument"
+        description: "MCP Configuration Drift Problem Document Validation"
+        decorators: []
+      context:
+        description: "Document structure format compliance"
+        decorators: []
+      it:
+        description: "should verify document structure matches established problem doc format"
+        test_id_format: "[test_id:TS-GH-13-005]"
+
+    code_structure: |
+      func TestDocumentStructureFormat(t *testing.T) {
+        // Setup: read mcp-config-drift.md and a reference problem doc
+        // Test: extract headings from both, compare structure
+        // Assert: mcp-config-drift.md follows the established format
+      }
+
+    test_objective:
+      title: "Verify document structure matches the format of existing problem docs"
+      what: |
+        Compares the section structure of mcp-config-drift.md against existing problem documents
+        (security-threat-model.md, agent-architecture.md) to ensure it follows the established format.
+        Checks for expected sections including headings, related-doc links section, and open questions format.
+      why: |
+        Consistent document structure across problem docs ensures predictability for readers and
+        enables automated tooling that depends on standard section layouts. Deviation from the
+        format makes the document harder to navigate and integrate with documentation pipelines.
+      acceptance_criteria:
+        - "Document contains standard problem doc section headings"
+        - "Related-doc links section is present and properly formatted"
+        - "Open questions section follows the established format"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with markdown structure analysis"
+
+    specific_preconditions:
+      - name: "Reference problem documents"
+        requirement: "At least one existing problem doc for structural comparison"
+        validation: "test -f docs/problems/security-threat-model.md"
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Read mcp-config-drift.md"
+          command: "cat docs/problems/mcp-config-drift.md"
+          validation: "Document content loaded"
+        - step_id: "SETUP-02"
+          action: "Read reference problem document for structure comparison"
+          command: "cat docs/problems/security-threat-model.md"
+          validation: "Reference document content loaded"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Extract section headings from mcp-config-drift.md"
+          command: "grep '^#' docs/problems/mcp-config-drift.md"
+          validation: "List of headings extracted"
+        - step_id: "TEST-02"
+          action: "Extract section headings from reference document"
+          command: "grep '^#' docs/problems/security-threat-model.md"
+          validation: "Reference headings extracted"
+        - step_id: "TEST-03"
+          action: "Compare structural elements (related docs, open questions)"
+          command: "Verify presence of key structural sections"
+          validation: "Key sections present in mcp-config-drift.md"
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Document contains standard problem doc sections"
+        condition: "Key section headings present (problem statement, analysis, open questions)"
+        failure_impact: "Document deviates from established format, reducing readability"
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "Related documents section is present and formatted correctly"
+        condition: "Related-doc links section uses standard markdown link format"
+        failure_impact: "Missing or malformatted related docs section"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: "6"
+    test_id: "TS-GH-13-006"
+    tier: "Functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-13"
+
+    patterns:
+      primary: "content-analysis-validation"
+      secondary:
+        - "scenario-enumeration"
+        - "threat-model-consistency"
+      helpers_required:
+        - name: "strings"
+          functions: ["Contains", "Count"]
+          purpose: "Identify and count distinct attack scenarios"
+      decorators: []
+
+    variables:
+      closure_scope:
+        - name: "docContent"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestExecution"]
+          comment: "Full content of mcp-config-drift.md"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "TestMCPConfigDriftDocument"
+        description: "MCP Configuration Drift Problem Document Validation"
+        decorators: []
+      context:
+        description: "Attack scenario technical soundness"
+        decorators: []
+      it:
+        description: "should verify attack scenarios describe distinct threat vectors"
+        test_id_format: "[test_id:TS-GH-13-006]"
+
+    code_structure: |
+      func TestAttackScenariosDistinct(t *testing.T) {
+        // Setup: read document and extract attack scenarios section
+        // Test: identify the four attack scenarios, verify distinctness
+        // Assert: each describes a unique threat vector
+      }
+
+    test_objective:
+      title: "Verify attack scenarios describe distinct threat vectors consistent with MCP protocol model"
+      what: |
+        Examines the four attack scenarios described in the document (malicious server injection,
+        endpoint replacement, permission escalation, gradual drift) to verify each describes a
+        distinct threat vector. Checks that scenarios are non-overlapping and consistent with
+        the MCP protocol model.
+      why: |
+        Overlapping or redundant attack scenarios would indicate weak threat analysis and could
+        lead to duplicate or ineffective defenses. Each scenario should represent a unique attack
+        surface to ensure comprehensive coverage of the threat space.
+      acceptance_criteria:
+        - "Four distinct attack scenarios are described in the document"
+        - "Each scenario addresses a different attack vector"
+        - "Scenarios are consistent with the MCP protocol communication model"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with content analysis"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Read mcp-config-drift.md"
+          command: "cat docs/problems/mcp-config-drift.md"
+          validation: "Document content loaded"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Identify and extract the four attack scenarios"
+          command: "Parse document for attack scenario sections"
+          validation: "Four attack scenarios found"
+        - step_id: "TEST-02"
+          action: "Verify each scenario describes a distinct attack vector"
+          command: "Compare scenario descriptions for overlap"
+          validation: "Scenarios are non-overlapping: injection vs replacement vs escalation vs drift"
+        - step_id: "TEST-03"
+          action: "Verify scenarios align with MCP protocol model"
+          command: "Check that scenarios reference MCP concepts (servers, tools, endpoints)"
+          validation: "Scenarios use MCP protocol terminology correctly"
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Exactly four attack scenarios are described"
+        condition: "Document contains four distinct attack scenario sections"
+        failure_impact: "Missing or extra scenarios indicate incomplete threat analysis"
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "Scenarios are non-overlapping"
+        condition: "Each scenario addresses a unique attack surface (injection, replacement, escalation, drift)"
+        failure_impact: "Overlapping scenarios suggest redundant analysis"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: "7"
+    test_id: "TS-GH-13-007"
+    tier: "Functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-13"
+
+    patterns:
+      primary: "codebase-claim-verification"
+      secondary:
+        - "struct-field-analysis"
+        - "source-code-grep"
+      helpers_required:
+        - name: "os/exec"
+          functions: ["Command"]
+          purpose: "Search codebase for struct definitions"
+      decorators: []
+
+    variables:
+      closure_scope:
+        - name: "harnessSource"
+          type: "string"
+          initialized_in: "TestExecution"
+          used_in: ["TestExecution"]
+          comment: "Content of harness.go source file"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "TestMCPConfigDriftDocument"
+        description: "MCP Configuration Drift Problem Document Validation"
+        decorators: []
+      context:
+        description: "Harness architecture reference accuracy"
+        decorators: []
+      it:
+        description: "should verify references to Harness struct and SecurityConfig are accurate"
+        test_id_format: "[test_id:TS-GH-13-007]"
+
+    code_structure: |
+      func TestHarnessArchitectureReferences(t *testing.T) {
+        // Setup: read document claims about Harness struct and SecurityConfig
+        // Test: grep codebase for these types
+        // Assert: types exist and match document descriptions
+      }
+
+    test_objective:
+      title: "Verify the document's references to harness architecture components are accurate"
+      what: |
+        Validates that the document's references to Harness struct and SecurityConfig are accurate
+        against the actual codebase. Checks that these types exist in the referenced locations
+        (internal/harness/harness.go) and that their fields/structure match the document's descriptions.
+      why: |
+        Defense approaches described in the document depend on the Harness struct and SecurityConfig
+        architecture. If these references are inaccurate, proposed defenses like immutable harness
+        input would be architecturally infeasible as described.
+      acceptance_criteria:
+        - "Harness struct exists in internal/harness/harness.go or equivalent"
+        - "SecurityConfig type exists in the codebase"
+        - "Document references to these types are consistent with actual definitions"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with source code analysis"
+
+    specific_preconditions:
+      - name: "Harness source"
+        requirement: "internal/harness/harness.go must exist"
+        validation: "test -f internal/harness/harness.go"
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Read document's references to Harness and SecurityConfig"
+          command: "grep -i 'Harness\\|SecurityConfig' docs/problems/mcp-config-drift.md"
+          validation: "References extracted"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Search for Harness struct definition"
+          command: "grep -r 'type Harness struct' internal/"
+          validation: "Harness struct found"
+        - step_id: "TEST-02"
+          action: "Search for SecurityConfig type"
+          command: "grep -r 'SecurityConfig' internal/"
+          validation: "SecurityConfig type found"
+        - step_id: "TEST-03"
+          action: "Verify location matches document claims"
+          command: "Compare found file paths with document references"
+          validation: "Types are in expected locations"
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Harness struct exists in the codebase"
+        condition: "type Harness struct definition found in internal/harness/"
+        failure_impact: "Document references non-existent type"
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "SecurityConfig exists in the codebase"
+        condition: "SecurityConfig type or field found in codebase"
+        failure_impact: "Document references non-existent security configuration"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "grep"
+      scenario_specific_rbac: []
+
+  - scenario_id: "8"
+    test_id: "TS-GH-13-008"
+    tier: "Functional"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-13"
+
+    patterns:
+      primary: "codebase-claim-verification"
+      secondary:
+        - "initialization-flow-analysis"
+      helpers_required:
+        - name: "os/exec"
+          functions: ["Command"]
+          purpose: "Search codebase for initialization patterns"
+      decorators: []
+
+    variables:
+      closure_scope:
+        - name: "harnessInitSource"
+          type: "string"
+          initialized_in: "TestExecution"
+          used_in: ["TestExecution"]
+          comment: "Harness initialization source code"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "TestMCPConfigDriftDocument"
+        description: "MCP Configuration Drift Problem Document Validation"
+        decorators: []
+      context:
+        description: "Harness initialization flow consistency"
+        decorators: []
+      it:
+        description: "should verify MCP config injection pattern is consistent with harness initialization"
+        test_id_format: "[test_id:TS-GH-13-008]"
+
+    code_structure: |
+      func TestHarnessInitializationFlowConsistency(t *testing.T) {
+        // Setup: read document's Approach 2 description
+        // Test: analyze harness initialization flow
+        // Assert: proposed injection point is architecturally consistent
+      }
+
+    test_objective:
+      title: "Verify the MCP config injection pattern is consistent with the existing harness initialization flow"
+      what: |
+        Examines the document's Approach 2 (immutable harness input) and validates that the
+        described MCP config injection pattern is architecturally consistent with the existing
+        harness initialization flow. Analyzes how the Harness struct is initialized to determine
+        if the proposed injection point would be feasible.
+      why: |
+        If the proposed injection pattern contradicts the actual initialization flow, the defense
+        approach would require significant architectural changes not accounted for in the document.
+        Validating consistency ensures proposed defenses are practical.
+      acceptance_criteria:
+        - "Harness initialization flow is identifiable in the codebase"
+        - "MCP config is loaded during or before harness initialization"
+        - "Proposed injection point aligns with existing initialization sequence"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with initialization flow analysis"
+
+    specific_preconditions:
+      - name: "Harness initialization code"
+        requirement: "Harness initialization function must be identifiable in codebase"
+        validation: "grep -r 'func.*New.*Harness\\|func.*Init.*Harness' internal/"
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Read document's Approach 2 description"
+          command: "Parse mcp-config-drift.md for Approach 2 section"
+          validation: "Immutable harness input approach details extracted"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Locate harness initialization function"
+          command: "grep -r 'func.*NewHarness\\|func.*InitHarness\\|func New(' internal/harness/"
+          validation: "Initialization function found"
+        - step_id: "TEST-02"
+          action: "Trace MCP config loading in initialization flow"
+          command: "Search for MCP config references in harness initialization"
+          validation: "MCP config loading point identified"
+        - step_id: "TEST-03"
+          action: "Verify proposed injection point aligns with actual flow"
+          command: "Compare document's injection description with actual initialization sequence"
+          validation: "Proposed approach is architecturally consistent"
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Harness initialization flow is identifiable"
+        condition: "Initialization function/method exists and is traceable"
+        failure_impact: "Cannot verify proposed injection point"
+      - assertion_id: "ASSERT-02"
+        priority: "P2"
+        description: "Proposed injection aligns with initialization architecture"
+        condition: "MCP config is accessible at the proposed injection point"
+        failure_impact: "Proposed defense approach may require unforeseen architecture changes"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "grep"
+      scenario_specific_rbac: []
+
+  - scenario_id: "9"
+    test_id: "TS-GH-13-009"
+    tier: "Functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-13"
+
+    patterns:
+      primary: "security-content-review"
+      secondary:
+        - "sensitive-data-scan"
+      helpers_required:
+        - name: "strings"
+          functions: ["Contains"]
+          purpose: "Scan for sensitive patterns in document content"
+      decorators: []
+
+    variables:
+      closure_scope:
+        - name: "docContent"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestExecution"]
+          comment: "Full content of mcp-config-drift.md"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "TestMCPConfigDriftDocument"
+        description: "MCP Configuration Drift Problem Document Validation"
+        decorators: []
+      context:
+        description: "Sensitive information disclosure check"
+        decorators: []
+      it:
+        description: "should verify document does not disclose sensitive implementation details"
+        test_id_format: "[test_id:TS-GH-13-009]"
+
+    code_structure: |
+      func TestNoSensitiveDisclosure(t *testing.T) {
+        // Setup: read document content
+        // Test: scan for sensitive patterns (URLs, creds, internal topology)
+        // Assert: no sensitive implementation details found
+      }
+
+    test_objective:
+      title: "Verify the document does not disclose sensitive implementation details"
+      what: |
+        Scans the MCP configuration drift document for sensitive implementation details that
+        could aid attackers, including specific endpoint URLs, credential paths, internal
+        network topology information, or API keys. This is a security review of the document content.
+      why: |
+        A security problem document that inadvertently discloses sensitive details could become
+        an attack guide rather than a defensive resource. Ensuring no sensitive implementation
+        specifics are included protects the project's security posture.
+      acceptance_criteria:
+        - "Document contains no specific internal endpoint URLs"
+        - "Document contains no credential file paths or secrets"
+        - "Document contains no internal network topology details"
+        - "Document uses generalized descriptions rather than specific implementation details"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with content scanning"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Read mcp-config-drift.md content"
+          command: "cat docs/problems/mcp-config-drift.md"
+          validation: "Document content loaded"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Scan for specific endpoint URLs"
+          command: "Search for URL patterns (http://, https:// with specific hosts)"
+          validation: "No internal endpoint URLs found (generic examples are acceptable)"
+        - step_id: "TEST-02"
+          action: "Scan for credential paths"
+          command: "Search for file paths referencing secrets, tokens, keys, credentials"
+          validation: "No credential file paths found"
+        - step_id: "TEST-03"
+          action: "Scan for internal network topology"
+          command: "Search for internal IP addresses, subnet masks, internal hostnames"
+          validation: "No internal network details found"
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "No internal endpoint URLs disclosed"
+        condition: "Document contains no specific internal service URLs"
+        failure_impact: "Attackers could target specific endpoints"
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "No credential paths disclosed"
+        condition: "Document contains no paths to secret/credential files"
+        failure_impact: "Credential locations exposed to potential attackers"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: "10"
+    test_id: "TS-GH-13-010"
+    tier: "Functional"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-13"
+
+    patterns:
+      primary: "content-analysis-validation"
+      secondary:
+        - "question-analysis"
+      helpers_required:
+        - name: "strings"
+          functions: ["Contains", "Split"]
+          purpose: "Parse and analyze open questions section"
+      decorators: []
+
+    variables:
+      closure_scope:
+        - name: "openQuestions"
+          type: "[]string"
+          initialized_in: "TestExecution"
+          used_in: ["TestExecution"]
+          comment: "Extracted open questions from the document"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "TestMCPConfigDriftDocument"
+        description: "MCP Configuration Drift Problem Document Validation"
+        decorators: []
+      context:
+        description: "Open questions completeness"
+        decorators: []
+      it:
+        description: "should verify open questions are actionable and align with attack scenarios"
+        test_id_format: "[test_id:TS-GH-13-010]"
+
+    code_structure: |
+      func TestOpenQuestionsComplete(t *testing.T) {
+        // Setup: read document
+        // Test: extract open questions, verify actionability
+        // Assert: questions align with scenarios and are non-redundant
+      }
+
+    test_objective:
+      title: "Verify the Open Questions section is complete and actionable"
+      what: |
+        Examines the Open Questions section of the document to verify it contains actionable,
+        non-redundant questions that align with the identified attack scenarios and defense
+        approaches. Checks that questions drive toward concrete next steps rather than being
+        vague or rhetorical.
+      why: |
+        The Open Questions section guides future work on MCP configuration drift defenses.
+        Vague or redundant questions waste engineering effort, while missing questions could
+        leave critical attack vectors unaddressed in future implementations.
+      acceptance_criteria:
+        - "Open Questions section exists in the document"
+        - "Questions are specific and actionable (not vague or rhetorical)"
+        - "Questions reference specific attack scenarios or defense approaches"
+        - "No redundant questions that ask the same thing in different words"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with content analysis"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Read mcp-config-drift.md content"
+          command: "cat docs/problems/mcp-config-drift.md"
+          validation: "Document content loaded"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Locate and extract Open Questions section"
+          command: "Parse document for Open Questions heading and content"
+          validation: "Open Questions section found and extracted"
+        - step_id: "TEST-02"
+          action: "Verify questions are actionable"
+          command: "Check each question for specificity (references to scenarios/approaches)"
+          validation: "Each question drives toward a concrete decision or action"
+        - step_id: "TEST-03"
+          action: "Check for redundancy"
+          command: "Compare questions for semantic overlap"
+          validation: "No redundant questions found"
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Open Questions section exists"
+        condition: "Document contains an Open Questions section with at least one question"
+        failure_impact: "Missing questions section leaves no guidance for future work"
+      - assertion_id: "ASSERT-02"
+        priority: "P2"
+        description: "Questions are non-redundant"
+        condition: "Each question addresses a distinct concern"
+        failure_impact: "Redundant questions waste review effort"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: "11"
+    test_id: "TS-GH-13-011"
+    tier: "Functional"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-13"
+
+    patterns:
+      primary: "doc-cross-reference-validation"
+      secondary:
+        - "markdown-link-validation"
+        - "formatting-check"
+      helpers_required:
+        - name: "filepath"
+          functions: ["Join", "Dir"]
+          purpose: "Resolve relative markdown link paths"
+        - name: "regexp"
+          functions: ["Compile", "FindAllStringSubmatch"]
+          purpose: "Extract markdown links via regex"
+      decorators: []
+
+    variables:
+      closure_scope:
+        - name: "docContent"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestExecution"]
+          comment: "Full content of mcp-config-drift.md"
+        - name: "brokenLinks"
+          type: "[]string"
+          initialized_in: "TestExecution"
+          used_in: ["TestExecution"]
+          comment: "List of broken links found in document"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "TestMCPConfigDriftDocument"
+        description: "MCP Configuration Drift Problem Document Validation"
+        decorators: []
+      context:
+        description: "Markdown links and formatting validation"
+        decorators: []
+      it:
+        description: "should verify all markdown links resolve and formatting renders correctly"
+        test_id_format: "[test_id:TS-GH-13-011]"
+
+    code_structure: |
+      func TestMarkdownLinksAndFormatting(t *testing.T) {
+        // Setup: read document content
+        // Test: extract all relative markdown links, verify each resolves
+        // Assert: no broken links, valid markdown formatting
+      }
+
+    test_objective:
+      title: "Verify all relative markdown links resolve and markdown formatting renders correctly"
+      what: |
+        Performs comprehensive validation of all relative markdown links in mcp-config-drift.md,
+        verifying each link target exists as a file in the repository. Also validates that
+        markdown formatting is correct and renders properly (no broken syntax, unclosed tags,
+        or malformed link references).
+      why: |
+        Broken links degrade document usability and signal maintenance issues. Formatting errors
+        can make sections unreadable when rendered in GitHub or documentation systems, reducing
+        the document's effectiveness as a shared reference.
+      acceptance_criteria:
+        - "All relative markdown links resolve to existing files"
+        - "No broken markdown syntax (unclosed brackets, malformed links)"
+        - "Document renders correctly as valid markdown"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with markdown parsing"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Read mcp-config-drift.md content"
+          command: "cat docs/problems/mcp-config-drift.md"
+          validation: "Document content loaded"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Extract all relative markdown links using regex"
+          command: "Match pattern \\[.*?\\]\\(((?!http)[^)]+)\\) in document"
+          validation: "List of relative link targets extracted"
+        - step_id: "TEST-02"
+          action: "Resolve and verify each link target"
+          command: "filepath.Join(docDir, linkTarget) → os.Stat(resolved)"
+          validation: "Each link target exists as a file"
+        - step_id: "TEST-03"
+          action: "Check for malformed markdown syntax"
+          command: "Scan for unclosed brackets, unmatched link syntax"
+          validation: "No malformed markdown syntax detected"
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "All relative links resolve to existing files"
+        condition: "Zero broken links found"
+        failure_impact: "Broken links make document less useful as reference"
+      - assertion_id: "ASSERT-02"
+        priority: "P2"
+        description: "Markdown formatting is valid"
+        condition: "No malformed markdown syntax detected"
+        failure_impact: "Formatting errors make sections unreadable when rendered"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
