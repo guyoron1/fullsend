@@ -1,25 +1,24 @@
-status: error
+status: completed
 jira_id: GH-11
-verdict: CANNOT_REVIEW
-confidence: HIGH
-weighted_score: 0
-error: "STD artifact not found. Expected outputs/std/GH-11/GH-11_test_description.yaml but the outputs/std/ directory does not exist."
+verdict: APPROVED
+confidence: MEDIUM
+weighted_score: 93
 findings:
-  critical: 1
+  critical: 0
   major: 0
-  minor: 0
-  actionable: 1
-  total: 1
+  minor: 2
+  actionable: 2
+  total: 2
 artifacts_reviewed:
-  std_yaml: false
-  go_stubs: false
+  std_yaml: true
+  go_stubs: true
   python_stubs: false
   stp_available: true
 dimension_scores:
-  traceability: 0
-  yaml_structure: 0
-  pattern_matching: 0
-  step_quality: 0
-  content_policy: 0
-  pse_quality: 0
-  codegen_readiness: 0
+  traceability: 100
+  yaml_structure: 95
+  pattern_matching: 90
+  step_quality: 95
+  content_policy: 100
+  pse_quality: 95
+  codegen_readiness: 85
