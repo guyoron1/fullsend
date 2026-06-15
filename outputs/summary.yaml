@@ -1,0 +1,7 @@
+status: success
+jira_id: GH-8
+file_path: /sandbox/workspace/output/GH-8_test_plan.md
+test_counts:
+  functional: 6
+  end_to_end: 0
+  total: 6
