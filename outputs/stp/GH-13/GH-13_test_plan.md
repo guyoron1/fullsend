@@ -1,10 +1,10 @@
 # FullSend Test Plan
 
-## **MCP Configuration Drift Detection - Quality Engineering Plan**
+## **MCP Configuration Drift Problem Document - Quality Engineering Plan**
 
 ### **Metadata & Tracking**
 
-- **Enhancement(s):** [GH-13](https://github.com/guyoron1/fullsend/pull/13) — Mirrored from upstream [PR #2011](https://github.com/fullsend-ai/fullsend/pull/2011)
+- **Enhancement(s):** [PR #2011](https://github.com/fullsend-ai/fullsend/pull/2011) (fork: [GH-13](https://github.com/guyoron1/fullsend/pull/13))
 - **Feature Tracking:** [GH-13](https://github.com/guyoron1/fullsend/pull/13)
 - **Epic Tracking:** None
 - **QE Owner(s):** TBD
@@ -15,7 +15,7 @@
 
 ### **Feature Overview**
 
-This PR introduces a problem document that defines the MCP (Model Context Protocol) configuration drift threat — when MCP server configurations fall out of sync across environments, causing silent failures, inconsistent agent behavior, or security escalation vectors. The document analyzes attack scenarios (malicious server injection, endpoint replacement, permission escalation, gradual drift), evaluates defense approaches (baseline-and-diff, immutable harness input, content-aware validation), and maps relationships to existing security hooks (`ToolAllowlistPreToolHook`, SSRF validator) and architectural decisions (ADR 0016, ADR 0017). This is a documentation-only change with no code modifications; testing focuses on document accuracy, cross-reference integrity, and alignment with the existing codebase security architecture.
+This PR introduces a problem document (`docs/problems/mcp-config-drift.md`) describing MCP configuration drift as a security threat vector for the FullSend harness. This is a documentation-only change with no code modifications; testing focuses on document accuracy, cross-reference integrity, and alignment with the existing codebase security architecture. For full context on attack scenarios and defense approaches, see the problem document itself.
 
 ---
 
@@ -26,46 +26,46 @@ technology, and testability before formal test planning.
 
 #### **1. Requirement & User Story Review Checklist**
 
-- [ ] **Review Requirements**
+- [x] **Review Requirements**
   - Reviewed the relevant requirements.
   - The PR adds a problem document (`docs/problems/mcp-config-drift.md`) describing MCP configuration drift as a security threat vector. Requirements are implicit: the document must accurately describe the problem, attack scenarios, and defense considerations.
-- [ ] **Understand Value and Customer Use Cases**
+- [x] **Understand Value and Customer Use Cases**
   - Confirmed clear user stories and understood.
   - Understand the difference between community and product requirements.
   - **What is the value of the feature for customers**.
   - Ensured requirements contain relevant **customer use cases**.
   - Value: MCP configs define the agent tool surface; undetected drift enables privilege escalation, data exfiltration, and silent failures. This document provides the analytical foundation for implementing defenses in the harness.
-- [ ] **Testability**
+- [x] **Testability**
   - Confirmed requirements are **testable and unambiguous**.
   - As a documentation change, testability focuses on: (1) factual accuracy of claims about existing code (hooks, security config), (2) cross-reference integrity (links to other docs, ADRs), (3) consistency with the codebase architecture.
-- [ ] **Acceptance Criteria**
+- [x] **Acceptance Criteria**
   - Ensured acceptance criteria are **defined clearly** (clear user stories; product requirements clearly defined in Jira).
   - Acceptance criteria inferred from the PR: document is well-structured, accurately references existing security mechanisms, and follows the problem doc format used by other docs in `docs/problems/`.
-- [ ] **Non-Functional Requirements (NFRs)**
+- [x] **Non-Functional Requirements (NFRs)**
   - Confirmed coverage for NFRs, including Performance, Security, Usability, Downtime, Connectivity, Monitoring (alerts/metrics), Scalability, Portability (e.g., cloud support), and Docs.
   - This is a documentation-only change. NFRs are not directly applicable. Documentation quality (clarity, accuracy, completeness) is the primary non-functional concern.
 
 #### **2. Known Limitations**
 
 - This is a problem document only — no implementation is included. The defense approaches described (baseline-and-diff, immutable harness input, content-aware validation) are proposals, not implemented features.
-- The document references ADR 0017 (credential isolation) and ADR 0016 (unidirectional control flow), but these ADRs may not exist in the fork repository (guyoron1/fullsend).
+- The document references ADR 0017 (credential isolation) and ADR 0016 (unidirectional control flow). Both ADRs exist in the repository; however, their content may diverge from upstream over time.
 - No automated tooling exists to validate MCP config drift; this document is the first step toward building such tooling.
 
 #### **3. Technology and Design Review**
 
-- [ ] **Developer Handoff/QE Kickoff**
+- [x] **Developer Handoff/QE Kickoff**
   - A meeting where Dev/Arch walked QE through the design, architecture, and implementation details. **Critical for identifying untestable aspects early.**
   - No code changes to hand off. The document describes security architecture concepts that relate to existing harness security hooks in `internal/security/hooks.go` and harness configuration in `internal/harness/harness.go`.
-- [ ] **Technology Challenges**
+- [x] **Technology Challenges**
   - Identified potential testing challenges related to the underlying technology.
-  - The primary challenge is verifying that the document's claims about existing code behavior (e.g., `ToolAllowlistPreToolHook` operates on tool names not server endpoints, SSRF validator coverage) are accurate against the actual codebase.
-- [ ] **Test Environment Needs**
+  - The primary challenge is verifying that the document's claims about existing security hook behavior and SSRF validator coverage are accurate against the actual codebase.
+- [x] **Test Environment Needs**
   - Determined necessary **test environment setups and tools**.
   - No special test environment needed. Validation requires access to the repository source code for cross-reference checking.
-- [ ] **API Extensions**
+- [x] **API Extensions**
   - Reviewed new or modified APIs and their impact on testing.
   - No API changes. The document references existing APIs and hooks.
-- [ ] **Topology Considerations**
+- [x] **Topology Considerations**
   - Evaluated multi-cluster, network topology, and architectural impacts.
   - N/A — documentation-only change.
 
@@ -162,7 +162,7 @@ The following conditions must be met before testing can begin:
 
 - [ ] Requirements and design documents are **approved and merged**
 - [ ] Test environment can be **set up and configured** (see Section II.3 - Test Environment)
-- [ ] Access to the repository source code for cross-reference validation against `internal/security/hooks.go` and `internal/harness/harness.go`
+- [ ] Access to the repository source code for cross-reference validation of security hook and harness architecture claims
 
 #### **5. Risks**
 
@@ -182,8 +182,11 @@ The following conditions must be met before testing can begin:
   - Risk: N/A
   - Mitigation: N/A
 - [ ] **Dependencies**
-  - Risk: Referenced ADRs (0016, 0017) may not exist in the fork repository
-  - Mitigation: Verify references resolve in the upstream repository (fullsend-ai/fullsend)
+  - Risk: Referenced ADRs (0016, 0017) content may diverge from upstream over time
+  - Mitigation: Periodically verify fork ADR content aligns with upstream repository (fullsend-ai/fullsend)
+- [ ] **Document Staleness**
+  - Risk: Document claims about existing security hooks may become outdated as the codebase evolves (e.g., hooks refactored or extended)
+  - Mitigation: Tag problem document for periodic review when security hooks are modified
 - [ ] **Other**
   - Risk: Upstream PR #2011 may diverge from this mirrored version over time
   - Mitigation: Track upstream changes and update the fork as needed
@@ -201,11 +204,11 @@ This section links requirements to test coverage, enabling reviewers to verify a
   - *Priority:* P0
 
 - **[GH-13]** — Document claims about existing security hooks match actual codebase implementation
-  - *Test Scenario:* Verify ToolAllowlistPreToolHook in internal/security/hooks.go operates on tool names as described in the document
+  - *Test Scenario:* Verify the document's claims about the tool allowlist hook's operating mechanism (filtering by tool names, not server endpoints) are accurate against the actual codebase
   - *Priority:* P0
 
 - **[GH-13]** — Document claims about SSRF validator coverage are accurate
-  - *Test Scenario:* Verify SSRF validator hook (SSRFPreToolHook) blocks connections to private networks for Bash and WebFetch as described, and confirm MCP connections are not covered by this mechanism
+  - *Test Scenario:* Verify the document's claims about SSRF validation scope (covering Bash and WebFetch but not MCP connections) are accurate against the actual codebase
   - *Priority:* P0
 
 - **[GH-13]** — README.md index entry is correctly placed and formatted
@@ -221,8 +224,20 @@ This section links requirements to test coverage, enabling reviewers to verify a
   - *Priority:* P1
 
 - **[GH-13]** — Defense approaches correctly reference harness architecture
-  - *Test Scenario:* Verify Approach 2 (immutable harness input) correctly references the Harness struct and SecurityConfig in internal/harness/harness.go, and that the described injection pattern aligns with existing harness initialization flow
+  - *Test Scenario:* Verify the document's references to harness architecture components (Harness struct, SecurityConfig) are accurate against the actual codebase
   - *Priority:* P1
+
+- **[GH-13]** — Described injection pattern aligns with harness initialization flow
+  - *Test Scenario:* Verify the MCP config injection pattern described in Approach 2 (immutable harness input) is consistent with the existing harness initialization flow
+  - *Priority:* P2
+
+- **[GH-13]** — Document does not disclose sensitive implementation details
+  - *Test Scenario:* Verify the document does not contain specific endpoint URLs, credential paths, internal network topology, or other implementation details that could aid attackers
+  - *Priority:* P1
+
+- **[GH-13]** — Open Questions section is complete and actionable
+  - *Test Scenario:* Verify the Open Questions section contains actionable, non-redundant questions that align with the identified attack scenarios and defense approaches
+  - *Priority:* P2
 
 - **[GH-13]** — Document does not introduce broken links or formatting errors
   - *Test Scenario:* Verify all relative markdown links in mcp-config-drift.md resolve to existing files and all markdown formatting renders correctly
