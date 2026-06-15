@@ -1,0 +1,22 @@
+status: success
+jira_id: GH-13
+verdict: APPROVED_WITH_FINDINGS
+confidence: MEDIUM
+weighted_score: 79
+findings:
+  critical: 0
+  major: 5
+  minor: 6
+  actionable: 9
+  total: 11
+reviewed: outputs/stp/GH-13/GH-13_test_plan.md
+report: outputs/reviews/GH-13/GH-13_stp_review.md
+dimension_scores:
+  rule_compliance: 82
+  requirement_coverage: 75
+  scenario_quality: 80
+  risk_accuracy: 70
+  scope_boundary: 90
+  strategy: 85
+  metadata: 70
+scope_downgrade: false
