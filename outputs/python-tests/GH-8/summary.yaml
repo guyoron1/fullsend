@@ -1,0 +1,19 @@
+status: success
+jira_id: GH-8
+std_source: outputs/std/GH-8/GH-8_test_description.yaml
+test_files:
+  - test_shim_drift_detection.py
+  - test_shim_enrollment_workflow.py
+  - test_reconcile_regression.py
+  - conftest.py
+test_count: 6
+scenario_mapping:
+  TS-GH-8-001: test_shim_drift_detection.py::TestShimDriftDetection::test_ts_gh_8_001_identical_content_different_trailing_newlines
+  TS-GH-8-002: test_shim_drift_detection.py::TestShimDriftDetection::test_ts_gh_8_002_genuinely_stale_content_detected
+  TS-GH-8-003: test_shim_drift_detection.py::TestShimDriftDetection::test_ts_gh_8_003_crlf_encoding_variations_normalized
+  TS-GH-8-004: test_shim_enrollment_workflow.py::TestShimEnrollmentWorkflow::test_ts_gh_8_004_skip_repo_with_up_to_date_shim
+  TS-GH-8-005: test_shim_enrollment_workflow.py::TestShimEnrollmentWorkflow::test_ts_gh_8_005_create_update_pr_for_stale_shim
+  TS-GH-8-006: test_reconcile_regression.py::TestReconcileRegression::test_ts_gh_8_006_regression_suite_passes_end_to_end
+lsp_patterns_used: false
+conftest_generated: true
+coverage_validation: "6/6 scenarios covered (100%)"
