@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# pre-go-test-generator.sh — Validate inputs before the Go test generator runs.
+# pre-test-generator.sh — Validate inputs before the unified test generator runs.
 #
 # Required env vars:
 #   JIRA_TICKET — Jira issue key
@@ -9,7 +9,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "${SCRIPT_DIR}/lib/common.sh"
 
-echo "::notice::QualityFlow go-test-generator: ${JIRA_TICKET:-unset}"
+echo "::notice::QualityFlow test-generator: ${JIRA_TICKET:-unset}"
 
 errors=0
 require_env JIRA_TICKET GH_TOKEN || errors=$((errors + $?))

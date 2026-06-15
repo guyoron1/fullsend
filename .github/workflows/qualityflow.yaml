@@ -4,7 +4,7 @@
 # Uses FullSend infrastructure (WIF auth, sandboxed agent execution).
 #
 # Pipeline: stp-builder → stp-reviewer → stp-refiner → std-builder →
-#           std-reviewer → std-refiner → go-test-generator → python-test-generator
+#           std-reviewer → std-refiner → test-generator
 # Each agent runs in its own FullSend sandbox, passing outputs via the PR repo.
 # After all agents complete, test files are organized under qf-tests/{JIRA_ID}/
 # and intermediate artifacts are cleaned up — all on the code PR branch.
@@ -885,7 +885,7 @@ jobs:
           version: latest
           target-repo: ${{ github.workspace }}/pr-repo
 
-      # --- Stage 7: Go Test Generator ---
+      # --- Stage 7: Test Generator ---
 
       - name: Restore PR checkout (post-Stage 6)
         env:
@@ -956,7 +956,7 @@ jobs:
           AGENT_EOF
           echo "::notice::Re-injected CLAUDE.md for Stage 7"
 
-      - name: "QF Stage 7: Go Test Generator"
+      - name: "QF Stage 7: Test Generator"
         id: stage7
         continue-on-error: true
         uses: ./.defaults/
@@ -976,102 +976,7 @@ jobs:
           FULLSEND_GCP_OIDC_URL: ""
           FULLSEND_GCP_OIDC_AUTH_FILE: ""
         with:
-          agent: go-test-generator
-          version: latest
-          target-repo: ${{ github.workspace }}/pr-repo
-
-      # --- Stage 8: Python Test Generator ---
-
-      - name: Restore PR checkout (post-Stage 7)
-        env:
-          GH_TOKEN: ${{ steps.mid-token.outputs.token }}
-        run: |
-          set -euo pipefail
-          PR_REPO="${GITHUB_WORKSPACE}/pr-repo"
-          HEAD_REF="${{ steps.pr-info.outputs.head_ref }}"
-          if [[ ! -d "${PR_REPO}/.git" ]]; then
-            echo "::notice::PR repo was cleaned up by FullSend, re-cloning..."
-            rm -rf "${PR_REPO}"
-            git clone --depth 1 --branch "${HEAD_REF}" \
-              "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" \
-              "${PR_REPO}"
-          else
-            git -C "${PR_REPO}" remote set-url origin \
-              "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
-            git -C "${PR_REPO}" fetch origin "${HEAD_REF}"
-            git -C "${PR_REPO}" reset --hard "origin/${HEAD_REF}"
-          fi
-          echo "::notice::PR repo HEAD: $(git -C "${PR_REPO}" log --oneline -1)"
-
-      - name: Refresh GCP credentials (Stage 8)
-        uses: ./.defaults/.github/actions/setup-gcp
-        with:
-          gcp_wif_provider: ${{ secrets.FULLSEND_GCP_WIF_PROVIDER }}
-          gcp_project_id: ${{ secrets.FULLSEND_GCP_PROJECT_ID }}
-
-      - name: Patch GCP credentials (Stage 8)
-        run: bash /tmp/patch-gcp-creds.sh
-
-      - name: Re-inject CLAUDE.md for Stage 8
-        env:
-          JIRA_TICKET: ${{ steps.jira.outputs.jira_ticket }}
-          ISSUE_SOURCE: ${{ steps.jira.outputs.issue_source }}
-        run: |
-          cat > "${{ github.workspace }}/pr-repo/CLAUDE.md" << 'AGENT_EOF'
-          # QualityFlow Agent — Output Preservation
-
-          CRITICAL REQUIREMENT: Before finishing your task, you MUST push all
-          generated output files to the PR branch. The sandbox file extraction
-          channel is unreliable and output will be lost if you skip this step.
-
-          After writing all output files to $FULLSEND_OUTPUT_DIR, run these
-          commands to push them to the PR branch:
-
-          ```bash
-          # Copy output to target repo
-          DEST="$FULLSEND_TARGET_REPO_DIR/outputs"
-          cd "$FULLSEND_TARGET_REPO_DIR"
-          git config user.email "qualityflow[bot]@users.noreply.github.com"
-          git config user.name "QualityFlow"
-
-          # Derive repo and branch from git state
-          REMOTE_URL=$(git remote get-url origin)
-          REPO_NAME=$(echo "$REMOTE_URL" | sed -n 's|.*github\.com[:/]\(.*\)\.git|\1|p')
-          BRANCH=$(git rev-parse --abbrev-ref HEAD)
-
-          # Authenticate and push
-          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${REPO_NAME}.git"
-          git add outputs/
-          git commit -m "Add QualityFlow output for $JIRA_TICKET [skip ci]" || true
-          git push origin "HEAD:$BRANCH" || echo "Push failed — output available in sandbox artifacts"
-          ```
-
-          This is MANDATORY. Do not consider your task complete until you have
-          attempted the git push.
-          AGENT_EOF
-          echo "::notice::Re-injected CLAUDE.md for Stage 8"
-
-      - name: "QF Stage 8: Python Test Generator"
-        id: stage8
-        continue-on-error: true
-        uses: ./.defaults/
-        env:
-          PR_NUMBER: ${{ steps.pr-info.outputs.pr_number }}
-          REPO_FULL_NAME: ${{ github.repository }}
-          TARGET_BRANCH: ${{ steps.pr-info.outputs.head_ref }}
-          TRIGGER_SOURCE: slash-command
-          JIRA_TICKET: ${{ steps.jira.outputs.jira_ticket }}
-          ISSUE_SOURCE: ${{ steps.jira.outputs.issue_source }}
-          GH_TOKEN: ${{ steps.mid-token.outputs.token }}
-          PUSH_TOKEN: ${{ steps.mid-token.outputs.token }}
-          PRE_AGENT_HEAD: ${{ steps.pre-head.outputs.sha }}
-          PR_CHECKOUT_PATH: ${{ github.workspace }}/pr-repo
-          SOURCE_REPO_PATH: ${{ github.workspace }}/pr-repo
-          GCP_OIDC_TOKEN_FILE: ""
-          FULLSEND_GCP_OIDC_URL: ""
-          FULLSEND_GCP_OIDC_AUTH_FILE: ""
-        with:
-          agent: python-test-generator
+          agent: test-generator
           version: latest
           target-repo: ${{ github.workspace }}/pr-repo
 
@@ -1082,7 +987,7 @@ jobs:
         id: post-token
         run: echo "token=${{ secrets.GITHUB_TOKEN }}" >> "$GITHUB_OUTPUT"
 
-      - name: Restore PR checkout (post-Stage 8)
+      - name: Restore PR checkout (post-Stage 7)
         env:
           GH_TOKEN: ${{ steps.post-token.outputs.token }}
         run: |
@@ -1145,18 +1050,34 @@ jobs:
             done
           fi
 
+          # --- Collect other language test files ---
+          OTHER_COUNT=0
+          if [[ -d "outputs/tests/${JIRA_TICKET}" ]]; then
+            for lang_dir in outputs/tests/${JIRA_TICKET}/*/; do
+              [[ -d "${lang_dir}" ]] || continue
+              lang=$(basename "${lang_dir}")
+              mkdir -p "${QF_DIR}/${lang}"
+              cp -r "${lang_dir}"* "${QF_DIR}/${lang}/" 2>/dev/null || true
+              lang_count=$(find "${QF_DIR}/${lang}" -type f 2>/dev/null | wc -l)
+              OTHER_COUNT=$((OTHER_COUNT + lang_count))
+            done
+          fi
+
+          TOTAL_COUNT=$((GO_COUNT + PY_COUNT + OTHER_COUNT))
+
           # --- Write README ---
-          if [[ "${GO_COUNT}" -gt 0 ]] || [[ "${PY_COUNT}" -gt 0 ]]; then
-            cat > "${QF_DIR}/README.md" << README_EOF
-          # QualityFlow Tests — ${JIRA_TICKET}
-
-          Generated by the QualityFlow pipeline.
-
-          | Directory | Type | Framework | Destination repo |
-          |-----------|------|-----------|-----------------|
-          | \`go/\` | Tier 1 (functional) | Go/Ginkgo | \`${{ github.repository }}\` |
-          | \`python/\` | Tier 2 (E2E) | Python/pytest | \`${{ github.repository }}\` |
-          README_EOF
+          if [[ "${TOTAL_COUNT}" -gt 0 ]]; then
+            {
+              echo "# QualityFlow Tests — ${JIRA_TICKET}"
+              echo ""
+              echo "Generated by the QualityFlow pipeline."
+              echo ""
+              echo "| Directory | Count | Framework |"
+              echo "|-----------|-------|-----------|"
+              [[ "${GO_COUNT}" -gt 0 ]] && echo "| \`go/\` | ${GO_COUNT} files | Go |"
+              [[ "${PY_COUNT}" -gt 0 ]] && echo "| \`python/\` | ${PY_COUNT} files | Python/pytest |"
+              [[ "${OTHER_COUNT}" -gt 0 ]] && echo "| \`other/\` | ${OTHER_COUNT} files | See subdirectories |"
+            } > "${QF_DIR}/README.md"
           fi
 
           # --- Remove intermediate artifacts ---
@@ -1168,6 +1089,7 @@ jobs:
 
           if git diff --cached --quiet; then
             echo "::warning::No changes to commit"
+            echo "test_count=0" >> "${GITHUB_OUTPUT}"
             echo "go_count=0" >> "${GITHUB_OUTPUT}"
             echo "py_count=0" >> "${GITHUB_OUTPUT}"
             exit 0
@@ -1177,14 +1099,14 @@ jobs:
 
           Replaces intermediate pipeline artifacts with organized test files.
 
-          Go tier 1 tests: ${GO_COUNT} files → qf-tests/${JIRA_TICKET}/go/
-          Python tier 2 tests: ${PY_COUNT} files → qf-tests/${JIRA_TICKET}/python/
+          Total: ${TOTAL_COUNT} test files → qf-tests/${JIRA_TICKET}/
           Jira: ${JIRA_TICKET}
           [skip ci]"
 
           git push origin "HEAD:${HEAD_REF}"
-          echo "::notice::Pushed ${GO_COUNT} Go + ${PY_COUNT} Python tests to code PR"
+          echo "::notice::Pushed ${TOTAL_COUNT} test files to code PR"
 
+          echo "test_count=${TOTAL_COUNT}" >> "${GITHUB_OUTPUT}"
           echo "go_count=${GO_COUNT}" >> "${GITHUB_OUTPUT}"
           echo "py_count=${PY_COUNT}" >> "${GITHUB_OUTPUT}"
 
@@ -1201,12 +1123,13 @@ jobs:
           S5_OUTCOME: ${{ steps.stage5.conclusion || 'skipped' }}
           S6_OUTCOME: ${{ steps.stage6.conclusion || 'skipped' }}
           S7_OUTCOME: ${{ steps.stage7.conclusion || 'skipped' }}
-          S8_OUTCOME: ${{ steps.stage8.conclusion || 'skipped' }}
+          TEST_TOTAL_COUNT: ${{ steps.organize-tests.outputs.test_count }}
           TEST_GO_COUNT: ${{ steps.organize-tests.outputs.go_count }}
           TEST_PY_COUNT: ${{ steps.organize-tests.outputs.py_count }}
         run: |
           set -euo pipefail
           PR_NUMBER="${{ steps.pr-info.outputs.pr_number }}"
+          TOTAL_COUNT="${TEST_TOTAL_COUNT:-0}"
           GO_COUNT="${TEST_GO_COUNT:-0}"
           PY_COUNT="${TEST_PY_COUNT:-0}"
 
@@ -1217,6 +1140,21 @@ jobs:
               *) echo "⏭️" ;;
             esac
           }
+
+          # Build test output rows dynamically
+          TEST_ROWS=""
+          if [[ "${GO_COUNT}" -gt 0 ]]; then
+            TEST_ROWS="${TEST_ROWS}
+          | Go | **${GO_COUNT}** files | \`qf-tests/${JIRA_TICKET}/go/\` |"
+          fi
+          if [[ "${PY_COUNT}" -gt 0 ]]; then
+            TEST_ROWS="${TEST_ROWS}
+          | Python | **${PY_COUNT}** files | \`qf-tests/${JIRA_TICKET}/python/\` |"
+          fi
+          if [[ -z "${TEST_ROWS}" ]]; then
+            TEST_ROWS="
+          | — | **${TOTAL_COUNT}** files | \`qf-tests/${JIRA_TICKET}/\` |"
+          fi
 
           BODY="<!-- qf-summary -->
           ## QualityFlow Pipeline Summary
@@ -1229,14 +1167,11 @@ jobs:
           | 4 | STD Builder | $(icon "${S4_OUTCOME}") |
           | 5 | STD Reviewer | $(icon "${S5_OUTCOME}") |
           | 6 | STD Refiner | $(icon "${S6_OUTCOME}") |
-          | 7 | Go Test Generator | $(icon "${S7_OUTCOME}") |
-          | 8 | Python Test Generator | $(icon "${S8_OUTCOME}") |
+          | 7 | Test Generator | $(icon "${S7_OUTCOME}") |
 
           ### Test Output
-          | Type | Count | Location |
-          |------|-------|----------|
-          | Go/Ginkgo tier 1 | **${GO_COUNT}** files | \`qf-tests/${JIRA_TICKET}/go/\` |
-          | Python/pytest tier 2 | **${PY_COUNT}** files | \`qf-tests/${JIRA_TICKET}/python/\` |
+          | Language | Count | Location |
+          |----------|-------|----------|${TEST_ROWS}
 
           $(if [[ "${ISSUE_SOURCE}" == "github" ]]; then
             echo "**Issue:** [${JIRA_TICKET}](https://github.com/${{ github.repository }}/issues/${JIRA_TICKET#GH-})"

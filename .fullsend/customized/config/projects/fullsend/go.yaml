@@ -1,0 +1,36 @@
+enabled: true
+language: "go"
+framework: "testing"
+
+import_base: "github.com/fullsend-ai/fullsend"
+imports:
+  standard:
+    - "context"
+    - "testing"
+    - "time"
+    - "os"
+    - "os/exec"
+    - "fmt"
+    - "strings"
+    - "path/filepath"
+    - "encoding/json"
+    - "net/http"
+  test_framework:
+    - { path: "github.com/stretchr/testify/assert" }
+    - { path: "github.com/stretchr/testify/require" }
+  project:
+    - "github.com/fullsend-ai/fullsend/internal/config"
+    - "github.com/fullsend-ai/fullsend/internal/forge"
+    - "github.com/fullsend-ai/fullsend/internal/layers"
+    - "github.com/fullsend-ai/fullsend/internal/sandbox"
+    - "github.com/fullsend-ai/fullsend/internal/scaffold"
+    - "github.com/fullsend-ai/fullsend/internal/mint"
+    - "github.com/fullsend-ai/fullsend/internal/envfile"
+
+build_command: "go test ./..."
+build_tags: ["e2e"]
+
+test_patterns:
+  function_prefix: "Test"
+  subtest_style: "t.Run"
+  assertion_style: "testify"
