@@ -2,25 +2,23 @@ status: success
 jira_id: GH-14
 verdict: NEEDS_REVISION
 confidence: MEDIUM
-weighted_score: 50
+weighted_score: 51
 findings:
-  critical: 0
-  major: 14
-  minor: 10
-  actionable: 23
+  critical: 3
+  major: 15
+  minor: 6
+  actionable: 22
   total: 24
 artifacts_reviewed:
   std_yaml: true
   go_stubs: true
   python_stubs: false
-  stp_available: false
+  stp_available: true
 dimension_scores:
-  traceability: ~
-  yaml_structure: ~
-  pattern_matching: ~
+  traceability: 75
+  yaml_structure: 40
+  pattern_matching: 0
   step_quality: 55
   content_policy: 40
   pse_quality: 50
   codegen_readiness: 55
-dimensions_reviewed: [4, 4.5, 5, 6]
-dimensions_skipped: [1, 2, 3]
