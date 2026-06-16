@@ -1,0 +1,25 @@
+status: success
+jira_id: GH-15
+std_source: outputs/std/GH-15/GH-15_test_description.yaml
+languages:
+  - language: go
+    framework: ginkgo-v2
+    files:
+      - problem_document_verification_test.go
+    test_count: 6
+  - language: python
+    framework: pytest
+    files:
+      - test_content_validation.py
+    test_count: 4
+total_test_count: 10
+lsp_patterns_used: false
+notes: |
+  Generated from 7 STD scenarios (6 Functional / Tier 1, 1 E2E / Tier 2).
+  Go tests use Ginkgo v2 Describe/Context/It blocks with Gomega assertions.
+  Python tests use pytest with parametrize for detection approach topic coverage.
+  The E2E scenario (007) is split into 4 pytest test functions for granularity:
+    - test_detection_approaches_section_exists
+    - test_detection_approach_topic_covered (6 parametrized cases)
+    - test_agent_specific_anti_patterns_section
+    - test_open_questions_section
