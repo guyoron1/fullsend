@@ -2,6 +2,7 @@ package tests
 
 import (
 	. "github.com/onsi/ginkgo/v2"
+	_ "github.com/onsi/gomega"
 )
 
 /*
@@ -9,9 +10,13 @@ Security Configuration Defaults Tests
 
 STP Reference: outputs/stp/GH-18/GH-18_test_plan.md
 Jira: GH-18
+
+Note: Cleanup is intentionally empty for all scenarios in this file.
+These are stateless unit tests operating on in-memory Go structs with
+no external resources to release.
 */
 
-var _ = Describe("[GH-18] Security Configuration Defaults", func() {
+var _ = Describe("[GH-18] Security Configuration Defaults", Ordered, func() {
 	/*
 		Markers:
 			- tier1
@@ -21,7 +26,7 @@ var _ = Describe("[GH-18] Security Configuration Defaults", func() {
 			- FullSend binary available in PATH
 	*/
 
-	Context("when using default security config", func() {
+	Context("when using default security config", Ordered, func() {
 		/*
 			Preconditions:
 				- SecurityConfig struct created with zero-value defaults
@@ -37,7 +42,7 @@ var _ = Describe("[GH-18] Security Configuration Defaults", func() {
 		})
 	})
 
-	Context("when checking default security state", func() {
+	Context("when checking default security state", Ordered, func() {
 		/*
 			Preconditions:
 				- SecurityConfig struct created with zero-value defaults
@@ -53,7 +58,7 @@ var _ = Describe("[GH-18] Security Configuration Defaults", func() {
 		})
 	})
 
-	Context("when toggles are explicitly configured", func() {
+	Context("when toggles are explicitly configured", Ordered, func() {
 		/*
 			Preconditions:
 				- Harness struct created with each hook toggle explicitly set
@@ -71,7 +76,7 @@ var _ = Describe("[GH-18] Security Configuration Defaults", func() {
 		})
 	})
 
-	Context("when toggle pointers are nil", func() {
+	Context("when toggle pointers are nil", Ordered, func() {
 		/*
 			Preconditions:
 				- Harness struct created with zero-value SecurityConfig (nil toggle pointers)

@@ -2,6 +2,7 @@ package tests
 
 import (
 	. "github.com/onsi/ginkgo/v2"
+	_ "github.com/onsi/gomega"
 )
 
 /*
@@ -9,9 +10,13 @@ Model Provider Diversity Support Tests
 
 STP Reference: outputs/stp/GH-18/GH-18_test_plan.md
 Jira: GH-18
+
+Note: Cleanup is intentionally empty for all scenarios in this file.
+These are stateless unit tests operating on in-memory Go structs with
+no external resources to release.
 */
 
-var _ = Describe("[GH-18] Model Provider Diversity Support", func() {
+var _ = Describe("[GH-18] Model Provider Diversity Support", Ordered, func() {
 	/*
 		Markers:
 			- tier1
@@ -21,7 +26,7 @@ var _ = Describe("[GH-18] Model Provider Diversity Support", func() {
 			- FullSend binary available in PATH
 	*/
 
-	Context("when config has multiple providers", func() {
+	Context("when config has multiple providers", Ordered, func() {
 		/*
 			Preconditions:
 				- Harness config YAML with 2+ provider definitions
@@ -41,7 +46,7 @@ var _ = Describe("[GH-18] Model Provider Diversity Support", func() {
 		})
 	})
 
-	Context("when provider has credentials configured", func() {
+	Context("when provider has credentials configured", Ordered, func() {
 		/*
 			Preconditions:
 				- ProviderDef created with known API key and endpoint values
@@ -59,7 +64,7 @@ var _ = Describe("[GH-18] Model Provider Diversity Support", func() {
 		})
 	})
 
-	Context("when provider config is invalid", func() {
+	Context("when provider config is invalid", Ordered, func() {
 		/*
 			[NEGATIVE]
 			Preconditions:

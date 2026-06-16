@@ -2,6 +2,7 @@ package tests
 
 import (
 	. "github.com/onsi/ginkgo/v2"
+	_ "github.com/onsi/gomega"
 )
 
 /*
@@ -9,9 +10,13 @@ Security Hook Pipeline Configuration Tests
 
 STP Reference: outputs/stp/GH-18/GH-18_test_plan.md
 Jira: GH-18
+
+Note: Cleanup is intentionally empty for all scenarios in this file.
+These are stateless unit tests operating on in-memory Go structs with
+no external resources to release.
 */
 
-var _ = Describe("[GH-18] Security Hook Pipeline Configuration", func() {
+var _ = Describe("[GH-18] Security Hook Pipeline Configuration", Ordered, func() {
 	/*
 		Markers:
 			- tier1
@@ -21,7 +26,7 @@ var _ = Describe("[GH-18] Security Hook Pipeline Configuration", func() {
 			- FullSend binary available in PATH
 	*/
 
-	Context("when using default security config", func() {
+	Context("when using default security config", Ordered, func() {
 		/*
 			Preconditions:
 				- Harness struct created with default (zero-value) SecurityConfig
@@ -38,7 +43,9 @@ var _ = Describe("[GH-18] Security Hook Pipeline Configuration", func() {
 		PendingIt("[test_id:TS-GH-18-001a] should enable all hooks by default", func() {
 			Skip("Phase 1: Design only - awaiting implementation")
 		})
+	})
 
+	Context("when a single hook toggle is set to false", Ordered, func() {
 		/*
 			Preconditions:
 				- Harness struct created with one specific hook toggle set to false
@@ -56,7 +63,9 @@ var _ = Describe("[GH-18] Security Hook Pipeline Configuration", func() {
 		PendingIt("[test_id:TS-GH-18-001b] should disable only the targeted hook when single toggle set false", func() {
 			Skip("Phase 1: Design only - awaiting implementation")
 		})
+	})
 
+	Context("when all hook toggles are false", Ordered, func() {
 		/*
 			Preconditions:
 				- Harness struct created with all 8 hook toggles explicitly set to false
@@ -74,7 +83,7 @@ var _ = Describe("[GH-18] Security Hook Pipeline Configuration", func() {
 		})
 	})
 
-	Context("when security config is nil", func() {
+	Context("when security config is nil", Ordered, func() {
 		/*
 			[NEGATIVE]
 			Preconditions:
@@ -93,7 +102,7 @@ var _ = Describe("[GH-18] Security Hook Pipeline Configuration", func() {
 		})
 	})
 
-	Context("when tool allowlist toggle is true", func() {
+	Context("when tool allowlist toggle is true", Ordered, func() {
 		/*
 			Preconditions:
 				- Harness struct with ToolAllowlist toggle explicitly set to true

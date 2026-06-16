@@ -2,6 +2,7 @@ package tests
 
 import (
 	. "github.com/onsi/ginkgo/v2"
+	_ "github.com/onsi/gomega"
 )
 
 /*
@@ -9,9 +10,13 @@ Input Pipeline Integrity Tests
 
 STP Reference: outputs/stp/GH-18/GH-18_test_plan.md
 Jira: GH-18
+
+Note: Cleanup is intentionally empty for all scenarios in this file.
+These are stateless unit tests operating on in-memory Go structs with
+no external resources to release.
 */
 
-var _ = Describe("[GH-18] Input Pipeline Integrity", func() {
+var _ = Describe("[GH-18] Input Pipeline Integrity", Ordered, func() {
 	/*
 		Markers:
 			- tier1
@@ -21,7 +26,7 @@ var _ = Describe("[GH-18] Input Pipeline Integrity", func() {
 			- FullSend binary available in PATH
 	*/
 
-	Context("when creating input pipeline", func() {
+	Context("when creating input pipeline", Ordered, func() {
 		/*
 			Preconditions:
 				- InputPipeline function available from security package
@@ -42,7 +47,7 @@ var _ = Describe("[GH-18] Input Pipeline Integrity", func() {
 		})
 	})
 
-	Context("when input contains invisible Unicode in injection pattern", func() {
+	Context("when input contains invisible Unicode in injection pattern", Ordered, func() {
 		/*
 			Preconditions:
 				- Input pipeline created via security.InputPipeline()
@@ -61,7 +66,7 @@ var _ = Describe("[GH-18] Input Pipeline Integrity", func() {
 		})
 	})
 
-	Context("when processing input through multi-stage pipeline", func() {
+	Context("when processing input through multi-stage pipeline", Ordered, func() {
 		/*
 			Preconditions:
 				- Input pipeline created via security.InputPipeline()
@@ -80,7 +85,7 @@ var _ = Describe("[GH-18] Input Pipeline Integrity", func() {
 		})
 	})
 
-	Context("when injection pattern is detected", func() {
+	Context("when injection pattern is detected", Ordered, func() {
 		/*
 			Preconditions:
 				- Input pipeline created via security.InputPipeline()

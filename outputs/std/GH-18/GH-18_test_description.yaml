@@ -13,17 +13,11 @@ document_metadata:
     file: "outputs/stp/GH-18/GH-18_test_plan.md"
     version: "v1"
     sections_covered: "Section 4 - Requirements-to-Tests Mapping, Section 5 - Test Scenarios"
-  related_prs:
-    - repo: "fullsend-ai/fullsend"
-      pr_number: 18
-      url: "https://github.com/fullsend-ai/fullsend/pull/18"
-      title: "Expand supply chain threat to cover model-as-toolchain risk"
-      merged: true
   total_scenarios: 27
   functional_count: 27
   e2e_count: 0
-  p0_count: 16
-  p1_count: 10
+  p0_count: 15
+  p1_count: 11
   p2_count: 1
 
 code_generation_config:
@@ -62,7 +56,7 @@ common_preconditions:
       - "go"
   test_framework:
     language: "go"
-    framework: "testing + testify"
+    framework: "ginkgo-v2"
     build_command: "go test ./..."
 
 scenarios:
@@ -71,7 +65,7 @@ scenarios:
   # =========================================================================
   - scenario_id: "001a"
     test_id: "TS-GH-18-001a"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-18"
@@ -98,6 +92,14 @@ scenarios:
       scope: "Single-component"
       target_file: "internal/security/hooks.go"
       target_function: "GenerateClaudeSettings"
+
+    patterns:
+      primary: "unit-function-test"
+      helpers_required: []
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
 
     specific_preconditions:
       - name: "Default harness config"
@@ -146,7 +148,7 @@ scenarios:
         description: "Security Hook Pipeline Configuration"
       context:
         description: "when using default security config"
-        decorators: []
+        decorators: [Ordered]
       it:
         description: "should enable all hooks by default"
         test_id_format: "[test_id:TS-GH-18-001a]"
@@ -167,7 +169,7 @@ scenarios:
 
   - scenario_id: "001b"
     test_id: "TS-GH-18-001b"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-18"
@@ -192,6 +194,14 @@ scenarios:
       scope: "Single-component"
       target_file: "internal/security/hooks.go"
       target_function: "GenerateClaudeSettings"
+
+    patterns:
+      primary: "unit-function-test"
+      helpers_required: []
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
 
     specific_preconditions:
       - name: "Modified harness config"
@@ -244,7 +254,7 @@ scenarios:
         description: "Security Hook Pipeline Configuration"
       context:
         description: "when a single hook toggle is set to false"
-        decorators: []
+        decorators: [Ordered]
       it:
         description: "should disable only the targeted hook"
         test_id_format: "[test_id:TS-GH-18-001b]"
@@ -265,7 +275,7 @@ scenarios:
 
   - scenario_id: "001c"
     test_id: "TS-GH-18-001c"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-18"
@@ -290,6 +300,14 @@ scenarios:
       scope: "Single-component"
       target_file: "internal/security/hooks.go"
       target_function: "GenerateClaudeSettings"
+
+    patterns:
+      primary: "unit-function-test"
+      helpers_required: []
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
 
     specific_preconditions:
       - name: "All-disabled config"
@@ -333,7 +351,7 @@ scenarios:
         description: "Security Hook Pipeline Configuration"
       context:
         description: "when all hook toggles are false"
-        decorators: []
+        decorators: [Ordered]
       it:
         description: "should disable all hooks"
         test_id_format: "[test_id:TS-GH-18-001c]"
@@ -354,7 +372,7 @@ scenarios:
 
   - scenario_id: "001d"
     test_id: "TS-GH-18-001d"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-18"
@@ -377,6 +395,14 @@ scenarios:
       scope: "Single-component"
       target_file: "internal/security/hooks.go"
       target_function: "GenerateClaudeSettings"
+
+    patterns:
+      primary: "unit-function-test"
+      helpers_required: []
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
 
     specific_preconditions:
       - name: "Nil/zero security config"
@@ -425,7 +451,7 @@ scenarios:
         description: "Security Hook Pipeline Configuration"
       context:
         description: "when security config is nil"
-        decorators: []
+        decorators: [Ordered]
       it:
         description: "should handle nil config without panic"
         test_id_format: "[test_id:TS-GH-18-001d]"
@@ -446,7 +472,7 @@ scenarios:
 
   - scenario_id: "001e"
     test_id: "TS-GH-18-001e"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-18"
@@ -470,6 +496,14 @@ scenarios:
       scope: "Single-component"
       target_file: "internal/security/hooks.go"
       target_function: "toolAllowlistPreToolEnabled"
+
+    patterns:
+      primary: "unit-function-test"
+      helpers_required: []
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
 
     specific_preconditions:
       - name: "Allowlist toggle enabled"
@@ -513,7 +547,7 @@ scenarios:
         description: "Security Hook Pipeline Configuration"
       context:
         description: "when tool allowlist toggle is true"
-        decorators: []
+        decorators: [Ordered]
       it:
         description: "should enable the tool allowlist hook"
         test_id_format: "[test_id:TS-GH-18-001e]"
@@ -536,7 +570,7 @@ scenarios:
   # =========================================================================
   - scenario_id: "002a"
     test_id: "TS-GH-18-002a"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-18"
@@ -563,6 +597,14 @@ scenarios:
       scope: "Single-component"
       target_file: "internal/security/scanner.go"
       target_function: "InputPipeline"
+
+    patterns:
+      primary: "unit-function-test"
+      helpers_required: []
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
 
     specific_preconditions: []
 
@@ -608,7 +650,7 @@ scenarios:
         description: "Input Pipeline Integrity"
       context:
         description: "when creating input pipeline"
-        decorators: []
+        decorators: [Ordered]
       it:
         description: "should chain normalizer before injection scanner"
         test_id_format: "[test_id:TS-GH-18-002a]"
@@ -627,7 +669,7 @@ scenarios:
 
   - scenario_id: "002b"
     test_id: "TS-GH-18-002b"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-18"
@@ -652,6 +694,14 @@ scenarios:
       scope: "Single-component"
       target_file: "internal/security/scanner.go"
       target_function: "InputPipeline"
+
+    patterns:
+      primary: "unit-function-test"
+      helpers_required: []
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
 
     specific_preconditions: []
 
@@ -698,7 +748,7 @@ scenarios:
         description: "Input Pipeline Integrity"
       context:
         description: "when input contains invisible Unicode in injection pattern"
-        decorators: []
+        decorators: [Ordered]
       it:
         description: "should detect injection after stripping invisible chars"
         test_id_format: "[test_id:TS-GH-18-002b]"
@@ -718,7 +768,7 @@ scenarios:
 
   - scenario_id: "002c"
     test_id: "TS-GH-18-002c"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-18"
@@ -742,6 +792,14 @@ scenarios:
       scope: "Single-component"
       target_file: "internal/security/scanner.go"
       target_function: "Pipeline.Scan"
+
+    patterns:
+      primary: "unit-function-test"
+      helpers_required: []
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
 
     specific_preconditions: []
 
@@ -788,7 +846,7 @@ scenarios:
         description: "Input Pipeline Integrity"
       context:
         description: "when processing input through multi-stage pipeline"
-        decorators: []
+        decorators: [Ordered]
       it:
         description: "should propagate sanitized output between stages"
         test_id_format: "[test_id:TS-GH-18-002c]"
@@ -807,7 +865,7 @@ scenarios:
 
   - scenario_id: "002d"
     test_id: "TS-GH-18-002d"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-18"
@@ -831,6 +889,14 @@ scenarios:
       scope: "Single-component"
       target_file: "internal/security/scanner.go"
       target_function: "Pipeline.Scan"
+
+    patterns:
+      primary: "unit-function-test"
+      helpers_required: []
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
 
     specific_preconditions: []
 
@@ -881,7 +947,7 @@ scenarios:
         description: "Input Pipeline Integrity"
       context:
         description: "when injection pattern is detected"
-        decorators: []
+        decorators: [Ordered]
       it:
         description: "should fail closed and mark input unsafe"
         test_id_format: "[test_id:TS-GH-18-002d]"
@@ -904,7 +970,7 @@ scenarios:
   # =========================================================================
   - scenario_id: "003a"
     test_id: "TS-GH-18-003a"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-18"
@@ -928,6 +994,14 @@ scenarios:
       scope: "Single-component"
       target_file: "internal/security/scanner.go"
       target_function: "OutputPipeline"
+
+    patterns:
+      primary: "unit-function-test"
+      helpers_required: []
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
 
     specific_preconditions: []
 
@@ -974,7 +1048,7 @@ scenarios:
         description: "Output Pipeline Redaction"
       context:
         description: "when output contains API keys"
-        decorators: []
+        decorators: [Ordered]
       it:
         description: "should redact API keys"
         test_id_format: "[test_id:TS-GH-18-003a]"
@@ -994,7 +1068,7 @@ scenarios:
 
   - scenario_id: "003b"
     test_id: "TS-GH-18-003b"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-18"
@@ -1018,6 +1092,14 @@ scenarios:
       scope: "Single-component"
       target_file: "internal/security/scanner.go"
       target_function: "OutputPipeline"
+
+    patterns:
+      primary: "unit-function-test"
+      helpers_required: []
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
 
     specific_preconditions: []
 
@@ -1064,7 +1146,7 @@ scenarios:
         description: "Output Pipeline Redaction"
       context:
         description: "when output contains authentication tokens"
-        decorators: []
+        decorators: [Ordered]
       it:
         description: "should redact tokens"
         test_id_format: "[test_id:TS-GH-18-003b]"
@@ -1084,7 +1166,7 @@ scenarios:
 
   - scenario_id: "003c"
     test_id: "TS-GH-18-003c"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-18"
@@ -1108,6 +1190,14 @@ scenarios:
       scope: "Single-component"
       target_file: "internal/security/scanner.go"
       target_function: "OutputPipeline"
+
+    patterns:
+      primary: "unit-function-test"
+      helpers_required: []
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
 
     specific_preconditions: []
 
@@ -1154,7 +1244,7 @@ scenarios:
         description: "Output Pipeline Redaction"
       context:
         description: "when output contains no secrets"
-        decorators: []
+        decorators: [Ordered]
       it:
         description: "should pass clean text through unchanged"
         test_id_format: "[test_id:TS-GH-18-003c]"
@@ -1176,7 +1266,7 @@ scenarios:
   # =========================================================================
   - scenario_id: "004a"
     test_id: "TS-GH-18-004a"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-18"
@@ -1200,6 +1290,14 @@ scenarios:
       scope: "Single-component"
       target_file: "internal/security/injection.go"
       target_function: "ContextInjectionScanner.Scan"
+
+    patterns:
+      primary: "unit-function-test"
+      helpers_required: []
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
 
     specific_preconditions: []
 
@@ -1250,7 +1348,7 @@ scenarios:
         description: "Context Injection Detection"
       context:
         description: "when input contains known injection patterns"
-        decorators: []
+        decorators: [Ordered]
       it:
         description: "should detect the injection"
         test_id_format: "[test_id:TS-GH-18-004a]"
@@ -1269,7 +1367,7 @@ scenarios:
 
   - scenario_id: "004b"
     test_id: "TS-GH-18-004b"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-18"
@@ -1294,6 +1392,14 @@ scenarios:
       scope: "Single-component"
       target_file: "internal/security/injection.go"
       target_function: "ContextInjectionScanner.Scan"
+
+    patterns:
+      primary: "unit-function-test"
+      helpers_required: []
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
 
     specific_preconditions: []
 
@@ -1335,7 +1441,7 @@ scenarios:
         description: "Context Injection Detection"
       context:
         description: "when patterns have different severity levels"
-        decorators: []
+        decorators: [Ordered]
       it:
         description: "should assign correct severity per pattern"
         test_id_format: "[test_id:TS-GH-18-004b]"
@@ -1354,7 +1460,7 @@ scenarios:
 
   - scenario_id: "004c"
     test_id: "TS-GH-18-004c"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-18"
@@ -1377,6 +1483,14 @@ scenarios:
       scope: "Single-component"
       target_file: "internal/security/injection.go"
       target_function: "ContextInjectionScanner.Scan"
+
+    patterns:
+      primary: "unit-function-test"
+      helpers_required: []
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
 
     specific_preconditions: []
 
@@ -1418,7 +1532,7 @@ scenarios:
         description: "Context Injection Detection"
       context:
         description: "when input is clean text"
-        decorators: []
+        decorators: [Ordered]
       it:
         description: "should return safe result"
         test_id_format: "[test_id:TS-GH-18-004c]"
@@ -1437,7 +1551,7 @@ scenarios:
 
   - scenario_id: "004d"
     test_id: "TS-GH-18-004d"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P2"
     mvp: false
     requirement_id: "GH-18"
@@ -1460,6 +1574,14 @@ scenarios:
       scope: "Single-component"
       target_file: "internal/security/injection.go"
       target_function: "ContextInjectionScanner.Scan"
+
+    patterns:
+      primary: "unit-function-test"
+      helpers_required: []
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
 
     specific_preconditions: []
 
@@ -1501,7 +1623,7 @@ scenarios:
         description: "Context Injection Detection"
       context:
         description: "when input is empty string"
-        decorators: []
+        decorators: [Ordered]
       it:
         description: "should return safe without panic"
         test_id_format: "[test_id:TS-GH-18-004d]"
@@ -1523,7 +1645,7 @@ scenarios:
   # =========================================================================
   - scenario_id: "005a"
     test_id: "TS-GH-18-005a"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-18"
@@ -1546,6 +1668,14 @@ scenarios:
       scope: "Single-component"
       target_file: "internal/security/scanner.go"
       target_function: "Pipeline.Scan"
+
+    patterns:
+      primary: "unit-function-test"
+      helpers_required: []
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
 
     specific_preconditions: []
 
@@ -1587,7 +1717,7 @@ scenarios:
         description: "Pipeline Fail-Closed Behavior"
       context:
         description: "when all scanners report safe"
-        decorators: []
+        decorators: [Ordered]
       it:
         description: "should return safe result"
         test_id_format: "[test_id:TS-GH-18-005a]"
@@ -1606,7 +1736,7 @@ scenarios:
 
   - scenario_id: "005b"
     test_id: "TS-GH-18-005b"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-18"
@@ -1630,6 +1760,14 @@ scenarios:
       scope: "Single-component"
       target_file: "internal/security/scanner.go"
       target_function: "Pipeline.Scan"
+
+    patterns:
+      primary: "unit-function-test"
+      helpers_required: []
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
 
     specific_preconditions: []
 
@@ -1671,7 +1809,7 @@ scenarios:
         description: "Pipeline Fail-Closed Behavior"
       context:
         description: "when any scanner reports unsafe"
-        decorators: []
+        decorators: [Ordered]
       it:
         description: "should return unsafe result"
         test_id_format: "[test_id:TS-GH-18-005b]"
@@ -1690,7 +1828,7 @@ scenarios:
 
   - scenario_id: "005c"
     test_id: "TS-GH-18-005c"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-18"
@@ -1714,6 +1852,14 @@ scenarios:
       scope: "Single-component"
       target_file: "internal/security/scanner.go"
       target_function: "HasCriticalFindings"
+
+    patterns:
+      primary: "unit-function-test"
+      helpers_required: []
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
 
     specific_preconditions: []
 
@@ -1759,7 +1905,7 @@ scenarios:
         description: "Pipeline Fail-Closed Behavior"
       context:
         description: "when checking for critical findings"
-        decorators: []
+        decorators: [Ordered]
       it:
         description: "should correctly identify critical severity"
         test_id_format: "[test_id:TS-GH-18-005c]"
@@ -1778,7 +1924,7 @@ scenarios:
 
   - scenario_id: "005d"
     test_id: "TS-GH-18-005d"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-18"
@@ -1803,6 +1949,14 @@ scenarios:
       scope: "Single-component"
       target_file: "internal/security/scanner.go"
       target_function: "Pipeline.Scan"
+
+    patterns:
+      primary: "unit-function-test"
+      helpers_required: []
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
 
     specific_preconditions: []
 
@@ -1853,7 +2007,7 @@ scenarios:
         description: "Pipeline Fail-Closed Behavior"
       context:
         description: "when multiple scanners produce findings"
-        decorators: []
+        decorators: [Ordered]
       it:
         description: "should aggregate findings from all scanners"
         test_id_format: "[test_id:TS-GH-18-005d]"
@@ -1875,7 +2029,7 @@ scenarios:
   # =========================================================================
   - scenario_id: "006a"
     test_id: "TS-GH-18-006a"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-18"
@@ -1900,6 +2054,14 @@ scenarios:
       scope: "Single-component"
       target_file: "internal/harness/harness.go"
       target_function: "LoadProviderDefs"
+
+    patterns:
+      primary: "unit-function-test"
+      helpers_required: []
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
 
     specific_preconditions:
       - name: "Multi-provider config"
@@ -1947,7 +2109,7 @@ scenarios:
         description: "Model Provider Diversity Support"
       context:
         description: "when config has multiple providers"
-        decorators: []
+        decorators: [Ordered]
       it:
         description: "should load all provider definitions"
         test_id_format: "[test_id:TS-GH-18-006a]"
@@ -1967,7 +2129,7 @@ scenarios:
 
   - scenario_id: "006b"
     test_id: "TS-GH-18-006b"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-18"
@@ -1990,6 +2152,14 @@ scenarios:
       scope: "Single-component"
       target_file: "internal/harness/harness.go"
       target_function: "ProviderDef"
+
+    patterns:
+      primary: "unit-function-test"
+      helpers_required: []
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
 
     specific_preconditions:
       - name: "Provider config with credentials"
@@ -2033,7 +2203,7 @@ scenarios:
         description: "Model Provider Diversity Support"
       context:
         description: "when provider has credentials configured"
-        decorators: []
+        decorators: [Ordered]
       it:
         description: "should map credentials correctly"
         test_id_format: "[test_id:TS-GH-18-006b]"
@@ -2052,7 +2222,7 @@ scenarios:
 
   - scenario_id: "006c"
     test_id: "TS-GH-18-006c"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-18"
@@ -2076,6 +2246,14 @@ scenarios:
       scope: "Single-component"
       target_file: "internal/harness/harness.go"
       target_function: "LoadProviderDefs"
+
+    patterns:
+      primary: "unit-function-test"
+      helpers_required: []
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
 
     specific_preconditions:
       - name: "Invalid provider config"
@@ -2119,7 +2297,7 @@ scenarios:
         description: "Model Provider Diversity Support"
       context:
         description: "when provider config is invalid"
-        decorators: []
+        decorators: [Ordered]
       it:
         description: "should return descriptive error"
         test_id_format: "[test_id:TS-GH-18-006c]"
@@ -2141,7 +2319,7 @@ scenarios:
   # =========================================================================
   - scenario_id: "007a"
     test_id: "TS-GH-18-007a"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-18"
@@ -2164,6 +2342,14 @@ scenarios:
       scope: "Single-component"
       target_file: "internal/harness/harness.go"
       target_function: "FailModeClosed"
+
+    patterns:
+      primary: "unit-function-test"
+      helpers_required: []
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
 
     specific_preconditions: []
 
@@ -2201,7 +2387,7 @@ scenarios:
         description: "Security Configuration Defaults"
       context:
         description: "when using default security config"
-        decorators: []
+        decorators: [Ordered]
       it:
         description: "should default to fail-closed mode"
         test_id_format: "[test_id:TS-GH-18-007a]"
@@ -2220,7 +2406,7 @@ scenarios:
 
   - scenario_id: "007b"
     test_id: "TS-GH-18-007b"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-18"
@@ -2242,6 +2428,14 @@ scenarios:
       scope: "Single-component"
       target_file: "internal/harness/harness.go"
       target_function: "SecurityEnabled"
+
+    patterns:
+      primary: "unit-function-test"
+      helpers_required: []
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
 
     specific_preconditions: []
 
@@ -2279,7 +2473,7 @@ scenarios:
         description: "Security Configuration Defaults"
       context:
         description: "when checking default security state"
-        decorators: []
+        decorators: [Ordered]
       it:
         description: "should be enabled by default"
         test_id_format: "[test_id:TS-GH-18-007b]"
@@ -2298,7 +2492,7 @@ scenarios:
 
   - scenario_id: "007c"
     test_id: "TS-GH-18-007c"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-18"
@@ -2323,6 +2517,14 @@ scenarios:
       scope: "Single-component"
       target_file: "internal/security/hooks.go"
       target_function: "boolDefault"
+
+    patterns:
+      primary: "table-driven-test"
+      helpers_required: []
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
 
     specific_preconditions: []
 
@@ -2364,7 +2566,7 @@ scenarios:
         description: "Security Configuration Defaults"
       context:
         description: "when toggles are explicitly configured"
-        decorators: []
+        decorators: [Ordered]
       it:
         description: "should respect explicit toggle values"
         test_id_format: "[test_id:TS-GH-18-007c]"
@@ -2391,7 +2593,7 @@ scenarios:
 
   - scenario_id: "007d"
     test_id: "TS-GH-18-007d"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-18"
@@ -2415,6 +2617,14 @@ scenarios:
       scope: "Single-component"
       target_file: "internal/security/hooks.go"
       target_function: "boolDefault"
+
+    patterns:
+      primary: "unit-function-test"
+      helpers_required: []
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
 
     specific_preconditions: []
 
@@ -2452,7 +2662,7 @@ scenarios:
         description: "Security Configuration Defaults"
       context:
         description: "when toggle pointers are nil"
-        decorators: []
+        decorators: [Ordered]
       it:
         description: "should apply safe default values"
         test_id_format: "[test_id:TS-GH-18-007d]"

@@ -2,6 +2,7 @@ package tests
 
 import (
 	. "github.com/onsi/ginkgo/v2"
+	_ "github.com/onsi/gomega"
 )
 
 /*
@@ -9,9 +10,13 @@ Output Pipeline Redaction Tests
 
 STP Reference: outputs/stp/GH-18/GH-18_test_plan.md
 Jira: GH-18
+
+Note: Cleanup is intentionally empty for all scenarios in this file.
+These are stateless unit tests operating on in-memory Go structs with
+no external resources to release.
 */
 
-var _ = Describe("[GH-18] Output Pipeline Redaction", func() {
+var _ = Describe("[GH-18] Output Pipeline Redaction", Ordered, func() {
 	/*
 		Markers:
 			- tier1
@@ -21,7 +26,7 @@ var _ = Describe("[GH-18] Output Pipeline Redaction", func() {
 			- FullSend binary available in PATH
 	*/
 
-	Context("when output contains API keys", func() {
+	Context("when output contains API keys", Ordered, func() {
 		/*
 			Preconditions:
 				- Output pipeline created via security.OutputPipeline()
@@ -39,7 +44,7 @@ var _ = Describe("[GH-18] Output Pipeline Redaction", func() {
 		})
 	})
 
-	Context("when output contains authentication tokens", func() {
+	Context("when output contains authentication tokens", Ordered, func() {
 		/*
 			Preconditions:
 				- Output pipeline created via security.OutputPipeline()
@@ -57,7 +62,7 @@ var _ = Describe("[GH-18] Output Pipeline Redaction", func() {
 		})
 	})
 
-	Context("when output contains no secrets", func() {
+	Context("when output contains no secrets", Ordered, func() {
 		/*
 			Preconditions:
 				- Output pipeline created via security.OutputPipeline()

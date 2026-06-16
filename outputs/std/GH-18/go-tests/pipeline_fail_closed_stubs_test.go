@@ -2,6 +2,7 @@ package tests
 
 import (
 	. "github.com/onsi/ginkgo/v2"
+	_ "github.com/onsi/gomega"
 )
 
 /*
@@ -9,9 +10,13 @@ Pipeline Fail-Closed Behavior Tests
 
 STP Reference: outputs/stp/GH-18/GH-18_test_plan.md
 Jira: GH-18
+
+Note: Cleanup is intentionally empty for all scenarios in this file.
+These are stateless unit tests operating on in-memory Go structs with
+no external resources to release.
 */
 
-var _ = Describe("[GH-18] Pipeline Fail-Closed Behavior", func() {
+var _ = Describe("[GH-18] Pipeline Fail-Closed Behavior", Ordered, func() {
 	/*
 		Markers:
 			- tier1
@@ -21,7 +26,7 @@ var _ = Describe("[GH-18] Pipeline Fail-Closed Behavior", func() {
 			- FullSend binary available in PATH
 	*/
 
-	Context("when all scanners report safe", func() {
+	Context("when all scanners report safe", Ordered, func() {
 		/*
 			Preconditions:
 				- Input pipeline created via security.InputPipeline()
@@ -39,7 +44,7 @@ var _ = Describe("[GH-18] Pipeline Fail-Closed Behavior", func() {
 		})
 	})
 
-	Context("when any scanner reports unsafe", func() {
+	Context("when any scanner reports unsafe", Ordered, func() {
 		/*
 			Preconditions:
 				- Input pipeline created via security.InputPipeline()
@@ -57,7 +62,7 @@ var _ = Describe("[GH-18] Pipeline Fail-Closed Behavior", func() {
 		})
 	})
 
-	Context("when checking for critical findings", func() {
+	Context("when checking for critical findings", Ordered, func() {
 		/*
 			Preconditions:
 				- ScanResult struct with findings of varying severity levels
@@ -77,7 +82,7 @@ var _ = Describe("[GH-18] Pipeline Fail-Closed Behavior", func() {
 		})
 	})
 
-	Context("when multiple scanners produce findings", func() {
+	Context("when multiple scanners produce findings", Ordered, func() {
 		/*
 			Preconditions:
 				- Input pipeline created via security.InputPipeline()

@@ -2,6 +2,7 @@ package tests
 
 import (
 	. "github.com/onsi/ginkgo/v2"
+	_ "github.com/onsi/gomega"
 )
 
 /*
@@ -9,9 +10,13 @@ Context Injection Detection Tests
 
 STP Reference: outputs/stp/GH-18/GH-18_test_plan.md
 Jira: GH-18
+
+Note: Cleanup is intentionally empty for all scenarios in this file.
+These are stateless unit tests operating on in-memory Go structs with
+no external resources to release.
 */
 
-var _ = Describe("[GH-18] Context Injection Detection", func() {
+var _ = Describe("[GH-18] Context Injection Detection", Ordered, func() {
 	/*
 		Markers:
 			- tier1
@@ -21,7 +26,7 @@ var _ = Describe("[GH-18] Context Injection Detection", func() {
 			- FullSend binary available in PATH
 	*/
 
-	Context("when input contains known injection patterns", func() {
+	Context("when input contains known injection patterns", Ordered, func() {
 		/*
 			Preconditions:
 				- ContextInjectionScanner created via security.NewContextInjectionScanner()
@@ -40,7 +45,7 @@ var _ = Describe("[GH-18] Context Injection Detection", func() {
 		})
 	})
 
-	Context("when patterns have different severity levels", func() {
+	Context("when patterns have different severity levels", Ordered, func() {
 		/*
 			Preconditions:
 				- ContextInjectionScanner created via security.NewContextInjectionScanner()
@@ -59,7 +64,7 @@ var _ = Describe("[GH-18] Context Injection Detection", func() {
 		})
 	})
 
-	Context("when input is clean text", func() {
+	Context("when input is clean text", Ordered, func() {
 		/*
 			Preconditions:
 				- ContextInjectionScanner created via security.NewContextInjectionScanner()
@@ -77,7 +82,7 @@ var _ = Describe("[GH-18] Context Injection Detection", func() {
 		})
 	})
 
-	Context("when input is empty string", func() {
+	Context("when input is empty string", Ordered, func() {
 		/*
 			Preconditions:
 				- ContextInjectionScanner created via security.NewContextInjectionScanner()
