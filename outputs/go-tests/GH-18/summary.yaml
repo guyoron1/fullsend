@@ -1,0 +1,26 @@
+---
+status: success
+jira_id: GH-18
+std_source: outputs/std/GH-18/GH-18_test_description.yaml
+languages:
+  - language: go
+    framework: testing
+    assertion_library: testify
+    files:
+      - security_hooks_test.go
+      - security_defaults_test.go
+      - input_pipeline_test.go
+      - output_pipeline_test.go
+      - injection_scanner_test.go
+      - pipeline_aggregation_test.go
+      - provider_loading_test.go
+      - tool_allowlist_test.go
+    test_count: 33
+total_test_count: 33
+lsp_patterns_used: false
+notes:
+  - "All 33 STD scenarios implemented as Go tests with testify assertions"
+  - "Tests use //go:build e2e build tag per STD code_generation_config"
+  - "Tests reference actual API from internal/security and internal/harness packages"
+  - "No source repo mounted — tests derived from STD scenarios + codebase analysis"
+  - "Python tests not generated (tier2_count: 0 in STD)"
