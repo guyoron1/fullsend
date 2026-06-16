@@ -534,16 +534,22 @@ When enrolling a repo (per-repo mode), additionally requires:
 	return cmd
 }
 
+// enrollmentVerifier reads mint enrollment state for post-write verification.
+type enrollmentVerifier interface {
+	GetServiceRevisionInfo(ctx context.Context) (*gcf.ServiceRevisionInfo, error)
+	GetServiceTrafficEnvVars(ctx context.Context) (map[string]string, error)
+}
+
 // verifyEnrollment checks the Cloud Run revision state after enrollment and
 // performs post-write verification by reading back the traffic-serving
 // revision's env vars to confirm the enrollment took effect.
-func verifyEnrollment(ctx context.Context, printer *ui.Printer, provisioner *gcf.Provisioner, org string, project string) {
+func verifyEnrollment(ctx context.Context, printer *ui.Printer, provisioner enrollmentVerifier, org string, project string) {
 	// Step 4a: Verify revision state.
 	printer.StepStart("Verifying Cloud Run revision state")
 	revInfo, revErr := provisioner.GetServiceRevisionInfo(ctx)
 	if revErr != nil {
 		printer.StepWarn(fmt.Sprintf("Could not verify revision state: %v", revErr))
-	} else if revInfo.TrafficRevisionShort == "" {
+	} else if revInfo == nil || revInfo.TrafficRevisionShort == "" {
 		printer.StepWarn("Could not determine traffic-serving revision")
 	} else if revInfo.TemplateMatchesTraffic {
 		if revInfo.TrafficPercent > 0 {
@@ -562,7 +568,7 @@ func verifyEnrollment(ctx context.Context, printer *ui.Printer, provisioner *gcf
 	// if revision info was unavailable.
 	printer.StepStart("Post-write verification")
 	var verifyEnvVars map[string]string
-	if revErr == nil && revInfo.TrafficEnvVars != nil {
+	if revErr == nil && revInfo != nil && revInfo.TrafficEnvVars != nil {
 		verifyEnvVars = revInfo.TrafficEnvVars
 	} else {
 		var verifyErr error
@@ -1169,7 +1175,7 @@ func runMintStatus(ctx context.Context, printer *ui.Printer, project, region, or
 
 	// Parse enrolled orgs from traffic-serving env vars when available.
 	var trafficEnv map[string]string
-	if revErr == nil && revInfo.TrafficEnvVars != nil {
+	if revErr == nil && revInfo != nil && revInfo.TrafficEnvVars != nil {
 		trafficEnv = revInfo.TrafficEnvVars
 	} else {
 		var envErr error

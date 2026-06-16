@@ -606,6 +606,56 @@ func TestPemSecretRoles_DeduplicatesAliases(t *testing.T) {
 	assert.Equal(t, []string{"coder", "triage"}, roles)
 }
 
+type fakeEnrollmentVerifier struct {
+	revInfo   *gcf.ServiceRevisionInfo
+	revErr    error
+	envVars   map[string]string
+	envErr    error
+}
+
+func (f *fakeEnrollmentVerifier) GetServiceRevisionInfo(context.Context) (*gcf.ServiceRevisionInfo, error) {
+	return f.revInfo, f.revErr
+}
+
+func (f *fakeEnrollmentVerifier) GetServiceTrafficEnvVars(context.Context) (map[string]string, error) {
+	return f.envVars, f.envErr
+}
+
+func TestVerifyEnrollment_OrgPresent(t *testing.T) {
+	printer := ui.New(&strings.Builder{})
+	verifyEnrollment(context.Background(), printer, &fakeEnrollmentVerifier{
+		revInfo: &gcf.ServiceRevisionInfo{
+			TrafficRevisionShort:   "fullsend-mint-00001",
+			TrafficPercent:         100,
+			TemplateMatchesTraffic: true,
+			TrafficEnvVars: map[string]string{
+				"ALLOWED_ORGS": "acme,widget",
+			},
+		},
+	}, "widget", "my-project")
+}
+
+func TestVerifyEnrollment_OrgMissing(t *testing.T) {
+	out := &strings.Builder{}
+	printer := ui.New(out)
+	verifyEnrollment(context.Background(), printer, &fakeEnrollmentVerifier{
+		envVars: map[string]string{
+			"ALLOWED_ORGS": "acme",
+		},
+	}, "widget", "my-project")
+	assert.Contains(t, out.String(), "FAILED")
+}
+
+func TestVerifyEnrollment_FallsBackToTrafficEnvVars(t *testing.T) {
+	printer := ui.New(&strings.Builder{})
+	verifyEnrollment(context.Background(), printer, &fakeEnrollmentVerifier{
+		revErr: fmt.Errorf("revision unavailable"),
+		envVars: map[string]string{
+			"ALLOWED_ORGS": "acme",
+		},
+	}, "acme", "my-project")
+}
+
 // --- confirmUnenroll tests ---
 
 func TestConfirmUnenroll_Match(t *testing.T) {
