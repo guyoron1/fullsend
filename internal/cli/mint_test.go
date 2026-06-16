@@ -607,10 +607,10 @@ func TestPemSecretRoles_DeduplicatesAliases(t *testing.T) {
 }
 
 type fakeEnrollmentVerifier struct {
-	revInfo   *gcf.ServiceRevisionInfo
-	revErr    error
-	envVars   map[string]string
-	envErr    error
+	revInfo *gcf.ServiceRevisionInfo
+	revErr  error
+	envVars map[string]string
+	envErr  error
 }
 
 func (f *fakeEnrollmentVerifier) GetServiceRevisionInfo(context.Context) (*gcf.ServiceRevisionInfo, error) {
