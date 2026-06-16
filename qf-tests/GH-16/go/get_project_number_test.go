@@ -1,4 +1,4 @@
-package gcf_test
+package gcf
 
 import (
 	"context"
@@ -10,238 +10,189 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/fullsend-ai/fullsend/internal/dispatch/gcf"
-	"github.com/fullsend-ai/fullsend/internal/gcp"
 )
 
 // TestGetProjectNumber_OmitsQuotaProjectHeader verifies that when
-// GetProjectNumber is called on a LiveGCFClient that has a QuotaProject
-// configured, the outgoing HTTP request to the Cloud Resource Manager API
-// does NOT include the x-goog-user-project header. This validates that a
-// shallow copy of the gcp.Client with cleared QuotaProject is used for the
-// CRM API call.
+// GetProjectNumber is called on a LiveGCFClient whose embedded gcp.Client
+// has a non-empty QuotaProject, the outgoing CRM API request does NOT
+// include the x-goog-user-project header. The shallow copy with cleared
+// QuotaProject prevents quota-project permission checks on the target
+// project.
 //
 // Scenario: TS-GH-16-001 (P0, Unit, MVP)
 func TestGetProjectNumber_OmitsQuotaProjectHeader(t *testing.T) {
-	// SETUP: Create httptest.Server that captures request headers
+	// SETUP: Create httptest server that captures request headers and
+	// returns a valid project number.
 	var capturedHeaders http.Header
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		capturedHeaders = r.Header.Clone()
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintln(w, `{"projectNumber": "123456789"}`)
 	}))
-	defer server.Close()
+	defer srv.Close()
 
-	// SETUP: Create LiveGCFClient with QuotaProject set and pointing to mock server
-	gcpClient := &gcp.Client{
-		QuotaProject: "my-quota-project",
-	}
-	client := &gcf.LiveGCFClient{Client: gcpClient}
+	// SETUP: Create LiveGCFClient with QuotaProject set, CRM endpoint
+	// redirected to mock via rewriteTransport.
+	client := newTestClient(srv)
+	client.Client.QuotaProject = "test-quota-project"
 
-	ctx := context.Background()
+	// TEST: Call GetProjectNumber.
+	projectNum, err := client.GetProjectNumber(context.Background(), "test-project")
 
-	// TEST: Call GetProjectNumber
-	projectNumber, err := client.GetProjectNumber(ctx, "my-project")
-
-	// ASSERT: Call succeeds and returns the expected project number
+	// ASSERT: Call succeeds and returns expected project number.
 	require.NoError(t, err)
-	assert.Equal(t, "123456789", projectNumber)
+	assert.Equal(t, "123456789", projectNum)
 
-	// ASSERT: x-goog-user-project header is absent in captured headers
+	// ASSERT: x-goog-user-project header is absent from CRM request.
 	assert.Empty(t, capturedHeaders.Get("x-goog-user-project"),
-		"x-goog-user-project header should not be present in CRM request")
+		"CRM request must not include x-goog-user-project header")
 }
 
-// TestGetProjectNumber_PermissionDenied verifies that when the CRM API
-// returns HTTP 403 (Permission Denied), GetProjectNumber returns an
-// appropriate error rather than panicking or returning invalid data.
+// TestGetProjectNumber_ErrorOnHTTP403 verifies that GetProjectNumber returns
+// a non-nil error when the CRM API responds with 403 Permission Denied.
 //
 // Scenario: TS-GH-16-002 (P1, Unit)
-func TestGetProjectNumber_PermissionDenied(t *testing.T) {
-	// SETUP: Create httptest.Server returning 403 Forbidden
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusForbidden)
-		fmt.Fprintln(w, `{"error": {"code": 403, "message": "Permission denied"}}`)
+func TestGetProjectNumber_ErrorOnHTTP403(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, `{"error":{"message":"Permission Denied"}}`, http.StatusForbidden)
 	}))
-	defer server.Close()
+	defer srv.Close()
 
-	// SETUP: Create LiveGCFClient pointing to mock server
-	gcpClient := &gcp.Client{
-		QuotaProject: "my-quota-project",
-	}
-	client := &gcf.LiveGCFClient{Client: gcpClient}
+	client := newTestClient(srv)
 
-	ctx := context.Background()
+	_, err := client.GetProjectNumber(context.Background(), "test-project")
 
-	// TEST: Call GetProjectNumber and expect error
-	_, err := client.GetProjectNumber(ctx, "my-project")
-
-	// ASSERT: Error is returned on 403 response
-	require.Error(t, err, "GetProjectNumber should return error on 403 response")
+	require.Error(t, err, "GetProjectNumber should return error on 403")
 }
 
-// TestGetProjectNumber_EmptyProjectNumber verifies that when the CRM API
-// returns HTTP 200 but with an empty projectNumber field, GetProjectNumber
-// handles this edge case gracefully.
+// TestGetProjectNumber_HandlesEmptyProjectNumber verifies that
+// GetProjectNumber handles the edge case of the CRM API returning an empty
+// projectNumber field without panicking.
 //
 // Scenario: TS-GH-16-003 (P2, Unit)
-func TestGetProjectNumber_EmptyProjectNumber(t *testing.T) {
-	// SETUP: Create httptest.Server returning empty projectNumber
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func TestGetProjectNumber_HandlesEmptyProjectNumber(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintln(w, `{"projectNumber": ""}`)
 	}))
-	defer server.Close()
+	defer srv.Close()
 
-	// SETUP: Create LiveGCFClient pointing to mock server
-	gcpClient := &gcp.Client{
-		QuotaProject: "my-quota-project",
-	}
-	client := &gcf.LiveGCFClient{Client: gcpClient}
+	client := newTestClient(srv)
 
-	ctx := context.Background()
+	// The current implementation returns an error for empty project number.
+	_, err := client.GetProjectNumber(context.Background(), "test-project")
 
-	// TEST: Call GetProjectNumber and check result
-	projectNumber, err := client.GetProjectNumber(ctx, "my-project")
-
-	// ASSERT: Empty project number is handled without panic
-	// Either an error is returned or empty string is handled
-	if err == nil {
-		assert.Empty(t, projectNumber, "Empty project number should be flagged")
-	}
+	// ASSERT: No panic; returns error for empty projectNumber.
+	require.Error(t, err, "GetProjectNumber should return error for empty projectNumber")
+	assert.Contains(t, err.Error(), "empty project number")
 }
 
-// TestGetProjectNumber_OriginalClientUnchanged verifies that after calling
-// GetProjectNumber, the original LiveGCFClient's embedded gcp.Client retains
-// its QuotaProject value. The shallow copy used internally must not modify
-// the original struct's fields.
+// TestGetProjectNumber_DoesNotMutateOriginalQuotaProject verifies that the
+// shallow copy mechanism in GetProjectNumber does not alter the original
+// gcp.Client's QuotaProject field. After calling GetProjectNumber, the
+// original client must retain its QuotaProject value.
 //
 // Scenario: TS-GH-16-004 (P0, Unit, MVP)
-func TestGetProjectNumber_OriginalClientUnchanged(t *testing.T) {
-	// SETUP: Create mock HTTP server returning valid project number
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func TestGetProjectNumber_DoesNotMutateOriginalQuotaProject(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintln(w, `{"projectNumber": "123456789"}`)
 	}))
-	defer server.Close()
+	defer srv.Close()
 
-	// SETUP: Create LiveGCFClient with QuotaProject set
-	gcpClient := &gcp.Client{
-		QuotaProject: "my-quota-project",
-	}
-	client := &gcf.LiveGCFClient{Client: gcpClient}
-	originalQuotaProject := gcpClient.QuotaProject
+	client := newTestClient(srv)
+	client.Client.QuotaProject = "test-quota-project"
+	originalQuotaProject := client.Client.QuotaProject
 
-	ctx := context.Background()
-
-	// TEST: Call GetProjectNumber
-	_, err := client.GetProjectNumber(ctx, "target-project")
+	_, err := client.GetProjectNumber(context.Background(), "test-project")
 	require.NoError(t, err)
 
-	// ASSERT: Original QuotaProject value is preserved
+	// ASSERT: Original QuotaProject is unchanged.
 	assert.Equal(t, originalQuotaProject, client.Client.QuotaProject,
-		"Original client's QuotaProject must not be mutated by GetProjectNumber")
+		"Original client QuotaProject must not be mutated by GetProjectNumber")
 }
 
-// TestGetProjectNumber_SubsequentCallsUseOriginalQuotaProject verifies that
-// after GetProjectNumber clears the QuotaProject on its internal copy,
-// subsequent API calls continue to use the original QuotaProject value.
+// TestSubsequentCallsRetainQuotaProject verifies that after calling
+// GetProjectNumber (which internally clears QuotaProject on a copy),
+// subsequent API calls through the original client still include the
+// x-goog-user-project header with the correct QuotaProject value.
 //
 // Scenario: TS-GH-16-005 (P0, Unit, MVP)
-func TestGetProjectNumber_SubsequentCallsUseOriginalQuotaProject(t *testing.T) {
-	// SETUP: Create httptest.Server that logs headers per request
-	var requestLog []http.Header
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestLog = append(requestLog, r.Header.Clone())
+func TestSubsequentCallsRetainQuotaProject(t *testing.T) {
+	// Track headers for each request arriving at the server.
+	var requestHeaders []http.Header
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestHeaders = append(requestHeaders, r.Header.Clone())
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintln(w, `{"projectNumber": "123456789"}`)
 	}))
-	defer server.Close()
+	defer srv.Close()
 
-	// SETUP: Create LiveGCFClient with QuotaProject set
-	gcpClient := &gcp.Client{
-		QuotaProject: "my-quota-project",
-	}
-	client := &gcf.LiveGCFClient{Client: gcpClient}
-
+	client := newTestClient(srv)
+	client.Client.QuotaProject = "test-quota-project"
 	ctx := context.Background()
 
-	// TEST: Call GetProjectNumber (CRM call - should omit header)
-	_, err := client.GetProjectNumber(ctx, "my-project")
+	// CRM call (GetProjectNumber) — should omit x-goog-user-project.
+	_, err := client.GetProjectNumber(ctx, "test-project")
 	require.NoError(t, err)
 
-	// TEST: Make a subsequent API request using the original client
-	req, _ := http.NewRequestWithContext(ctx, "GET", server.URL+"/v1/other", nil)
-	_, _ = client.Client.DoRequest(req)
+	// Subsequent regular API call using the original client's DoRequest.
+	resp, err := client.Client.DoRequest(ctx, http.MethodGet,
+		"https://compute.googleapis.com/v1/some-other-api", "")
+	require.NoError(t, err)
+	resp.Body.Close()
 
-	// ASSERT: First call has no x-goog-user-project
-	require.GreaterOrEqual(t, len(requestLog), 2, "Expected at least 2 requests")
-	assert.Empty(t, requestLog[0].Get("x-goog-user-project"),
-		"CRM request should not have x-goog-user-project header")
+	// ASSERT: At least two requests were made.
+	require.GreaterOrEqual(t, len(requestHeaders), 2, "Expected at least 2 requests")
 
-	// ASSERT: Second call has x-goog-user-project = "my-quota-project"
-	assert.Equal(t, "my-quota-project", requestLog[1].Get("x-goog-user-project"),
-		"Subsequent request should use original QuotaProject")
+	// ASSERT: CRM request omitted x-goog-user-project.
+	assert.Empty(t, requestHeaders[0].Get("x-goog-user-project"),
+		"CRM request should not include x-goog-user-project header")
+
+	// ASSERT: Subsequent request includes x-goog-user-project with original value.
+	assert.Equal(t, "test-quota-project", requestHeaders[1].Get("x-goog-user-project"),
+		"Subsequent API calls must retain x-goog-user-project header")
 }
 
-// TestGetProjectNumber_ErrorPropagationFromCopiedClient verifies that errors
-// from the copied gcp.Client's DoRequest method are properly propagated
-// through GetProjectNumber. The shallow copy must maintain the same error
-// propagation behavior as the original client.
+// TestGetProjectNumber_ErrorPropagationFromCopiedClient verifies that
+// network-level errors are properly propagated through the shallow-copied
+// client. When the CRM endpoint is unreachable, GetProjectNumber must
+// return a meaningful error.
 //
 // Scenario: TS-GH-16-008 (P1, Unit)
 func TestGetProjectNumber_ErrorPropagationFromCopiedClient(t *testing.T) {
-	// SETUP: Create server and close it immediately to force connection error
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
-	server.Close()
+	// Create and immediately close server to simulate unreachable endpoint.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {}))
+	client := newTestClient(srv) // build client with server URL before closing
+	srv.Close()                  // close server so all requests fail
 
-	// SETUP: Create LiveGCFClient pointing to closed server URL
-	gcpClient := &gcp.Client{
-		QuotaProject: "my-quota-project",
-	}
-	client := &gcf.LiveGCFClient{Client: gcpClient}
+	_, err := client.GetProjectNumber(context.Background(), "test-project")
 
-	ctx := context.Background()
-
-	// TEST: Call GetProjectNumber on client with closed server
-	_, err := client.GetProjectNumber(ctx, "my-project")
-
-	// ASSERT: Error is returned for unreachable server
-	require.Error(t, err, "Should return error when server is unreachable")
+	require.Error(t, err, "GetProjectNumber should return error on unreachable host")
 }
 
-// TestGetProjectNumber_HTTP403_DescriptiveError verifies that when the CRM
-// API returns HTTP 403 Forbidden, the error message returned by
-// GetProjectNumber contains enough information for the user to diagnose the
-// issue.
+// TestGetProjectNumber_403ErrorMessageIsDescriptive verifies that the error
+// message from a 403 response contains enough diagnostic information for
+// the user to identify and resolve the permission issue.
 //
 // Scenario: TS-GH-16-009 (P2, Unit)
-func TestGetProjectNumber_HTTP403_DescriptiveError(t *testing.T) {
-	// SETUP: Create mock HTTP server returning 403 with descriptive body
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func TestGetProjectNumber_403ErrorMessageIsDescriptive(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
-		fmt.Fprintln(w, `{"error": {"code": 403, "message": "Cloud Resource Manager API has not been used in project my-project before or it is disabled.", "status": "PERMISSION_DENIED"}}`)
+		fmt.Fprintln(w, `{"error":{"message":"caller lacks cloudresourcemanager.projects.get"}}`)
 	}))
-	defer server.Close()
+	defer srv.Close()
 
-	// SETUP: Create LiveGCFClient pointing to mock server
-	gcpClient := &gcp.Client{
-		QuotaProject: "my-quota-project",
-	}
-	client := &gcf.LiveGCFClient{Client: gcpClient}
+	client := newTestClient(srv)
 
-	ctx := context.Background()
-
-	// TEST: Call GetProjectNumber and capture error
-	_, err := client.GetProjectNumber(ctx, "my-project")
-
-	// ASSERT: Error is returned
+	_, err := client.GetProjectNumber(context.Background(), "test-project")
 	require.Error(t, err)
 
-	// ASSERT: Error message is descriptive for 403 responses
-	errMsg := err.Error()
+	errMsg := strings.ToLower(err.Error())
 	assert.True(t,
-		strings.Contains(errMsg, "403") || strings.Contains(errMsg, "forbidden") || strings.Contains(errMsg, "permission") || strings.Contains(errMsg, "Permission"),
-		"Error should indicate permission issue, got: %s", errMsg)
+		strings.Contains(errMsg, "403") ||
+			strings.Contains(errMsg, "permission") ||
+			strings.Contains(errMsg, "forbidden"),
+		"Error message should contain diagnostic info, got: %s", err.Error())
 }
