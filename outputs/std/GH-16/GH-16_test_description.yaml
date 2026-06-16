@@ -1,0 +1,1420 @@
+---
+# Software Test Description (STD) — GH-16
+# Generated: 2026-06-16
+# Source: outputs/stp/GH-16/GH-16_test_plan.md
+
+document_metadata:
+  std_version: "2.1-enhanced"
+  generated_date: "2026-06-16"
+  jira_issue: "GH-16"
+  jira_summary: "fix(gcp): remove the project from the number call"
+  source_bugs: []
+  stp_reference:
+    file: "outputs/stp/GH-16/GH-16_test_plan.md"
+    version: "v1"
+    sections_covered: "Section III - Requirements-to-Tests Mapping"
+  related_prs:
+    - repo: "fullsend-ai/fullsend"
+      pr_number: 2231
+      url: "https://github.com/fullsend-ai/fullsend/pull/2231"
+      title: "fix(gcp): remove the project from the number call"
+      merged: false
+    - repo: "guyoron1/fullsend"
+      pr_number: 16
+      url: "https://github.com/guyoron1/fullsend/pull/16"
+      title: "fix(gcp): remove the project from the number call (fork)"
+      merged: false
+  total_scenarios: 10
+  unit_test_count: 7
+  functional_count: 3
+  e2e_count: 0
+  p0_count: 3
+  p1_count: 5
+  p2_count: 2
+
+code_generation_config:
+  std_version: "2.1-enhanced"
+  framework: "testing"
+  assertion_library: "testify"
+  language: "go"
+  package_name: "gcf_test"
+  context_init: "context.Background()"
+  imports:
+    standard:
+      - "context"
+      - "testing"
+      - "net/http"
+      - "net/http/httptest"
+      - "fmt"
+      - "strings"
+    test_framework:
+      - path: "github.com/stretchr/testify/assert"
+      - path: "github.com/stretchr/testify/require"
+    project:
+      - "github.com/fullsend-ai/fullsend/internal/gcp"
+      - "github.com/fullsend-ai/fullsend/internal/dispatch/gcf"
+  test_patterns:
+    function_prefix: "Test"
+    subtest_style: "t.Run"
+    assertion_style: "testify"
+
+common_preconditions:
+  infrastructure:
+    - name: "Go toolchain"
+      requirement: "Go 1.23+"
+      validation: "go version"
+    - name: "FullSend source"
+      requirement: "Source code with internal/dispatch/gcf/ and internal/gcp/ packages"
+      validation: "go build ./internal/dispatch/gcf/..."
+  operators: []
+  cluster_configuration:
+    topology: "None"
+    cpu_features: "Standard"
+    storage: "N/A"
+    network: "N/A"
+  rbac_requirements: []
+  test_environment:
+    platform: "GitHub Actions"
+    compute_resources: "Standard CI runner — no GCP credentials required; tests use mock HTTP servers"
+    special_hardware: "N/A"
+    tools:
+      - "go 1.23+"
+      - "httptest.Server (stdlib)"
+
+scenarios:
+  - scenario_id: "001"
+    test_id: "TS-GH-16-001"
+    tier: "Unit Tests"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-16"
+    requirement_summary: "GCP project number lookup succeeds without cloudresourcemanager API enabled on the target project"
+
+    patterns:
+      primary: "http-header-inspection"
+      secondary:
+        - "mock-http-server"
+        - "client-construction"
+      helpers_required:
+        - name: "httptest"
+          functions: ["NewServer", "Server.Close"]
+          purpose: "Mock HTTP server to capture outgoing request headers"
+      decorators: []
+
+    variables:
+      closure_scope:
+        - name: "server"
+          type: "*httptest.Server"
+          initialized_in: "test setup"
+          used_in: ["setup", "test_execution", "cleanup"]
+          comment: "Mock CRM API server to inspect request headers"
+        - name: "capturedHeaders"
+          type: "http.Header"
+          initialized_in: "server handler"
+          used_in: ["test_execution"]
+          comment: "Captured request headers from the mock server"
+        - name: "client"
+          type: "*gcf.LiveGCFClient"
+          initialized_in: "test setup"
+          used_in: ["test_execution"]
+          comment: "GCF client under test with QuotaProject set"
+
+    test_structure:
+      type: "single"
+      function: "TestGetProjectNumber_OmitsQuotaProjectHeader"
+      subtest: null
+
+    code_structure: |
+      func TestGetProjectNumber_OmitsQuotaProjectHeader(t *testing.T) {
+        // SETUP: Create httptest.Server that captures request headers
+        // SETUP: Create LiveGCFClient with QuotaProject set
+        // TEST: Call GetProjectNumber
+        // ASSERT: x-goog-user-project header is absent in captured headers
+      }
+
+    test_objective:
+      title: "Verify project number lookup omits quota project header"
+      what: |
+        Tests that when GetProjectNumber is called on a LiveGCFClient that has a
+        QuotaProject configured, the outgoing HTTP request to the Cloud Resource
+        Manager API does NOT include the x-goog-user-project header. This validates
+        that the shallow copy of the gcp.Client with cleared QuotaProject is used
+        for the CRM API call.
+      why: |
+        The x-goog-user-project header causes CRM API calls to fail when the
+        cloudresourcemanager API is not enabled on the target project. Omitting
+        this header removes a permission dependency and reduces setup friction
+        for GCP users provisioning FullSend via OIDC.
+      acceptance_criteria:
+        - "GetProjectNumber succeeds without error when CRM API returns valid project number"
+        - "The x-goog-user-project header is NOT present in the outgoing CRM request"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go testing with testify and httptest"
+
+    specific_preconditions:
+      - name: "QuotaProject field exists on gcp.Client"
+        requirement: "The gcp.Client struct must have a QuotaProject string field"
+        validation: "go build ./internal/gcp/..."
+
+    test_data:
+      resource_definitions:
+        - name: "mock CRM response"
+          type: "HTTP JSON response"
+          yaml: |
+            {
+              "projectNumber": "123456789"
+            }
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock HTTP server that captures request headers and returns project number"
+          command: "httptest.NewServer with handler that records headers"
+          validation: "Server starts and is accessible"
+          code_template: |
+            var capturedHeaders http.Header
+            server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+                capturedHeaders = r.Header.Clone()
+                w.Header().Set("Content-Type", "application/json")
+                fmt.Fprintln(w, `{"projectNumber": "123456789"}`)
+            }))
+            defer server.Close()
+
+        - step_id: "SETUP-02"
+          action: "Create LiveGCFClient with QuotaProject set and pointing to mock server"
+          command: "Construct gcp.Client with QuotaProject and wrap in LiveGCFClient"
+          validation: "Client is created successfully"
+          code_template: |
+            gcpClient := &gcp.Client{
+                QuotaProject: "my-quota-project",
+                // ... configure to use server.URL
+            }
+            client := &gcf.LiveGCFClient{Client: gcpClient}
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call GetProjectNumber on the client"
+          command: "client.GetProjectNumber(ctx, \"my-project\")"
+          validation: "Call returns project number without error"
+          code_template: |
+            projectNumber, err := client.GetProjectNumber(ctx, "my-project")
+            require.NoError(t, err)
+            assert.Equal(t, "123456789", projectNumber)
+
+        - step_id: "TEST-02"
+          action: "Inspect captured request headers for x-goog-user-project"
+          command: "Check capturedHeaders"
+          validation: "x-goog-user-project header is absent"
+          code_template: |
+            assert.Empty(t, capturedHeaders.Get("x-goog-user-project"),
+                "x-goog-user-project header should not be present in CRM request")
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "x-goog-user-project header is absent from CRM API request"
+        condition: "capturedHeaders.Get('x-goog-user-project') == ''"
+        failure_impact: "CRM call would require cloudresourcemanager API enabled on target project"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "GetProjectNumber returns correct project number"
+        condition: "projectNumber == '123456789' && err == nil"
+        failure_impact: "OIDC provisioning flow would fail to resolve project number"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "002"
+    test_id: "TS-GH-16-002"
+    tier: "Unit Tests"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-16"
+    requirement_summary: "GCP project number lookup succeeds without cloudresourcemanager API enabled on the target project"
+
+    patterns:
+      primary: "error-handling"
+      secondary:
+        - "mock-http-server"
+        - "http-error-response"
+      helpers_required:
+        - name: "httptest"
+          functions: ["NewServer", "Server.Close"]
+          purpose: "Mock HTTP server returning 403 Forbidden"
+      decorators: []
+
+    variables:
+      closure_scope:
+        - name: "server"
+          type: "*httptest.Server"
+          initialized_in: "test setup"
+          used_in: ["setup", "test_execution", "cleanup"]
+          comment: "Mock CRM API server returning permission denied"
+        - name: "client"
+          type: "*gcf.LiveGCFClient"
+          initialized_in: "test setup"
+          used_in: ["test_execution"]
+          comment: "GCF client under test"
+
+    test_structure:
+      type: "single"
+      function: "TestGetProjectNumber_PermissionDenied"
+      subtest: null
+
+    code_structure: |
+      func TestGetProjectNumber_PermissionDenied(t *testing.T) {
+        // SETUP: Create httptest.Server returning 403
+        // SETUP: Create LiveGCFClient
+        // TEST: Call GetProjectNumber
+        // ASSERT: Error is returned, contains permission denied info
+      }
+
+    test_objective:
+      title: "Verify lookup fails gracefully on permission denied"
+      what: |
+        Tests that when the CRM API returns HTTP 403 (Permission Denied),
+        GetProjectNumber returns an appropriate error rather than panicking
+        or returning invalid data. Validates error propagation through the
+        copied client.
+      why: |
+        Users may still encounter permission errors for other reasons (e.g.,
+        IAM misconfiguration). The error path must work correctly with the
+        shallow-copied client to provide actionable feedback.
+      acceptance_criteria:
+        - "GetProjectNumber returns a non-nil error when CRM returns 403"
+        - "Error message contains sufficient context for debugging"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go testing with testify and httptest"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions:
+        - name: "mock 403 response"
+          type: "HTTP error response"
+          yaml: |
+            HTTP/1.1 403 Forbidden
+            Content-Type: application/json
+            {"error": {"code": 403, "message": "Permission denied"}}
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock HTTP server returning 403 Forbidden"
+          command: "httptest.NewServer returning 403"
+          validation: "Server starts successfully"
+          code_template: |
+            server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+                w.WriteHeader(http.StatusForbidden)
+                fmt.Fprintln(w, `{"error": {"code": 403, "message": "Permission denied"}}`)
+            }))
+            defer server.Close()
+
+        - step_id: "SETUP-02"
+          action: "Create LiveGCFClient pointing to mock server"
+          command: "Construct client with mock server URL"
+          validation: "Client created successfully"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call GetProjectNumber and expect error"
+          command: "client.GetProjectNumber(ctx, \"my-project\")"
+          validation: "Error returned, no panic"
+          code_template: |
+            _, err := client.GetProjectNumber(ctx, "my-project")
+            require.Error(t, err)
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Error is returned on 403 response"
+        condition: "err != nil"
+        failure_impact: "Silent failures could mask permission issues"
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "Error message is descriptive"
+        condition: "Error contains context about the failure"
+        failure_impact: "Users cannot diagnose permission issues without descriptive errors"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "003"
+    test_id: "TS-GH-16-003"
+    tier: "Unit Tests"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-16"
+    requirement_summary: "GCP project number lookup succeeds without cloudresourcemanager API enabled on the target project"
+
+    patterns:
+      primary: "edge-case-handling"
+      secondary:
+        - "mock-http-server"
+        - "empty-response"
+      helpers_required:
+        - name: "httptest"
+          functions: ["NewServer", "Server.Close"]
+          purpose: "Mock HTTP server returning empty project number"
+      decorators: []
+
+    variables:
+      closure_scope:
+        - name: "server"
+          type: "*httptest.Server"
+          initialized_in: "test setup"
+          used_in: ["setup", "test_execution", "cleanup"]
+          comment: "Mock CRM API server returning empty project number"
+        - name: "client"
+          type: "*gcf.LiveGCFClient"
+          initialized_in: "test setup"
+          used_in: ["test_execution"]
+          comment: "GCF client under test"
+
+    test_structure:
+      type: "single"
+      function: "TestGetProjectNumber_EmptyProjectNumber"
+      subtest: null
+
+    code_structure: |
+      func TestGetProjectNumber_EmptyProjectNumber(t *testing.T) {
+        // SETUP: Create httptest.Server returning empty projectNumber
+        // SETUP: Create LiveGCFClient
+        // TEST: Call GetProjectNumber
+        // ASSERT: Error returned or empty string handled appropriately
+      }
+
+    test_objective:
+      title: "Verify lookup handles empty project number response"
+      what: |
+        Tests that when the CRM API returns a valid HTTP 200 response but
+        with an empty or missing projectNumber field, GetProjectNumber
+        handles this edge case gracefully rather than returning invalid data.
+      why: |
+        Edge case protection ensures robustness. An empty project number
+        could cause downstream failures in the OIDC provisioning flow if
+        not caught early.
+      acceptance_criteria:
+        - "GetProjectNumber returns an error or empty string when projectNumber is missing"
+        - "No panic or nil pointer dereference occurs"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go testing with testify and httptest"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions:
+        - name: "mock empty response"
+          type: "HTTP JSON response"
+          yaml: |
+            {"projectNumber": ""}
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock HTTP server returning empty projectNumber"
+          command: "httptest.NewServer returning {\"projectNumber\": \"\"}"
+          validation: "Server starts successfully"
+          code_template: |
+            server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+                w.Header().Set("Content-Type", "application/json")
+                fmt.Fprintln(w, `{"projectNumber": ""}`)
+            }))
+            defer server.Close()
+
+        - step_id: "SETUP-02"
+          action: "Create LiveGCFClient pointing to mock server"
+          command: "Construct client"
+          validation: "Client created successfully"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call GetProjectNumber and check result"
+          command: "client.GetProjectNumber(ctx, \"my-project\")"
+          validation: "Returns error or empty string handled appropriately"
+          code_template: |
+            projectNumber, err := client.GetProjectNumber(ctx, "my-project")
+            // Either an error is returned or empty string is handled
+            if err == nil {
+                assert.Empty(t, projectNumber, "Empty project number should be flagged")
+            }
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Empty project number is handled without panic"
+        condition: "No panic; either error returned or empty string"
+        failure_impact: "Could cause cryptic failures downstream in OIDC provisioning"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "004"
+    test_id: "TS-GH-16-004"
+    tier: "Unit Tests"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-16"
+    requirement_summary: "QuotaProject clearing does not mutate the original GCFClient's embedded Client"
+
+    patterns:
+      primary: "state-isolation"
+      secondary:
+        - "mock-http-server"
+        - "struct-comparison"
+      helpers_required:
+        - name: "httptest"
+          functions: ["NewServer", "Server.Close"]
+          purpose: "Mock HTTP server for GetProjectNumber call"
+      decorators: []
+
+    variables:
+      closure_scope:
+        - name: "server"
+          type: "*httptest.Server"
+          initialized_in: "test setup"
+          used_in: ["setup", "test_execution", "cleanup"]
+          comment: "Mock CRM API server"
+        - name: "client"
+          type: "*gcf.LiveGCFClient"
+          initialized_in: "test setup"
+          used_in: ["test_execution"]
+          comment: "GCF client under test"
+        - name: "originalQuotaProject"
+          type: "string"
+          initialized_in: "test setup"
+          used_in: ["test_execution"]
+          comment: "Original QuotaProject value to compare after call"
+
+    test_structure:
+      type: "single"
+      function: "TestGetProjectNumber_OriginalClientUnchanged"
+      subtest: null
+
+    code_structure: |
+      func TestGetProjectNumber_OriginalClientUnchanged(t *testing.T) {
+        // SETUP: Create client with QuotaProject = "my-quota-project"
+        // SETUP: Record original QuotaProject value
+        // TEST: Call GetProjectNumber
+        // ASSERT: client.Client.QuotaProject is still "my-quota-project"
+      }
+
+    test_objective:
+      title: "Verify original client unchanged after GetProjectNumber"
+      what: |
+        Tests that after calling GetProjectNumber, the original LiveGCFClient's
+        embedded gcp.Client retains its QuotaProject value. The shallow copy
+        used internally must not modify the original struct's fields.
+      why: |
+        If the original client's QuotaProject is mutated, all subsequent API
+        calls from the same client instance would lose the quota project header,
+        breaking other GCF operations that depend on it (e.g., CreateServiceAccount,
+        CreateWIFPool).
+      acceptance_criteria:
+        - "client.Client.QuotaProject equals the original value after GetProjectNumber returns"
+        - "No side effects on the original gcp.Client struct"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go testing with testify and httptest"
+
+    specific_preconditions:
+      - name: "QuotaProject field exists on gcp.Client"
+        requirement: "gcp.Client struct has QuotaProject string field"
+        validation: "go build ./internal/gcp/..."
+
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock HTTP server returning valid project number"
+          command: "httptest.NewServer"
+          validation: "Server starts successfully"
+          code_template: |
+            server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+                w.Header().Set("Content-Type", "application/json")
+                fmt.Fprintln(w, `{"projectNumber": "123456789"}`)
+            }))
+            defer server.Close()
+
+        - step_id: "SETUP-02"
+          action: "Create LiveGCFClient with QuotaProject set"
+          command: "Construct gcp.Client and LiveGCFClient"
+          validation: "Client created with QuotaProject = \"my-quota-project\""
+          code_template: |
+            gcpClient := &gcp.Client{
+                QuotaProject: "my-quota-project",
+            }
+            client := &gcf.LiveGCFClient{Client: gcpClient}
+            originalQuotaProject := gcpClient.QuotaProject
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call GetProjectNumber"
+          command: "client.GetProjectNumber(ctx, \"target-project\")"
+          validation: "Call completes without error"
+          code_template: |
+            _, err := client.GetProjectNumber(ctx, "target-project")
+            require.NoError(t, err)
+
+        - step_id: "TEST-02"
+          action: "Verify original QuotaProject is unchanged"
+          command: "Compare client.Client.QuotaProject with original"
+          validation: "QuotaProject still equals original value"
+          code_template: |
+            assert.Equal(t, originalQuotaProject, client.Client.QuotaProject,
+                "Original client's QuotaProject must not be mutated by GetProjectNumber")
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Original QuotaProject value is preserved"
+        condition: "client.Client.QuotaProject == originalQuotaProject"
+        failure_impact: "All subsequent GCF API calls would lose quota project header"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "GetProjectNumber succeeds without error"
+        condition: "err == nil"
+        failure_impact: "Cannot validate state preservation if the call itself fails"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "005"
+    test_id: "TS-GH-16-005"
+    tier: "Unit Tests"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-16"
+    requirement_summary: "QuotaProject clearing does not mutate the original GCFClient's embedded Client"
+
+    patterns:
+      primary: "state-isolation-sequential"
+      secondary:
+        - "mock-http-server"
+        - "header-inspection"
+        - "sequential-calls"
+      helpers_required:
+        - name: "httptest"
+          functions: ["NewServer", "Server.Close"]
+          purpose: "Mock HTTP server to capture headers from sequential calls"
+      decorators: []
+
+    variables:
+      closure_scope:
+        - name: "server"
+          type: "*httptest.Server"
+          initialized_in: "test setup"
+          used_in: ["setup", "test_execution", "cleanup"]
+          comment: "Mock server capturing headers from multiple API calls"
+        - name: "requestLog"
+          type: "[]http.Header"
+          initialized_in: "test setup"
+          used_in: ["test_execution"]
+          comment: "Ordered log of captured request headers"
+        - name: "client"
+          type: "*gcf.LiveGCFClient"
+          initialized_in: "test setup"
+          used_in: ["test_execution"]
+          comment: "GCF client under test"
+
+    test_structure:
+      type: "single"
+      function: "TestGetProjectNumber_SubsequentCallsUseOriginalQuotaProject"
+      subtest: null
+
+    code_structure: |
+      func TestGetProjectNumber_SubsequentCallsUseOriginalQuotaProject(t *testing.T) {
+        // SETUP: Create httptest.Server that logs headers per request
+        // SETUP: Create LiveGCFClient with QuotaProject
+        // TEST: Call GetProjectNumber (CRM call — should omit header)
+        // TEST: Call another API method (should include header)
+        // ASSERT: First call has no x-goog-user-project
+        // ASSERT: Second call has x-goog-user-project = "my-quota-project"
+      }
+
+    test_objective:
+      title: "Verify subsequent API calls use original QuotaProject"
+      what: |
+        Tests that after GetProjectNumber clears the QuotaProject on its
+        internal copy, subsequent API calls (e.g., other LiveGCFClient
+        methods) continue to use the original QuotaProject value. This
+        validates that the shallow copy is truly isolated.
+      why: |
+        If the copy is not isolated, the QuotaProject clearing in
+        GetProjectNumber would affect all subsequent API calls, breaking
+        methods like CreateServiceAccount that require the quota project
+        header for billing.
+      acceptance_criteria:
+        - "CRM request (from GetProjectNumber) omits x-goog-user-project"
+        - "Subsequent API call includes x-goog-user-project with original value"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go testing with testify and httptest"
+
+    specific_preconditions:
+      - name: "QuotaProject field exists on gcp.Client"
+        requirement: "gcp.Client struct has QuotaProject string field wired into DoRequest"
+        validation: "go build ./internal/gcp/..."
+
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock HTTP server that logs request headers per call"
+          command: "httptest.NewServer with request counter and header log"
+          validation: "Server starts and request log is initialized"
+          code_template: |
+            var requestLog []http.Header
+            server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+                requestLog = append(requestLog, r.Header.Clone())
+                w.Header().Set("Content-Type", "application/json")
+                fmt.Fprintln(w, `{"projectNumber": "123456789"}`)
+            }))
+            defer server.Close()
+
+        - step_id: "SETUP-02"
+          action: "Create LiveGCFClient with QuotaProject set"
+          command: "Construct client with QuotaProject = \"my-quota-project\""
+          validation: "Client created successfully"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call GetProjectNumber (uses copied client without QuotaProject)"
+          command: "client.GetProjectNumber(ctx, \"my-project\")"
+          validation: "Call succeeds"
+          code_template: |
+            _, err := client.GetProjectNumber(ctx, "my-project")
+            require.NoError(t, err)
+
+        - step_id: "TEST-02"
+          action: "Call another API method that uses the original client"
+          command: "Invoke a method that calls DoRequest on the original client"
+          validation: "Call completes (success or expected error)"
+
+        - step_id: "TEST-03"
+          action: "Inspect headers from both requests"
+          command: "Check requestLog entries"
+          validation: "First request omits header; second request includes header"
+          code_template: |
+            require.GreaterOrEqual(t, len(requestLog), 2, "Expected at least 2 requests")
+            assert.Empty(t, requestLog[0].Get("x-goog-user-project"),
+                "CRM request should not have x-goog-user-project header")
+            assert.Equal(t, "my-quota-project", requestLog[1].Get("x-goog-user-project"),
+                "Subsequent request should use original QuotaProject")
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "CRM request omits x-goog-user-project header"
+        condition: "requestLog[0] has no x-goog-user-project header"
+        failure_impact: "CRM call would require additional permissions"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "Subsequent request includes original QuotaProject"
+        condition: "requestLog[1] x-goog-user-project == 'my-quota-project'"
+        failure_impact: "Subsequent GCF API calls would lose billing attribution"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "006"
+    test_id: "TS-GH-16-006"
+    tier: "Functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-16"
+    requirement_summary: "Self-managed provisioning flow completes with modified GetProjectNumber"
+
+    patterns:
+      primary: "integration-flow"
+      secondary:
+        - "mock-http-server"
+        - "provisioner-lifecycle"
+      helpers_required:
+        - name: "httptest"
+          functions: ["NewServer", "Server.Close"]
+          purpose: "Mock GCP API endpoints for provisioning flow"
+      decorators: []
+
+    variables:
+      closure_scope:
+        - name: "server"
+          type: "*httptest.Server"
+          initialized_in: "test setup"
+          used_in: ["setup", "test_execution", "cleanup"]
+          comment: "Mock GCP API server handling multiple endpoints"
+        - name: "provisioner"
+          type: "*gcf.Provisioner"
+          initialized_in: "test setup"
+          used_in: ["test_execution"]
+          comment: "GCF provisioner under test"
+
+    test_structure:
+      type: "single"
+      function: "TestProvisioner_Provision_SelfManaged_Success"
+      subtest: null
+
+    code_structure: |
+      func TestProvisioner_Provision_SelfManaged_Success(t *testing.T) {
+        // SETUP: Create mock server handling CRM + SA + WIF endpoints
+        // SETUP: Create Provisioner with mock client
+        // TEST: Call Provision with self-managed config
+        // ASSERT: Provisioning completes without error
+        // ASSERT: All expected API calls were made
+      }
+
+    test_objective:
+      title: "Verify full provisioning succeeds end-to-end"
+      what: |
+        Tests the complete self-managed provisioning flow through the Provisioner,
+        which internally calls GetProjectNumber as part of the OIDC setup. Validates
+        that the modified GetProjectNumber integrates correctly with the broader
+        provisioning workflow including service account creation and WIF pool setup.
+      why: |
+        GetProjectNumber is called early in the provisioning flow. If the modified
+        implementation breaks the flow, users cannot provision FullSend on GCP.
+        This integration test catches issues that unit tests on GetProjectNumber
+        alone might miss (e.g., context propagation, error wrapping).
+      acceptance_criteria:
+        - "Provisioner.Provision completes without error for self-managed config"
+        - "GetProjectNumber is called as part of the flow (observable via mock)"
+        - "All subsequent provisioning steps execute after GetProjectNumber"
+
+    classification:
+      test_type: "Functional"
+      scope: "Multi-component"
+      automation_approach: "Go testing with testify and httptest"
+
+    specific_preconditions:
+      - name: "Provisioner available"
+        requirement: "gcf.Provisioner struct and Provision method exist"
+        validation: "go build ./internal/dispatch/gcf/..."
+
+    test_data:
+      resource_definitions:
+        - name: "provision config"
+          type: "gcf.ProvisionConfig"
+          yaml: |
+            mode: "self-managed"
+            project: "my-gcp-project"
+            region: "us-central1"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create comprehensive mock server handling CRM, IAM, and WIF API endpoints"
+          command: "httptest.NewServer with request routing by path"
+          validation: "Server handles /v1/projects, /v1/serviceAccounts, etc."
+          code_template: |
+            callLog := []string{}
+            server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+                callLog = append(callLog, r.URL.Path)
+                w.Header().Set("Content-Type", "application/json")
+                switch {
+                case strings.Contains(r.URL.Path, "projects"):
+                    fmt.Fprintln(w, `{"projectNumber": "123456789"}`)
+                default:
+                    fmt.Fprintln(w, `{"done": true}`)
+                }
+            }))
+            defer server.Close()
+
+        - step_id: "SETUP-02"
+          action: "Create Provisioner with LiveGCFClient pointing to mock"
+          command: "Construct provisioner"
+          validation: "Provisioner created successfully"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call Provision with self-managed configuration"
+          command: "provisioner.Provision(ctx, config)"
+          validation: "Returns without error"
+          code_template: |
+            err := provisioner.Provision(ctx, config)
+            require.NoError(t, err)
+
+        - step_id: "TEST-02"
+          action: "Verify all expected API calls were made in order"
+          command: "Inspect callLog"
+          validation: "CRM project lookup call is present in call log"
+          code_template: |
+            assert.Contains(t, callLog, "/v1/projects/my-gcp-project",
+                "GetProjectNumber should be called during provisioning")
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Provisioning flow completes without error"
+        condition: "err == nil"
+        failure_impact: "Users cannot provision FullSend on GCP with modified GetProjectNumber"
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "GetProjectNumber was called during provisioning"
+        condition: "CRM API path present in call log"
+        failure_impact: "Flow may have skipped project number resolution"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "007"
+    test_id: "TS-GH-16-007"
+    tier: "Functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-16"
+    requirement_summary: "Self-managed provisioning flow completes with modified GetProjectNumber"
+
+    patterns:
+      primary: "error-propagation-integration"
+      secondary:
+        - "mock-http-server"
+        - "provisioner-lifecycle"
+      helpers_required:
+        - name: "httptest"
+          functions: ["NewServer", "Server.Close"]
+          purpose: "Mock GCP API server returning error on CRM call"
+      decorators: []
+
+    variables:
+      closure_scope:
+        - name: "server"
+          type: "*httptest.Server"
+          initialized_in: "test setup"
+          used_in: ["setup", "test_execution", "cleanup"]
+          comment: "Mock server that fails on CRM API"
+        - name: "provisioner"
+          type: "*gcf.Provisioner"
+          initialized_in: "test setup"
+          used_in: ["test_execution"]
+          comment: "GCF provisioner under test"
+
+    test_structure:
+      type: "single"
+      function: "TestProvisioner_Provision_ProjectNumberError_Aborts"
+      subtest: null
+
+    code_structure: |
+      func TestProvisioner_Provision_ProjectNumberError_Aborts(t *testing.T) {
+        // SETUP: Create mock server that returns 500 on CRM endpoint
+        // SETUP: Create Provisioner
+        // TEST: Call Provision
+        // ASSERT: Error returned, provisioning did not continue past GetProjectNumber
+      }
+
+    test_objective:
+      title: "Verify provisioning aborts on project number error"
+      what: |
+        Tests that when GetProjectNumber fails during the provisioning flow,
+        the Provisioner correctly propagates the error and aborts provisioning.
+        No subsequent provisioning steps (SA creation, WIF setup) should execute.
+      why: |
+        If provisioning continues after a failed project number lookup, it would
+        attempt to create resources with an invalid project reference, potentially
+        creating orphaned GCP resources or returning confusing errors.
+      acceptance_criteria:
+        - "Provisioner.Provision returns an error when GetProjectNumber fails"
+        - "No subsequent provisioning API calls are made after the failure"
+
+    classification:
+      test_type: "Functional"
+      scope: "Multi-component"
+      automation_approach: "Go testing with testify and httptest"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock server that returns 500 on CRM project lookup"
+          command: "httptest.NewServer returning 500 for /v1/projects"
+          validation: "Server configured to fail on CRM endpoint"
+          code_template: |
+            callLog := []string{}
+            server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+                callLog = append(callLog, r.URL.Path)
+                if strings.Contains(r.URL.Path, "projects") {
+                    w.WriteHeader(http.StatusInternalServerError)
+                    fmt.Fprintln(w, `{"error": {"code": 500, "message": "Internal error"}}`)
+                    return
+                }
+                w.Header().Set("Content-Type", "application/json")
+                fmt.Fprintln(w, `{"done": true}`)
+            }))
+            defer server.Close()
+
+        - step_id: "SETUP-02"
+          action: "Create Provisioner with mock client"
+          command: "Construct provisioner pointing to mock server"
+          validation: "Provisioner created"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call Provision and expect error"
+          command: "provisioner.Provision(ctx, config)"
+          validation: "Error returned"
+          code_template: |
+            err := provisioner.Provision(ctx, config)
+            require.Error(t, err)
+
+        - step_id: "TEST-02"
+          action: "Verify no post-CRM API calls were made"
+          command: "Inspect callLog for absence of SA/WIF endpoints"
+          validation: "Only CRM endpoint was called"
+          code_template: |
+            for _, path := range callLog {
+                assert.NotContains(t, path, "serviceAccounts",
+                    "Should not attempt SA creation after project number failure")
+            }
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Provisioning returns error on GetProjectNumber failure"
+        condition: "err != nil"
+        failure_impact: "Provisioning could continue with invalid project state"
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "No subsequent provisioning steps executed"
+        condition: "callLog contains no SA or WIF API paths"
+        failure_impact: "Orphaned GCP resources could be created"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "008"
+    test_id: "TS-GH-16-008"
+    tier: "Unit Tests"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-16"
+    requirement_summary: "Error handling works correctly with the modified client"
+
+    patterns:
+      primary: "error-propagation"
+      secondary:
+        - "mock-http-server"
+        - "connection-error"
+      helpers_required:
+        - name: "httptest"
+          functions: ["NewServer", "Server.Close"]
+          purpose: "Mock HTTP server for error scenarios"
+      decorators: []
+
+    variables:
+      closure_scope:
+        - name: "client"
+          type: "*gcf.LiveGCFClient"
+          initialized_in: "test setup"
+          used_in: ["test_execution"]
+          comment: "GCF client with copied client for error testing"
+
+    test_structure:
+      type: "single"
+      function: "TestGetProjectNumber_ErrorPropagationFromCopiedClient"
+      subtest: null
+
+    code_structure: |
+      func TestGetProjectNumber_ErrorPropagationFromCopiedClient(t *testing.T) {
+        // SETUP: Create client pointing to unreachable server
+        // TEST: Call GetProjectNumber
+        // ASSERT: Error is returned and properly wrapped
+      }
+
+    test_objective:
+      title: "Verify error propagation from copied client DoRequest"
+      what: |
+        Tests that errors from the copied gcp.Client's DoRequest method
+        are properly propagated through GetProjectNumber. The shallow copy
+        must maintain the same error propagation behavior as the original
+        client.
+      why: |
+        If the copied client handles errors differently (e.g., due to nil
+        pointer fields from the shallow copy), users would see different
+        error behavior for CRM calls vs other GCF operations, making
+        debugging difficult.
+      acceptance_criteria:
+        - "Network errors from DoRequest propagate through GetProjectNumber"
+        - "Error includes context about the operation that failed"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go testing with testify and httptest"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create LiveGCFClient pointing to an unreachable or closed server"
+          command: "Create server, close it immediately, use its URL"
+          validation: "Client created pointing to closed server"
+          code_template: |
+            server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+            server.Close() // Close immediately to force connection error
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call GetProjectNumber on client with closed server"
+          command: "client.GetProjectNumber(ctx, \"my-project\")"
+          validation: "Returns error (connection refused or similar)"
+          code_template: |
+            _, err := client.GetProjectNumber(ctx, "my-project")
+            require.Error(t, err, "Should return error when server is unreachable")
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Error is returned for unreachable server"
+        condition: "err != nil"
+        failure_impact: "Silent failures could mask connectivity issues"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "009"
+    test_id: "TS-GH-16-009"
+    tier: "Unit Tests"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-16"
+    requirement_summary: "Error handling works correctly with the modified client"
+
+    patterns:
+      primary: "error-message-validation"
+      secondary:
+        - "mock-http-server"
+        - "http-error-response"
+      helpers_required:
+        - name: "httptest"
+          functions: ["NewServer", "Server.Close"]
+          purpose: "Mock HTTP server returning 403 with descriptive message"
+      decorators: []
+
+    variables:
+      closure_scope:
+        - name: "server"
+          type: "*httptest.Server"
+          initialized_in: "test setup"
+          used_in: ["setup", "test_execution", "cleanup"]
+          comment: "Mock CRM API server returning 403"
+        - name: "client"
+          type: "*gcf.LiveGCFClient"
+          initialized_in: "test setup"
+          used_in: ["test_execution"]
+          comment: "GCF client under test"
+
+    test_structure:
+      type: "single"
+      function: "TestGetProjectNumber_HTTP403_DescriptiveError"
+      subtest: null
+
+    code_structure: |
+      func TestGetProjectNumber_HTTP403_DescriptiveError(t *testing.T) {
+        // SETUP: Create mock returning 403 with descriptive body
+        // SETUP: Create LiveGCFClient
+        // TEST: Call GetProjectNumber
+        // ASSERT: Error message contains useful debugging info
+      }
+
+    test_objective:
+      title: "Verify HTTP 403 returns descriptive error message"
+      what: |
+        Tests that when the CRM API returns HTTP 403 Forbidden, the error
+        message returned by GetProjectNumber contains enough information
+        for the user to diagnose the issue (e.g., the project name, the
+        HTTP status code, and the server's error message).
+      why: |
+        Descriptive error messages reduce support burden. Users encountering
+        permission errors need to know which project, which API, and what
+        permission is missing to self-remediate.
+      acceptance_criteria:
+        - "Error message includes HTTP status code or 'forbidden'/'permission' keyword"
+        - "Error message includes context about the operation (project number lookup)"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go testing with testify and httptest"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions:
+        - name: "mock 403 response"
+          type: "HTTP error response"
+          yaml: |
+            {
+              "error": {
+                "code": 403,
+                "message": "Cloud Resource Manager API has not been used in project my-project before or it is disabled.",
+                "status": "PERMISSION_DENIED"
+              }
+            }
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock HTTP server returning 403 with descriptive body"
+          command: "httptest.NewServer returning 403 with JSON error body"
+          validation: "Server returns 403 with CRM-style error"
+          code_template: |
+            server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+                w.WriteHeader(http.StatusForbidden)
+                fmt.Fprintln(w, `{"error": {"code": 403, "message": "Cloud Resource Manager API has not been used in project my-project before or it is disabled.", "status": "PERMISSION_DENIED"}}`)
+            }))
+            defer server.Close()
+
+        - step_id: "SETUP-02"
+          action: "Create LiveGCFClient pointing to mock server"
+          command: "Construct client"
+          validation: "Client created"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call GetProjectNumber and capture error"
+          command: "client.GetProjectNumber(ctx, \"my-project\")"
+          validation: "Error returned"
+          code_template: |
+            _, err := client.GetProjectNumber(ctx, "my-project")
+            require.Error(t, err)
+
+        - step_id: "TEST-02"
+          action: "Validate error message content"
+          command: "Check error string contains useful information"
+          validation: "Error is descriptive"
+          code_template: |
+            errMsg := err.Error()
+            assert.True(t,
+                strings.Contains(errMsg, "403") || strings.Contains(errMsg, "forbidden") || strings.Contains(errMsg, "permission"),
+                "Error should indicate permission issue, got: %s", errMsg)
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Error message is descriptive for 403 responses"
+        condition: "Error message contains status code or permission keyword"
+        failure_impact: "Users cannot diagnose permission issues from generic error messages"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "010"
+    test_id: "TS-GH-16-010"
+    tier: "Functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-16"
+    requirement_summary: "OIDC dispatch layer installation succeeds through modified provisioning path"
+
+    patterns:
+      primary: "integration-flow"
+      secondary:
+        - "mock-http-server"
+        - "oidc-lifecycle"
+      helpers_required:
+        - name: "httptest"
+          functions: ["NewServer", "Server.Close"]
+          purpose: "Mock GCP API endpoints for OIDC install flow"
+      decorators: []
+
+    variables:
+      closure_scope:
+        - name: "server"
+          type: "*httptest.Server"
+          initialized_in: "test setup"
+          used_in: ["setup", "test_execution", "cleanup"]
+          comment: "Mock GCP API server for OIDC installation flow"
+        - name: "installer"
+          type: "OIDC installer component"
+          initialized_in: "test setup"
+          used_in: ["test_execution"]
+          comment: "OIDC dispatch layer installer"
+
+    test_structure:
+      type: "single"
+      function: "TestInstallOIDC_DispatchLayer_WithModifiedClient"
+      subtest: null
+
+    code_structure: |
+      func TestInstallOIDC_DispatchLayer_WithModifiedClient(t *testing.T) {
+        // SETUP: Create mock server handling CRM + OIDC endpoints
+        // SETUP: Create OIDC installer with modified GCF client
+        // TEST: Call installOIDC or equivalent entry point
+        // ASSERT: Installation completes without error
+        // ASSERT: CRM call was made as part of the flow
+      }
+
+    test_objective:
+      title: "Verify dispatch layer install with modified GCP client"
+      what: |
+        Tests the OIDC dispatch layer installation flow, which calls
+        GetProjectNumber as part of the provisioning chain:
+        installOIDC → Provision → provisionSelfManaged → GetProjectNumber.
+        Validates that the modified GetProjectNumber works correctly when
+        invoked through the full OIDC installation call chain.
+      why: |
+        The OIDC dispatch layer is the primary entry point for GCP
+        provisioning in FullSend. If the modified GetProjectNumber breaks
+        this flow, users cannot set up FullSend with OIDC authentication
+        on GCP.
+      acceptance_criteria:
+        - "OIDC dispatch layer installation completes without error"
+        - "GetProjectNumber is invoked as part of the installation flow"
+        - "No regression in the OIDC installation behavior"
+
+    classification:
+      test_type: "Functional"
+      scope: "Multi-component"
+      automation_approach: "Go testing with testify and httptest"
+
+    specific_preconditions:
+      - name: "OIDC installer available"
+        requirement: "installOIDC function or equivalent entry point exists"
+        validation: "go build ./internal/dispatch/gcf/..."
+
+    test_data:
+      resource_definitions:
+        - name: "OIDC config"
+          type: "Dispatch layer configuration"
+          yaml: |
+            auth_type: "oidc"
+            provider: "gcp"
+            project: "my-gcp-project"
+            region: "us-central1"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create comprehensive mock server for OIDC flow"
+          command: "httptest.NewServer handling CRM, IAM, WIF, OIDC endpoints"
+          validation: "Server handles all required API paths"
+          code_template: |
+            callLog := []string{}
+            server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+                callLog = append(callLog, r.URL.Path)
+                w.Header().Set("Content-Type", "application/json")
+                switch {
+                case strings.Contains(r.URL.Path, "projects"):
+                    fmt.Fprintln(w, `{"projectNumber": "123456789"}`)
+                default:
+                    fmt.Fprintln(w, `{"done": true}`)
+                }
+            }))
+            defer server.Close()
+
+        - step_id: "SETUP-02"
+          action: "Create OIDC installer with GCF client pointing to mock"
+          command: "Construct installer components"
+          validation: "Installer created successfully"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call OIDC dispatch layer installation"
+          command: "installOIDC(ctx, config) or equivalent"
+          validation: "Installation completes without error"
+          code_template: |
+            err := installOIDC(ctx, config)
+            require.NoError(t, err)
+
+        - step_id: "TEST-02"
+          action: "Verify CRM API was called during installation"
+          command: "Inspect callLog"
+          validation: "Project lookup path is in call log"
+          code_template: |
+            found := false
+            for _, path := range callLog {
+                if strings.Contains(path, "projects") {
+                    found = true
+                    break
+                }
+            }
+            assert.True(t, found, "GetProjectNumber should be called during OIDC install")
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "OIDC installation completes without error"
+        condition: "err == nil"
+        failure_impact: "Users cannot provision FullSend with OIDC on GCP"
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "GetProjectNumber was invoked during installation"
+        condition: "CRM projects path found in call log"
+        failure_impact: "Project number resolution may have been skipped"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
