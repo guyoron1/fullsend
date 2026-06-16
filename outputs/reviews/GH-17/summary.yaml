@@ -1,0 +1,24 @@
+status: success
+jira_id: GH-17
+verdict: APPROVED_WITH_FINDINGS
+confidence: MEDIUM
+weighted_score: 79
+findings:
+  critical: 0
+  major: 7
+  minor: 6
+  actionable: 12
+  total: 13
+artifacts_reviewed:
+  std_yaml: true
+  go_stubs: true
+  python_stubs: false
+  stp_available: true
+dimension_scores:
+  traceability: 95
+  yaml_structure: 72
+  pattern_matching: 50
+  step_quality: 85
+  content_policy: 70
+  pse_quality: 88
+  codegen_readiness: 75
