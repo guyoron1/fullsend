@@ -1,0 +1,2644 @@
+---
+# Software Test Description (STD) — GH-18
+# Tool Call Risk Assessment — Security Supply Chain Threat Model
+# Generated: 2026-06-16
+
+document_metadata:
+  std_version: "2.1-enhanced"
+  generated_date: "2026-06-16"
+  jira_issue: "GH-18"
+  jira_summary: "Tool Call Risk Assessment — Security Supply Chain Threat Model"
+  source_bugs: []
+  stp_reference:
+    file: "outputs/stp/GH-18/GH-18_test_plan.md"
+    version: "v1"
+    sections_covered: "Section III - Requirements-to-Tests Mapping"
+  related_prs:
+    - repo: "guyoron1/fullsend"
+      pr_number: 18
+      url: "https://github.com/guyoron1/fullsend/pull/18"
+      title: "Tool Call Risk Assessment — Security Supply Chain Threat Model"
+      merged: false
+  total_scenarios: 33
+  tier1_count: 33
+  tier2_count: 0
+  p0_count: 19
+  p1_count: 14
+
+code_generation_config:
+  std_version: "2.1-enhanced"
+  framework: "testing"
+  assertion_library: "testify"
+  language: "go"
+  package_name: "tests"
+  imports:
+    standard:
+      - "context"
+      - "testing"
+      - "os"
+      - "path/filepath"
+      - "encoding/json"
+    test_framework:
+      - path: "github.com/stretchr/testify/assert"
+      - path: "github.com/stretchr/testify/require"
+    project:
+      - "github.com/fullsend-ai/fullsend/internal/security"
+      - "github.com/fullsend-ai/fullsend/internal/harness"
+  build_tags:
+    - "e2e"
+  test_patterns:
+    function_prefix: "Test"
+    subtest_style: "t.Run"
+    assertion_style: "testify"
+
+common_preconditions:
+  infrastructure:
+    - name: "Go toolchain"
+      requirement: "Go 1.23+"
+      validation: "go version"
+    - name: "Test dependencies"
+      requirement: "testify assertion library"
+      validation: "go list -m github.com/stretchr/testify"
+  cluster_configuration:
+    topology: "None"
+    cpu_features: "Standard"
+    storage: "N/A"
+    network: "N/A"
+  rbac_requirements: []
+  operators: []
+  notes:
+    - "All tests are unit-level and run in a single Go process"
+    - "No cluster, network, or external service dependencies"
+    - "Temporary directories used for provider definition tests"
+
+scenarios:
+  # ==========================================================================
+  # Requirement: Security hook pipeline generates correct Claude settings
+  # Priority: P0 | Tier: Unit Tests
+  # ==========================================================================
+  - scenario_id: "001"
+    test_id: "TS-GH-18-001"
+    tier: "Unit Tests"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-18"
+    requirement_summary: "Security hook pipeline generates correct Claude settings with all default hooks enabled"
+
+    variables:
+      closure_scope:
+        - name: "settings"
+          type: "ClaudeSettings"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "Generated Claude settings from default config"
+        - name: "err"
+          type: "error"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "Error from settings generation"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Security hook pipeline"
+      context:
+        description: "with default configuration"
+      it:
+        description: "should include all expected hooks in generated settings"
+        test_id_format: "[test_id:TS-GH-18-001]"
+
+    code_structure: |
+      func TestDefaultSettingsIncludeAllExpectedHooks(t *testing.T) {
+        // Setup: Create default SecurityConfig
+        // Execute: Call GenerateClaudeSettings with defaults
+        // Assert: All expected hook types present in settings
+      }
+
+    test_objective:
+      title: "Verify default settings include all expected hooks"
+      what: |
+        Tests that GenerateClaudeSettings with a default SecurityConfig produces
+        Claude settings JSON that includes all required security hooks (PreToolUse,
+        PostToolUse). Validates the complete hook set is present.
+      why: |
+        The security hook pipeline is the first line of defense for agent tool calls.
+        If default settings omit any hooks, security scanning gaps could allow
+        malicious tool invocations to bypass detection.
+      acceptance_criteria:
+        - "GenerateClaudeSettings returns no error with default config"
+        - "Resulting settings contain all expected hook type entries"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with testify"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions:
+        - name: "default_security_config"
+          type: "SecurityConfig"
+          yaml: |
+            # Default SecurityConfig with all hooks enabled
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-001"
+          action: "Create default SecurityConfig"
+          command: "Instantiate SecurityConfig with default values"
+          validation: "Config object created without error"
+      test_execution:
+        - step_id: "TEST-001"
+          action: "Generate Claude settings"
+          command: "security.GenerateClaudeSettings(defaultConfig)"
+          validation: "Returns settings map with all hook entries"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-001"
+        priority: "P0"
+        description: "All default hooks present in settings"
+        condition: "Settings map contains entries for all expected hook types"
+        failure_impact: "Missing hooks create security gaps in agent tool call scanning"
+
+  - scenario_id: "002"
+    test_id: "TS-GH-18-002"
+    tier: "Unit Tests"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-18"
+    requirement_summary: "Security hook pipeline generates correct Claude settings with all default hooks enabled"
+
+    variables:
+      closure_scope:
+        - name: "settings"
+          type: "ClaudeSettings"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "Generated Claude settings"
+        - name: "preToolUseHooks"
+          type: "[]Hook"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "PreToolUse hooks extracted from settings"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Security hook pipeline"
+      context:
+        description: "with default configuration"
+      it:
+        description: "should have correct PreToolUse hook count and matchers"
+        test_id_format: "[test_id:TS-GH-18-002]"
+
+    code_structure: |
+      func TestDefaultPreToolUseHookCountAndMatchers(t *testing.T) {
+        // Setup: Generate default settings
+        // Execute: Extract PreToolUse hooks
+        // Assert: Correct count and matcher patterns
+      }
+
+    test_objective:
+      title: "Verify default PreToolUse hook count and matchers"
+      what: |
+        Tests that the PreToolUse section of generated Claude settings contains
+        the expected number of hooks and that each hook has the correct matcher
+        patterns for intercepting tool calls.
+      why: |
+        PreToolUse hooks intercept tool calls before execution. Wrong count or
+        incorrect matchers would mean some tool calls bypass security scanning
+        or legitimate calls are incorrectly blocked.
+      acceptance_criteria:
+        - "PreToolUse hooks count matches expected value"
+        - "Each hook has correct matcher configuration"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with testify"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-001"
+          action: "Generate default Claude settings"
+          command: "security.GenerateClaudeSettings(defaultConfig)"
+          validation: "Settings generated without error"
+      test_execution:
+        - step_id: "TEST-001"
+          action: "Extract and count PreToolUse hooks"
+          command: "Access settings PreToolUse section"
+          validation: "Hook count and matchers match expected values"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-001"
+        priority: "P0"
+        description: "PreToolUse hook count is correct"
+        condition: "Number of PreToolUse hooks equals expected count"
+        failure_impact: "Missing hooks leave tool calls unscanned"
+      - assertion_id: "ASSERT-002"
+        priority: "P0"
+        description: "PreToolUse matchers are correctly configured"
+        condition: "Each hook's matcher patterns match expected values"
+        failure_impact: "Wrong matchers cause hooks to miss target tool calls"
+
+  - scenario_id: "003"
+    test_id: "TS-GH-18-003"
+    tier: "Unit Tests"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-18"
+    requirement_summary: "Security hook pipeline generates correct Claude settings with all default hooks enabled"
+
+    variables:
+      closure_scope:
+        - name: "settings"
+          type: "ClaudeSettings"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "Generated Claude settings"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Security hook pipeline"
+      context:
+        description: "with default configuration"
+      it:
+        description: "should have correct PostToolUse chain structure"
+        test_id_format: "[test_id:TS-GH-18-003]"
+
+    code_structure: |
+      func TestDefaultPostToolUseChainStructure(t *testing.T) {
+        // Setup: Generate default settings
+        // Execute: Extract PostToolUse chain
+        // Assert: Chain structure matches expected layout
+      }
+
+    test_objective:
+      title: "Verify default PostToolUse chain structure"
+      what: |
+        Tests that the PostToolUse section of generated Claude settings has the
+        correct chain structure — hooks execute in the right order and with
+        appropriate configuration for post-execution scanning.
+      why: |
+        PostToolUse hooks scan tool outputs after execution. Incorrect chain
+        structure could cause output redaction to fail or scanner ordering
+        issues that miss threats.
+      acceptance_criteria:
+        - "PostToolUse chain has correct number of hooks"
+        - "Chain structure matches expected ordering"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with testify"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-001"
+          action: "Generate default Claude settings"
+          command: "security.GenerateClaudeSettings(defaultConfig)"
+          validation: "Settings generated without error"
+      test_execution:
+        - step_id: "TEST-001"
+          action: "Extract PostToolUse chain"
+          command: "Access settings PostToolUse section"
+          validation: "Chain structure matches expected layout"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-001"
+        priority: "P0"
+        description: "PostToolUse chain structure is correct"
+        condition: "Chain length and ordering match expected values"
+        failure_impact: "Incorrect chain structure leads to scanning gaps in tool output"
+
+  # ==========================================================================
+  # Requirement: Individual security hook toggles disable only targeted hook
+  # Priority: P0 | Tier: Unit Tests
+  # ==========================================================================
+  - scenario_id: "004"
+    test_id: "TS-GH-18-004"
+    tier: "Unit Tests"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-18"
+    requirement_summary: "Individual security hook toggles disable only the targeted hook without affecting others"
+
+    variables:
+      closure_scope:
+        - name: "config"
+          type: "SecurityConfig"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "Config with one hook disabled"
+        - name: "settings"
+          type: "ClaudeSettings"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "Generated settings with toggle applied"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Security hook toggles"
+      context:
+        description: "when a single hook is disabled"
+      it:
+        description: "should leave all other hooks enabled"
+        test_id_format: "[test_id:TS-GH-18-004]"
+
+    code_structure: |
+      func TestSingleHookDisableLeavesOthersEnabled(t *testing.T) {
+        // Setup: Create config with one hook disabled
+        // Execute: Generate settings
+        // Assert: Disabled hook absent, all others present
+      }
+
+    test_objective:
+      title: "Verify single hook disable leaves others enabled"
+      what: |
+        Tests that disabling a single security hook via config toggle removes only
+        that specific hook from the generated settings while leaving all other hooks
+        intact and enabled.
+      why: |
+        Hook toggles must be independent. If disabling one hook accidentally removes
+        others, operators lose security coverage they expect to have active.
+      acceptance_criteria:
+        - "Disabled hook is absent from generated settings"
+        - "All non-disabled hooks remain present and configured"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with testify"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-001"
+          action: "Create SecurityConfig with one hook disabled"
+          command: "Set specific hook toggle to false in config"
+          validation: "Config created with single toggle disabled"
+      test_execution:
+        - step_id: "TEST-001"
+          action: "Generate Claude settings"
+          command: "security.GenerateClaudeSettings(config)"
+          validation: "Settings generated without error"
+        - step_id: "TEST-002"
+          action: "Verify hook isolation"
+          command: "Check disabled hook absent, others present"
+          validation: "Only the targeted hook is removed"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-001"
+        priority: "P0"
+        description: "Disabled hook is absent"
+        condition: "Settings do not contain the disabled hook type"
+        failure_impact: "Hook toggle does not take effect"
+      - assertion_id: "ASSERT-002"
+        priority: "P0"
+        description: "Other hooks remain enabled"
+        condition: "All non-disabled hooks are present in settings"
+        failure_impact: "Disabling one hook accidentally disables others"
+
+  - scenario_id: "005"
+    test_id: "TS-GH-18-005"
+    tier: "Unit Tests"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-18"
+    requirement_summary: "Individual security hook toggles disable only the targeted hook without affecting others"
+
+    variables:
+      closure_scope:
+        - name: "config"
+          type: "SecurityConfig"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "Config with all hooks disabled"
+        - name: "settings"
+          type: "ClaudeSettings"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "Generated settings with all hooks off"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Security hook toggles"
+      context:
+        description: "when all hooks are disabled"
+      it:
+        description: "should produce empty hook map"
+        test_id_format: "[test_id:TS-GH-18-005]"
+
+    code_structure: |
+      func TestAllHooksDisabledProducesEmptyHookMap(t *testing.T) {
+        // Setup: Create config with all hooks disabled
+        // Execute: Generate settings
+        // Assert: Hook map is empty
+      }
+
+    test_objective:
+      title: "Verify all hooks disabled produces empty hook map"
+      what: |
+        Tests that when all security hook toggles are set to disabled, the generated
+        Claude settings produce an empty hook map with no active hooks.
+      why: |
+        Ensures that the toggle system works exhaustively — when everything is off,
+        no hooks should remain. This validates there are no hardcoded hooks that
+        bypass the toggle mechanism.
+      acceptance_criteria:
+        - "Generated settings hook map is empty"
+        - "No residual hooks remain when all toggles are off"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with testify"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-001"
+          action: "Create SecurityConfig with all hooks disabled"
+          command: "Set all hook toggles to false"
+          validation: "Config created with all toggles off"
+      test_execution:
+        - step_id: "TEST-001"
+          action: "Generate Claude settings"
+          command: "security.GenerateClaudeSettings(config)"
+          validation: "Settings generated without error"
+        - step_id: "TEST-002"
+          action: "Check hook map"
+          command: "Inspect hook map in generated settings"
+          validation: "Hook map is empty"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-001"
+        priority: "P0"
+        description: "Hook map is empty"
+        condition: "Generated settings contain zero hooks"
+        failure_impact: "Hardcoded hooks bypass toggle mechanism"
+
+  - scenario_id: "006"
+    test_id: "TS-GH-18-006"
+    tier: "Unit Tests"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-18"
+    requirement_summary: "Individual security hook toggles disable only the targeted hook without affecting others"
+
+    variables:
+      closure_scope:
+        - name: "config"
+          type: "SecurityConfig"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "Config with hook re-enabled"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Security hook toggles"
+      context:
+        description: "when a disabled hook is re-enabled"
+      it:
+        description: "should restore the hook in settings"
+        test_id_format: "[test_id:TS-GH-18-006]"
+
+    code_structure: |
+      func TestReEnablingDisabledHookRestoresIt(t *testing.T) {
+        // Setup: Create config, disable hook, then re-enable
+        // Execute: Generate settings
+        // Assert: Re-enabled hook is present
+      }
+
+    test_objective:
+      title: "Verify re-enabling disabled hook restores it"
+      what: |
+        Tests that a previously disabled hook can be re-enabled by toggling back to
+        true, and that the hook appears correctly in the regenerated settings.
+      why: |
+        Operators need to be able to toggle hooks on and off dynamically. If re-enabling
+        a hook does not restore it, the toggle becomes a one-way operation.
+      acceptance_criteria:
+        - "Re-enabled hook appears in generated settings"
+        - "Hook configuration matches expected defaults"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with testify"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-001"
+          action: "Create config with hook re-enabled"
+          command: "Toggle hook to false then back to true"
+          validation: "Config has hook re-enabled"
+      test_execution:
+        - step_id: "TEST-001"
+          action: "Generate Claude settings"
+          command: "security.GenerateClaudeSettings(config)"
+          validation: "Re-enabled hook present in settings"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-001"
+        priority: "P0"
+        description: "Re-enabled hook is present"
+        condition: "Settings contain the re-enabled hook with correct configuration"
+        failure_impact: "Hook toggle is irreversible once disabled"
+
+  # ==========================================================================
+  # Requirement: Nil and zero-value configs default to fail-closed
+  # Priority: P0 | Tier: Unit Tests
+  # ==========================================================================
+  - scenario_id: "007"
+    test_id: "TS-GH-18-007"
+    tier: "Unit Tests"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-18"
+    requirement_summary: "Security configuration handles nil and zero-value configs safely with fail-closed defaults"
+
+    variables:
+      closure_scope:
+        - name: "result"
+          type: "bool"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "SecurityEnabled result from nil config"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Nil-safety defaults"
+      context:
+        description: "when SecurityConfig is nil"
+      it:
+        description: "should default to fail-closed (security enabled)"
+        test_id_format: "[test_id:TS-GH-18-007]"
+
+    code_structure: |
+      func TestNilSecurityConfigDefaultsToFailClosed(t *testing.T) {
+        // Setup: Use nil SecurityConfig
+        // Execute: Check SecurityEnabled and FailModeClosed
+        // Assert: Both return true (fail-closed)
+      }
+
+    test_objective:
+      title: "Verify nil SecurityConfig defaults to fail-closed"
+      what: |
+        Tests that a nil SecurityConfig pointer results in fail-closed behavior —
+        SecurityEnabled returns true and FailModeClosed returns true.
+      why: |
+        Fail-closed is a critical security principle. If a nil config results in
+        security being disabled, any configuration error could silently disable
+        all security protections.
+      acceptance_criteria:
+        - "SecurityEnabled(nil) returns true"
+        - "FailModeClosed(nil) returns true"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with testify"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup: []
+      test_execution:
+        - step_id: "TEST-001"
+          action: "Call SecurityEnabled with nil config"
+          command: "security.SecurityEnabled(nil)"
+          validation: "Returns true"
+        - step_id: "TEST-002"
+          action: "Call FailModeClosed with nil config"
+          command: "security.FailModeClosed(nil)"
+          validation: "Returns true"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-001"
+        priority: "P0"
+        description: "Nil config defaults to security enabled"
+        condition: "SecurityEnabled(nil) == true"
+        failure_impact: "Nil config silently disables security"
+      - assertion_id: "ASSERT-002"
+        priority: "P0"
+        description: "Nil config defaults to fail-closed"
+        condition: "FailModeClosed(nil) == true"
+        failure_impact: "Nil config allows fail-open behavior"
+
+  - scenario_id: "008"
+    test_id: "TS-GH-18-008"
+    tier: "Unit Tests"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-18"
+    requirement_summary: "Security configuration handles nil and zero-value configs safely with fail-closed defaults"
+
+    variables:
+      closure_scope:
+        - name: "config"
+          type: "*SecurityConfig"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "Config with nil Enabled pointer"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Nil-safety defaults"
+      context:
+        description: "when Enabled pointer is nil"
+      it:
+        description: "should default to enabled (true)"
+        test_id_format: "[test_id:TS-GH-18-008]"
+
+    code_structure: |
+      func TestNilEnabledPointerDefaultsToEnabled(t *testing.T) {
+        // Setup: Create config with nil Enabled field
+        // Execute: Check BoolDefault
+        // Assert: Returns true
+      }
+
+    test_objective:
+      title: "Verify nil Enabled pointer defaults to enabled"
+      what: |
+        Tests that when the Enabled field is a nil pointer in SecurityConfig,
+        BoolDefault interprets it as true (enabled).
+      why: |
+        Optional boolean fields must default to the safe value. A nil Enabled
+        field must mean security is on, not off.
+      acceptance_criteria:
+        - "BoolDefault(nil) returns true"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with testify"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup: []
+      test_execution:
+        - step_id: "TEST-001"
+          action: "Call BoolDefault with nil pointer"
+          command: "security.BoolDefault(nil, true)"
+          validation: "Returns true"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-001"
+        priority: "P0"
+        description: "Nil bool pointer defaults to true"
+        condition: "BoolDefault(nil, true) == true"
+        failure_impact: "Nil Enabled silently disables security"
+
+  - scenario_id: "009"
+    test_id: "TS-GH-18-009"
+    tier: "Unit Tests"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-18"
+    requirement_summary: "Security configuration handles nil and zero-value configs safely with fail-closed defaults"
+
+    variables:
+      closure_scope:
+        - name: "config"
+          type: "SecurityConfig"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "Config with empty FailMode"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Nil-safety defaults"
+      context:
+        description: "when FailMode is empty string"
+      it:
+        description: "should default to closed"
+        test_id_format: "[test_id:TS-GH-18-009]"
+
+    code_structure: |
+      func TestEmptyFailModeDefaultsToClosed(t *testing.T) {
+        // Setup: Create config with empty FailMode
+        // Execute: Check FailModeClosed
+        // Assert: Returns true (closed)
+      }
+
+    test_objective:
+      title: "Verify empty FailMode defaults to closed"
+      what: |
+        Tests that when FailMode is an empty string, FailModeClosed returns true,
+        defaulting to the safest behavior.
+      why: |
+        An empty FailMode must be treated as "closed" (deny) not "open" (allow).
+        This prevents misconfiguration from creating a fail-open security posture.
+      acceptance_criteria:
+        - "FailModeClosed with empty FailMode returns true"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with testify"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-001"
+          action: "Create config with empty FailMode"
+          command: "SecurityConfig{FailMode: \"\"}"
+          validation: "Config created"
+      test_execution:
+        - step_id: "TEST-001"
+          action: "Check FailModeClosed"
+          command: "security.FailModeClosed(config)"
+          validation: "Returns true"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-001"
+        priority: "P0"
+        description: "Empty FailMode defaults to closed"
+        condition: "FailModeClosed(emptyFailModeConfig) == true"
+        failure_impact: "Empty FailMode creates fail-open security posture"
+
+  - scenario_id: "010"
+    test_id: "TS-GH-18-010"
+    tier: "Unit Tests"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-18"
+    requirement_summary: "Security configuration handles nil and zero-value configs safely with fail-closed defaults"
+
+    variables:
+      closure_scope:
+        - name: "enabled"
+          type: "*bool"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "Pointer to false value"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Nil-safety defaults"
+      context:
+        description: "when Enabled is explicitly set to false"
+      it:
+        description: "should override default and return false"
+        test_id_format: "[test_id:TS-GH-18-010]"
+
+    code_structure: |
+      func TestExplicitFalseOverridesDefaultTrue(t *testing.T) {
+        // Setup: Create bool pointer to false
+        // Execute: Check BoolDefault
+        // Assert: Returns false (explicit override)
+      }
+
+    test_objective:
+      title: "Verify explicit false overrides default true"
+      what: |
+        Tests that when an Enabled pointer explicitly points to false, BoolDefault
+        returns false, honoring the explicit override over the default.
+      why: |
+        While defaults should be safe, operators must be able to explicitly disable
+        features. The BoolDefault function must respect explicit values.
+      acceptance_criteria:
+        - "BoolDefault(&false, true) returns false"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with testify"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-001"
+          action: "Create pointer to false"
+          command: "falseVal := false; ptr := &falseVal"
+          validation: "Pointer created"
+      test_execution:
+        - step_id: "TEST-001"
+          action: "Check BoolDefault with explicit false"
+          command: "security.BoolDefault(ptr, true)"
+          validation: "Returns false"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-001"
+        priority: "P0"
+        description: "Explicit false overrides default true"
+        condition: "BoolDefault(&false, true) == false"
+        failure_impact: "Cannot explicitly disable features"
+
+  # ==========================================================================
+  # Requirement: Input pipeline chains normalizer before injection scanner
+  # Priority: P0 | Tier: Unit Tests
+  # ==========================================================================
+  - scenario_id: "011"
+    test_id: "TS-GH-18-011"
+    tier: "Unit Tests"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-18"
+    requirement_summary: "Input pipeline chains Unicode normalizer before injection scanner to detect evasion attempts"
+
+    variables:
+      closure_scope:
+        - name: "pipeline"
+          type: "InputPipeline"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "Input pipeline instance"
+        - name: "result"
+          type: "PipelineResult"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "Pipeline execution result"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Input pipeline ordering"
+      context:
+        description: "with normalizer and injection scanner"
+      it:
+        description: "should run normalizer before injection scanner"
+        test_id_format: "[test_id:TS-GH-18-011]"
+
+    code_structure: |
+      func TestNormalizerRunsBeforeInjectionScanner(t *testing.T) {
+        // Setup: Create input pipeline
+        // Execute: Inspect stage ordering
+        // Assert: Normalizer precedes injection scanner
+      }
+
+    test_objective:
+      title: "Verify normalizer runs before injection scanner"
+      what: |
+        Tests that the input pipeline stages are ordered so that Unicode normalization
+        runs before injection scanning. This ensures evasion attempts using zero-width
+        characters are normalized before pattern matching.
+      why: |
+        Attackers can use Unicode zero-width characters to evade injection pattern
+        matching. If the scanner runs before normalization, evasion attempts succeed.
+      acceptance_criteria:
+        - "Pipeline stage ordering has normalizer before scanner"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with testify"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-001"
+          action: "Create input pipeline"
+          command: "security.InputPipeline()"
+          validation: "Pipeline created"
+      test_execution:
+        - step_id: "TEST-001"
+          action: "Check stage ordering"
+          command: "Inspect pipeline stages"
+          validation: "Normalizer index < Scanner index"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-001"
+        priority: "P0"
+        description: "Normalizer precedes injection scanner"
+        condition: "Stage order: normalizer before injection scanner"
+        failure_impact: "Unicode evasion bypasses injection detection"
+
+  - scenario_id: "012"
+    test_id: "TS-GH-18-012"
+    tier: "Unit Tests"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-18"
+    requirement_summary: "Input pipeline chains Unicode normalizer before injection scanner to detect evasion attempts"
+
+    variables:
+      closure_scope:
+        - name: "result"
+          type: "PipelineResult"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "Result from processing obfuscated input"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Input pipeline evasion detection"
+      context:
+        description: "with injection hidden by zero-width characters"
+      it:
+        description: "should detect the injection after normalization"
+        test_id_format: "[test_id:TS-GH-18-012]"
+
+    code_structure: |
+      func TestInjectionHiddenByZeroWidthCharsDetected(t *testing.T) {
+        // Setup: Create input with zero-width chars hiding injection
+        // Execute: Run through input pipeline
+        // Assert: Injection detected despite obfuscation
+      }
+
+    test_objective:
+      title: "Verify injection hidden by zero-width chars detected"
+      what: |
+        Tests that an injection pattern obfuscated with Unicode zero-width characters
+        is still detected after the normalizer strips the obfuscation characters.
+      why: |
+        Zero-width character evasion is a known attack vector. The pipeline must
+        normalize first, then scan, to catch these attempts.
+      acceptance_criteria:
+        - "Obfuscated injection is detected as unsafe"
+        - "Findings include the injection pattern"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with testify"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-001"
+          action: "Create input with zero-width char obfuscation"
+          command: "Embed zero-width joiners in injection pattern"
+          validation: "Input created with obfuscated injection"
+      test_execution:
+        - step_id: "TEST-001"
+          action: "Run input through pipeline"
+          command: "pipeline.Process(obfuscatedInput)"
+          validation: "Result marked as unsafe with findings"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-001"
+        priority: "P0"
+        description: "Obfuscated injection detected"
+        condition: "Pipeline result is unsafe and contains injection finding"
+        failure_impact: "Zero-width char evasion bypasses security scanning"
+
+  - scenario_id: "013"
+    test_id: "TS-GH-18-013"
+    tier: "Unit Tests"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-18"
+    requirement_summary: "Input pipeline chains Unicode normalizer before injection scanner to detect evasion attempts"
+
+    variables:
+      closure_scope:
+        - name: "result"
+          type: "PipelineResult"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "Result from multi-stage pipeline"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Input pipeline stage propagation"
+      context:
+        description: "with sanitized output between stages"
+      it:
+        description: "should propagate sanitized output to next stage"
+        test_id_format: "[test_id:TS-GH-18-013]"
+
+    code_structure: |
+      func TestSanitizedOutputPropagatesBetweenStages(t *testing.T) {
+        // Setup: Create input requiring normalization
+        // Execute: Run through pipeline
+        // Assert: Scanner receives normalized (sanitized) input
+      }
+
+    test_objective:
+      title: "Verify sanitized output propagates between stages"
+      what: |
+        Tests that the output of the normalizer stage (sanitized text) is passed
+        as input to the injection scanner stage, ensuring the scanner operates
+        on clean, normalized text.
+      why: |
+        If stage outputs are not properly chained, the scanner could receive the
+        original unsanitized input, defeating the purpose of normalization.
+      acceptance_criteria:
+        - "Scanner receives normalized text, not original input"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with testify"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-001"
+          action: "Create input with normalizable characters"
+          command: "Input with Unicode requiring normalization"
+          validation: "Input created"
+      test_execution:
+        - step_id: "TEST-001"
+          action: "Run through pipeline and verify propagation"
+          command: "pipeline.Process(input)"
+          validation: "Sanitized output propagated correctly"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-001"
+        priority: "P0"
+        description: "Sanitized output propagates between stages"
+        condition: "Scanner input matches normalizer output"
+        failure_impact: "Scanner processes unsanitized input"
+
+  - scenario_id: "014"
+    test_id: "TS-GH-18-014"
+    tier: "Unit Tests"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-18"
+    requirement_summary: "Input pipeline chains Unicode normalizer before injection scanner to detect evasion attempts"
+
+    variables:
+      closure_scope:
+        - name: "result"
+          type: "PipelineResult"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "Result from clean input processing"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Input pipeline clean input"
+      context:
+        description: "with clean input containing no threats"
+      it:
+        description: "should pass through safely"
+        test_id_format: "[test_id:TS-GH-18-014]"
+
+    code_structure: |
+      func TestCleanInputPassesThroughSafely(t *testing.T) {
+        // Setup: Create clean input
+        // Execute: Run through pipeline
+        // Assert: Result is safe with no findings
+      }
+
+    test_objective:
+      title: "Verify clean input passes through safely"
+      what: |
+        Tests that legitimate input without injection patterns or Unicode evasion
+        passes through the input pipeline without triggering any findings.
+      why: |
+        The pipeline must not produce false positives on clean input. False
+        positives would block legitimate agent operations.
+      acceptance_criteria:
+        - "Clean input produces safe result"
+        - "No findings generated for clean input"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with testify"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-001"
+          action: "Create clean input"
+          command: "Normal text without injection patterns"
+          validation: "Clean input created"
+      test_execution:
+        - step_id: "TEST-001"
+          action: "Run through pipeline"
+          command: "pipeline.Process(cleanInput)"
+          validation: "Result is safe"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-001"
+        priority: "P0"
+        description: "Clean input passes safely"
+        condition: "Pipeline result is safe with zero findings"
+        failure_impact: "False positives block legitimate operations"
+
+  # ==========================================================================
+  # Requirement: Output pipeline redacts API keys and tokens
+  # Priority: P1 | Tier: Unit Tests
+  # ==========================================================================
+  - scenario_id: "015"
+    test_id: "TS-GH-18-015"
+    tier: "Unit Tests"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-18"
+    requirement_summary: "Output pipeline redacts API keys and tokens from agent-generated text"
+
+    variables:
+      closure_scope:
+        - name: "output"
+          type: "string"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "Redacted output text"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Output pipeline redaction"
+      context:
+        description: "with API key in output"
+      it:
+        description: "should redact the API key"
+        test_id_format: "[test_id:TS-GH-18-015]"
+
+    code_structure: |
+      func TestAPIKeyRedactedFromOutput(t *testing.T) {
+        // Setup: Create output containing API key
+        // Execute: Run through output pipeline
+        // Assert: API key is redacted
+      }
+
+    test_objective:
+      title: "Verify API key redacted from output"
+      what: |
+        Tests that the output pipeline detects and redacts API keys embedded in
+        agent-generated text, replacing them with a redaction placeholder.
+      why: |
+        Agent outputs may inadvertently contain API keys from tool call responses.
+        Redaction prevents credential leakage to end users or logs.
+      acceptance_criteria:
+        - "API key pattern is replaced with redaction placeholder"
+        - "Non-secret text is preserved unchanged"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with testify"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-001"
+          action: "Create output text with embedded API key"
+          command: "Text containing sk-... or similar API key pattern"
+          validation: "Output created with API key"
+      test_execution:
+        - step_id: "TEST-001"
+          action: "Run through output pipeline"
+          command: "pipeline.Process(outputWithKey)"
+          validation: "API key replaced with redaction marker"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-001"
+        priority: "P1"
+        description: "API key is redacted"
+        condition: "Output does not contain original API key pattern"
+        failure_impact: "API key leaks through agent output"
+
+  - scenario_id: "016"
+    test_id: "TS-GH-18-016"
+    tier: "Unit Tests"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-18"
+    requirement_summary: "Output pipeline redacts API keys and tokens from agent-generated text"
+
+    variables:
+      closure_scope:
+        - name: "output"
+          type: "string"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "Redacted output text"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Output pipeline redaction"
+      context:
+        description: "with GitHub PAT in output"
+      it:
+        description: "should redact the GitHub PAT"
+        test_id_format: "[test_id:TS-GH-18-016]"
+
+    code_structure: |
+      func TestGitHubPATRedactedFromOutput(t *testing.T) {
+        // Setup: Create output containing GitHub PAT
+        // Execute: Run through output pipeline
+        // Assert: PAT is redacted
+      }
+
+    test_objective:
+      title: "Verify GitHub PAT redacted from output"
+      what: |
+        Tests that GitHub Personal Access Tokens (ghp_..., gho_..., etc.) are
+        detected and redacted from agent output text.
+      why: |
+        GitHub PATs in agent output could be harvested for unauthorized repository
+        access. The output pipeline must catch all GitHub token formats.
+      acceptance_criteria:
+        - "GitHub PAT pattern is replaced with redaction placeholder"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with testify"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-001"
+          action: "Create output text with GitHub PAT"
+          command: "Text containing ghp_... pattern"
+          validation: "Output created with PAT"
+      test_execution:
+        - step_id: "TEST-001"
+          action: "Run through output pipeline"
+          command: "pipeline.Process(outputWithPAT)"
+          validation: "PAT replaced with redaction marker"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-001"
+        priority: "P1"
+        description: "GitHub PAT is redacted"
+        condition: "Output does not contain original PAT pattern"
+        failure_impact: "GitHub PAT leaks through agent output"
+
+  - scenario_id: "017"
+    test_id: "TS-GH-18-017"
+    tier: "Unit Tests"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-18"
+    requirement_summary: "Output pipeline redacts API keys and tokens from agent-generated text"
+
+    variables:
+      closure_scope:
+        - name: "output"
+          type: "string"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "Output text after pipeline"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Output pipeline clean passthrough"
+      context:
+        description: "with clean text containing no secrets"
+      it:
+        description: "should pass through unchanged"
+        test_id_format: "[test_id:TS-GH-18-017]"
+
+    code_structure: |
+      func TestCleanTextPassesThroughUnchanged(t *testing.T) {
+        // Setup: Create clean output text
+        // Execute: Run through output pipeline
+        // Assert: Text unchanged
+      }
+
+    test_objective:
+      title: "Verify clean text passes through unchanged"
+      what: |
+        Tests that output text without any secret patterns passes through
+        the output pipeline completely unchanged.
+      why: |
+        The redaction pipeline must not alter legitimate output. Any unintended
+        modification could corrupt agent responses.
+      acceptance_criteria:
+        - "Clean text is identical before and after pipeline processing"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with testify"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-001"
+          action: "Create clean output text"
+          command: "Normal text without secret patterns"
+          validation: "Clean text created"
+      test_execution:
+        - step_id: "TEST-001"
+          action: "Run through output pipeline"
+          command: "pipeline.Process(cleanText)"
+          validation: "Output equals input"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-001"
+        priority: "P1"
+        description: "Clean text passes unchanged"
+        condition: "Output text == input text"
+        failure_impact: "Pipeline corrupts legitimate agent output"
+
+  # ==========================================================================
+  # Requirement: Context injection scanner detects patterns with correct severity
+  # Priority: P0 | Tier: Unit Tests
+  # ==========================================================================
+  - scenario_id: "018"
+    test_id: "TS-GH-18-018"
+    tier: "Unit Tests"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-18"
+    requirement_summary: "Context injection scanner detects known injection patterns with correct severity classification"
+
+    variables:
+      closure_scope:
+        - name: "result"
+          type: "ScanResult"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "Scanner result for instruction override"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Context injection severity classification"
+      context:
+        description: "with instruction override pattern"
+      it:
+        description: "should detect as critical severity"
+        test_id_format: "[test_id:TS-GH-18-018]"
+
+    code_structure: |
+      func TestInstructionOverrideDetectedAsCritical(t *testing.T) {
+        // Setup: Create input with instruction override
+        // Execute: Run injection scanner
+        // Assert: Detected as critical severity
+      }
+
+    test_objective:
+      title: "Verify instruction override detected as critical"
+      what: |
+        Tests that an instruction override pattern (e.g., "ignore previous instructions")
+        is detected by the context injection scanner and classified as critical severity.
+      why: |
+        Instruction override is the most dangerous injection type — it attempts to
+        take over the agent's behavior. Must be classified as critical.
+      acceptance_criteria:
+        - "Instruction override pattern is detected"
+        - "Severity is classified as critical"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with testify"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-001"
+          action: "Create injection scanner"
+          command: "security.NewContextInjectionScanner()"
+          validation: "Scanner created"
+      test_execution:
+        - step_id: "TEST-001"
+          action: "Scan instruction override pattern"
+          command: "scanner.Scan(instructionOverrideInput)"
+          validation: "Finding with critical severity"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-001"
+        priority: "P0"
+        description: "Instruction override detected as critical"
+        condition: "Finding severity == critical"
+        failure_impact: "Agent takeover attempts go undetected"
+
+  - scenario_id: "019"
+    test_id: "TS-GH-18-019"
+    tier: "Unit Tests"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-18"
+    requirement_summary: "Context injection scanner detects known injection patterns with correct severity classification"
+
+    variables:
+      closure_scope:
+        - name: "result"
+          type: "ScanResult"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "Scanner result for credential exfiltration"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Context injection severity classification"
+      context:
+        description: "with credential exfiltration pattern"
+      it:
+        description: "should detect as critical severity"
+        test_id_format: "[test_id:TS-GH-18-019]"
+
+    code_structure: |
+      func TestCredentialExfiltrationDetectedAsCritical(t *testing.T) {
+        // Setup: Create input with credential exfiltration pattern
+        // Execute: Run injection scanner
+        // Assert: Detected as critical severity
+      }
+
+    test_objective:
+      title: "Verify credential exfiltration detected as critical"
+      what: |
+        Tests that a credential exfiltration pattern (e.g., "send credentials to")
+        is detected and classified as critical severity.
+      why: |
+        Credential exfiltration attempts to steal secrets via the agent. This
+        must be classified as critical to trigger immediate blocking.
+      acceptance_criteria:
+        - "Credential exfiltration pattern is detected"
+        - "Severity is classified as critical"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with testify"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-001"
+          action: "Create injection scanner"
+          command: "security.NewContextInjectionScanner()"
+          validation: "Scanner created"
+      test_execution:
+        - step_id: "TEST-001"
+          action: "Scan credential exfiltration pattern"
+          command: "scanner.Scan(credExfilInput)"
+          validation: "Finding with critical severity"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-001"
+        priority: "P0"
+        description: "Credential exfiltration detected as critical"
+        condition: "Finding severity == critical"
+        failure_impact: "Credential theft attempts bypass detection"
+
+  - scenario_id: "020"
+    test_id: "TS-GH-18-020"
+    tier: "Unit Tests"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-18"
+    requirement_summary: "Context injection scanner detects known injection patterns with correct severity classification"
+
+    variables:
+      closure_scope:
+        - name: "result"
+          type: "ScanResult"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "Scanner result for hidden HTML comment"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Context injection severity classification"
+      context:
+        description: "with hidden HTML comment injection"
+      it:
+        description: "should detect as high severity"
+        test_id_format: "[test_id:TS-GH-18-020]"
+
+    code_structure: |
+      func TestHiddenHTMLCommentDetectedAsHigh(t *testing.T) {
+        // Setup: Create input with hidden HTML comment
+        // Execute: Run injection scanner
+        // Assert: Detected as high severity
+      }
+
+    test_objective:
+      title: "Verify hidden HTML comment detected as high"
+      what: |
+        Tests that hidden HTML comments containing instructions are detected
+        and classified as high severity (not critical, as they are less direct
+        than instruction override).
+      why: |
+        Hidden HTML comments are a subtler injection vector. They should be
+        flagged as high severity to warrant investigation without triggering
+        the critical-severity blocking path.
+      acceptance_criteria:
+        - "Hidden HTML comment pattern is detected"
+        - "Severity is classified as high"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with testify"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-001"
+          action: "Create injection scanner"
+          command: "security.NewContextInjectionScanner()"
+          validation: "Scanner created"
+      test_execution:
+        - step_id: "TEST-001"
+          action: "Scan hidden HTML comment"
+          command: "scanner.Scan(htmlCommentInput)"
+          validation: "Finding with high severity"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-001"
+        priority: "P0"
+        description: "Hidden HTML comment detected as high"
+        condition: "Finding severity == high"
+        failure_impact: "Subtle injection vector goes undetected"
+
+  - scenario_id: "021"
+    test_id: "TS-GH-18-021"
+    tier: "Unit Tests"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-18"
+    requirement_summary: "Context injection scanner detects known injection patterns with correct severity classification"
+
+    variables:
+      closure_scope:
+        - name: "result"
+          type: "ScanResult"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "Scanner result for clean text"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Context injection scanner"
+      context:
+        description: "with clean text"
+      it:
+        description: "should return safe result"
+        test_id_format: "[test_id:TS-GH-18-021]"
+
+    code_structure: |
+      func TestCleanTextReturnsSafeResult(t *testing.T) {
+        // Setup: Create clean input
+        // Execute: Run injection scanner
+        // Assert: Result is safe with no findings
+      }
+
+    test_objective:
+      title: "Verify clean text returns safe result"
+      what: |
+        Tests that normal text without any injection patterns returns a safe
+        result from the context injection scanner.
+      why: |
+        The scanner must not produce false positives. Legitimate agent context
+        must pass through without triggering findings.
+      acceptance_criteria:
+        - "Clean text produces safe scan result"
+        - "No findings generated"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with testify"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-001"
+          action: "Create injection scanner"
+          command: "security.NewContextInjectionScanner()"
+          validation: "Scanner created"
+      test_execution:
+        - step_id: "TEST-001"
+          action: "Scan clean text"
+          command: "scanner.Scan(cleanText)"
+          validation: "Safe result with no findings"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-001"
+        priority: "P0"
+        description: "Clean text returns safe result"
+        condition: "Scan result is safe and findings list is empty"
+        failure_impact: "False positives block legitimate operations"
+
+  - scenario_id: "022"
+    test_id: "TS-GH-18-022"
+    tier: "Unit Tests"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-18"
+    requirement_summary: "Context injection scanner detects known injection patterns with correct severity classification"
+
+    variables:
+      closure_scope:
+        - name: "result"
+          type: "ScanResult"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "Scanner result for empty string"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Context injection scanner"
+      context:
+        description: "with empty string input"
+      it:
+        description: "should handle without panic"
+        test_id_format: "[test_id:TS-GH-18-022]"
+
+    code_structure: |
+      func TestEmptyStringHandledWithoutPanic(t *testing.T) {
+        // Setup: Create injection scanner
+        // Execute: Scan empty string
+        // Assert: No panic, safe result
+      }
+
+    test_objective:
+      title: "Verify empty string handled without panic"
+      what: |
+        Tests that the context injection scanner handles an empty string input
+        without panicking and returns a safe result.
+      why: |
+        Edge case: empty inputs must not cause runtime panics. The scanner
+        should gracefully handle zero-length input.
+      acceptance_criteria:
+        - "No panic when scanning empty string"
+        - "Returns safe result"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with testify"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-001"
+          action: "Create injection scanner"
+          command: "security.NewContextInjectionScanner()"
+          validation: "Scanner created"
+      test_execution:
+        - step_id: "TEST-001"
+          action: "Scan empty string"
+          command: "scanner.Scan(\"\")"
+          validation: "No panic, safe result"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-001"
+        priority: "P0"
+        description: "Empty string handled safely"
+        condition: "No panic and result is safe"
+        failure_impact: "Empty input causes runtime crash"
+
+  # ==========================================================================
+  # Requirement: Pipeline aggregates findings and enforces fail-closed
+  # Priority: P1 | Tier: Unit Tests
+  # ==========================================================================
+  - scenario_id: "023"
+    test_id: "TS-GH-18-023"
+    tier: "Unit Tests"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-18"
+    requirement_summary: "Pipeline aggregates findings from all scanners and enforces fail-closed safety"
+
+    variables:
+      closure_scope:
+        - name: "result"
+          type: "PipelineResult"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "Aggregated pipeline result"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Pipeline finding aggregation"
+      context:
+        description: "when all scanners pass"
+      it:
+        description: "should return safe result"
+        test_id_format: "[test_id:TS-GH-18-023]"
+
+    code_structure: |
+      func TestSafeResultWhenAllScannersPass(t *testing.T) {
+        // Setup: Create pipeline with all-passing scanners
+        // Execute: Run pipeline
+        // Assert: Result is safe
+      }
+
+    test_objective:
+      title: "Verify safe result when all scanners pass"
+      what: |
+        Tests that when all scanners in the pipeline pass (no findings), the
+        aggregated result is safe.
+      why: |
+        The aggregation logic must correctly identify the all-clear case.
+        Incorrect aggregation could produce false unsafe results.
+      acceptance_criteria:
+        - "Pipeline returns safe when no scanner has findings"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with testify"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-001"
+          action: "Create pipeline with clean input"
+          command: "Pipeline with all-passing scanners"
+          validation: "Pipeline created"
+      test_execution:
+        - step_id: "TEST-001"
+          action: "Run pipeline"
+          command: "pipeline.Process(cleanInput)"
+          validation: "Safe result returned"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-001"
+        priority: "P1"
+        description: "All-pass produces safe result"
+        condition: "Pipeline result is safe with empty findings"
+        failure_impact: "False unsafe results when no threats present"
+
+  - scenario_id: "024"
+    test_id: "TS-GH-18-024"
+    tier: "Unit Tests"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-18"
+    requirement_summary: "Pipeline aggregates findings from all scanners and enforces fail-closed safety"
+
+    variables:
+      closure_scope:
+        - name: "result"
+          type: "PipelineResult"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "Pipeline result with single scanner trigger"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Pipeline finding aggregation"
+      context:
+        description: "when any single scanner triggers"
+      it:
+        description: "should return unsafe result"
+        test_id_format: "[test_id:TS-GH-18-024]"
+
+    code_structure: |
+      func TestUnsafeResultWhenAnyScannerTriggers(t *testing.T) {
+        // Setup: Create pipeline with one triggering scanner
+        // Execute: Run pipeline
+        // Assert: Result is unsafe
+      }
+
+    test_objective:
+      title: "Verify unsafe result when any scanner triggers"
+      what: |
+        Tests that if any single scanner in the pipeline produces a finding,
+        the aggregated result is marked as unsafe.
+      why: |
+        Security follows AND logic — all scanners must pass for safe result.
+        One finding means the input is potentially dangerous.
+      acceptance_criteria:
+        - "Single scanner finding produces unsafe aggregate result"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with testify"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-001"
+          action: "Create pipeline with threat-triggering input"
+          command: "Input that triggers one scanner"
+          validation: "Pipeline created"
+      test_execution:
+        - step_id: "TEST-001"
+          action: "Run pipeline"
+          command: "pipeline.Process(triggeringInput)"
+          validation: "Unsafe result returned"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-001"
+        priority: "P1"
+        description: "Single trigger produces unsafe result"
+        condition: "Pipeline result is unsafe"
+        failure_impact: "Threats from single scanner ignored"
+
+  - scenario_id: "025"
+    test_id: "TS-GH-18-025"
+    tier: "Unit Tests"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-18"
+    requirement_summary: "Pipeline aggregates findings from all scanners and enforces fail-closed safety"
+
+    variables:
+      closure_scope:
+        - name: "result"
+          type: "PipelineResult"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "Pipeline result with multi-scanner findings"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Pipeline finding aggregation"
+      context:
+        description: "with findings from multiple scanners"
+      it:
+        description: "should aggregate all findings"
+        test_id_format: "[test_id:TS-GH-18-025]"
+
+    code_structure: |
+      func TestFindingsAggregatedFromMultipleScanners(t *testing.T) {
+        // Setup: Create pipeline with multi-triggering input
+        // Execute: Run pipeline
+        // Assert: All findings from all scanners are collected
+      }
+
+    test_objective:
+      title: "Verify findings aggregated from multiple scanners"
+      what: |
+        Tests that findings from multiple scanners are aggregated into a single
+        findings list, preserving all individual findings.
+      why: |
+        The full picture of threats must be visible. Aggregation must not drop
+        or deduplicate findings from different scanners.
+      acceptance_criteria:
+        - "Findings from all triggering scanners are present"
+        - "Finding count equals sum of individual scanner findings"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with testify"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-001"
+          action: "Create input triggering multiple scanners"
+          command: "Input with multiple threat patterns"
+          validation: "Input created"
+      test_execution:
+        - step_id: "TEST-001"
+          action: "Run pipeline"
+          command: "pipeline.Process(multiThreatInput)"
+          validation: "All findings aggregated"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-001"
+        priority: "P1"
+        description: "Findings aggregated from all scanners"
+        condition: "Total findings == sum of individual scanner findings"
+        failure_impact: "Some scanner findings silently dropped"
+
+  - scenario_id: "026"
+    test_id: "TS-GH-18-026"
+    tier: "Unit Tests"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-18"
+    requirement_summary: "Pipeline aggregates findings from all scanners and enforces fail-closed safety"
+
+    variables:
+      closure_scope:
+        - name: "result"
+          type: "bool"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "HasCriticalFindings result"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "HasCriticalFindings helper"
+      context:
+        description: "with critical severity finding"
+      it:
+        description: "should return true"
+        test_id_format: "[test_id:TS-GH-18-026]"
+
+    code_structure: |
+      func TestHasCriticalFindingsIdentifiesCriticalSeverity(t *testing.T) {
+        // Setup: Create findings list with critical severity
+        // Execute: Call HasCriticalFindings
+        // Assert: Returns true
+      }
+
+    test_objective:
+      title: "Verify HasCriticalFindings identifies critical severity"
+      what: |
+        Tests that the HasCriticalFindings helper function correctly identifies
+        when the findings list contains at least one critical-severity finding.
+      why: |
+        HasCriticalFindings is used for enforcement decisions. If it misses
+        critical findings, blocking actions won't trigger.
+      acceptance_criteria:
+        - "HasCriticalFindings returns true when critical finding exists"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with testify"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-001"
+          action: "Create findings with critical entry"
+          command: "[]Finding{{Severity: Critical}}"
+          validation: "Findings list created"
+      test_execution:
+        - step_id: "TEST-001"
+          action: "Call HasCriticalFindings"
+          command: "security.HasCriticalFindings(findings)"
+          validation: "Returns true"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-001"
+        priority: "P1"
+        description: "Critical severity detected"
+        condition: "HasCriticalFindings returns true"
+        failure_impact: "Critical threats not blocked"
+
+  - scenario_id: "027"
+    test_id: "TS-GH-18-027"
+    tier: "Unit Tests"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-18"
+    requirement_summary: "Pipeline aggregates findings from all scanners and enforces fail-closed safety"
+
+    variables:
+      closure_scope:
+        - name: "result"
+          type: "bool"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "HasCriticalFindings result for nil input"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "HasCriticalFindings helper"
+      context:
+        description: "with nil findings"
+      it:
+        description: "should return false"
+        test_id_format: "[test_id:TS-GH-18-027]"
+
+    code_structure: |
+      func TestNilFindingsReturnsFalseForCriticalCheck(t *testing.T) {
+        // Setup: nil findings
+        // Execute: Call HasCriticalFindings
+        // Assert: Returns false
+      }
+
+    test_objective:
+      title: "Verify nil findings returns false for critical check"
+      what: |
+        Tests that HasCriticalFindings returns false when given a nil findings
+        slice, handling the nil case gracefully without panic.
+      why: |
+        Nil findings means no threats were found. HasCriticalFindings must
+        return false, not panic on nil slice access.
+      acceptance_criteria:
+        - "HasCriticalFindings(nil) returns false without panic"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with testify"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup: []
+      test_execution:
+        - step_id: "TEST-001"
+          action: "Call HasCriticalFindings with nil"
+          command: "security.HasCriticalFindings(nil)"
+          validation: "Returns false without panic"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-001"
+        priority: "P1"
+        description: "Nil findings returns false"
+        condition: "HasCriticalFindings(nil) == false, no panic"
+        failure_impact: "Nil findings causes panic"
+
+  # ==========================================================================
+  # Requirement: Model provider definitions load correctly
+  # Priority: P1 | Tier: Unit Tests
+  # ==========================================================================
+  - scenario_id: "028"
+    test_id: "TS-GH-18-028"
+    tier: "Unit Tests"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-18"
+    requirement_summary: "Model provider definitions load correctly with credential mapping and validation"
+
+    variables:
+      closure_scope:
+        - name: "providers"
+          type: "[]ProviderDef"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "Loaded provider definitions"
+        - name: "err"
+          type: "error"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "Loading error"
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "Temporary directory for test provider files"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Provider definition loading"
+      context:
+        description: "with valid provider directory"
+      it:
+        description: "should load multiple providers"
+        test_id_format: "[test_id:TS-GH-18-028]"
+
+    code_structure: |
+      func TestMultipleProvidersLoadedFromDirectory(t *testing.T) {
+        // Setup: Create temp dir with multiple provider YAML files
+        // Execute: Call LoadProviderDefs
+        // Assert: All providers loaded
+      }
+
+    test_objective:
+      title: "Verify multiple providers loaded from directory"
+      what: |
+        Tests that LoadProviderDefs reads all YAML files from a directory and
+        returns a slice of ProviderDef structs with correct field values.
+      why: |
+        The provider loader must discover and parse all provider definitions.
+        Missing providers means models from that provider won't be available.
+      acceptance_criteria:
+        - "All YAML files in directory are loaded"
+        - "Provider count matches file count"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with testify"
+
+    specific_preconditions:
+      - name: "Temporary directory"
+        requirement: "Writable temp directory for test YAML files"
+        validation: "os.MkdirTemp succeeds"
+
+    test_data:
+      resource_definitions:
+        - name: "provider_yaml"
+          type: "YAML file"
+          yaml: |
+            name: "openai"
+            type: "api"
+            credentials:
+              api_key_env: "OPENAI_API_KEY"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-001"
+          action: "Create temp directory with provider YAML files"
+          command: "os.MkdirTemp + write YAML files"
+          validation: "Directory created with files"
+      test_execution:
+        - step_id: "TEST-001"
+          action: "Load provider definitions"
+          command: "harness.LoadProviderDefs(tmpDir)"
+          validation: "Returns multiple providers without error"
+      cleanup:
+        - step_id: "CLEANUP-001"
+          action: "Remove temp directory"
+          command: "os.RemoveAll(tmpDir)"
+
+    assertions:
+      - assertion_id: "ASSERT-001"
+        priority: "P1"
+        description: "Multiple providers loaded"
+        condition: "len(providers) matches expected count"
+        failure_impact: "Provider files not discovered"
+
+  - scenario_id: "029"
+    test_id: "TS-GH-18-029"
+    tier: "Unit Tests"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-18"
+    requirement_summary: "Model provider definitions load correctly with credential mapping and validation"
+
+    variables:
+      closure_scope:
+        - name: "providers"
+          type: "[]ProviderDef"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "Loaded provider definitions"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Provider definition loading"
+      context:
+        description: "with credential configuration"
+      it:
+        description: "should map credentials correctly per provider"
+        test_id_format: "[test_id:TS-GH-18-029]"
+
+    code_structure: |
+      func TestCredentialsMappedCorrectlyPerProvider(t *testing.T) {
+        // Setup: Create provider YAML with credential mapping
+        // Execute: Load and check credentials
+        // Assert: Credential env vars mapped correctly
+      }
+
+    test_objective:
+      title: "Verify credentials mapped correctly per provider"
+      what: |
+        Tests that each loaded ProviderDef has its credential configuration
+        correctly parsed, with environment variable names matching the YAML.
+      why: |
+        Incorrect credential mapping means the provider can't authenticate,
+        causing model invocations to fail at runtime.
+      acceptance_criteria:
+        - "Credential env var names match YAML definitions"
+        - "Each provider has its own credential mapping"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with testify"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-001"
+          action: "Create provider YAML with credentials"
+          command: "Write YAML with credential env vars"
+          validation: "File created"
+      test_execution:
+        - step_id: "TEST-001"
+          action: "Load and verify credential mapping"
+          command: "harness.LoadProviderDefs(tmpDir)"
+          validation: "Credentials match YAML"
+      cleanup:
+        - step_id: "CLEANUP-001"
+          action: "Remove temp directory"
+          command: "os.RemoveAll(tmpDir)"
+
+    assertions:
+      - assertion_id: "ASSERT-001"
+        priority: "P1"
+        description: "Credentials mapped correctly"
+        condition: "Provider credential env vars match YAML definition"
+        failure_impact: "Provider authentication fails at runtime"
+
+  - scenario_id: "030"
+    test_id: "TS-GH-18-030"
+    tier: "Unit Tests"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-18"
+    requirement_summary: "Model provider definitions load correctly with credential mapping and validation"
+
+    variables:
+      closure_scope:
+        - name: "err"
+          type: "error"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "Expected validation error"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Provider definition validation"
+      context:
+        description: "with missing required name field"
+      it:
+        description: "should return error"
+        test_id_format: "[test_id:TS-GH-18-030]"
+
+    code_structure: |
+      func TestErrorForMissingRequiredNameField(t *testing.T) {
+        // Setup: Create provider YAML without name field
+        // Execute: Load provider defs
+        // Assert: Error returned
+      }
+
+    test_objective:
+      title: "Verify error for missing required name field"
+      what: |
+        Tests that LoadProviderDefs returns an error when a provider YAML file
+        is missing the required "name" field.
+      why: |
+        Provider definitions without names cannot be referenced or used.
+        Validation must catch this and report a clear error.
+      acceptance_criteria:
+        - "LoadProviderDefs returns non-nil error"
+        - "Error message references missing name field"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with testify"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions:
+        - name: "invalid_provider_yaml"
+          type: "YAML file"
+          yaml: |
+            type: "api"
+            # name field intentionally missing
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-001"
+          action: "Create provider YAML without name"
+          command: "Write YAML missing name field"
+          validation: "File created"
+      test_execution:
+        - step_id: "TEST-001"
+          action: "Attempt to load provider defs"
+          command: "harness.LoadProviderDefs(tmpDir)"
+          validation: "Returns error"
+      cleanup:
+        - step_id: "CLEANUP-001"
+          action: "Remove temp directory"
+          command: "os.RemoveAll(tmpDir)"
+
+    assertions:
+      - assertion_id: "ASSERT-001"
+        priority: "P1"
+        description: "Error for missing name"
+        condition: "err != nil and error references name field"
+        failure_impact: "Invalid providers loaded silently"
+
+  - scenario_id: "031"
+    test_id: "TS-GH-18-031"
+    tier: "Unit Tests"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-18"
+    requirement_summary: "Model provider definitions load correctly with credential mapping and validation"
+
+    variables:
+      closure_scope:
+        - name: "err"
+          type: "error"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "Expected validation error"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Provider definition validation"
+      context:
+        description: "with missing required type field"
+      it:
+        description: "should return error"
+        test_id_format: "[test_id:TS-GH-18-031]"
+
+    code_structure: |
+      func TestErrorForMissingRequiredTypeField(t *testing.T) {
+        // Setup: Create provider YAML without type field
+        // Execute: Load provider defs
+        // Assert: Error returned
+      }
+
+    test_objective:
+      title: "Verify error for missing required type field"
+      what: |
+        Tests that LoadProviderDefs returns an error when a provider YAML file
+        is missing the required "type" field.
+      why: |
+        Provider type determines how the provider is initialized. Missing type
+        makes the provider definition unusable.
+      acceptance_criteria:
+        - "LoadProviderDefs returns non-nil error"
+        - "Error message references missing type field"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with testify"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions:
+        - name: "invalid_provider_yaml"
+          type: "YAML file"
+          yaml: |
+            name: "openai"
+            # type field intentionally missing
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-001"
+          action: "Create provider YAML without type"
+          command: "Write YAML missing type field"
+          validation: "File created"
+      test_execution:
+        - step_id: "TEST-001"
+          action: "Attempt to load provider defs"
+          command: "harness.LoadProviderDefs(tmpDir)"
+          validation: "Returns error"
+      cleanup:
+        - step_id: "CLEANUP-001"
+          action: "Remove temp directory"
+          command: "os.RemoveAll(tmpDir)"
+
+    assertions:
+      - assertion_id: "ASSERT-001"
+        priority: "P1"
+        description: "Error for missing type"
+        condition: "err != nil and error references type field"
+        failure_impact: "Invalid providers loaded silently"
+
+  # ==========================================================================
+  # Requirement: Tool allowlist hook toggle
+  # Priority: P1 | Tier: Unit Tests
+  # ==========================================================================
+  - scenario_id: "032"
+    test_id: "TS-GH-18-032"
+    tier: "Unit Tests"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-18"
+    requirement_summary: "Tool allowlist hook can be explicitly enabled via toggle (disabled by default)"
+
+    variables:
+      closure_scope:
+        - name: "config"
+          type: "SecurityConfig"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "Config with allowlist enabled"
+        - name: "settings"
+          type: "ClaudeSettings"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "Generated settings"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Tool allowlist hook"
+      context:
+        description: "when explicitly enabled"
+      it:
+        description: "should add allowlist hook to settings"
+        test_id_format: "[test_id:TS-GH-18-032]"
+
+    code_structure: |
+      func TestAllowlistHookAddedWhenEnabled(t *testing.T) {
+        // Setup: Create config with allowlist enabled
+        // Execute: Generate settings
+        // Assert: Allowlist hook present
+      }
+
+    test_objective:
+      title: "Verify allowlist hook added when enabled"
+      what: |
+        Tests that when the tool allowlist toggle is explicitly enabled in
+        SecurityConfig, the allowlist hook appears in generated Claude settings.
+      why: |
+        The allowlist hook restricts which tools agents can use. When enabled,
+        it must actually be present in settings to take effect.
+      acceptance_criteria:
+        - "Allowlist hook present in generated settings"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with testify"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-001"
+          action: "Create config with allowlist enabled"
+          command: "SecurityConfig with allowlist toggle true"
+          validation: "Config created"
+      test_execution:
+        - step_id: "TEST-001"
+          action: "Generate Claude settings"
+          command: "security.GenerateClaudeSettings(config)"
+          validation: "Allowlist hook present in settings"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-001"
+        priority: "P1"
+        description: "Allowlist hook added when enabled"
+        condition: "Settings contain allowlist hook entry"
+        failure_impact: "Allowlist toggle has no effect"
+
+  - scenario_id: "033"
+    test_id: "TS-GH-18-033"
+    tier: "Unit Tests"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-18"
+    requirement_summary: "Tool allowlist hook can be explicitly enabled via toggle (disabled by default)"
+
+    variables:
+      closure_scope:
+        - name: "settings"
+          type: "ClaudeSettings"
+          initialized_in: "TestBody"
+          used_in: ["TestBody"]
+          comment: "Generated settings with defaults"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Tool allowlist hook"
+      context:
+        description: "with default configuration"
+      it:
+        description: "should not include allowlist hook"
+        test_id_format: "[test_id:TS-GH-18-033]"
+
+    code_structure: |
+      func TestAllowlistHookAbsentByDefault(t *testing.T) {
+        // Setup: Create default config
+        // Execute: Generate settings
+        // Assert: Allowlist hook NOT present
+      }
+
+    test_objective:
+      title: "Verify allowlist hook absent by default"
+      what: |
+        Tests that with default SecurityConfig (no explicit allowlist toggle),
+        the allowlist hook is NOT present in generated Claude settings.
+      why: |
+        The allowlist hook is opt-in. By default, agents should have access to
+        all available tools. The hook should only appear when explicitly enabled.
+      acceptance_criteria:
+        - "Allowlist hook NOT present in default settings"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with testify"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-001"
+          action: "Create default SecurityConfig"
+          command: "Default SecurityConfig (no allowlist toggle)"
+          validation: "Config created"
+      test_execution:
+        - step_id: "TEST-001"
+          action: "Generate Claude settings"
+          command: "security.GenerateClaudeSettings(defaultConfig)"
+          validation: "Allowlist hook NOT in settings"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-001"
+        priority: "P1"
+        description: "Allowlist hook absent by default"
+        condition: "Settings do NOT contain allowlist hook entry"
+        failure_impact: "Allowlist active by default restricts all tool usage"
