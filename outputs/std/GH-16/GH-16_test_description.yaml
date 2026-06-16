@@ -13,17 +13,6 @@ document_metadata:
     file: "outputs/stp/GH-16/GH-16_test_plan.md"
     version: "v1"
     sections_covered: "Section III - Requirements-to-Tests Mapping"
-  related_prs:
-    - repo: "fullsend-ai/fullsend"
-      pr_number: 2231
-      url: "https://github.com/fullsend-ai/fullsend/pull/2231"
-      title: "fix(gcp): remove the project from the number call"
-      merged: false
-    - repo: "guyoron1/fullsend"
-      pr_number: 16
-      url: "https://github.com/guyoron1/fullsend/pull/16"
-      title: "fix(gcp): remove the project from the number call (fork)"
-      merged: false
   total_scenarios: 10
   unit_test_count: 7
   functional_count: 3
@@ -724,9 +713,13 @@ scenarios:
             require.NoError(t, err)
 
         - step_id: "TEST-02"
-          action: "Call another API method that uses the original client"
-          command: "Invoke a method that calls DoRequest on the original client"
-          validation: "Call completes (success or expected error)"
+          action: "Call client.Client.DoRequest on the original client to trigger a subsequent API request"
+          command: "client.Client.DoRequest(ctx, &http.Request{Method: \"GET\", URL: serverURL})"
+          validation: "Call completes and request is logged by mock server"
+          code_template: |
+            req, _ := http.NewRequestWithContext(ctx, "GET", server.URL+"/v1/other", nil)
+            _, err = client.Client.DoRequest(req)
+            // Error is acceptable; we only care about captured headers
 
         - step_id: "TEST-03"
           action: "Inspect headers from both requests"
@@ -1057,6 +1050,11 @@ scenarios:
 
     variables:
       closure_scope:
+        - name: "server"
+          type: "*httptest.Server"
+          initialized_in: "test setup"
+          used_in: ["setup"]
+          comment: "Mock HTTP server created and immediately closed to force connection error"
         - name: "client"
           type: "*gcf.LiveGCFClient"
           initialized_in: "test setup"
@@ -1110,6 +1108,17 @@ scenarios:
           code_template: |
             server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
             server.Close() // Close immediately to force connection error
+
+        - step_id: "SETUP-02"
+          action: "Create LiveGCFClient with gcp.Client pointing to closed server URL"
+          command: "Construct gcp.Client and LiveGCFClient using closed server.URL"
+          validation: "Client created pointing to unreachable endpoint"
+          code_template: |
+            gcpClient := &gcp.Client{
+                QuotaProject: "my-quota-project",
+                // ... configure to use server.URL (now closed)
+            }
+            client := &gcf.LiveGCFClient{Client: gcpClient}
 
       test_execution:
         - step_id: "TEST-01"
@@ -1230,8 +1239,14 @@ scenarios:
 
         - step_id: "SETUP-02"
           action: "Create LiveGCFClient pointing to mock server"
-          command: "Construct client"
+          command: "Construct client with mock server URL"
           validation: "Client created"
+          code_template: |
+            gcpClient := &gcp.Client{
+                QuotaProject: "my-quota-project",
+                // ... configure to use server.URL
+            }
+            client := &gcf.LiveGCFClient{Client: gcpClient}
 
       test_execution:
         - step_id: "TEST-01"

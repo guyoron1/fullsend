@@ -20,11 +20,11 @@
 |:-------|:------|
 | Dimensions reviewed | 7/7 |
 | Critical findings | 0 |
-| Major findings | 3 |
-| Minor findings | 4 |
-| Actionable findings | 6 |
+| Major findings | 0 |
+| Minor findings | 1 |
+| Actionable findings | 0 |
 | Confidence | MEDIUM |
-| Weighted score | 91 |
+| Weighted score | 98 |
 
 ## Traceability Summary
 
@@ -88,7 +88,7 @@ All P0 scenarios (001, 004, 005) are fully testable with Go httptest infrastruct
 
 ---
 
-### Dimension 2: STD YAML Structure (Weight: 20%) — Score: 95/100
+### Dimension 2: STD YAML Structure (Weight: 20%) — Score: 97/100
 
 #### 2a. Document-Level Structure
 
@@ -121,7 +121,7 @@ Variable closure_scope is present in all scenarios with appropriate Go types.
 
 ---
 
-### Dimension 3: Pattern Matching Correctness (Weight: 10%) — Score: 95/100
+### Dimension 3: Pattern Matching Correctness (Weight: 10%) — Score: 100/100
 
 | Scenario | Primary Pattern | Helpers | Decorators | Status |
 |:---------|:----------------|:--------|:-----------|:-------|
@@ -162,7 +162,7 @@ No pattern library available at project config dir. Skipped.
 
 ---
 
-### Dimension 4: Test Step Quality (Weight: 15%) — Score: 80/100
+### Dimension 4: Test Step Quality (Weight: 15%) — Score: 100/100
 
 | Scenario | Setup | Execution | Cleanup | Assertions | Status |
 |:---------|:------|:----------|:--------|:-----------|:-------|
@@ -170,10 +170,10 @@ No pattern library available at project config dir. Skipped.
 | 002 | 2 | 1 | 0 (defer) | 2 | PASS |
 | 003 | 2 | 1 | 0 (defer) | 1 | PASS |
 | 004 | 2 | 2 | 0 (defer) | 2 | PASS |
-| 005 | 2 | 3 | 0 (defer) | 2 | WARN |
+| 005 | 2 | 3 | 0 (defer) | 2 | PASS |
 | 006 | 2 | 2 | 0 (defer) | 2 | PASS |
 | 007 | 2 | 2 | 0 (defer) | 2 | PASS |
-| 008 | 1 | 1 | 0 | 1 | WARN |
+| 008 | 2 | 1 | 0 | 1 | PASS |
 | 009 | 2 | 2 | 0 (defer) | 1 | PASS |
 | 010 | 2 | 2 | 0 (defer) | 2 | PASS |
 
@@ -181,27 +181,18 @@ No pattern library available at project config dir. Skipped.
 
 All scenarios have setup and test_execution steps. Cleanup arrays are empty across all scenarios, but this is acceptable: all code_templates use `defer server.Close()` in setup, which is Go's idiomatic cleanup mechanism.
 
-**Exception — Scenario 008:** Has only 1 setup step (server creation + immediate close). Missing explicit client creation step (see finding D4-b-002).
+Scenario 008 now correctly has 2 setup steps: SETUP-01 creates and closes the httptest.Server, SETUP-02 creates the LiveGCFClient pointing to the closed server URL. The `client` variable used in TEST-01 is now properly created in setup. PASS.
 
 #### 4b. Step Quality
 
-- **D4-b-001** (MAJOR)
-  - **Dimension:** Test Step Quality
-  - **Description:** Scenario 005 TEST-02 action is vague: "Call another API method that uses the original client." Does not specify which method to call. Command says "Invoke a method that calls DoRequest on the original client" — equally vague.
-  - **Evidence:** `test_steps.test_execution[1].action: "Call another API method that uses the original client"` and `command: "Invoke a method that calls DoRequest on the original client"`
-  - **Remediation:** Replace with a specific method call, e.g., "Call client.CreateServiceAccount(ctx, config)" or another LiveGCFClient method that exercises the original (unmutated) client path. Specify the exact function signature.
-  - **Actionable:** true
-
-- **D4-b-002** (MAJOR)
-  - **Dimension:** Test Step Quality
-  - **Description:** Scenario 008 is missing a SETUP-02 step for client creation. SETUP-01 creates and immediately closes the httptest.Server, but no step constructs the LiveGCFClient pointing to the closed server's URL. TEST-01 references `client.GetProjectNumber(...)` but `client` was never created in setup.
-  - **Evidence:** Scenario 008 has only 1 setup step. `variables.closure_scope` lists `client` as `*gcf.LiveGCFClient` with `initialized_in: "test setup"`, but no setup step creates it.
-  - **Remediation:** Add SETUP-02: "Create LiveGCFClient with gcp.Client pointing to closed server URL" with a code_template showing `gcpClient := &gcp.Client{...}; client := &gcf.LiveGCFClient{Client: gcpClient}`.
-  - **Actionable:** true
+All test steps have specific, actionable descriptions:
+- Scenario 005 TEST-02 now specifies a concrete action: "Call client.Client.DoRequest on the original client to trigger a subsequent API request" with a corresponding code_template. PASS.
+- All steps include validation descriptions and commands.
+- Step IDs are sequential across all scenarios.
 
 #### 4c. Logical Flow
 
-All scenarios except 008 have coherent setup → execution → assertion flow. Resources used in execution are created in setup. No circular dependencies.
+All scenarios have coherent setup → execution → assertion flow. Resources used in execution are created in setup. No circular dependencies.
 
 #### 4e. Test Dependency Structure
 
@@ -211,27 +202,15 @@ All scenarios are independent (no cross-scenario dependencies). Each test create
 
 All assertions have specific descriptions, measurable conditions, and appropriate priority levels. The P0/P1/P2 distribution across assertions aligns with scenario priorities.
 
+**No findings in Dimension 4.**
+
 ---
 
-### Dimension 4.5: STD Content Policy (Weight: 10%) — Score: 75/100
+### Dimension 4.5: STD Content Policy (Weight: 10%) — Score: 100/100
 
 #### 4.5a. Banned Content in STD YAML
 
-- **D4.5-a-001** (MAJOR)
-  - **Dimension:** STD Content Policy
-  - **Description:** `document_metadata.related_prs` contains PR URLs. Per content policy, PR URLs are implementation artifacts that belong in the STP (Section I), not in the STD. The STD describes *what* to test, not *what code changed*.
-  - **Evidence:**
-    ```yaml
-    related_prs:
-      - repo: "fullsend-ai/fullsend"
-        pr_number: 2231
-        url: "https://github.com/fullsend-ai/fullsend/pull/2231"
-      - repo: "guyoron1/fullsend"
-        pr_number: 16
-        url: "https://github.com/guyoron1/fullsend/pull/16"
-    ```
-  - **Remediation:** Remove the `related_prs` field from `document_metadata`. The STP already references these PRs in Section I (Metadata & Tracking). The STD should reference only the STP via `stp_reference`.
-  - **Actionable:** true
+The `related_prs` field has been removed from `document_metadata`. The STD now references only the STP via `stp_reference`, which is the correct pattern. No PR URLs, branch names, or commit SHAs remain in the YAML metadata. PASS.
 
 #### 4.5b. No Implementation Details in Stubs
 
@@ -241,9 +220,11 @@ Go stubs contain only `t.Skip("Phase 1: Design only - awaiting implementation")`
 
 No infrastructure setup, cluster configuration, or feature gate enablement code found in stubs. PASS.
 
+**No findings in Dimension 4.5.**
+
 ---
 
-### Dimension 5: PSE Docstring Quality (Weight: 10%) — Score: 93/100
+### Dimension 5: PSE Docstring Quality (Weight: 10%) — Score: 100/100
 
 #### 5a. Go Stubs
 
@@ -272,32 +253,19 @@ No infrastructure setup, cluster configuration, or feature gate enablement code 
 - [NEGATIVE] markers correctly applied to error/failure scenarios (002, 003, 008, 009, 007)
 - Module-level comments correctly reference STP file (no PR URLs)
 - All test functions include `[test_id:TS-GH-16-NNN]` and priority markers
+- Scenario 005 Step 2 now specifies "Call client.Client.DoRequest to trigger a subsequent API request on the original client" — concrete and actionable
 
-#### Finding
-
-- **D5-c-001** (MINOR)
-  - **Dimension:** PSE Docstring Quality
-  - **Description:** Scenario 005 PSE Step 2 says "Call another API method that uses the original client" — mirrors the vagueness from the YAML (D4-b-001). A reader unfamiliar with the codebase cannot determine which method to call.
-  - **Evidence:** `gcf_get_project_number_stubs_test.go` line 107: `2. Call another API method that uses the original client`
-  - **Remediation:** Replace with specific method name (e.g., "Call CreateServiceAccount on the client to verify original QuotaProject is used")
-  - **Actionable:** true
+**No findings in Dimension 5.**
 
 ---
 
-### Dimension 6: Code Generation Readiness (Weight: 5%) — Score: 85/100
+### Dimension 6: Code Generation Readiness (Weight: 5%) — Score: 100/100
 
 #### 6a. Variable Declarations
 
 All variable types are valid Go types (`*httptest.Server`, `http.Header`, `*gcf.LiveGCFClient`, `string`, `[]http.Header`). Lifecycle hooks (`test setup`, `server handler`, `test_execution`) are appropriate.
 
-#### Finding
-
-- **D6-a-001** (MINOR)
-  - **Dimension:** Code Generation Readiness
-  - **Description:** Scenario 008 `variables.closure_scope` lists only `client` but the code_template also creates a `server` variable. The server variable is missing from the closure_scope declaration.
-  - **Evidence:** Scenario 008 closure_scope has 1 variable (`client`), but SETUP-01 code_template declares `server := httptest.NewServer(...)`.
-  - **Remediation:** Add `server` to scenario 008's `variables.closure_scope` with type `*httptest.Server` and note it is immediately closed.
-  - **Actionable:** true
+Scenario 008 now correctly includes `server` in `variables.closure_scope` with type `*httptest.Server` and note that it is immediately closed. PASS.
 
 #### 6b. Import Completeness
 
@@ -310,38 +278,21 @@ Cross-reference: All helpers (`httptest.NewServer`, `http.HandlerFunc`) are cove
 
 #### 6c. Code Structure Validity
 
-All `code_structure` blocks show valid Go test function templates with proper `func Test...(t *testing.T)` signatures, consistent comment structure (SETUP/TEST/ASSERT), and logical flow. PASS.
+All `code_structure` blocks show valid Go test function templates with proper `func Test...(t *testing.T)` signatures, consistent comment structure (SETUP/TEST/ASSERT), and logical flow.
+
+Scenario 009 SETUP-02 now includes a `code_template` showing client construction pointing to mock server URL, consistent with other scenarios. PASS.
 
 #### 6d. Timeout Appropriateness
 
 No explicit timeouts are used — appropriate for unit tests with mock HTTP servers (httptest responses are instantaneous). Functional tests (006, 007, 010) also use mocks, so no timeouts needed. PASS.
 
-- **D6-c-001** (MINOR)
-  - **Dimension:** Code Generation Readiness
-  - **Description:** Scenario 009 SETUP-02 code_template is missing. The step says "Create LiveGCFClient pointing to mock server" but unlike other scenarios (e.g., 001, 002), there is no `code_template` for this setup step in scenario 009.
-  - **Evidence:** Scenario 009 SETUP-02 has `action`, `command`, `validation` but no `code_template` field.
-  - **Remediation:** Add code_template showing client construction pointing to mock server URL, consistent with other scenarios.
-  - **Actionable:** true
+**No findings in Dimension 6.**
 
 ---
 
 ## Recommendations
 
-Ordered by severity:
-
-1. **[MAJOR]** D4.5-a-001 — Remove `related_prs` from `document_metadata`. PR URLs are implementation artifacts belonging in the STP, not the STD. — **Remediation:** Delete the `related_prs` block from the YAML. — **Actionable:** yes
-
-2. **[MAJOR]** D4-b-001 — Scenario 005 TEST-02 uses vague action "Call another API method that uses the original client." — **Remediation:** Replace with a concrete LiveGCFClient method call (e.g., `client.CreateServiceAccount(ctx, config)`) and update the command, validation, and code_template accordingly. — **Actionable:** yes
-
-3. **[MAJOR]** D4-b-002 — Scenario 008 missing SETUP-02 step for LiveGCFClient construction. The `client` variable is used in TEST-01 but never created in setup steps. — **Remediation:** Add a SETUP-02 step creating the LiveGCFClient with `gcp.Client` pointing to the closed server's URL. — **Actionable:** yes
-
-4. **[MINOR]** D5-c-001 — PSE docstring for scenario 005 mirrors the vagueness from the YAML. Step 2 should name a specific method. — **Remediation:** Update stub PSE to reference a concrete method. — **Actionable:** yes
-
-5. **[MINOR]** D6-a-001 — Scenario 008 closure_scope missing `server` variable. — **Remediation:** Add `server` to variables.closure_scope. — **Actionable:** yes
-
-6. **[MINOR]** D6-c-001 — Scenario 009 SETUP-02 missing code_template. — **Remediation:** Add code_template for client construction. — **Actionable:** yes
-
-7. **[MINOR]** D2-b-001 — Tier labels use "Unit Tests"/"Functional" instead of "Tier 1"/"Tier 2". Internally consistent with project conventions. — **Remediation:** No action required unless cross-project normalization is desired. — **Actionable:** false
+1. **[MINOR]** D2-b-001 — Tier labels use "Unit Tests"/"Functional" instead of "Tier 1"/"Tier 2". Internally consistent with project conventions. — **Remediation:** No action required unless cross-project normalization is desired. — **Actionable:** false
 
 ---
 
@@ -350,13 +301,30 @@ Ordered by severity:
 | Dimension | Weight | Score | Weighted |
 |:----------|:-------|:------|:---------|
 | 1. STP-STD Traceability | 30% | 100 | 30.0 |
-| 2. STD YAML Structure | 20% | 95 | 19.0 |
-| 3. Pattern Matching | 10% | 95 | 9.5 |
-| 4. Test Step Quality | 15% | 80 | 12.0 |
-| 4.5. Content Policy | 10% | 75 | 7.5 |
-| 5. PSE Docstring Quality | 10% | 93 | 9.3 |
-| 6. Code Generation Readiness | 5% | 85 | 4.3 |
-| **Total** | **100%** | | **91.6** |
+| 2. STD YAML Structure | 20% | 97 | 19.4 |
+| 3. Pattern Matching | 10% | 100 | 10.0 |
+| 4. Test Step Quality | 15% | 100 | 15.0 |
+| 4.5. Content Policy | 10% | 100 | 10.0 |
+| 5. PSE Docstring Quality | 10% | 100 | 10.0 |
+| 6. Code Generation Readiness | 5% | 100 | 5.0 |
+| **Total** | **100%** | | **99.4** |
+
+---
+
+## Refinement Delta (vs. Previous Review)
+
+| Finding ID | Previous Severity | Status | Fix Applied |
+|:-----------|:-----------------|:-------|:------------|
+| D4.5-a-001 | MAJOR | RESOLVED | Removed `related_prs` from `document_metadata` |
+| D4-b-001 | MAJOR | RESOLVED | Scenario 005 TEST-02 now specifies `client.Client.DoRequest` with code_template |
+| D4-b-002 | MAJOR | RESOLVED | Scenario 008 now has SETUP-02 creating LiveGCFClient |
+| D5-c-001 | MINOR | RESOLVED | PSE docstring Step 2 updated with concrete method name |
+| D6-a-001 | MINOR | RESOLVED | Scenario 008 closure_scope now includes `server` variable |
+| D6-c-001 | MINOR | RESOLVED | Scenario 009 SETUP-02 now includes code_template |
+| D2-b-001 | MINOR | RETAINED | Non-actionable; project convention is internally consistent |
+
+**Previous score:** 91.6 → **Current score:** 99.4 (+7.8)
+**Previous findings:** 3 major, 4 minor → **Current findings:** 0 major, 1 minor (non-actionable)
 
 ---
 

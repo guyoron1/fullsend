@@ -104,7 +104,7 @@ Preconditions:
 
 Steps:
     1. Call GetProjectNumber (CRM call — should omit header)
-    2. Call another API method that uses the original client
+    2. Call client.Client.DoRequest to trigger a subsequent API request on the original client
     3. Inspect request headers from both calls in sequence
 
 Expected:
