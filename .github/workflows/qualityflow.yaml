@@ -60,10 +60,13 @@ jobs:
               cp -r "${QF_SRC}/${dir}/." "${dir}/"
             fi
           done
-          mkdir -p .github/scripts
+          mkdir -p .github/scripts scripts
           SRC="internal/scaffold/fullsend-repo"
           if [[ -f "${SRC}/.github/scripts/setup-agent-env.sh" ]]; then
             cp "${SRC}/.github/scripts/setup-agent-env.sh" .github/scripts/setup-agent-env.sh
+          fi
+          if [[ -f "${SRC}/scripts/prepare-sandbox-credentials.sh" ]]; then
+            cp "${SRC}/scripts/prepare-sandbox-credentials.sh" scripts/prepare-sandbox-credentials.sh
           fi
           echo "::notice::QF workspace prepared — agents, harness, skills, config layered"
 
