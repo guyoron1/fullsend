@@ -89,6 +89,36 @@ scenarios:
 
 ---
 
+### Step 1.5: Extract Source Constants from STP
+
+If the STP contains a **Section III.2 — Source Constants** table, parse it
+and build a `source_constants` array to pass to the std-generator.
+
+**Parse the table:**
+```markdown
+| Constant | Value | Source File | Line |
+|----------|-------|------------|------|
+| SENTINEL | `# --- managed section - do not edit ---` | pkg/scripts/sync.sh | 14 |
+| SCRIPT_PATH | `pkg/scripts/sync.sh` | PR diff header | — |
+```
+
+**Produce:**
+```yaml
+source_constants:
+  - constant: "SENTINEL"
+    value: "# --- managed section - do not edit ---"
+    source_file: "pkg/scripts/sync.sh"
+    line: 14
+  - constant: "SCRIPT_PATH"
+    value: "pkg/scripts/sync.sh"
+    source_file: "PR diff header"
+    line: null
+```
+
+If Section III.2 is absent, set `source_constants: null` and continue.
+
+---
+
 ### Step 2: Generate Comprehensive STD YAML (Single File)
 
 **Generate ONE comprehensive STD file for ALL scenarios:**
@@ -106,6 +136,7 @@ scenarios:
    - ALL scenarios array (from Step 1)
    - STP context
    - STP file path
+   - source_constants (from Step 1.5, or null if absent)
 
 3. **Output file:**
    - `outputs/std/{JIRA_ID}/{JIRA_ID}_test_description.yaml`

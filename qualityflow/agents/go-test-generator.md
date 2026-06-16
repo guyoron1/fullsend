@@ -93,11 +93,55 @@ project pattern library:
 {project_context.config_dir}/patterns/tier1_patterns.yaml
 ```
 
+### Step 2.5: Verify STD Constants Against Source (MANDATORY)
+
+Before generating test code, cross-check literal constants in the STD YAML
+against actual source code in `$SOURCE_REPO_DIR`. This catches hallucinated
+values that the STD stage may have produced.
+
+**2.5a. Extract literal strings from STD test_data:**
+
+Identify all concrete values in the STD YAML that represent:
+- Sentinel/marker strings (e.g., fields containing boundary markers, managed-section headers)
+- Script/file paths (any path-like string in test_data)
+- Template content (multi-line string literals in test_data)
+
+**2.5b. Verify each constant against source:**
+
+For each extracted literal string:
+
+```bash
+grep -rn "<exact_string>" $SOURCE_REPO_DIR/ --include="*.sh" --include="*.go" --include="*.yaml" 2>/dev/null
+```
+
+If NOT found:
+- Search for similar patterns: `grep -rn "SENTINEL\|MARKER\|managed" $SOURCE_REPO_DIR/ --include="*.sh" 2>/dev/null`
+- Log: "UNVERIFIED: STD value '<value>' not found in source code"
+- If a similar value IS found, substitute the actual value and log the correction
+
+For each file path:
+```bash
+test -f "$SOURCE_REPO_DIR/<path>" && echo "EXISTS" || echo "NOT FOUND"
+```
+
+If NOT found:
+- Search: `find $SOURCE_REPO_DIR -name "$(basename <path>)" 2>/dev/null`
+- Substitute the actual discovered path
+
+**2.5c. Report verification results:**
+
+Log all verifications to stdout. If any constant was substituted:
+- Add a `constants_verified: true/false` field to summary.yaml
+- Add a `constants_corrections` array listing what was changed
+
+**IMPORTANT:** Never silently use an unverified constant. If `$SOURCE_REPO_DIR`
+does not exist, log `constants_verified: skipped` and proceed with STD values as-is.
+
 ### Step 3: Generate Go Tests
 
 Invoke the **go-test-generator** skill with the Jira ID. It will:
 
-1. Read the STD YAML
+1. Read the STD YAML (with any corrections from Step 2.5)
 2. Read LSP patterns (if available)
 3. Generate working Go/Ginkgo test files
 4. Validate generated code structure
@@ -117,4 +161,11 @@ test_files:
   - <filename2>_test.go
 test_count: <count>
 lsp_patterns_used: <true|false>
+constants_verified: true            # were STD constants verified against source?
+constants_corrections:              # list of corrections made (empty if all matched)
+  - field: "test_data.sentinel_string"
+    std_value: "<value from STD that didn't match>"
+    actual_value: "<value found in source code>"
+    source_file: "<path where actual value was found>"
+    line: 0
 ```

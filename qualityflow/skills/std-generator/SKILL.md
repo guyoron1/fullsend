@@ -72,6 +72,19 @@ within each scenario in the STD YAML.
   - `api_endpoints`: API endpoints (from Section I.3 API Extensions, if applicable)
   - `known_limitations`: Known limitations (from Section I.2)
   - `test_environment`: Test environment requirements (from Section II.3)
+- `source_constants` (optional): Array of constants extracted from source code by the STP Builder (Step 3.5).
+  When present, these values MUST be used verbatim in `test_data` fields — never paraphrase or infer.
+  ```yaml
+  source_constants:
+    - constant: "SENTINEL"
+      value: "# --- managed section - do not edit ---"
+      source_file: "pkg/scripts/sync.sh"
+      line: 14
+    - constant: "SCRIPT_PATH"
+      value: "pkg/scripts/sync.sh"
+      source_file: "PR diff header"
+      line: null
+  ```
 - `stp_file_path`: Path to source STP file (e.g., `outputs/stp/CNV-66855/CNV-66855_test_plan.md`)
 
 ## Output
@@ -444,6 +457,12 @@ scenarios:
 - `classification`: Infer from tier and scenario complexity
 - `specific_preconditions`: Add scenario-specific requirements (e.g., external router for networking tests)
 - `test_data`: Generate realistic YAML for VMs, pods, networks based on scenario
+  - **Source Constants Rule:** If `source_constants` input is provided, every
+    test_data field that corresponds to a source constant MUST use the
+    verbatim `value` from the source_constants array. Do NOT paraphrase,
+    shorten, or infer alternative values. If a test_data field references a
+    sentinel string, file path, or template content, look up the matching
+    constant and substitute the exact value.
 - `test_steps`: Expand scenario into 5-10 detailed steps (setup → execute → cleanup)
 - `assertions`: Extract validation points from scenario description (2-5 per scenario)
 - `dependencies`: List K8s resources, tools, and RBAC specific to this scenario
@@ -670,6 +689,14 @@ STP CONTEXT:
   Test Environment: {test_environment}
   Fix Versions: {fix_versions}
 
+SOURCE CONSTANTS (from STP Section III.2, if available):
+{source_constants_table_or_"None provided"}
+
+IMPORTANT: If source constants are provided above, use the exact Value
+column verbatim in any test_data field that references the same concept
+(sentinel strings, file paths, template content). Do NOT paraphrase,
+shorten, or invent alternative values.
+
 ALL SCENARIOS (from STP Section III):
 {scenarios_array}
 
@@ -722,6 +749,12 @@ Before outputting the STD YAML, validate ALL of the following:
 - [ ] ALL code_templates use `=` (not `:=`) for closure variables
 - [ ] ALL `Expect(err)` calls use `ExpectWithOffset(1, err)`
 - [ ] ALL scenarios with setup steps have corresponding cleanup templates
+
+**Source Constants Compliance:**
+- [ ] If `source_constants` input was provided, every matching test_data field uses the verbatim value
+- [ ] No sentinel/marker strings in test_data were paraphrased or inferred
+- [ ] All file paths in test_data match paths from source_constants (not invented)
+- [ ] Template content in test_data matches source_constants values (not summarized)
 
 **If ANY validation fails:**
 - Log error with scenario_id and specific failure

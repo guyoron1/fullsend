@@ -182,10 +182,82 @@ If `$SOURCE_REPO_DIR` does not exist, is empty, or has no go.mod, fall
 back to Grep/Read analysis and the project pattern library at
 `{project_context.config_dir}/patterns/`.
 
+### Step 3.5: Extract Source Constants (MANDATORY)
+
+After LSP analysis (Step 3), extract literal constants from source files
+that downstream stages (STD Builder, Test Generator) will need. This
+prevents the STD stage from hallucinating concrete values.
+
+**IMPORTANT:** Only extract values found by grep/LSP. Never infer,
+paraphrase, or fabricate constant values.
+
+#### 3.5a. Extract sentinel/marker strings
+
+Search changed files for sentinel, marker, or boundary strings:
+
+```bash
+grep -nE '(SENTINEL|MARKER|MANAGED_BY|BOUNDARY|HEADER)\s*[:=]' \
+  $SOURCE_REPO_DIR/<changed_files> 2>/dev/null
+```
+
+Also search for comment-style markers:
+
+```bash
+grep -nE '^[A-Z_]+="# ---' $SOURCE_REPO_DIR/<changed_files> 2>/dev/null
+```
+
+#### 3.5b. Record file paths from PR diff
+
+For each file changed in the PR (from Step 2), record the **actual path**
+as it appears in the diff header (e.g., `a/pkg/controller/handler.go`).
+
+#### 3.5c. Extract template content (if applicable)
+
+If scenarios involve file templates, heredocs, or multi-line string
+literals, extract the real content (first 100 lines):
+
+```bash
+grep -A 100 'cat <<' $SOURCE_REPO_DIR/<file> | head -100
+```
+
+#### 3.5d. Extract const/var declarations
+
+For constants referenced in the PR description or diff:
+
+```bash
+grep -nE '(const|var)\s+[A-Z]' $SOURCE_REPO_DIR/<changed_files> 2>/dev/null
+```
+
+#### 3.5e. Format as Source Constants table
+
+Include a `## Source Constants` section in the STP document with this
+exact format:
+
+```markdown
+## Source Constants
+
+> Extracted from source code — use verbatim in test data. Do not paraphrase or infer.
+
+| Constant | Value | Source File | Line |
+|----------|-------|------------|------|
+| SENTINEL | `# --- managed section - do not edit ---` | pkg/scripts/sync.sh | 14 |
+| SCRIPT_PATH | `pkg/scripts/sync.sh` | PR diff header | — |
+```
+
+**Rules:**
+- Every value must come from a grep/LSP hit with file path and line number
+- If a constant can't be found, leave the Value cell as `[NOT FOUND]` and
+  flag it as a warning in the summary
+- Use backtick-wrapped values to preserve exact whitespace and punctuation
+- Include ALL changed file paths from the PR diff as SCRIPT_PATH / FILE_PATH rows
+
+If `$SOURCE_REPO_DIR` does not exist, skip this step and log
+`source_constants_extracted: false` in summary.yaml.
+
 ### Step 4: STP Generation
 
-With all collected data (Jira, PRs, regression analysis), apply the
-following skills in sequence:
+With all collected data (Jira, PRs, regression analysis, source constants),
+apply the following skills in sequence:
 
 1. **requirement-mapper** — map Jira requirements to testable scenarios
 2. **scenario-builder** — build test scenario descriptions
@@ -218,6 +290,8 @@ test_counts:
   tier1: <count>
   tier2: <count>
   total: <count>
+source_constants_extracted: true   # were source constants extracted in Step 3.5?
+source_constants_count: 3          # number of constants extracted (0 if skipped)
 ```
 
 ## Error Handling

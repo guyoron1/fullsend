@@ -59,8 +59,9 @@ section ordering, and formatting (tables vs checkboxes). The fetched template is
 15. Section II.5 - Risks (checkbox format with sub-items)
 16. ---
 17. Section III.1 - Requirements-to-Tests Mapping (bullet-based)
-18. ---
-19. Section IV - Sign-off
+18. Section III.2 - Source Constants (table, optional — only when STP Builder extracted constants)
+19. ---
+20. Section IV - Sign-off
 ```
 
 ## Key Design Rules
@@ -147,6 +148,7 @@ Do not add this section.
 | II.3 Test Environment | Bullet list | 10 (Cluster Topology, OCP Version, CPU Virtualization, Compute, Special Hardware, Storage, Network, Operators, Platform, Special Configs) |
 | II.5 Risks | Checkbox with sub-items | 7 (Timeline, Coverage, Environment, Untestable, Resources, Dependencies, Other) |
 | III.1 Requirements Mapping | Bullet-based | No minimum; comprehensive coverage |
+| III.2 Source Constants | Table | Optional; present only when STP Builder extracted constants from source code |
 
 ## Bullet and Checkbox Formatting
 
@@ -292,11 +294,37 @@ Complete STP markdown document following the exact template structure.
 - [ ] Entry Criteria uses checkbox format
 - [ ] Risks use checkbox format with sub-items for risk, mitigation, and status
 - [ ] Section II.6 does NOT exist (Known Limitations moved to I.2)
-- [ ] Section III uses bullet-based format (not table)
-- [ ] Each Section III item has exactly one tier
+- [ ] Section III.1 uses bullet-based format (not table)
+- [ ] Each Section III.1 item has exactly one tier
+- [ ] Section III.2 (Source Constants) present only if STP Builder extracted constants
+- [ ] Source Constants values are backtick-wrapped and verbatim from source code
 - [ ] Requirement IDs are Jira issue keys
 - [ ] Horizontal rules in correct positions (after Overview, after II.5, after III)
 - [ ] No extra sections added
+
+## Section III.2 — Source Constants Format
+
+When the STP Builder extracts source constants (Step 3.5), include them in
+Section III.2 using this exact table format:
+
+```markdown
+#### Section III.2 - Source Constants
+
+> Extracted from source code — use verbatim in test data. Do not paraphrase or infer.
+
+| Constant | Value | Source File | Line |
+|----------|-------|------------|------|
+| SENTINEL | `# --- managed section - do not edit ---` | pkg/scripts/sync.sh | 14 |
+| SCRIPT_PATH | `pkg/scripts/sync.sh` | PR diff header | — |
+```
+
+**Rules:**
+- This section is OPTIONAL — include only when `source_constants_extracted: true`
+  in the STP Builder summary
+- All values MUST be backtick-wrapped to preserve exact whitespace and punctuation
+- The Source File column must reference an actual file path (from grep hit or PR diff)
+- Values marked `[NOT FOUND]` indicate the STP Builder could not locate the constant
+  in source code — flag these for manual verification
 
 ## Prohibited Content
 

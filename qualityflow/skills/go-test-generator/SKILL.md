@@ -258,6 +258,12 @@ ExpectWithOffset(1, output).To(ContainSubstring("succeeded"))
 2. ✅ All imports are correct and minimal
 3. ✅ Package declaration is `package network`
 4. ✅ Test structure follows Ginkgo v2 patterns
+5. ✅ Source constants in test code match values from STD `test_data`
+   - If the STD `test_data` contains sentinel strings, file paths, or
+     template content, verify the generated Go code uses the exact same
+     literal values (no paraphrasing, no truncation)
+   - ❌ WRONG: Hardcoding an invented marker like `"# managed by tool"`
+   - ✅ CORRECT: Using the verbatim STD value, e.g., `"# --- managed section - do not edit ---"`
 
 ---
 
