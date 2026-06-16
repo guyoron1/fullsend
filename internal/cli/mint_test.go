@@ -588,10 +588,10 @@ func TestDefaultMintRoles(t *testing.T) {
 
 func TestRolesFromAppIDs_RoleOnly(t *testing.T) {
 	roles := rolesFromAppIDs(map[string]string{
-		"coder":          "100",
-		"triage":         "200",
-		"acme/coder":     "999",
-		"widget/triage":  "888",
+		"coder":         "100",
+		"triage":        "200",
+		"acme/coder":    "999",
+		"widget/triage": "888",
 	})
 	assert.Equal(t, []string{"coder", "triage"}, roles)
 }
