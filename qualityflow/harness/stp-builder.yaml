@@ -1,0 +1,47 @@
+# harness/stp-builder.yaml — Generate a Software Test Plan from a Jira ticket.
+#
+# Needs Jira (curl) and GitHub (gh CLI) for ticket data and PR diffs.
+agent: agents/stp-builder.md
+model: opus
+image: images/qf-code
+policy: policies/qf-full.yaml
+agent_input: config
+
+host_files:
+  - src: env/gcp-vertex.env
+    dest: /tmp/workspace/.env.d/gcp-vertex.env
+    expand: true
+  - src: env/qf-credentials.env
+    dest: /tmp/workspace/.env.d/qf-credentials.env
+    expand: true
+  - src: ${GOOGLE_APPLICATION_CREDENTIALS}
+    dest: /tmp/workspace/.gcp-credentials.json
+  # Source code repo for LSP analysis (set SOURCE_REPO_PATH on host).
+  - src: ${SOURCE_REPO_PATH}
+    dest: /tmp/workspace/source-repo
+
+skills:
+  - skills/project-resolver
+  - skills/jira-parser
+  - skills/link-resolver
+  - skills/pr-analyzer
+  - skills/feature-finder
+  - skills/lsp-tracer
+  - skills/requirement-mapper
+  - skills/scenario-builder
+  - skills/tier-classifier
+  - skills/template-engine
+  - skills/table-generator
+  - skills/pii-sanitizer
+  - skills/output-validator
+  - skills/ticket-assessor
+  - skills/pipeline-state
+
+validation_loop:
+  script: scripts/validate-stp.sh
+  max_iterations: 2
+
+plugins:
+  - name: gopls-lsp
+
+timeout_minutes: 15
