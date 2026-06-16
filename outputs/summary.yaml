@@ -1,0 +1,11 @@
+status: success
+jira_id: GH-17
+file_path: /sandbox/workspace/output/GH-17_test_plan.md
+test_counts:
+  tier1: 6
+  tier2: 0
+  total: 6
+notes: >
+  Documentation-only PR. All 6 test scenarios are Functional tier,
+  focused on link integrity, content accuracy, and document structure
+  validation for the MCP configuration drift problem document.
