@@ -5,8 +5,8 @@
 ### **Metadata & Tracking**
 
 - **Enhancement(s):** [GH-17](https://github.com/guyoron1/fullsend/issues/17)
-- **Feature Tracking:** [GH-17](https://github.com/guyoron1/fullsend/issues/17)
-- **Epic Tracking:** [GH-17](https://github.com/guyoron1/fullsend/issues/17)
+- **Feature Tracking:** N/A — standalone issue
+- **Epic Tracking:** N/A — standalone issue
 - **QE Owner(s):** TBD
 - **Owning SIG:** N/A
 - **Participating SIGs:** N/A
@@ -95,11 +95,11 @@ Testing scope covers the documentation artifacts introduced by this PR: the new 
 **Functional**
 
 - [ ] **Functional Testing** — Validates that the feature works according to specified requirements and user stories
-  - *Details:* Verify document content, structure, and link integrity. Validate README index is correctly updated.
+  - *Details:* Verify document content, structure, and link integrity. Validate README index is correctly updated and existing entries are not displaced.
 - [ ] **Automation Testing** — Confirms test automation plan is in place for CI and regression coverage (all tests are expected to be automated)
   - *Details:* Link validation can be automated via CI markdown lint checks. No custom test automation needed for documentation.
 - [ ] **Regression Testing** — Verifies that new changes do not break existing functionality
-  - *Details:* Verify README index ordering is preserved and no existing entries are displaced.
+  - *Details:* Not applicable — documentation-only change with no existing functional behaviors to regress. README index ordering verification is covered under Functional Testing.
 
 **Non-Functional**
 
@@ -146,7 +146,7 @@ Testing scope covers the documentation artifacts introduced by this PR: the new 
 #### **3.1. Testing Tools & Frameworks**
 
 - **Test Framework:** None required
-- **CI/CD:** Standard GitHub Actions CI
+- **CI/CD:** None
 - **Other Tools:** None
 
 #### **4. Entry Criteria**
@@ -191,33 +191,38 @@ This section links requirements to test coverage, enabling reviewers to verify a
 
 - **GH-17** — MCP configuration drift problem document is complete and accurate
   - **Scenario:** Verify all cross-reference links in problem doc resolve to existing files
-  - **Tier:** Functional
+  - **Tier:** [Functional]
   - **Priority:** P0
 
-- — README index entry is correctly added
+- **GH-17** — README index entry is correctly added
   - **Scenario:** Verify README links to docs/problems/mcp-config-drift.md
-  - **Tier:** Functional
+  - **Tier:** [Functional]
   - **Priority:** P0
 
-- — Document accurately references existing security components
+- **GH-17** — Document accurately references existing security components
   - **Scenario:** Verify references to ToolAllowlistPreToolHook, SSRFPreToolHook, and GenerateClaudeSettings match codebase
-  - **Tier:** Functional
+  - **Tier:** [Functional]
   - **Priority:** P1
 
-- — Document structure follows problem doc conventions
+- **GH-17** — Document structure follows problem doc conventions
   - **Scenario:** Verify document contains required sections (problem statement, attack scenarios, defense considerations, open questions)
-  - **Tier:** Functional
-  - **Priority:** P1
+  - **Tier:** [Functional]
+  - **Priority:** P2
 
-- — Cross-reference integrity with security documentation
+- **GH-17** — Cross-reference integrity with security documentation
   - **Scenario:** Verify links to security-threat-model.md, agent-architecture.md, and ADR 0017 resolve correctly
-  - **Tier:** Functional
+  - **Tier:** [Functional]
   - **Priority:** P0
 
-- — Document content accuracy for existing defenses
+- **GH-17** — Document content accuracy for existing defenses
   - **Scenario:** Verify description of existing defense mechanisms (SSRF validator, tool allowlist hook, credential isolation) matches current implementation
-  - **Tier:** Functional
+  - **Tier:** [Functional]
   - **Priority:** P1
+
+- **GH-17** — Broken cross-reference detection
+  - **Scenario:** Verify that a renamed or removed cross-referenced document (e.g., security-threat-model.md) causes a detectable link validation failure
+  - **Tier:** [Functional]
+  - **Priority:** P2
 
 ---
 
