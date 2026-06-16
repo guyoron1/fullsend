@@ -1,0 +1,11 @@
+status: success
+jira_id: GH-17
+stp_source: outputs/stp/GH-17/GH-17_test_plan.md
+std_yaml: outputs/std/GH-17/GH-17_test_description.yaml
+test_counts:
+  total: 7
+  tier1: 7
+  tier2: 0
+stubs:
+  go: 7
+  python: 0
