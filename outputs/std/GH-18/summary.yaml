@@ -1,0 +1,26 @@
+status: success
+jira_id: GH-18
+stp_source: outputs/stp/GH-18/GH-18_test_plan.md
+std_yaml: outputs/std/GH-18/GH-18_test_description.yaml
+test_counts:
+  total: 27
+  tier1: 27
+  tier2: 0
+stubs:
+  go: 27
+  python: 0
+go_stub_files:
+  - security_hook_pipeline_stubs_test.go
+  - input_pipeline_integrity_stubs_test.go
+  - output_pipeline_redaction_stubs_test.go
+  - context_injection_detection_stubs_test.go
+  - pipeline_fail_closed_stubs_test.go
+  - model_provider_diversity_stubs_test.go
+  - security_config_defaults_stubs_test.go
+priority_breakdown:
+  p0: 15
+  p1: 11
+  p2: 1
+phase: phase1
+coverage_validation: passed
+generated_date: "2026-06-16"
