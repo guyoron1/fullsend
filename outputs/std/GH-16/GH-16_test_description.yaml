@@ -13,17 +13,6 @@ document_metadata:
     file: "outputs/stp/GH-16/GH-16_test_plan.md"
     version: "v1"
     sections_covered: "Section III - Requirements-to-Tests Mapping"
-  related_prs:
-    - repo: "fullsend-ai/fullsend"
-      pr_number: 2231
-      url: "https://github.com/fullsend-ai/fullsend/pull/2231"
-      title: "GCP: Remove project from number call"
-      merged: true
-    - repo: "guyoron1/fullsend"
-      pr_number: 16
-      url: "https://github.com/guyoron1/fullsend/pull/16"
-      title: "GCP: Remove Project from Number Call"
-      merged: false
   total_scenarios: 10
   unit_count: 7
   functional_count: 3
@@ -37,6 +26,7 @@ code_generation_config:
   assertion_library: "testify"
   language: "go"
   package_name: "gcf_test"
+  owning_sig: "sig-gcp"
 
   imports:
     standard:
@@ -52,6 +42,7 @@ code_generation_config:
       - path: "github.com/stretchr/testify/require"
     project:
       - "github.com/fullsend-ai/fullsend/internal/dispatch/gcf"
+      - "github.com/fullsend-ai/fullsend/internal/gcp"
 
   test_patterns:
     function_prefix: "Test"
@@ -111,6 +102,11 @@ scenarios:
           initialized_in: "setup"
           used_in: ["test"]
           comment: "GCP client with QuotaProject set"
+
+    patterns:
+      primary_pattern: "unit-http-mock"
+      helpers_required: []
+      decorators: []
 
     test_structure:
       type: "single"
@@ -243,6 +239,11 @@ scenarios:
           used_in: ["test"]
           comment: "GCP client under test"
 
+    patterns:
+      primary_pattern: "unit-http-mock"
+      helpers_required: []
+      decorators: []
+
     test_structure:
       type: "single"
       function_name: "TestGetProjectNumber_ErrorOnHTTP403"
@@ -349,6 +350,11 @@ scenarios:
           used_in: ["test"]
           comment: "GCP client under test"
 
+    patterns:
+      primary_pattern: "unit-http-mock"
+      helpers_required: []
+      decorators: []
+
     test_structure:
       type: "single"
       function_name: "TestGetProjectNumber_HandlesEmptyProjectNumber"
@@ -374,7 +380,7 @@ scenarios:
         misconfigurations and must be handled gracefully.
       acceptance_criteria:
         - "GetProjectNumber does not panic on empty projectNumber"
-        - "Returns empty string or appropriate error"
+        - "Returns an empty string without error (empty projectNumber is a valid API response)"
 
     classification:
       test_type: "Unit"
@@ -458,6 +464,11 @@ scenarios:
           initialized_in: "setup"
           used_in: ["test"]
           comment: "Original QuotaProject value stored before call"
+
+    patterns:
+      primary_pattern: "unit-http-mock"
+      helpers_required: []
+      decorators: []
 
     test_structure:
       type: "single"
@@ -585,6 +596,11 @@ scenarios:
           used_in: ["test"]
           comment: "GCP client with QuotaProject set"
 
+    patterns:
+      primary_pattern: "unit-http-mock"
+      helpers_required: []
+      decorators: []
+
     test_structure:
       type: "single"
       function_name: "TestSubsequentCallsRetainQuotaProject"
@@ -710,6 +726,11 @@ scenarios:
           used_in: ["test"]
           comment: "GCP provisioner with mocked endpoints"
 
+    patterns:
+      primary_pattern: "functional-integration-mock"
+      helpers_required: []
+      decorators: []
+
     test_structure:
       type: "single"
       function_name: "TestProvisionSelfManaged_CompletesWithModifiedGetProjectNumber"
@@ -832,6 +853,11 @@ scenarios:
           used_in: ["test"]
           comment: "GCP provisioner with failing CRM endpoint"
 
+    patterns:
+      primary_pattern: "functional-integration-mock"
+      helpers_required: []
+      decorators: []
+
     test_structure:
       type: "single"
       function_name: "TestProvisionAborts_WhenGetProjectNumberFails"
@@ -949,6 +975,11 @@ scenarios:
           used_in: ["test"]
           comment: "GCP client pointing to closed server"
 
+    patterns:
+      primary_pattern: "unit-http-mock"
+      helpers_required: []
+      decorators: []
+
     test_structure:
       type: "single"
       function_name: "TestGetProjectNumber_ErrorPropagationFromCopiedClient"
@@ -1007,7 +1038,12 @@ scenarios:
             _, err = client.GetProjectNumber(ctx, "test-project")
             require.Error(t, err, "GetProjectNumber should return error on unreachable host")
 
-      cleanup: []
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "No cleanup required — server is closed during setup to simulate unreachable endpoint"
+          command: "N/A"
+          code_template: |
+            // No cleanup required — server was closed during setup
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -1041,6 +1077,11 @@ scenarios:
           initialized_in: "setup"
           used_in: ["test"]
           comment: "GCP client under test"
+
+    patterns:
+      primary_pattern: "unit-http-mock"
+      helpers_required: []
+      decorators: []
 
     test_structure:
       type: "single"
@@ -1147,6 +1188,11 @@ scenarios:
           initialized_in: "setup"
           used_in: ["test"]
           comment: "GCP provisioner with OIDC configuration"
+
+    patterns:
+      primary_pattern: "functional-integration-mock"
+      helpers_required: []
+      decorators: []
 
     test_structure:
       type: "single"

@@ -62,7 +62,7 @@ Steps:
 
 Expected:
     - GetProjectNumber does not panic
-    - Returns empty string or appropriate error gracefully
+    - Returns an empty string without error (empty projectNumber is a valid API response)
 */
 func TestGetProjectNumber_HandlesEmptyProjectNumber(t *testing.T) {
 	// [test_id:TS-GH-16-003] P2 Unit
