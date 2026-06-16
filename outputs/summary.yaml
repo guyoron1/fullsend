@@ -1,0 +1,12 @@
+status: success
+jira_id: GH-15
+file_path: stp/GH-15/GH-15_test_plan.md
+test_counts:
+  unit_tests: 12
+  functional: 2
+  end_to_end: 0
+  total: 14
+validation:
+  passed: 18
+  failed: 0
+  warnings: 1
