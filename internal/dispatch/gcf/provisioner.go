@@ -921,7 +921,6 @@ func stripPlaceholderOrg(orgs string) string {
 	return strings.Join(filtered, ",")
 }
 
-
 // buildAttributeCondition constructs a WIF CEL condition scoped to the
 // organization level via repository_owner. This allows any repo in the
 // org to authenticate — the mint's prevalidateOIDCToken already validates
