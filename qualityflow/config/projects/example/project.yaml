@@ -1,0 +1,53 @@
+# Example Project Configuration
+# Copy this directory to create your own project config.
+#
+# Steps:
+#   1. cp -r config/projects/example config/projects/my-project
+#   2. Edit each YAML file with your project's real values
+#   3. Add route(s) in config/routing.yaml
+#   4. Set feature_toggles to enable/disable capabilities
+
+project_id: "example"                          # Must match directory name
+display_name: "My Project"                     # Human-readable name
+description: "Short description of the project"
+
+feature_toggles:
+  # Override defaults from _defaults.yaml. Only list toggles you want to change.
+  polarion: false       # true = add Polarion markers to generated tests
+  tier1_tests: true     # true = enable Go/Ginkgo test generation
+  tier2_tests: true     # true = enable Python/pytest test generation
+  # stp_generation: true
+  # std_generation: true
+  # lsp_analysis: true
+  # pii_sanitization: true
+  # repo_files_fetch: true
+
+versioning:
+  product_name: "My Product"
+  platform_name: "Kubernetes"
+  current_version: "1.0"
+
+stp_document:
+  header: "My-Project Test Plan"
+
+# Map SIG labels from Jira to short names used in test organization
+sig_mappings:
+  # sig-network: "network"
+  # sig-storage: "storage"
+
+# Map SIG labels to Go decorator functions (tier1 only)
+decorator_mappings:
+  # sig-network: "decorators.SigNetwork"
+
+# Define what's in-scope for this project's testing
+scope_boundaries:
+  validation_gate: "Would removing this project's core component make this test meaningless?"
+  in_scope_resources: []
+    # - "MyCustomResource"
+  out_of_scope_if_only: []
+    # - "Pod"
+    # - "Deployment"
+  cli_tools: []
+    # - "kubectl"
+  domain_vocabulary: []
+    # - "MyTerm"

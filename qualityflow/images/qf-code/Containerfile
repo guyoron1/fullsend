@@ -1,0 +1,20 @@
+# QualityFlow sandbox image — extends fullsend-code with LSP language servers.
+#
+# gopls: Go language server for semantic code analysis (workspaceSymbol,
+#         references, definition, documentSymbol)
+# pyright: Python language server for type-aware analysis
+#
+# Built automatically by OpenShell when referenced via --from.
+FROM ghcr.io/fullsend-ai/fullsend-code:latest
+
+USER root
+
+# gopls — Go language server
+RUN /usr/local/go/bin/go install golang.org/x/tools/gopls@latest \
+    && ln -sf /sandbox/go/bin/gopls /usr/local/bin/gopls
+
+# pyright — Python language server (best-effort; npm may not be available)
+RUN npm install -g pyright 2>/dev/null \
+    || echo "pyright install skipped (npm not available)"
+
+USER sandbox

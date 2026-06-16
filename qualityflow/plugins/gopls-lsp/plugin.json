@@ -1,0 +1,5 @@
+{
+  "name": "gopls-lsp",
+  "description": "Enable Go language server (gopls) for LSP analysis in QualityFlow agents",
+  "version": "1.0.0"
+}

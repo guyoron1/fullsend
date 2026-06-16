@@ -1,0 +1,33 @@
+# harness/std-builder.yaml — Generate STD YAML + test stubs from an STP.
+#
+# File-only: reads STP and config, no external API calls needed.
+agent: agents/std-builder.md
+model: opus
+image: images/qf-code
+policy: policies/qf-vertex.yaml
+agent_input: config
+
+host_files:
+  - src: env/gcp-vertex.env
+    dest: /tmp/workspace/.env.d/gcp-vertex.env
+    expand: true
+  - src: env/qf-credentials.env
+    dest: /tmp/workspace/.env.d/qf-credentials.env
+    expand: true
+  - src: ${GOOGLE_APPLICATION_CREDENTIALS}
+    dest: /tmp/workspace/.gcp-credentials.json
+
+skills:
+  - skills/project-resolver
+  - skills/std-orchestrator
+  - skills/std-generator
+  - skills/go-stub-generator
+  - skills/python-stub-generator
+  - skills/pipeline-state
+  - skills/output-validator
+
+validation_loop:
+  script: scripts/validate-std.sh
+  max_iterations: 2
+
+timeout_minutes: 15

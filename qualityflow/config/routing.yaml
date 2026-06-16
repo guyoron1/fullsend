@@ -1,0 +1,19 @@
+# QualityFlow Project Routing Map
+# Maps Jira issue prefixes to project configurations.
+#
+# When QualityFlow receives a Jira ID like "MYPROJ-1234", it extracts the
+# prefix "MYPROJ" and looks it up here to find which project config to load.
+#
+# To add a project:
+#   1. Create config/projects/{name}/ with the required YAML files
+#   2. Add one or more prefix routes below
+version: "1.0"
+
+routes:
+  # Example: uncomment and customize for your project
+  # - prefix: "MYPROJ"
+  #   project: "example"
+
+# null = error on unknown prefix (fail-fast)
+# Set to a project ID to use as fallback for unrecognized prefixes
+default_project: null
