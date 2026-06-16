@@ -111,7 +111,7 @@ The `--pem-dir` directory must contain one `{role}.pem` file per agent role (e.g
 
 ### Mint URL stability
 
-The mint URL is stable across redeploys within the same project and region — updating the Cloud Function does not change its URL. Adding a new org to an existing mint only updates env vars (`ROLE_APP_IDS`, `ALLOWED_ORGS`) without redeploying the function. Existing enrolled repos continue working with no changes.
+The mint URL is stable across redeploys within the same project and region — updating the Cloud Function does not change its URL. Adding a new org to an existing mint only updates `ALLOWED_ORGS` (and WIF configuration) without redeploying the function. Shared `ROLE_APP_IDS` are set at deploy time and are not modified per enrollment. Existing enrolled repos continue working with no changes.
 
 Deploying to a **different region** (e.g., changing `--region` from `us-central1` to `us-east5`) creates a new Cloud Run service with a different URL. All enrolled repos store the mint URL in a repo or org variable (`FULLSEND_MINT_URL`), so changing the region requires updating every enrolled repo's variable. Avoid changing `--region` after initial deployment unless you plan to update all consumers.
 
@@ -135,27 +135,24 @@ Enrollment does **not** grant Agent Platform (inference) access — use `fullsen
 |------|---------|-------------|
 | `--project` | | GCP project ID (required) |
 | `--region` | `us-central1` | Cloud region for the mint service |
-| `--app-set` | `fullsend-ai` | App set to resolve role→app-id mappings from |
-| `--role-app-ids` | | Explicit JSON map of role→app-id (overrides `--app-set`) |
-| `--roles` | `fullsend,triage,coder,review,retro,prioritize` | Comma-separated roles to enroll |
 | `--dry-run` | `false` | Preview changes without making them |
 
 ### What enrollment does
 
-1. Discovers the existing mint infrastructure and resolves role→app-id mappings
-2. Updates the mint Cloud Run service environment variables (`ALLOWED_ORGS`, `ROLE_APP_IDS`) using REVISION-pinned traffic routing
+1. Discovers the existing mint infrastructure and verifies shared role→app-id mappings exist
+2. Updates the mint Cloud Run service environment variable `ALLOWED_ORGS` using REVISION-pinned traffic routing
 3. Runs post-enrollment verification (see below)
 4. Configures the mint-side WIF provider to accept OIDC tokens from the organization's repositories
 
-Role PEM secrets must already exist in Secret Manager (`fullsend-{role}-app-pem`), created during `mint deploy --pem-dir` or `fullsend admin install`. Enrollment does not create or copy PEM secrets.
+Role PEM secrets and `ROLE_APP_IDS` must already exist on the mint, created during `mint deploy --pem-dir` or `fullsend admin install`. Enrollment does not create, copy, or modify PEM secrets or app ID mappings.
 
 ### Post-enrollment verification
 
 After updating the mint, the CLI automatically verifies that the enrollment took effect on the traffic-serving revision:
 
 - **Revision state check** — confirms which Cloud Run revision is serving traffic and whether it matches the latest template
-- **Env var read-back** — reads `ALLOWED_ORGS` and `ROLE_APP_IDS` from the traffic-serving revision (not the template) to confirm the enrolled org is present
-- **Key completeness** — verifies all expected role keys (e.g., `acme-corp/coder`, `acme-corp/review`) are present in `ROLE_APP_IDS`
+- **Env var read-back** — reads `ALLOWED_ORGS` from the traffic-serving revision (not the template) to confirm the enrolled org is present
+- **Shared app IDs** — verifies the mint has role-keyed `ROLE_APP_IDS` entries (e.g., `coder`, `review`) for all configured roles
 
 If verification fails, the CLI prints actionable diagnostics and suggests running `mint status` to investigate. See [Troubleshooting](#troubleshooting) for common failure scenarios.
 
@@ -216,8 +213,8 @@ fullsend mint status acme-corp --project="$GCP_PROJECT"
 
 **Enrollment section:**
 
-- List of enrolled organizations (parsed from `ROLE_APP_IDS`)
-- Role→app-id mappings per org
+- List of enrolled organizations (from `ALLOWED_ORGS`)
+- Shared role→app-id mappings (from role-keyed `ROLE_APP_IDS`)
 - Per-repo WIF repos list
 
 **Per-org drill-down** (when an org argument is provided):
@@ -337,7 +334,7 @@ You can also pass `--mint-url "$MINT_URL"` explicitly to skip the auto-discovery
 
 ### Post-enrollment verification failure
 
-**Symptom:** After `mint enroll`, the CLI reports "Post-write verification FAILED" — the enrolled org is missing from the traffic-serving revision's `ALLOWED_ORGS` or `ROLE_APP_IDS`.
+**Symptom:** After `mint enroll`, the CLI reports "Post-write verification FAILED" — the enrolled org is missing from the traffic-serving revision's `ALLOWED_ORGS`.
 
 **What it means:** The env var update was applied to the service template, but the traffic-serving revision does not reflect the change. This typically means traffic routing did not complete.
 
@@ -357,7 +354,7 @@ You can also pass `--mint-url "$MINT_URL"` explicitly to skip the auto-discovery
 
 ### Concurrent enrollment race
 
-**Symptom:** After enrolling two orgs in parallel, one org is missing from `ALLOWED_ORGS` or `ROLE_APP_IDS`.
+**Symptom:** After enrolling two orgs in parallel, one org is missing from `ALLOWED_ORGS`.
 
 **What it means:** Both enrollment commands read the same initial state, merged their org independently, and wrote back. The second write overwrote the first org's entries.
 
