@@ -7,7 +7,7 @@
 # Falls back to a synthetic FS-{issue} ID from GitHub issue references.
 #
 # Pipeline: stp-builder → stp-reviewer → stp-refiner → std-builder →
-#           std-reviewer → std-refiner → go-test-generator → python-test-generator
+#           std-reviewer → std-refiner → test-generator (unified)
 name: QualityFlow
 
 permissions:
@@ -591,7 +591,7 @@ jobs:
           agent: std-refiner
           version: latest
 
-      # ───────────────────── Stage 7: Go Test Generator ─────────────────────
+      # ───────────────────── Stage 7: Test Generator (unified) ─────────────────────
 
       - name: Restore PR checkout (Stage 7)
         env:
@@ -609,7 +609,7 @@ jobs:
       - name: Patch GCP credentials (Stage 7)
         run: bash /tmp/patch-gcp-creds.sh
 
-      - name: "QF Stage 7: Go Test Generator"
+      - name: "QF Stage 7: Test Generator"
         id: stage7
         continue-on-error: true
         uses: ./
@@ -625,44 +625,7 @@ jobs:
           PR_CHECKOUT_PATH: ${{ github.workspace }}/pr-repo
           SOURCE_REPO_PATH: ${{ github.workspace }}/pr-repo
         with:
-          agent: go-test-generator
-          version: latest
-
-      # ───────────────────── Stage 8: Python Test Generator ─────────────────────
-
-      - name: Restore PR checkout (Stage 8)
-        env:
-          GH_TOKEN: ${{ steps.mid-token.outputs.token }}
-        run: |
-          bash /tmp/restore-pr-repo.sh "${{ steps.pr-info.outputs.head_ref }}" "${GH_TOKEN}"
-          bash /tmp/reinject-claude-md.sh
-
-      - name: Refresh GCP credentials (Stage 8)
-        uses: ./.github/actions/setup-gcp
-        with:
-          gcp_wif_provider: ${{ secrets.FULLSEND_GCP_WIF_PROVIDER }}
-          gcp_project_id: ${{ secrets.FULLSEND_GCP_PROJECT_ID }}
-
-      - name: Patch GCP credentials (Stage 8)
-        run: bash /tmp/patch-gcp-creds.sh
-
-      - name: "QF Stage 8: Python Test Generator"
-        id: stage8
-        continue-on-error: true
-        uses: ./
-        env:
-          PR_NUMBER: ${{ steps.pr-info.outputs.pr_number }}
-          REPO_FULL_NAME: ${{ github.repository }}
-          TARGET_BRANCH: ${{ steps.pr-info.outputs.head_ref }}
-          TRIGGER_SOURCE: slash-command
-          JIRA_TICKET: ${{ steps.ticket.outputs.ticket }}
-          GH_TOKEN: ${{ steps.mid-token.outputs.token }}
-          PUSH_TOKEN: ${{ steps.mid-token.outputs.token }}
-          PRE_AGENT_HEAD: ${{ steps.pre-head.outputs.sha }}
-          PR_CHECKOUT_PATH: ${{ github.workspace }}/pr-repo
-          SOURCE_REPO_PATH: ${{ github.workspace }}/pr-repo
-        with:
-          agent: python-test-generator
+          agent: test-generator
           version: latest
 
       # ───────────────────── Post-pipeline: organize and clean up ─────────────────────
@@ -768,7 +731,6 @@ jobs:
           S5: ${{ steps.stage5.conclusion || 'skipped' }}
           S6: ${{ steps.stage6.conclusion || 'skipped' }}
           S7: ${{ steps.stage7.conclusion || 'skipped' }}
-          S8: ${{ steps.stage8.conclusion || 'skipped' }}
           GO_COUNT: ${{ steps.organize-tests.outputs.go_count || '0' }}
           PY_COUNT: ${{ steps.organize-tests.outputs.py_count || '0' }}
         run: |
@@ -794,8 +756,7 @@ jobs:
           | 4 | STD Builder | $(icon "${S4}") |
           | 5 | STD Reviewer | $(icon "${S5}") |
           | 6 | STD Refiner | $(icon "${S6}") |
-          | 7 | Go Test Generator | $(icon "${S7}") |
-          | 8 | Python Test Generator | $(icon "${S8}") |
+          | 7 | Test Generator | $(icon "${S7}") |
 
           ### Test Output
           | Type | Count | Location |
