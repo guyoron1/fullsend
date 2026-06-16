@@ -3201,3 +3201,27 @@ func TestMergeRoleAppIDsJSON_EmptyExistingPreservesDesired(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, `{"coder":"111"}`, merged)
 }
+
+func TestMergeRoleAppIDsJSON_MergesRoleOnlyAndIgnoresLegacy(t *testing.T) {
+	existing := `{"acme/coder":"999","coder":"100","triage":"200"}`
+	merged, err := mergeRoleAppIDsJSON(existing, map[string]string{"coder": "300", "review": "400"})
+	require.NoError(t, err)
+
+	var ids map[string]string
+	require.NoError(t, json.Unmarshal([]byte(merged), &ids))
+	assert.Equal(t, "300", ids["coder"])
+	assert.Equal(t, "200", ids["triage"])
+	assert.Equal(t, "400", ids["review"])
+	assert.Equal(t, "999", ids["acme/coder"])
+}
+
+func TestDeriveAllowedRoles_IgnoresLegacyOrgScopedKeys(t *testing.T) {
+	roles := deriveAllowedRoles(`{"acme/coder":"1","coder":"2","triage":"3"}`)
+	assert.Equal(t, "coder,triage", roles)
+}
+
+func TestMarshalRoleAppIDs_SortsKeys(t *testing.T) {
+	raw, err := marshalRoleAppIDs(map[string]string{"triage": "2", "coder": "1"})
+	require.NoError(t, err)
+	assert.Equal(t, `{"coder":"1","triage":"2"}`, raw)
+}

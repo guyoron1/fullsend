@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/fullsend-ai/fullsend/internal/config"
+	"github.com/fullsend-ai/fullsend/internal/dispatch/gcf"
 	"github.com/fullsend-ai/fullsend/internal/ui"
 )
 
@@ -583,6 +584,26 @@ func TestResolveRole(t *testing.T) {
 func TestDefaultMintRoles(t *testing.T) {
 	roles := defaultMintRoles()
 	assert.Equal(t, config.DefaultAgentRoles(), roles)
+}
+
+func TestRolesFromAppIDs_RoleOnly(t *testing.T) {
+	roles := rolesFromAppIDs(map[string]string{
+		"coder":          "100",
+		"triage":         "200",
+		"acme/coder":     "999",
+		"widget/triage":  "888",
+	})
+	assert.Equal(t, []string{"coder", "triage"}, roles)
+}
+
+func TestParseAllowedOrgs_SkipsPlaceholder(t *testing.T) {
+	orgs := parseAllowedOrgs("widget, " + gcf.PlaceholderOrg + ", acme")
+	assert.Equal(t, []string{"acme", "widget"}, orgs)
+}
+
+func TestPemSecretRoles_DeduplicatesAliases(t *testing.T) {
+	roles := pemSecretRoles([]string{"fix", "coder", "triage", "fix"})
+	assert.Equal(t, []string{"coder", "triage"}, roles)
 }
 
 // --- confirmUnenroll tests ---
