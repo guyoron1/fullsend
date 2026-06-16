@@ -100,9 +100,9 @@ func inGitDir(path, root string) bool {
 	return false
 }
 
-// EnsureProvider creates or updates a provider on the gateway. Credential
-// values may contain ${VAR} references which are expanded from the host
-// environment before being passed to openshell.
+// EnsureProvider creates a provider on the gateway. Credential values may
+// contain ${VAR} references which are expanded from the host environment before
+// being passed to openshell.
 //
 // Credentials use the bare-key form (--credential KEY) so that secret values
 // never appear on the process command line. The expanded values are injected
@@ -123,6 +123,24 @@ func EnsureProvider(name, providerType string, credentials, config map[string]st
 		return fmt.Errorf("provider create %q failed: %s", name, outStr)
 	}
 	return nil
+}
+
+// DeleteProvider removes a provider from the gateway. Errors are returned so
+// the caller can decide whether to treat them as fatal or log-and-continue.
+func DeleteProvider(name string) error {
+	out, err := exec.Command("openshell", "provider", "delete", name).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("provider delete %q failed: %s", name, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
+// SandboxProviderName returns the gateway provider name for a given logical
+// provider and sandbox. Using the sandbox name as a suffix scopes each
+// provider to a single sandbox run, preventing conflicts between concurrent
+// or repeated runs that use the same logical provider name.
+func SandboxProviderName(providerName, sandboxName string) string {
+	return providerName + "-" + sandboxName
 }
 
 // buildProviderArgs constructs the CLI args and child environment entries for

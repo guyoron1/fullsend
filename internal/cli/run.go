@@ -445,6 +445,11 @@ func runAgent(ctx context.Context, agentName, fullsendDir, outputBase, targetRep
 	printer.StepDone(fmt.Sprintf("Gateway available (%.1fs)", time.Since(gatewayStart).Seconds()))
 
 	// 2b. Ensure providers exist on the gateway (if any declared).
+	// The sandbox name is computed here so providers can be named
+	// <provider>-<sandbox> — scoping each provider to a single run and
+	// preventing conflicts between concurrent or repeated invocations.
+	sandboxName := fmt.Sprintf("agent-%s-%d-%d", agentName, os.Getpid(), time.Now().Unix())
+	var sandboxProviderNames []string
 	if len(h.Providers) > 0 {
 		providersDir := filepath.Join(absFullsendDir, "providers")
 		providerDefs, err := harness.LoadProviderDefs(providersDir)
@@ -453,13 +458,15 @@ func runAgent(ctx context.Context, agentName, fullsendDir, outputBase, targetRep
 			return fmt.Errorf("loading provider definitions: %w", err)
 		}
 		for _, pd := range providerDefs {
+			scopedName := sandbox.SandboxProviderName(pd.Name, sandboxName)
 			providerStart := time.Now()
-			printer.StepStart("Ensuring provider: " + pd.Name)
-			if err := sandbox.EnsureProvider(pd.Name, pd.Type, pd.Credentials, pd.Config); err != nil {
-				printer.StepFail("Failed to create provider " + pd.Name)
-				return fmt.Errorf("ensuring provider %q: %w", pd.Name, err)
+			printer.StepStart("Ensuring provider: " + scopedName)
+			if err := sandbox.EnsureProvider(scopedName, pd.Type, pd.Credentials, pd.Config); err != nil {
+				printer.StepFail("Failed to create provider " + scopedName)
+				return fmt.Errorf("ensuring provider %q: %w", scopedName, err)
 			}
-			printer.StepDone(fmt.Sprintf("Provider ready: %s (%.1fs)", pd.Name, time.Since(providerStart).Seconds()))
+			printer.StepDone(fmt.Sprintf("Provider ready: %s (%.1fs)", scopedName, time.Since(providerStart).Seconds()))
+			sandboxProviderNames = append(sandboxProviderNames, scopedName)
 		}
 	}
 
@@ -479,12 +486,11 @@ func runAgent(ctx context.Context, agentName, fullsendDir, outputBase, targetRep
 	}
 
 	// 3. Create sandbox.
-	sandboxName := fmt.Sprintf("agent-%s-%d-%d", agentName, os.Getpid(), time.Now().Unix())
 	createStart := time.Now()
 	printer.StepStart("Creating sandbox: " + sandboxName)
 
 	readyTimeout := time.Duration(h.SandboxTimeoutSeconds) * time.Second
-	if err := sandbox.CreateWithRetry(sandboxName, h.Providers, h.Image, h.Policy, sandbox.DefaultMaxCreateAttempts, readyTimeout); err != nil {
+	if err := sandbox.CreateWithRetry(sandboxName, sandboxProviderNames, h.Image, h.Policy, sandbox.DefaultMaxCreateAttempts, readyTimeout); err != nil {
 		printer.StepFail("Failed to create sandbox")
 		return fmt.Errorf("creating sandbox: %w", err)
 	}
@@ -543,6 +549,12 @@ func runAgent(ctx context.Context, agentName, fullsendDir, outputBase, targetRep
 		if keepSandbox {
 			printer.StepWarn(fmt.Sprintf("Sandbox kept (--keep-sandbox): %s", sandboxName))
 			printer.StepInfo(fmt.Sprintf("openshell sandbox exec --tty --name %s -- bash", sandboxName))
+			// Providers are scoped to this sandbox and intentionally kept alive
+			// alongside it. They must be deleted manually when the sandbox is
+			// no longer needed.
+			for _, pName := range sandboxProviderNames {
+				printer.StepInfo(fmt.Sprintf("Provider kept (delete manually): openshell provider delete %s", pName))
+			}
 			return
 		}
 
@@ -552,6 +564,13 @@ func runAgent(ctx context.Context, agentName, fullsendDir, outputBase, targetRep
 			printer.StepWarn("Sandbox cleanup failed: " + err.Error())
 		} else {
 			printer.StepDone(fmt.Sprintf("Sandbox deleted (%.1fs)", time.Since(cleanupStart).Seconds()))
+		}
+
+		// Tear down sandbox-scoped providers after the sandbox is gone.
+		for _, pName := range sandboxProviderNames {
+			if err := sandbox.DeleteProvider(pName); err != nil {
+				printer.StepWarn(fmt.Sprintf("Provider cleanup failed: %s: %v", pName, err))
+			}
 		}
 	}()
 	printer.StepDone(fmt.Sprintf("Sandbox created (%.1fs)", time.Since(createStart).Seconds()))

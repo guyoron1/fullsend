@@ -21,6 +21,44 @@ func TestEnsureAvailable_OpenshellNotInPath(t *testing.T) {
 	assert.Contains(t, err.Error(), "openshell not found in PATH")
 }
 
+func TestSandboxProviderName(t *testing.T) {
+	tests := []struct {
+		provider string
+		sandbox  string
+		want     string
+	}{
+		{"github", "agent-code-12345-1234567890", "github-agent-code-12345-1234567890"},
+		{"jira", "agent-triage-9999-9999999999", "jira-agent-triage-9999-9999999999"},
+		{"openai", "my-sandbox", "openai-my-sandbox"},
+	}
+	for _, tt := range tests {
+		got := SandboxProviderName(tt.provider, tt.sandbox)
+		assert.Equal(t, tt.want, got)
+	}
+}
+
+func TestDeleteProvider_Success(t *testing.T) {
+	binDir := t.TempDir()
+	fakeScript := "#!/bin/sh\nexit 0\n"
+	require.NoError(t, os.WriteFile(filepath.Join(binDir, "openshell"), []byte(fakeScript), 0o755))
+	t.Setenv("PATH", binDir)
+
+	err := DeleteProvider("github-agent-code-123")
+	assert.NoError(t, err)
+}
+
+func TestDeleteProvider_Failure(t *testing.T) {
+	binDir := t.TempDir()
+	fakeScript := "#!/bin/sh\necho 'not found' >&2\nexit 1\n"
+	require.NoError(t, os.WriteFile(filepath.Join(binDir, "openshell"), []byte(fakeScript), 0o755))
+	t.Setenv("PATH", binDir)
+
+	err := DeleteProvider("missing-provider")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "provider delete")
+	assert.Contains(t, err.Error(), "missing-provider")
+}
+
 func TestConstants(t *testing.T) {
 	assert.Equal(t, "/sandbox/workspace", SandboxWorkspace)
 	assert.Equal(t, "/sandbox/claude-config", SandboxClaudeConfig)
