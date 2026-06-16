@@ -1,24 +1,22 @@
 status: success
 jira_id: GH-18
-file_path: /sandbox/workspace/output/GH-18_test_plan.md
-test_counts:
-  tier1: 26
-  tier2: 0
-  total: 26
-priority_counts:
-  p0: 16
-  p1: 10
-  p2: 0
-pr_data:
-  number: 18
-  title: "Expand supply chain threat to cover model-as-toolchain risk"
-  state: MERGED
-  files_changed: 1
-  additions: 51
-  deletions: 3
-  change_type: documentation
-lsp_analysis:
-  files_analyzed: 3
-  symbols_traced: 22
-  call_chains: 2
-  references_found: 15
+verdict: NEEDS_REVISION
+confidence: MEDIUM
+weighted_score: 18
+findings:
+  critical: 6
+  major: 8
+  minor: 4
+  actionable: 14
+  total: 18
+reviewed: outputs/stp/GH-18/GH-18_test_plan.md
+report: outputs/reviews/GH-18/GH-18_stp_review.md
+dimension_scores:
+  rule_compliance: 33
+  requirement_coverage: 0
+  scenario_quality: 15
+  risk_accuracy: 20
+  scope_boundary: 0
+  strategy: 50
+  metadata: 60
+scope_downgrade: false
