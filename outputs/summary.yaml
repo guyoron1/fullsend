@@ -1,0 +1,17 @@
+status: success
+jira_id: GH-16
+file_path: /sandbox/workspace/output/GH-16_test_plan.md
+test_counts:
+  unit: 7
+  functional: 3
+  total: 10
+pr_title: "fix(gcp): remove the project from the number call"
+pr_url: "https://github.com/guyoron1/fullsend/pull/16"
+lsp_analysis: true
+files_analyzed:
+  - internal/dispatch/gcf/gcp.go
+  - internal/dispatch/gcf/provisioner.go
+call_chain:
+  - "internal/cli/admin.go:508 -> Provisioner"
+  - "provisioner.go:282 -> provisionSelfManaged"
+  - "gcp.go:886 -> GetProjectNumber (MODIFIED)"
