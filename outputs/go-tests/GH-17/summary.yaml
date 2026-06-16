@@ -1,0 +1,16 @@
+status: success
+jira_id: GH-17
+std_source: outputs/std/GH-17/GH-17_test_description.yaml
+languages:
+  - language: go
+    framework: ginkgo-v2
+    files:
+      - mcp_config_drift_doc_validation_test.go
+    test_count: 7
+  - language: python
+    framework: pytest
+    files: []
+    test_count: 0
+    note: "STD contains 0 Tier 2 scenarios — no Python tests to generate"
+total_test_count: 7
+lsp_patterns_used: false
