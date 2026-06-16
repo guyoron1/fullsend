@@ -1,0 +1,24 @@
+status: success
+jira_id: GH-18
+verdict: NEEDS_REVISION
+confidence: MEDIUM
+weighted_score: 58
+findings:
+  critical: 4
+  major: 8
+  minor: 5
+  actionable: 16
+  total: 17
+artifacts_reviewed:
+  std_yaml: true
+  go_stubs: true
+  python_stubs: false
+  stp_available: true
+dimension_scores:
+  traceability: 75
+  yaml_structure: 40
+  pattern_matching: 0
+  step_quality: 72
+  content_policy: 60
+  pse_quality: 80
+  codegen_readiness: 70
