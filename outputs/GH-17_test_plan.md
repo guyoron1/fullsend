@@ -2,10 +2,10 @@
 
 ## **MCP Configuration Drift Problem Document - Quality Engineering Plan**
 
-### Metadata & Tracking
+### **Metadata & Tracking**
 
-- **Enhancement:** [GH-17](https://github.com/guyoron1/fullsend/pull/17) — docs(problems): add MCP configuration drift problem doc
-- **Feature Tracking:** [GH-17](https://github.com/guyoron1/fullsend/pull/17)
+- **Enhancement(s):** [GH-17](https://github.com/fullsend-ai/fullsend/pull/17) — docs(problems): add MCP configuration drift problem doc
+- **Feature Tracking:** [GH-17](https://github.com/fullsend-ai/fullsend/pull/17)
 - **Epic Tracking:** N/A (standalone problem document)
 - **QE Owner:** QualityFlow (automated)
 - **Owning SIG:** sig-security
@@ -13,13 +13,13 @@
 
 **Document Conventions:** This STP covers a documentation-only change. Test scenarios validate document structure, cross-reference integrity, and accuracy of codebase references rather than runtime behavior.
 
-### Feature Overview
+### **Feature Overview**
 
 This PR introduces a new problem document (`docs/problems/mcp-config-drift.md`) that analyzes MCP (Model Context Protocol) configuration drift — a security concern where MCP server configurations fall out of sync across environments, potentially expanding an agent's tool surface without approval. The document defines four attack scenarios, three defense approaches with trade-offs, and relates the problem to FullSend's existing security hooks and harness architecture. The PR also removes the top-level `CLAUDE.md` file and updates `README.md` to index the new document.
 
 ---
 
-### I. Motivation and Requirements Review
+### **I. Motivation and Requirements Review (QE Review Guidelines)**
 
 #### 1. Requirement & User Story Review Checklist
 
@@ -53,7 +53,7 @@ This PR introduces a new problem document (`docs/problems/mcp-config-drift.md`) 
 - [ ] **Reviewed topology requirements.** -- Assessed whether specific cluster or network topologies are needed for testing.
   - No topology requirements. All tests are file-based and run locally.
 
-### II. Test Planning
+### **II. Software Test Plan (STP)**
 
 #### 1. Scope of Testing
 
@@ -94,7 +94,7 @@ This test plan covers validation of the MCP configuration drift problem document
 
 - [ ] **Compatibility Testing** -- Not applicable. Markdown documentation is format-agnostic.
 - [ ] **Upgrade Testing** -- Not applicable. No version-sensitive changes.
-- [ ] **Dependencies** -- Applicable. Document references specific code symbols (`ToolAllowlistPreToolHook`, `GenerateClaudeSettings`) that must exist in the codebase.
+- [ ] **Dependencies** -- Not applicable. No blocked deliverables from other teams.
 - [ ] **Cross Integrations** -- Not applicable. No cross-component runtime interactions.
 
 **Infrastructure:**
@@ -123,6 +123,7 @@ No new or special tools required. Standard Go test infrastructure with Ginkgo/Go
 - [ ] PR branch is mergeable and CI passes lint checks (`make lint`)
 - [ ] All referenced files in cross-reference links exist in the repository
 - [ ] Go test dependencies (Ginkgo, Gomega) are available in the test environment
+- [ ] Referenced code symbols (`ToolAllowlistPreToolHook`, `GenerateClaudeSettings`) exist in the codebase
 
 #### 5. Risks
 
@@ -163,47 +164,50 @@ No new or special tools required. Standard Go test infrastructure with Ginkgo/Go
 
 ---
 
-### III. Requirements-to-Tests Mapping
+### **III. Test Scenarios & Traceability**
 
-#### 1. Requirements Mapping
+#### **1. Requirements-to-Tests Mapping**
 
-- **GH-17** — MCP config drift problem document is structurally complete and follows the problem document format
-  - TS-GH-17-001: Verify document contains all required sections (positive) — Unit Tests — P0
-  - TS-GH-17-002: Verify document follows problem document structure (positive) — Unit Tests — P0
-  - TS-GH-17-003: Verify document is not empty or malformed (negative) — Unit Tests — P0
+- **GH-17** — As a contributor, I want the MCP config drift problem document to follow the established format so that it is consistent with other problem documents
+  - TS-GH-17-001: Verify document contains all required sections (positive) — [Functional] — P0
+  - TS-GH-17-002: Verify document follows problem document structure (positive) — [Functional] — P0
+  - TS-GH-17-003: Verify document is not empty or malformed (negative) — [Functional] — P0
 
-- **GH-17** — Cross-reference links in the problem document resolve to existing files
-  - TS-GH-17-004: Verify all relative links resolve to existing files (positive) — Unit Tests — P0
-  - TS-GH-17-005: Verify anchor fragments reference valid headings (positive) — Unit Tests — P0
-  - TS-GH-17-006: Verify no broken internal links exist (negative) — Unit Tests — P0
+- **GH-17** — As a reader, I want all cross-reference links in the problem document to resolve to existing files so that I can navigate related content
+  - TS-GH-17-004: Verify all relative links resolve to existing files (positive) — [Functional] — P0
+  - TS-GH-17-005: Verify anchor fragments reference valid headings (positive) — [Functional] — P0
+  - TS-GH-17-006: Verify no broken internal links exist (negative) — [Functional] — P0
 
-- **GH-17** — README.md index updated with MCP config drift entry
-  - TS-GH-17-007: Verify README contains link to mcp-config-drift.md (positive) — Unit Tests — P0
-  - TS-GH-17-008: Verify linked target file exists on disk (positive) — Unit Tests — P0
+- **GH-17** — As a reader, I want the README.md index to include the MCP config drift entry so that I can discover the document
+  - TS-GH-17-007: Verify README contains link to mcp-config-drift.md (positive) — [Functional] — P0
+  - TS-GH-17-008: Verify linked target file exists on disk (positive) — [Functional] — P0
 
-- **GH-17** — Security component references accurately reflect the codebase
-  - TS-GH-17-009: Verify ToolAllowlistPreToolHook reference matches code (positive) — Unit Tests — P1
-  - TS-GH-17-010: Verify SSRF validator reference matches code (positive) — Unit Tests — P1
-  - TS-GH-17-011: Verify no references to non-existent components (negative) — Unit Tests — P1
+- **GH-17** — As a contributor, I want security component references to accurately reflect the codebase so that the document remains trustworthy
+  - TS-GH-17-009: Verify ToolAllowlistPreToolHook reference matches code (positive) — [Functional] — P1
+  - TS-GH-17-010: Verify SSRF validator reference matches code (positive) — [Functional] — P1
+  - TS-GH-17-011: Verify no references to non-existent components (negative) — [Functional] — P1
 
-- **GH-17** — Attack scenarios are distinct and cover MCP threat surface
-  - TS-GH-17-012: Verify document contains distinct attack scenarios (positive) — Unit Tests — P1
-  - TS-GH-17-013: Verify each scenario has a clear description (positive) — Unit Tests — P1
+- **GH-17** — As a reader, I want the attack scenarios to be distinct and cover the MCP threat surface so that I understand the security risks
+  - TS-GH-17-012: Verify document contains distinct attack scenarios (positive) — [Functional] — P2
+  - TS-GH-17-013: Verify each scenario has a clear description (positive) — [Functional] — P2
 
-- **GH-17** — Defense approaches presented with trade-offs analysis
-  - TS-GH-17-014: Verify each defense approach has trade-offs section (positive) — Unit Tests — P1
-  - TS-GH-17-015: Verify multiple defense approaches are presented (positive) — Unit Tests — P1
+- **GH-17** — As a reader, I want defense approaches to include trade-offs analysis so that I can evaluate implementation options
+  - TS-GH-17-014: Verify each defense approach has trade-offs section (positive) — [Functional] — P2
+  - TS-GH-17-015: Verify multiple defense approaches are presented (positive) — [Functional] — P2
 
-- **GH-17** — CLAUDE.md removal does not break repository documentation references
-  - TS-GH-17-016: Verify no remaining references to deleted CLAUDE.md (negative) — Unit Tests — P1
-  - TS-GH-17-017: Verify repository documentation integrity after deletion (positive) — Unit Tests — P1
+- **GH-17** — As a contributor, I want the CLAUDE.md removal to not break repository documentation references so that existing workflows remain functional
+  - TS-GH-17-016: Verify no remaining references to deleted CLAUDE.md (negative) — [Functional] — P1
+  - TS-GH-17-017: Verify repository documentation integrity after deletion (positive) — [Functional] — P1
 
 ---
 
-### IV. Sign-off
+### **IV. Sign-off and Approval**
 
-| Role | Name | Date |
-|:-----|:-----|:-----|
-| QE Lead | | |
-| Dev Lead | | |
-| PM | | |
+This Software Test Plan requires approval from the following stakeholders:
+
+* **Reviewers:**
+  - [Name / @github-username]
+  - [Name / @github-username]
+* **Approvers:**
+  - [Name / @github-username]
+  - [Name / @github-username]

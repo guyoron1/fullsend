@@ -1,22 +1,14 @@
 status: success
 jira_id: GH-17
-verdict: APPROVED_WITH_FINDINGS
-confidence: LOW
-weighted_score: 83.25
+initial_verdict: APPROVED_WITH_FINDINGS
+final_verdict: APPROVED
+iterations: 1
 findings:
-  critical: 0
-  major: 3
-  minor: 5
-  actionable: 7
-  total: 8
-reviewed: outputs/stp/GH-17/GH-17_test_plan.md
-report: outputs/reviews/GH-17/GH-17_stp_review.md
-dimension_scores:
-  rule_compliance: 72
-  requirement_coverage: 85
-  scenario_quality: 85
-  risk_accuracy: 95
-  scope_boundary: 95
-  strategy: 90
-  metadata: 70
-scope_downgrade: false
+  initial: {critical: 0, major: 3, minor: 5}
+  final: {critical: 0, major: 0, minor: 2}
+initial_score: 83.25
+final_score: 97.25
+stop_reason: approved
+stp_file: GH-17_test_plan.md
+review_file: GH-17_stp_review.md
+refinement_log: GH-17_stp_refinement_log.md
