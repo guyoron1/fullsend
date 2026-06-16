@@ -953,6 +953,19 @@ func TestLookupRoleAppID(t *testing.T) {
 	}
 }
 
+func TestLookupRoleAppID_FixAliasUsesCoderAppID(t *testing.T) {
+	t.Setenv("ROLE_APP_IDS", `{"coder":"200","fix":"400"}`)
+	h := mustNewHandler(t, &fakePEMAccessor{}, &fakeOIDCVerifier{})
+
+	id, err := h.lookupRoleAppID("fix")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if id != "200" {
+		t.Fatalf("expected fix to resolve via coder alias to 200, got %s", id)
+	}
+}
+
 func TestLookupRoleAppID_LegacyOrgScopedKeysIgnored(t *testing.T) {
 	t.Setenv("ROLE_APP_IDS", `{"test-org/coder":"200"}`)
 	h := mustNewHandler(t, &fakePEMAccessor{}, &fakeOIDCVerifier{})

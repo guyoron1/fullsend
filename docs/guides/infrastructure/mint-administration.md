@@ -137,6 +137,10 @@ Enrollment does **not** grant Agent Platform (inference) access — use `fullsen
 | `--region` | `us-central1` | Cloud region for the mint service |
 | `--dry-run` | `false` | Preview changes without making them |
 
+### Migration from per-org app ID flags
+
+Prior versions of `mint enroll` accepted `--app-set`, `--role-app-ids`, `--roles`, and `--source-org` to copy per-org app ID mappings into `ROLE_APP_IDS`. App IDs are now **shared per role** on the mint (like PEM secrets) and are set at deploy time via `mint deploy --pem-dir` or `fullsend admin install`. Enrollment only adds the org to `ALLOWED_ORGS` and updates WIF — remove those flags from scripts and ensure the mint already has role-keyed `ROLE_APP_IDS` before enrolling.
+
 ### What enrollment does
 
 1. Discovers the existing mint infrastructure and verifies shared role→app-id mappings exist

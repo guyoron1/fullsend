@@ -1254,6 +1254,11 @@ func resolveSharedRoleAppIDs(ctx context.Context, client forge.Client, existingI
 	return result, nil
 }
 
+// detectSharedAppsGCFClientFactory creates GCF clients for detectSharedApps. Overridden in tests.
+var detectSharedAppsGCFClientFactory = func(projectID string) gcf.GCFClient {
+	return gcf.NewLiveGCFClient(projectID)
+}
+
 // detectSharedApps finds public GitHub Apps shared across orgs so app setup
 // can reuse existing app registrations without generating new keys.
 // Returns a role → app-slug mapping for detected shared apps and the full
@@ -1264,7 +1269,7 @@ func detectSharedApps(ctx context.Context, client forge.Client, printer *ui.Prin
 		ProjectID:  mintProject,
 		Region:     mintRegion,
 		GitHubOrgs: []string{org},
-	}, gcf.NewLiveGCFClient(mintProject))
+	}, detectSharedAppsGCFClientFactory(mintProject))
 
 	existingIDs, err := prov.GetExistingRoleAppIDs(ctx)
 	if err != nil {

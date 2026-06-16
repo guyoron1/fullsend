@@ -32,6 +32,11 @@ import (
 	"github.com/fullsend-ai/fullsend/internal/ui"
 )
 
+// mintGCFClientFactory creates GCF clients for mint operations. Overridden in tests.
+var mintGCFClientFactory = func(projectID string) gcf.GCFClient {
+	return gcf.NewLiveGCFClient(projectID)
+}
+
 // defaultMintRoles returns the default roles for mint enrollment.
 // The "fix" role is an alias for "coder" (same app, same PEM) and is
 // not a separate enrollment target.
@@ -398,7 +403,7 @@ When using --pem-dir, additionally requires:
 				return nil
 			}
 
-			gcpClient := gcf.NewLiveGCFClient(project)
+			gcpClient := mintGCFClientFactory(project)
 
 			if sourceDir == "" {
 				sourceDir = gcf.DefaultFunctionSourceDir()
@@ -616,7 +621,7 @@ func runMintEnrollOrg(ctx context.Context, printer *ui.Printer, org, project, re
 	printer.Header("Enrolling org " + org + " in mint")
 	printer.Blank()
 
-	gcpClient := gcf.NewLiveGCFClient(project)
+	gcpClient := mintGCFClientFactory(project)
 	provisioner := gcf.NewProvisioner(gcf.Config{
 		ProjectID:  project,
 		Region:     region,
@@ -693,7 +698,7 @@ func runMintEnrollRepo(ctx context.Context, printer *ui.Printer, repoFullName, p
 	printer.Header("Enrolling repo " + repoFullName + " in mint")
 	printer.Blank()
 
-	gcpClient := gcf.NewLiveGCFClient(project)
+	gcpClient := mintGCFClientFactory(project)
 	provisioner := gcf.NewProvisioner(gcf.Config{
 		ProjectID:  project,
 		Region:     region,
@@ -858,7 +863,7 @@ func runMintUnenrollOrg(ctx context.Context, printer *ui.Printer, org, project, 
 	printer.Header("Unenrolling org " + org + " from mint")
 	printer.Blank()
 
-	gcpClient := gcf.NewLiveGCFClient(project)
+	gcpClient := mintGCFClientFactory(project)
 	provisioner := gcf.NewProvisioner(gcf.Config{
 		ProjectID:  project,
 		Region:     region,
@@ -941,7 +946,7 @@ func runMintUnenrollRepo(ctx context.Context, printer *ui.Printer, repoFullName,
 	printer.Header("Unenrolling repo " + repoFullName + " from mint")
 	printer.Blank()
 
-	gcpClient := gcf.NewLiveGCFClient(project)
+	gcpClient := mintGCFClientFactory(project)
 	provisioner := gcf.NewProvisioner(gcf.Config{
 		ProjectID:  project,
 		Region:     region,
@@ -1074,7 +1079,7 @@ func runMintStatus(ctx context.Context, printer *ui.Printer, project, region, or
 	printer.Header("Mint Status")
 	printer.Blank()
 
-	gcpClient := gcf.NewLiveGCFClient(project)
+	gcpClient := mintGCFClientFactory(project)
 	provisioner := gcf.NewProvisioner(gcf.Config{
 		ProjectID:  project,
 		Region:     region,

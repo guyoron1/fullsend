@@ -15,6 +15,7 @@ import (
 
 	"github.com/fullsend-ai/fullsend/internal/appsetup"
 	"github.com/fullsend-ai/fullsend/internal/config"
+	"github.com/fullsend-ai/fullsend/internal/dispatch/gcf"
 	"github.com/fullsend-ai/fullsend/internal/forge"
 	"github.com/fullsend-ai/fullsend/internal/layers"
 	"github.com/fullsend-ai/fullsend/internal/ui"
@@ -1406,6 +1407,47 @@ func TestResolveSharedRoleAppIDs_IgnoresLegacyOrgScopedKeys(t *testing.T) {
 	_, err := resolveSharedRoleAppIDs(context.Background(), fake, existingIDs, "acme-corp", []string{"coder"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no existing ROLE_APP_IDS")
+}
+
+func TestDetectSharedApps_MatchesRoleOnlyIDs(t *testing.T) {
+	old := detectSharedAppsGCFClientFactory
+	detectSharedAppsGCFClientFactory = func(string) gcf.GCFClient {
+		return gcf.NewFakeGCFClient(gcf.WithFakeFunctionInfo(&gcf.FunctionInfo{
+			URI: "https://mint.example.com",
+			EnvVars: map[string]string{
+				"ROLE_APP_IDS": `{"coder":"100","triage":"200"}`,
+			},
+		}))
+	}
+	t.Cleanup(func() { detectSharedAppsGCFClientFactory = old })
+
+	fake := forge.NewFakeClient()
+	fake.Installations = []forge.Installation{
+		{AppID: 100, AppSlug: "fullsend-ai-coder"},
+		{AppID: 200, AppSlug: "fullsend-ai-triage"},
+	}
+
+	slugs, roleIDs, err := detectSharedApps(context.Background(), fake, ui.New(&strings.Builder{}), "acme", []string{"coder", "triage"}, "mint-project", "us-central1")
+	require.NoError(t, err)
+	assert.Equal(t, "fullsend-ai-coder", slugs["coder"])
+	assert.Equal(t, "100", roleIDs["coder"])
+	assert.Equal(t, "200", roleIDs["triage"])
+}
+
+func TestDetectSharedApps_NoRoleOnlyIDs(t *testing.T) {
+	old := detectSharedAppsGCFClientFactory
+	detectSharedAppsGCFClientFactory = func(string) gcf.GCFClient {
+		return gcf.NewFakeGCFClient(gcf.WithFakeFunctionInfo(&gcf.FunctionInfo{
+			URI:     "https://mint.example.com",
+			EnvVars: map[string]string{"ROLE_APP_IDS": `{"acme/coder":"100"}`},
+		}))
+	}
+	t.Cleanup(func() { detectSharedAppsGCFClientFactory = old })
+
+	slugs, roleIDs, err := detectSharedApps(context.Background(), forge.NewFakeClient(), ui.New(&strings.Builder{}), "acme", []string{"coder"}, "mint-project", "us-central1")
+	require.NoError(t, err)
+	assert.Empty(t, slugs)
+	assert.Empty(t, roleIDs)
 }
 
 func TestInstallCmd_SkipMintCheckUsesDefaultMintURL(t *testing.T) {

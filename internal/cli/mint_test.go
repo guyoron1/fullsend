@@ -656,6 +656,153 @@ func TestVerifyEnrollment_FallsBackToTrafficEnvVars(t *testing.T) {
 	}, "acme", "my-project")
 }
 
+func withMintGCFClient(t *testing.T, client gcf.GCFClient) {
+	t.Helper()
+	old := mintGCFClientFactory
+	mintGCFClientFactory = func(string) gcf.GCFClient { return client }
+	t.Cleanup(func() { mintGCFClientFactory = old })
+}
+
+func mintDiscoveryClient() gcf.GCFClient {
+	return gcf.NewFakeGCFClient(
+		gcf.WithFakeFunctionInfo(&gcf.FunctionInfo{
+			URI: "https://mint.example.com",
+			EnvVars: map[string]string{
+				"ROLE_APP_IDS": `{"coder":"100","triage":"200"}`,
+				"ALLOWED_ORGS": "existing-org",
+			},
+		}),
+		gcf.WithFakeTrafficEnvVars(map[string]string{
+			"ROLE_APP_IDS": `{"coder":"100","triage":"200"}`,
+			"ALLOWED_ORGS": "existing-org",
+		}),
+		gcf.WithFakeRevisionInfo(&gcf.ServiceRevisionInfo{
+			TrafficRevisionShort:   "fullsend-mint-00001",
+			TrafficPercent:         100,
+			TemplateMatchesTraffic: true,
+			TrafficEnvVars: map[string]string{
+				"ROLE_APP_IDS": `{"coder":"100","triage":"200"}`,
+				"ALLOWED_ORGS": "existing-org,acme",
+			},
+			RecentRevisions: []gcf.RevisionSummary{{
+				Name:       "fullsend-mint-00001",
+				CreateTime: "2026-06-16T12:00:00Z",
+				Active:     true,
+			}},
+		}),
+		gcf.WithFakeWIFProvider(&gcf.WIFProviderInfo{
+			AttributeCondition: "assertion.repository_owner in ['existing-org']",
+		}),
+		gcf.WithFakeSecrets(map[string]bool{
+			"fullsend-coder-app-pem":  true,
+			"fullsend-triage-app-pem": true,
+		}),
+	)
+}
+
+func TestRunMintEnrollOrg_DryRun(t *testing.T) {
+	withMintGCFClient(t, mintDiscoveryClient())
+	printer := ui.New(&strings.Builder{})
+	err := runMintEnrollOrg(context.Background(), printer, "acme", "my-project", "us-central1", true)
+	require.NoError(t, err)
+}
+
+func TestRunMintEnrollOrg_NoRoleAppIDs(t *testing.T) {
+	withMintGCFClient(t, gcf.NewFakeGCFClient(
+		gcf.WithFakeFunctionInfo(&gcf.FunctionInfo{
+			URI:     "https://mint.example.com",
+			EnvVars: map[string]string{"ROLE_APP_IDS": `{"acme/coder":"100"}`},
+		}),
+	))
+	printer := ui.New(&strings.Builder{})
+	err := runMintEnrollOrg(context.Background(), printer, "acme", "my-project", "us-central1", true)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no role app IDs")
+}
+
+func TestRunMintEnrollOrg_PlaceholderOrgRejected(t *testing.T) {
+	printer := ui.New(&strings.Builder{})
+	err := runMintEnrollOrg(context.Background(), printer, gcf.PlaceholderOrg, "my-project", "us-central1", true)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "placeholder")
+}
+
+func TestRunMintEnrollOrg_Success(t *testing.T) {
+	withMintGCFClient(t, mintDiscoveryClient())
+	printer := ui.New(&strings.Builder{})
+	err := runMintEnrollOrg(context.Background(), printer, "acme", "my-project", "us-central1", false)
+	require.NoError(t, err)
+}
+
+func TestRunMintEnrollRepo_DryRun(t *testing.T) {
+	withMintGCFClient(t, mintDiscoveryClient())
+	printer := ui.New(&strings.Builder{})
+	err := runMintEnrollRepo(context.Background(), printer, "acme/widget", "my-project", "us-central1", true)
+	require.NoError(t, err)
+}
+
+func TestRunMintEnrollRepo_InvalidFormat(t *testing.T) {
+	printer := ui.New(&strings.Builder{})
+	err := runMintEnrollRepo(context.Background(), printer, "not-a-repo", "my-project", "us-central1", true)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "owner/repo")
+}
+
+func TestRunMintStatus_Healthy(t *testing.T) {
+	withMintGCFClient(t, mintDiscoveryClient())
+	out := &strings.Builder{}
+	printer := ui.New(out)
+	err := runMintStatus(context.Background(), printer, "my-project", "us-central1", "acme")
+	require.NoError(t, err)
+	assert.Contains(t, out.String(), "coder = 100")
+	assert.Contains(t, out.String(), "existing-org")
+}
+
+func TestRunMintStatus_NotInstalled(t *testing.T) {
+	withMintGCFClient(t, gcf.NewFakeGCFClient())
+	out := &strings.Builder{}
+	printer := ui.New(out)
+	err := runMintStatus(context.Background(), printer, "my-project", "us-central1", "")
+	require.NoError(t, err)
+	assert.Contains(t, out.String(), "not-installed")
+}
+
+func TestRunMintStatus_OrgNotEnrolled(t *testing.T) {
+	withMintGCFClient(t, mintDiscoveryClient())
+	out := &strings.Builder{}
+	printer := ui.New(out)
+	err := runMintStatus(context.Background(), printer, "my-project", "us-central1", "missing-org")
+	require.NoError(t, err)
+	assert.Contains(t, out.String(), "not in ALLOWED_ORGS")
+}
+
+func TestRunMintStatus_TemplateDivergence(t *testing.T) {
+	client := gcf.NewFakeGCFClient(
+		gcf.WithFakeFunctionInfo(&gcf.FunctionInfo{
+			URI: "https://mint.example.com",
+			EnvVars: map[string]string{
+				"ROLE_APP_IDS": `{"coder":"100"}`,
+				"ALLOWED_ORGS": "acme",
+			},
+		}),
+		gcf.WithFakeTrafficEnvVars(map[string]string{
+			"ROLE_APP_IDS": `{"coder":"100"}`,
+			"ALLOWED_ORGS": "acme",
+		}),
+		gcf.WithFakeRevisionInfo(&gcf.ServiceRevisionInfo{
+			TrafficRevisionShort:   "fullsend-mint-00001",
+			TemplateRevision:       "projects/p/locations/r/services/s/revisions/fullsend-mint-00002",
+			TemplateMatchesTraffic: false,
+		}),
+	)
+	withMintGCFClient(t, client)
+	out := &strings.Builder{}
+	printer := ui.New(out)
+	err := runMintStatus(context.Background(), printer, "my-project", "us-central1", "")
+	require.NoError(t, err)
+	assert.Contains(t, out.String(), "diverges")
+}
+
 // --- confirmUnenroll tests ---
 
 func TestConfirmUnenroll_Match(t *testing.T) {
