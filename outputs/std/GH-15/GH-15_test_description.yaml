@@ -13,12 +13,6 @@ document_metadata:
     file: "outputs/stp/GH-15/GH-15_test_plan.md"
     version: "v1"
     sections_covered: "Section III - Requirements-to-Tests Mapping"
-  related_prs:
-    - repo: "fullsend-ai/fullsend"
-      pr_number: 2296
-      url: "https://github.com/fullsend-ai/fullsend/pull/2296"
-      title: "Make EnsureProvider Idempotent via Delete-and-Recreate"
-      merged: false
   total_scenarios: 14
   unit_test_count: 12
   regression_count: 2
@@ -34,13 +28,11 @@ code_generation_config:
   package_name: "sandbox"
   imports:
     standard:
-      - "context"
       - "testing"
       - "os"
       - "os/exec"
-      - "fmt"
-      - "strings"
       - "path/filepath"
+      - "strings"
     test_framework:
       - path: "github.com/stretchr/testify/assert"
       - path: "github.com/stretchr/testify/require"
@@ -50,6 +42,97 @@ code_generation_config:
     function_prefix: "Test"
     subtest_style: "t.Run"
     assertion_style: "testify"
+  shared_helpers:
+    - name: "writeScript"
+      signature: "writeScript(t *testing.T, path string, content string)"
+      description: "Writes a shell script to the given path with executable permissions (0755)"
+      code_template: |
+        func writeScript(t *testing.T, path string, content string) {
+            t.Helper()
+            err := os.WriteFile(path, []byte(content), 0755)
+            require.NoError(t, err)
+        }
+    - name: "alreadyExistsScript"
+      type: "const"
+      description: "Fake openshell script: returns AlreadyExists on first 'provider create', succeeds on 'provider delete' and retry 'provider create'"
+      code_template: |
+        const alreadyExistsScript = `#!/bin/bash
+        STATE_FILE="/tmp/openshell_state_$$"
+        if [[ "$1" == "provider" && "$2" == "create" ]]; then
+            if [ ! -f "$STATE_FILE" ]; then
+                touch "$STATE_FILE"; echo "AlreadyExists" >&2; exit 1
+            fi; exit 0
+        elif [[ "$1" == "provider" && "$2" == "delete" ]]; then
+            exit 0
+        fi`
+    - name: "deleteFailsScript"
+      type: "const"
+      description: "Fake openshell script: returns AlreadyExists on create, fails on delete"
+      code_template: |
+        const deleteFailsScript = `#!/bin/bash
+        if [[ "$1" == "provider" && "$2" == "create" ]]; then
+            echo "AlreadyExists" >&2; exit 1
+        elif [[ "$1" == "provider" && "$2" == "delete" ]]; then
+            echo "delete failed: internal error" >&2; exit 1
+        fi`
+    - name: "retryCreateFailsScript"
+      type: "const"
+      description: "Fake openshell script: AlreadyExists on create, delete succeeds, retry create fails"
+      code_template: |
+        const retryCreateFailsScript = `#!/bin/bash
+        STATE_FILE="/tmp/openshell_state_$$"
+        if [[ "$1" == "provider" && "$2" == "create" ]]; then
+            if [ ! -f "$STATE_FILE" ]; then
+                touch "$STATE_FILE"; echo "AlreadyExists" >&2; exit 1
+            fi; echo "retry create failed" >&2; exit 1
+        elif [[ "$1" == "provider" && "$2" == "delete" ]]; then
+            exit 0
+        fi`
+    - name: "captureArgsScript"
+      type: "const"
+      description: "Fake openshell script: AlreadyExists on first create, captures args on retry create"
+      code_template: |
+        const captureArgsScript = `#!/bin/bash
+        STATE_FILE="/tmp/openshell_state_$$"
+        ARGS_FILE="/tmp/openshell_args_$$"
+        if [[ "$1" == "provider" && "$2" == "create" ]]; then
+            if [ ! -f "$STATE_FILE" ]; then
+                touch "$STATE_FILE"; echo "AlreadyExists" >&2; exit 1
+            fi; echo "$@" > "$ARGS_FILE"; exit 0
+        elif [[ "$1" == "provider" && "$2" == "delete" ]]; then
+            exit 0
+        fi`
+    - name: "genericErrorScript"
+      type: "const"
+      description: "Fake openshell script: fails with a generic error (not AlreadyExists)"
+      code_template: |
+        const genericErrorScript = `#!/bin/bash
+        if [[ "$1" == "provider" && "$2" == "create" ]]; then
+            echo "connection refused" >&2; exit 1
+        fi`
+    - name: "specificErrorScript"
+      type: "const"
+      description: "Fake openshell script: fails with a specific known error message"
+      code_template: |
+        const specificErrorScript = `#!/bin/bash
+        if [[ "$1" == "provider" && "$2" == "create" ]]; then
+            echo "specific error from openshell" >&2; exit 1
+        fi`
+    - name: "deleteFailsWithSecretScript"
+      type: "const"
+      description: "Fake openshell script: AlreadyExists on create, delete fails echoing credentials"
+    - name: "retryCreateFailsWithSecretScript"
+      type: "const"
+      description: "Fake openshell script: AlreadyExists, delete OK, retry fails echoing credentials"
+    - name: "genericErrorWithSecretScript"
+      type: "const"
+      description: "Fake openshell script: generic error that echoes credentials in output"
+    - name: "nonIdempotentErrorScript"
+      type: "const"
+      description: "Fake openshell script: fails with non-AlreadyExists error for regression tests"
+    - name: "allProvidersAlreadyExistScript"
+      type: "const"
+      description: "Fake openshell script: AlreadyExists for all creates, succeeds on deletes/retries"
 
 common_preconditions:
   infrastructure:
@@ -117,6 +200,24 @@ scenarios:
       type: "single"
       function_name: "TestEnsureProvider_AlreadyExists_RecreatesProvider"
       subtests: []
+
+    patterns:
+      primary: "cli-idempotency"
+      helpers_required:
+        - "writeScript"
+        - "testify-assert"
+    code_structure:
+      type: "flat"
+      framework_hint: "TestFunction"
+      subtest_style: "none"
+    test_data:
+      resources:
+        - name: "provider"
+          type: "ProviderDefinition"
+          description: "Provider definition struct with name, type, and config fields"
+        - name: "credentials"
+          type: "Credentials"
+          description: "Credentials struct containing auth token and optional password"
 
     test_steps:
       setup:
@@ -195,6 +296,24 @@ scenarios:
       function_name: "TestEnsureProvider_AlreadyExists_DeleteFails"
       subtests: []
 
+    patterns:
+      primary: "cli-idempotency"
+      helpers_required:
+        - "writeScript"
+        - "testify-assert"
+    code_structure:
+      type: "flat"
+      framework_hint: "TestFunction"
+      subtest_style: "none"
+    test_data:
+      resources:
+        - name: "provider"
+          type: "ProviderDefinition"
+          description: "Provider definition struct with name, type, and config fields"
+        - name: "credentials"
+          type: "Credentials"
+          description: "Credentials struct containing auth token and optional password"
+
     test_steps:
       setup:
         - step_id: "SETUP-01"
@@ -270,6 +389,24 @@ scenarios:
       type: "single"
       function_name: "TestEnsureProvider_AlreadyExists_RetryCreateFails"
       subtests: []
+
+    patterns:
+      primary: "cli-idempotency"
+      helpers_required:
+        - "writeScript"
+        - "testify-assert"
+    code_structure:
+      type: "flat"
+      framework_hint: "TestFunction"
+      subtest_style: "none"
+    test_data:
+      resources:
+        - name: "provider"
+          type: "ProviderDefinition"
+          description: "Provider definition struct with name, type, and config fields"
+        - name: "credentials"
+          type: "Credentials"
+          description: "Credentials struct containing auth token and optional password"
 
     test_steps:
       setup:
@@ -353,6 +490,24 @@ scenarios:
       function_name: "TestEnsureProvider_AlreadyExists_UsesFreshCredentials"
       subtests: []
 
+    patterns:
+      primary: "cli-idempotency"
+      helpers_required:
+        - "writeScript"
+        - "testify-assert"
+    code_structure:
+      type: "flat"
+      framework_hint: "TestFunction"
+      subtest_style: "none"
+    test_data:
+      resources:
+        - name: "provider"
+          type: "ProviderDefinition"
+          description: "Provider definition struct with name, type, and config fields"
+        - name: "freshCredentials"
+          type: "Credentials"
+          description: "Fresh credentials with current auth token for recreate verification"
+
     test_steps:
       setup:
         - step_id: "SETUP-01"
@@ -392,8 +547,8 @@ scenarios:
   # NON-ALREADYEXISTS ERROR PROPAGATION (P1)
   # ============================================================
 
-  - scenario_id: "006"
-    test_id: "TS-GH-15-006"
+  - scenario_id: "005"
+    test_id: "TS-GH-15-005"
     tier: "Unit Tests"
     priority: "P1"
     mvp: false
@@ -433,6 +588,24 @@ scenarios:
       function_name: "TestEnsureProvider_NonAlreadyExistsError_NoDelete"
       subtests: []
 
+    patterns:
+      primary: "error-propagation"
+      helpers_required:
+        - "writeScript"
+        - "testify-assert"
+    code_structure:
+      type: "flat"
+      framework_hint: "TestFunction"
+      subtest_style: "none"
+    test_data:
+      resources:
+        - name: "provider"
+          type: "ProviderDefinition"
+          description: "Provider definition struct with name, type, and config fields"
+        - name: "credentials"
+          type: "Credentials"
+          description: "Credentials struct containing auth token"
+
     test_steps:
       setup:
         - step_id: "SETUP-01"
@@ -462,12 +635,16 @@ scenarios:
           require.Error(t, err)
       - assertion_id: "ASSERT-02"
         priority: "P1"
-        description: "Delete was not called (error does not contain delete-related messages)"
+        description: "Delete was not called (verified via absence of delete log file)"
         condition: "openshell provider delete was not invoked"
         failure_impact: "Existing provider incorrectly deleted on unrelated errors"
+        code_template: |
+          deleteLogFile := filepath.Join(tmpDir, "delete_called")
+          _, statErr := os.Stat(deleteLogFile)
+          assert.True(t, os.IsNotExist(statErr), "provider delete should not have been called")
 
-  - scenario_id: "007"
-    test_id: "TS-GH-15-007"
+  - scenario_id: "006"
+    test_id: "TS-GH-15-006"
     tier: "Unit Tests"
     priority: "P1"
     mvp: false
@@ -506,6 +683,24 @@ scenarios:
       function_name: "TestEnsureProvider_NonAlreadyExistsError_PreservesMessage"
       subtests: []
 
+    patterns:
+      primary: "error-propagation"
+      helpers_required:
+        - "writeScript"
+        - "testify-assert"
+    code_structure:
+      type: "flat"
+      framework_hint: "TestFunction"
+      subtest_style: "none"
+    test_data:
+      resources:
+        - name: "provider"
+          type: "ProviderDefinition"
+          description: "Provider definition struct with name, type, and config fields"
+        - name: "credentials"
+          type: "Credentials"
+          description: "Credentials struct containing auth token"
+
     test_steps:
       setup:
         - step_id: "SETUP-01"
@@ -538,8 +733,8 @@ scenarios:
   # CREDENTIAL REDACTION IN ERROR PATHS (P1)
   # ============================================================
 
-  - scenario_id: "008"
-    test_id: "TS-GH-15-008"
+  - scenario_id: "007"
+    test_id: "TS-GH-15-007"
     tier: "Unit Tests"
     priority: "P1"
     mvp: false
@@ -583,6 +778,28 @@ scenarios:
       function_name: "TestEnsureProvider_DeleteFails_RedactsCredentials"
       subtests: []
 
+    patterns:
+      primary: "security-redaction"
+      helpers_required:
+        - "writeScript"
+        - "testify-assert"
+    code_structure:
+      type: "flat"
+      framework_hint: "TestFunction"
+      subtest_style: "none"
+    test_data:
+      resources:
+        - name: "provider"
+          type: "ProviderDefinition"
+          description: "Provider definition struct with name, type, and config fields"
+        - name: "credentialsWithSecret"
+          type: "Credentials"
+          description: "Credentials struct containing a known secret token value for redaction verification"
+        - name: "secretToken"
+          type: "string"
+          value: "super-secret-token-12345"
+          description: "Known secret value used to verify redaction"
+
     test_steps:
       setup:
         - step_id: "SETUP-01"
@@ -619,8 +836,8 @@ scenarios:
         code_template: |
           assert.Contains(t, err.Error(), "***")
 
-  - scenario_id: "009"
-    test_id: "TS-GH-15-009"
+  - scenario_id: "008"
+    test_id: "TS-GH-15-008"
     tier: "Unit Tests"
     priority: "P1"
     mvp: false
@@ -663,6 +880,28 @@ scenarios:
       function_name: "TestEnsureProvider_RetryCreateFails_RedactsCredentials"
       subtests: []
 
+    patterns:
+      primary: "security-redaction"
+      helpers_required:
+        - "writeScript"
+        - "testify-assert"
+    code_structure:
+      type: "flat"
+      framework_hint: "TestFunction"
+      subtest_style: "none"
+    test_data:
+      resources:
+        - name: "provider"
+          type: "ProviderDefinition"
+          description: "Provider definition struct with name, type, and config fields"
+        - name: "credentialsWithSecret"
+          type: "Credentials"
+          description: "Credentials struct containing a known secret token value for redaction verification"
+        - name: "secretToken"
+          type: "string"
+          value: "super-secret-token-12345"
+          description: "Known secret value used to verify redaction"
+
     test_steps:
       setup:
         - step_id: "SETUP-01"
@@ -703,8 +942,8 @@ scenarios:
   # redactSecrets FUNCTION TESTS (P0)
   # ============================================================
 
-  - scenario_id: "010"
-    test_id: "TS-GH-15-010"
+  - scenario_id: "009"
+    test_id: "TS-GH-15-009"
     tier: "Unit Tests"
     priority: "P0"
     mvp: true
@@ -749,6 +988,23 @@ scenarios:
       function_name: "TestRedactSecrets_SingleSecret"
       subtests: []
 
+    patterns:
+      primary: "unit-function"
+      helpers_required:
+        - "testify-assert"
+    code_structure:
+      type: "flat"
+      framework_hint: "TestFunction"
+      subtest_style: "none"
+    test_data:
+      resources:
+        - name: "input"
+          type: "string"
+          description: "Input string containing embedded secret values"
+        - name: "secrets"
+          type: "[]string"
+          description: "List of secret values to redact from the input string"
+
     test_steps:
       setup:
         - step_id: "SETUP-01"
@@ -788,8 +1044,8 @@ scenarios:
         code_template: |
           assert.Contains(t, result, "error: authentication failed with token")
 
-  - scenario_id: "011"
-    test_id: "TS-GH-15-011"
+  - scenario_id: "010"
+    test_id: "TS-GH-15-010"
     tier: "Unit Tests"
     priority: "P0"
     mvp: true
@@ -832,6 +1088,23 @@ scenarios:
       function_name: "TestRedactSecrets_MultipleSecrets"
       subtests: []
 
+    patterns:
+      primary: "unit-function"
+      helpers_required:
+        - "testify-assert"
+    code_structure:
+      type: "flat"
+      framework_hint: "TestFunction"
+      subtest_style: "none"
+    test_data:
+      resources:
+        - name: "input"
+          type: "string"
+          description: "Input string containing embedded secret values"
+        - name: "secrets"
+          type: "[]string"
+          description: "List of secret values to redact from the input string"
+
     test_steps:
       setup:
         - step_id: "SETUP-01"
@@ -864,8 +1137,8 @@ scenarios:
         code_template: |
           assert.NotContains(t, result, "secret-pass-2")
 
-  - scenario_id: "012"
-    test_id: "TS-GH-15-012"
+  - scenario_id: "011"
+    test_id: "TS-GH-15-011"
     tier: "Unit Tests"
     priority: "P2"
     mvp: false
@@ -907,6 +1180,23 @@ scenarios:
       function_name: "TestRedactSecrets_EmptySecrets"
       subtests: []
 
+    patterns:
+      primary: "unit-function"
+      helpers_required:
+        - "testify-assert"
+    code_structure:
+      type: "flat"
+      framework_hint: "TestFunction"
+      subtest_style: "none"
+    test_data:
+      resources:
+        - name: "input"
+          type: "string"
+          description: "Input string containing embedded secret values"
+        - name: "secrets"
+          type: "[]string"
+          description: "List of secret values to redact from the input string"
+
     test_steps:
       setup:
         - step_id: "SETUP-01"
@@ -932,8 +1222,8 @@ scenarios:
         code_template: |
           assert.Equal(t, input, result)
 
-  - scenario_id: "015"
-    test_id: "TS-GH-15-015"
+  - scenario_id: "012"
+    test_id: "TS-GH-15-012"
     tier: "Unit Tests"
     priority: "P1"
     mvp: false
@@ -975,6 +1265,28 @@ scenarios:
       type: "single"
       function_name: "TestEnsureProvider_NonAlreadyExists_RedactsCredentials"
       subtests: []
+
+    patterns:
+      primary: "security-redaction"
+      helpers_required:
+        - "writeScript"
+        - "testify-assert"
+    code_structure:
+      type: "flat"
+      framework_hint: "TestFunction"
+      subtest_style: "none"
+    test_data:
+      resources:
+        - name: "provider"
+          type: "ProviderDefinition"
+          description: "Provider definition struct with name, type, and config fields"
+        - name: "credentialsWithSecret"
+          type: "Credentials"
+          description: "Credentials struct containing a known secret token value for redaction verification"
+        - name: "secretToken"
+          type: "string"
+          value: "super-secret-token-12345"
+          description: "Known secret value used to verify redaction"
 
     test_steps:
       setup:
@@ -1052,6 +1364,25 @@ scenarios:
       function_name: "TestRunAgent_PreExistingProviders_Succeeds"
       subtests: []
 
+    patterns:
+      primary: "regression-integration"
+      helpers_required:
+        - "writeScript"
+        - "testify-assert"
+        - "buildTestAgentConfig"
+    code_structure:
+      type: "flat"
+      framework_hint: "TestFunction"
+      subtest_style: "none"
+    test_data:
+      resources:
+        - name: "agentConfig"
+          type: "AgentConfig"
+          description: "Agent configuration with provider definitions for regression testing"
+        - name: "multipleProviders"
+          type: "[]ProviderDefinition"
+          description: "Multiple provider definitions to test bulk idempotent creation"
+
     test_steps:
       setup:
         - step_id: "SETUP-01"
@@ -1124,6 +1455,28 @@ scenarios:
       type: "single"
       function_name: "TestRunAgent_NonIdempotentError_FailsFast"
       subtests: []
+
+    patterns:
+      primary: "regression-integration"
+      helpers_required:
+        - "writeScript"
+        - "testify-assert"
+        - "buildTestAgentConfig"
+    code_structure:
+      type: "flat"
+      framework_hint: "TestFunction"
+      subtest_style: "none"
+    test_data:
+      resources:
+        - name: "agentConfig"
+          type: "AgentConfig"
+          description: "Agent configuration with provider definitions for regression testing"
+        - name: "singleProvider"
+          type: "ProviderDefinition"
+          description: "Single provider definition for error propagation testing"
+        - name: "providerName"
+          type: "string"
+          description: "Expected provider name to verify in error message"
 
     test_steps:
       setup:

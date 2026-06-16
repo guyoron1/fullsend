@@ -33,7 +33,7 @@ Expected:
     - Non-secret parts of the string are preserved unchanged
 */
 func TestRedactSecrets_SingleSecret(t *testing.T) {
-	t.Skip("Phase 1: Design only - awaiting implementation [test_id:TS-GH-15-010]")
+	t.Skip("Phase 1: Design only - awaiting implementation [test_id:TS-GH-15-009]")
 }
 
 /*
@@ -50,7 +50,7 @@ Expected:
     - Both replaced with '***'
 */
 func TestRedactSecrets_MultipleSecrets(t *testing.T) {
-	t.Skip("Phase 1: Design only - awaiting implementation [test_id:TS-GH-15-011]")
+	t.Skip("Phase 1: Design only - awaiting implementation [test_id:TS-GH-15-010]")
 }
 
 /*
@@ -66,5 +66,5 @@ Expected:
     - No panic or error occurs
 */
 func TestRedactSecrets_EmptySecrets(t *testing.T) {
-	t.Skip("Phase 1: Design only - awaiting implementation [test_id:TS-GH-15-012]")
+	t.Skip("Phase 1: Design only - awaiting implementation [test_id:TS-GH-15-011]")
 }

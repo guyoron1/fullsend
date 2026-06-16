@@ -31,8 +31,8 @@ Steps:
 
 Expected:
     - EnsureProvider returns nil error
-    - openshell provider delete is called with the correct provider name
-    - openshell provider create is retried after successful delete
+    - openshell provider delete is called with the correct provider name (verified via fake openshell's recorded invocation log)
+    - openshell provider create is retried after successful delete (verified via state file transition)
 */
 func TestEnsureProvider_AlreadyExists_RecreatesProvider(t *testing.T) {
 	t.Skip("Phase 1: Design only - awaiting implementation [test_id:TS-GH-15-001]")
@@ -103,10 +103,10 @@ Steps:
 
 Expected:
     - EnsureProvider returns the original error
-    - openshell provider delete is NOT called
+    - openshell provider delete is NOT called (verified via absence of delete log file in tmpDir)
 */
 func TestEnsureProvider_NonAlreadyExistsError_NoDelete(t *testing.T) {
-	t.Skip("Phase 1: Design only - awaiting implementation [test_id:TS-GH-15-006]")
+	t.Skip("Phase 1: Design only - awaiting implementation [test_id:TS-GH-15-005]")
 }
 
 /*
@@ -123,7 +123,7 @@ Expected:
     - Error context includes the provider name
 */
 func TestEnsureProvider_NonAlreadyExistsError_PreservesMessage(t *testing.T) {
-	t.Skip("Phase 1: Design only - awaiting implementation [test_id:TS-GH-15-007]")
+	t.Skip("Phase 1: Design only - awaiting implementation [test_id:TS-GH-15-006]")
 }
 
 /*
@@ -142,7 +142,7 @@ Expected:
     - Error still provides actionable context (provider name, failure type)
 */
 func TestEnsureProvider_DeleteFails_RedactsCredentials(t *testing.T) {
-	t.Skip("Phase 1: Design only - awaiting implementation [test_id:TS-GH-15-008]")
+	t.Skip("Phase 1: Design only - awaiting implementation [test_id:TS-GH-15-007]")
 }
 
 /*
@@ -161,7 +161,7 @@ Expected:
     - Error contains '***' redaction marker
 */
 func TestEnsureProvider_RetryCreateFails_RedactsCredentials(t *testing.T) {
-	t.Skip("Phase 1: Design only - awaiting implementation [test_id:TS-GH-15-009]")
+	t.Skip("Phase 1: Design only - awaiting implementation [test_id:TS-GH-15-008]")
 }
 
 /*
@@ -178,5 +178,5 @@ Expected:
     - Error does not contain the raw secret token
 */
 func TestEnsureProvider_NonAlreadyExists_RedactsCredentials(t *testing.T) {
-	t.Skip("Phase 1: Design only - awaiting implementation [test_id:TS-GH-15-015]")
+	t.Skip("Phase 1: Design only - awaiting implementation [test_id:TS-GH-15-012]")
 }

@@ -12,7 +12,7 @@
 
 ---
 
-## Verdict: APPROVED_WITH_FINDINGS
+## Verdict: APPROVED
 
 ## Summary
 
@@ -20,11 +20,11 @@
 |:-------|:------|
 | Dimensions reviewed | 7/7 |
 | Critical findings | 0 |
-| Major findings | 6 |
-| Minor findings | 5 |
-| Actionable findings | 10 |
+| Major findings | 0 |
+| Minor findings | 2 |
+| Actionable findings | 2 |
 | Confidence | MEDIUM |
-| Weighted score | 82 |
+| Weighted score | 95 |
 
 ## Traceability Summary
 
@@ -46,8 +46,8 @@
 #### 1a. Forward Traceability (STP -> STD)
 
 All 14 STP Section III scenarios have corresponding STD scenarios. Every `requirement_id`
-in the STD matches `GH-15` which is present in the STP. Test IDs match 1:1 between
-STP and STD. Requirement summaries align with high keyword overlap across all scenarios.
+in the STD matches `GH-15` which is present in the STP. Scenario titles and content align
+with high keyword overlap across all scenarios.
 
 **Result: PASS** -- Full bidirectional traceability confirmed.
 
@@ -86,9 +86,19 @@ All 14 STD scenarios trace back to STP Section III rows. No orphan scenarios det
   - **Remediation:** Consider mapping to standard tier names (`"Tier 1"` for Unit Tests, `"Tier 2"` for Regression) or documenting the project's custom tier naming in the project config.
   - **Actionable:** true
 
+#### 1f. STP-STD Test ID Divergence
+
+- **Finding D1-1f-001:**
+  - **Severity:** MINOR
+  - **Dimension:** STP-STD Traceability
+  - **Description:** STD scenarios were renumbered to eliminate a gap at 005 (original IDs: 006-012, 015 became 005-012). The STP Section III still references the original test IDs (TS-GH-15-006 through TS-GH-15-015). While traceability by scenario title and content is intact, the STP and STD now use different test IDs for 10 of 14 scenarios.
+  - **Evidence:** STP references TS-GH-15-006 but STD has TS-GH-15-005 for "Verify non-AlreadyExists error returned without delete".
+  - **Remediation:** Update the STP Section III to use the new sequential test IDs (001-014) to maintain perfect ID alignment. This is a documentation update, not a structural issue.
+  - **Actionable:** true
+
 ---
 
-### Dimension 2: STD YAML Structure (Weight: 20%) -- Score: 70/100
+### Dimension 2: STD YAML Structure (Weight: 20%) -- Score: 98/100
 
 #### 2a. Document-Level Structure
 
@@ -100,14 +110,15 @@ All 14 STD scenarios trace back to STP Section III rows. No orphan scenarios det
 | `code_generation_config.std_version` = "2.1-enhanced" | PASS |
 | `common_preconditions` exists | PASS |
 | `scenarios` array non-empty | PASS |
+| `shared_helpers` section exists | PASS |
 
 #### 2b. Per-Scenario Required Fields
 
 | Field | Present in all 14? | Notes |
 |:------|:--------------------|:------|
-| `scenario_id` | YES | Non-sequential (gaps at 005, see minor finding) |
+| `scenario_id` | YES | Sequential 001-014, no gaps |
 | `test_id` | YES | All match `TS-GH-15-{NUM:03d}` format |
-| `tier` | YES | Uses custom names (see D1-1e-001) |
+| `tier` | YES | Uses project-specific names (see D1-1e-001) |
 | `priority` | YES | P0/P1/P2 |
 | `requirement_id` | YES | All = "GH-15" |
 | `test_objective` | YES | title, what, why, acceptance_criteria present |
@@ -115,65 +126,43 @@ All 14 STD scenarios trace back to STP Section III rows. No orphan scenarios det
 | `assertions` | YES | 1-3 assertions per scenario |
 | `variables` | YES | closure_scope present |
 | `test_structure` | YES | type, function_name present |
-| **`patterns`** | **NO** | **Missing from all 14 scenarios** |
-| **`code_structure`** | **NO** | **Missing from all 14 scenarios** |
-| **`test_data`** | **NO** | **Missing from all 14 scenarios** |
+| `patterns` | YES | primary and helpers_required present |
+| `code_structure` | YES | type, framework_hint, subtest_style present |
+| `test_data` | YES | resources array present |
 
-- **Finding D2-2b-001:**
-  - **Severity:** MAJOR
-  - **Dimension:** STD YAML Structure
-  - **Description:** The `patterns` field is missing from all 14 scenarios. The v2.1-enhanced schema requires a `patterns` section with primary pattern and helpers for each scenario. Without this, pattern-aware code generation cannot select the correct test template.
-  - **Evidence:** Zero scenarios contain a `patterns` key.
-  - **Remediation:** Add a `patterns` block to each scenario with at least `primary: "<pattern_id>"` and `helpers_required: []`. For this project (Go testing + testify, unit tests with fake CLI binaries), a suitable primary pattern would be `"cli-integration"` or `"unit-mock"`.
-  - **Actionable:** true
-
-- **Finding D2-2b-002:**
-  - **Severity:** MAJOR
-  - **Dimension:** STD YAML Structure
-  - **Description:** The `code_structure` field is missing from all 14 scenarios. This field provides the Ginkgo/testing framework structure hint for code generation (e.g., `"TestFunction -> t.Run -> assert"`).
-  - **Evidence:** Zero scenarios contain a `code_structure` key.
-  - **Remediation:** Add `code_structure` to each scenario. For Go `testing` framework with testify, the pattern is: `type: "flat"`, `framework_hint: "TestFunction"`, `subtest_style: "t.Run"`.
-  - **Actionable:** true
-
-- **Finding D2-2b-003:**
-  - **Severity:** MAJOR
-  - **Dimension:** STD YAML Structure
-  - **Description:** The `test_data` field is missing from all 14 scenarios. This field defines resource definitions and/or API endpoints needed for the test. For EnsureProvider tests, this would include provider definition structs and credential objects.
-  - **Evidence:** Zero scenarios contain a `test_data` key.
-  - **Remediation:** Add `test_data` to each scenario specifying the provider definition struct fields, credential objects, and fake openshell script content as test data resources.
-  - **Actionable:** true
+**Result: PASS** -- All required fields present in all scenarios.
 
 #### 2b.2. Scenario ID Sequencing
 
-- **Finding D2-2b-004:**
-  - **Severity:** MINOR
-  - **Dimension:** STD YAML Structure
-  - **Description:** Scenario IDs have a gap: IDs 005 is missing. The sequence goes 001-004, then jumps to 006. While not invalid, non-sequential IDs suggest a scenario was removed without renumbering.
-  - **Evidence:** Scenario IDs: `[001, 002, 003, 004, 006, 007, 008, 009, 010, 011, 012, 013, 014, 015]`
-  - **Remediation:** Renumber scenarios to be sequential (001-014) or document why scenario 005 was intentionally excluded.
-  - **Actionable:** true
+Scenario IDs are sequential from 001 to 014 with no gaps.
+
+**Result: PASS**
 
 ---
 
-### Dimension 3: Pattern Matching Correctness (Weight: 10%) -- Score: 50/100
+### Dimension 3: Pattern Matching Correctness (Weight: 10%) -- Score: 95/100
 
-Since the `patterns` field is entirely missing from all scenarios (see D2-2b-001),
-this dimension cannot be fully evaluated. The following assessment is based on
-general heuristics applied to test objectives.
+| Scenario | Primary Pattern | Helpers | Status |
+|:---------|:----------------|:--------|:-------|
+| 001-004 | cli-idempotency | writeScript, testify-assert | PASS |
+| 005-006 | error-propagation | writeScript, testify-assert | PASS |
+| 007-008 | security-redaction | writeScript, testify-assert | PASS |
+| 009-011 | unit-function | testify-assert | PASS |
+| 012 | security-redaction | writeScript, testify-assert | PASS |
+| 013-014 | regression-integration | writeScript, testify-assert, buildTestAgentConfig | PASS |
 
-| Scenario | Inferred Pattern | Expected Helpers | Status |
-|:---------|:-----------------|:-----------------|:-------|
-| 001-004 | cli-integration / idempotency | testify, os/exec | N/A (no patterns field) |
-| 006-007 | error-propagation | testify | N/A |
-| 008-009, 015 | security-redaction | testify | N/A |
-| 010-012 | unit-function | testify | N/A |
-| 013-014 | regression-integration | testify | N/A |
+Pattern assignments are domain-appropriate:
+- `cli-idempotency` correctly maps to the AlreadyExists detection and delete-recreate tests
+- `error-propagation` correctly maps to non-AlreadyExists error handling tests
+- `security-redaction` correctly maps to credential redaction verification tests
+- `unit-function` correctly maps to pure function tests (redactSecrets)
+- `regression-integration` correctly maps to the agent run workflow tests
 
-**No per-scenario pattern findings** since the field is absent (already captured as D2-2b-001).
+**Result: PASS**
 
 ---
 
-### Dimension 4: Test Step Quality (Weight: 15%) -- Score: 90/100
+### Dimension 4: Test Step Quality (Weight: 15%) -- Score: 95/100
 
 | Scenario | Setup | Execution | Cleanup | Assertions | Status |
 |:---------|:------|:----------|:--------|:-----------|:-------|
@@ -181,28 +170,28 @@ general heuristics applied to test objectives.
 | 002 | 1 | 1 | 1 | 2 | PASS |
 | 003 | 1 | 1 | 1 | 2 | PASS |
 | 004 | 1 | 1 | 1 | 2 | PASS |
-| 006 | 1 | 1 | 1 | 2 | PASS |
-| 007 | 1 | 1 | 1 | 1 | PASS |
+| 005 | 1 | 1 | 1 | 2 | PASS |
+| 006 | 1 | 1 | 1 | 1 | PASS |
+| 007 | 1 | 1 | 1 | 2 | PASS |
 | 008 | 1 | 1 | 1 | 2 | PASS |
-| 009 | 1 | 1 | 1 | 2 | PASS |
-| 010 | 1 | 1 | 0 | 3 | PASS* |
-| 011 | 1 | 1 | 0 | 2 | PASS* |
-| 012 | 1 | 1 | 0 | 1 | PASS* |
-| 015 | 1 | 1 | 1 | 1 | PASS |
+| 009 | 1 | 1 | 0 | 3 | PASS* |
+| 010 | 1 | 1 | 0 | 2 | PASS* |
+| 011 | 1 | 1 | 0 | 1 | PASS* |
+| 012 | 1 | 1 | 1 | 1 | PASS |
 | 013 | 2 | 1 | 1 | 1 | PASS |
 | 014 | 2 | 1 | 1 | 2 | PASS |
 
-*Scenarios 010-012 (redactSecrets tests) have no cleanup, which is acceptable since they are pure function tests with no resource allocation.*
+*Scenarios 009-011 (redactSecrets tests) have no cleanup, which is acceptable since they are pure function tests with no resource allocation.*
 
 #### 4a. Step Completeness
 
-All scenarios have setup and test_execution steps. Cleanup is present where needed (filesystem resources). Pure function tests (010-012) correctly omit cleanup.
+All scenarios have setup and test_execution steps. Cleanup is present where needed (filesystem resources). Pure function tests (009-011) correctly omit cleanup.
 
 **Result: PASS**
 
 #### 4b. Step Quality
 
-Test steps are specific and actionable. Actions describe concrete operations ("Create fake openshell script that returns AlreadyExists on first create", "Call EnsureProvider with a provider definition and credentials"). Code templates provide implementation guidance.
+Test steps are specific and actionable. Actions describe concrete operations. Code templates provide implementation guidance. Scenario 005's ASSERT-02 now has a concrete code_template using `os.Stat` to verify delete was not called via log file absence.
 
 **Result: PASS**
 
@@ -214,27 +203,19 @@ All scenarios follow a coherent setup -> execute -> assert flow. Setup creates t
 
 #### 4f. Assertion Quality
 
-- **Finding D4-4f-001:**
-  - **Severity:** MINOR
-  - **Dimension:** Test Step Quality
-  - **Description:** Scenario 006 (TestEnsureProvider_NonAlreadyExistsError_NoDelete) has assertion ASSERT-02 with no `code_template`. The assertion says "Delete was not called" but provides no concrete verification mechanism. This makes code generation incomplete for this assertion.
-  - **Evidence:** `ASSERT-02` in scenario 006: `description: "Delete was not called"`, `condition: "openshell provider delete was not invoked"` -- no `code_template` provided.
-  - **Remediation:** Add a `code_template` that verifies delete was not invoked. Options: check a log file written by the fake openshell, or use a counter file that the fake script increments on delete calls.
-  - **Actionable:** true
+All assertions have specific descriptions, measurable conditions, priorities, and code templates. No generic assertions detected.
+
+**Result: PASS**
 
 ---
 
-### Dimension 4.5: STD Content Policy (Weight: 10%) -- Score: 75/100
+### Dimension 4.5: STD Content Policy (Weight: 10%) -- Score: 100/100
 
 #### 4.5a. Banned Content
 
-- **Finding D45-4a-001:**
-  - **Severity:** MAJOR
-  - **Dimension:** STD Content Policy
-  - **Description:** `document_metadata.related_prs` contains a PR URL reference (`https://github.com/fullsend-ai/fullsend/pull/2296`). PR URLs are implementation artifacts that belong in the STP (which references them in Section I), not in the STD. The STD describes *what* to test, not *what code changed*.
-  - **Evidence:** `related_prs: [{repo: "fullsend-ai/fullsend", pr_number: 2296, url: "https://github.com/fullsend-ai/fullsend/pull/2296", ...}]`
-  - **Remediation:** Remove the `related_prs` section from `document_metadata`. PR traceability is already maintained in the STP metadata.
-  - **Actionable:** true
+No `related_prs` section in `document_metadata`. No PR URLs, branch names, commit SHAs, or developer names found in STD YAML or stub files.
+
+**Result: PASS**
 
 #### 4.5b. No Implementation Details in Stubs
 
@@ -250,7 +231,7 @@ No infrastructure provisioning, cluster setup, or feature gate enablement found 
 
 ---
 
-### Dimension 5: PSE Docstring Quality (Weight: 10%) -- Score: 88/100
+### Dimension 5: PSE Docstring Quality (Weight: 10%) -- Score: 95/100
 
 #### Go Stubs
 
@@ -265,8 +246,9 @@ No infrastructure provisioning, cluster setup, or feature gate enablement found 
 | Steps actionable | PASS |
 | Expected measurable | PASS |
 | [NEGATIVE] indicator used | PASS (used on error-path tests) |
+| Verification methods in Expected | PASS (scenario 001 includes verification via invocation log and state file) |
 
-PSE quality is good. Preconditions describe concrete fake openshell behaviors. Steps are single-action ("Call EnsureProvider with..."). Expected results specify concrete assertions.
+PSE quality is strong. Preconditions describe concrete fake openshell behaviors. Steps are single-action. Expected results specify concrete assertions with verification methods where applicable.
 
 **File: `redact_secrets_stubs_test.go`** (3 test functions)
 
@@ -291,21 +273,11 @@ PSE quality is good. Preconditions describe concrete fake openshell behaviors. S
 | Expected measurable | PASS |
 | [NEGATIVE] indicator used | PASS (on FailsFast test) |
 
-#### 5c. PSE Section Classification
-
-- **Finding D5-5c-001:**
-  - **Severity:** MINOR
-  - **Dimension:** PSE Docstring Quality
-  - **Description:** In `ensure_provider_stubs_test.go`, the PSE for `TestEnsureProvider_AlreadyExists_RecreatesProvider` lists "openshell provider delete is called with the correct provider name" and "openshell provider create is retried after successful delete" under `Expected:`. These are behavioral observations, which is acceptable, but they lack a verification method -- HOW will the test confirm delete was called with the correct name?
-  - **Evidence:** `Expected: - openshell provider delete is called with the correct provider name`
-  - **Remediation:** Enhance Expected entries with verification methods, e.g., "openshell provider delete is called with the correct provider name (verified via captured args log file)" or "verified via fake openshell's recorded invocations".
-  - **Actionable:** true
-
 #### 5d. Stub Completeness
 
 All 14 STD scenarios are covered by the 3 stub files:
-- `ensure_provider_stubs_test.go`: 9 functions (scenarios 001-004, 006-009, 015)
-- `redact_secrets_stubs_test.go`: 3 functions (scenarios 010-012)
+- `ensure_provider_stubs_test.go`: 9 functions (scenarios 001-008, 012)
+- `redact_secrets_stubs_test.go`: 3 functions (scenarios 009-011)
 - `agent_run_regression_stubs_test.go`: 2 functions (scenarios 013-014)
 
 Total: 14 stub functions for 14 scenarios. **Full coverage.**
@@ -314,42 +286,42 @@ Total: 14 stub functions for 14 scenarios. **Full coverage.**
 
 ---
 
-### Dimension 6: Code Generation Readiness (Weight: 5%) -- Score: 80/100
+### Dimension 6: Code Generation Readiness (Weight: 5%) -- Score: 95/100
 
 #### 6a. Variable Declarations
 
 All scenarios include `variables.closure_scope` with properly typed Go variables.
 Variable names are valid Go identifiers. Types (`string`, `error`, `[]string`) are valid.
-`initialized_in` and `used_in` lifecycle references are consistent (TestSetup -> TestExecution -> Assertion).
+`initialized_in` and `used_in` lifecycle references are consistent.
 
 **Result: PASS**
 
 #### 6b. Import Completeness
 
 `code_generation_config.imports` includes:
-- Standard: `context`, `testing`, `os`, `os/exec`, `fmt`, `strings`, `path/filepath`
+- Standard: `testing`, `os`, `os/exec`, `path/filepath`, `strings`
 - Test framework: `testify/assert`, `testify/require`
 - Project: `github.com/fullsend-ai/fullsend/internal/sandbox`
 
-Cross-referencing with scenario code templates: scenarios use `t.TempDir()`, `filepath.Join()`, `os.Getenv()`, `t.Setenv()` which are covered by the listed imports.
-
-- **Finding D6-6b-001:**
-  - **Severity:** MAJOR
-  - **Dimension:** Code Generation Readiness
-  - **Description:** The `code_generation_config.imports.standard` list includes `"context"` but no scenario uses `context.Context`. Similarly `"fmt"` and `"strings"` are listed but may not be directly used in all stub files. While extra imports are minor, the more significant issue is that helper functions referenced in code templates (`writeScript`, `alreadyExistsScript`, `deleteFailsScript`, etc.) are not defined anywhere in the STD. Code generation will fail unless these helpers are documented as shared test utilities.
-  - **Evidence:** Multiple code_templates reference `writeScript(t, fakeOpenshell, alreadyExistsScript)` but no `test_data` or helper definition section exists in the STD.
-  - **Remediation:** Either: (1) Add a `shared_helpers` section to the STD YAML defining `writeScript`, the various script constants, and the provider/credentials struct definitions, or (2) Add `test_data` to each scenario that defines the specific fake script content and test fixtures needed. This is critical for automated code generation to produce compilable tests.
-  - **Actionable:** true
-
-#### 6c. Code Structure Validity
-
-`test_structure` for all scenarios specifies `type: "single"` with valid `function_name` values following Go test naming conventions (`TestXxx_Yyy_Zzz`). No subtests are used (empty `subtests: []`), consistent with the `testing` framework's flat test pattern.
+Previously unused imports (`context`, `fmt`) have been removed. Cross-referencing with scenario code templates confirms all necessary imports are present.
 
 **Result: PASS**
 
-#### 6d. Timeout Appropriateness
+#### 6c. Code Structure Validity
 
-No explicit timeout references in test steps. This is acceptable for unit tests that call synchronous functions with fake CLI binaries -- operations complete in milliseconds.
+`test_structure` for all scenarios specifies `type: "single"` with valid `function_name` values following Go test naming conventions (`TestXxx_Yyy_Zzz`). `code_structure` provides consistent framework hints.
+
+**Result: PASS**
+
+#### 6d. Shared Helpers Definition
+
+`code_generation_config.shared_helpers` defines the `writeScript` function and all script constants used across scenarios. Code templates with full implementations are provided for the primary helpers (`writeScript`, `alreadyExistsScript`, `deleteFailsScript`, `retryCreateFailsScript`, `captureArgsScript`, `genericErrorScript`, `specificErrorScript`). Remaining script constants (`deleteFailsWithSecretScript`, etc.) have descriptions but no code_template — acceptable as their implementation follows the established pattern.
+
+**Result: PASS**
+
+#### 6e. Test Data Resources
+
+All scenarios include `test_data.resources` defining the types and descriptions of test fixtures needed for code generation. Resource types (`ProviderDefinition`, `Credentials`, `AgentConfig`, `string`, `[]string`) are consistent with the code templates.
 
 **Result: PASS**
 
@@ -357,25 +329,9 @@ No explicit timeout references in test steps. This is acceptable for unit tests 
 
 ## Recommendations
 
-1. **[MAJOR]** Remove `related_prs` from `document_metadata` -- PR URLs are implementation artifacts belonging in the STP, not the STD. -- **Remediation:** Delete the `related_prs` key from `document_metadata`. -- **Actionable:** yes
+1. **[MINOR]** Consider standardizing tier names to `"Tier 1"` / `"Tier 2"` — Current names (`"Unit Tests"`, `"Regression"`) are project-specific. — **Remediation:** Map to standard names or document in project config. — **Actionable:** yes
 
-2. **[MAJOR]** Add `patterns` field to all 14 scenarios -- Required by v2.1-enhanced schema for pattern-aware code generation. -- **Remediation:** Add `patterns: {primary: "unit-mock", helpers_required: []}` to each scenario. Use domain-appropriate patterns: `"cli-idempotency"` for scenarios 001-004, `"error-propagation"` for 006-007, `"security-redaction"` for 008-009/015, `"unit-function"` for 010-012, `"regression-integration"` for 013-014. -- **Actionable:** yes
-
-3. **[MAJOR]** Add `code_structure` field to all 14 scenarios -- Required by v2.1-enhanced schema. -- **Remediation:** Add `code_structure: {type: "flat", framework_hint: "TestFunction", subtest_style: "none"}` to each scenario. -- **Actionable:** yes
-
-4. **[MAJOR]** Add `test_data` field to all 14 scenarios -- Required by v2.1-enhanced schema; defines test fixtures and resource definitions. -- **Remediation:** Add `test_data` with provider definition structs, credential objects, and fake openshell script contents for each scenario. -- **Actionable:** yes
-
-5. **[MAJOR]** Define shared helper functions and test data constants -- Code templates reference `writeScript`, `alreadyExistsScript`, `deleteFailsScript`, etc. without defining them. -- **Remediation:** Add a `shared_helpers` or `common_test_data` section to the STD YAML, or add `test_data` per scenario with the specific script contents and struct definitions needed. -- **Actionable:** yes
-
-6. **[MINOR]** Renumber scenario IDs to eliminate gap at 005 -- Non-sequential IDs suggest a removed scenario. -- **Remediation:** Renumber 006->005, 007->006, etc., or document the gap reason. -- **Actionable:** yes
-
-7. **[MINOR]** Add verification method to PSE Expected entries for scenario 001 -- "delete is called with correct name" lacks HOW to verify. -- **Remediation:** Append verification mechanism (e.g., "verified via captured args log"). -- **Actionable:** yes
-
-8. **[MINOR]** Consider standardizing tier names to `"Tier 1"` / `"Tier 2"` -- Current names (`"Unit Tests"`, `"Regression"`) are project-specific. -- **Remediation:** Map to standard names or document in project config. -- **Actionable:** yes
-
-9. **[MINOR]** Add `code_template` to assertion ASSERT-02 in scenario 006 -- Missing concrete verification for "delete was not called". -- **Remediation:** Add code template using a call counter or log file approach. -- **Actionable:** yes
-
-10. **[MINOR]** Trim unused imports from `code_generation_config` -- `context` is imported but unused in any scenario. -- **Remediation:** Remove unused imports or add a note that they are for future use. -- **Actionable:** yes
+2. **[MINOR]** Update STP Section III test IDs to match STD after renumbering — STP references old IDs (006-015) while STD uses new sequential IDs (005-012). — **Remediation:** Update STP test IDs to match STD for perfect alignment. — **Actionable:** yes
 
 ---
 
@@ -384,13 +340,13 @@ No explicit timeout references in test steps. This is acceptable for unit tests 
 | Dimension | Weight | Score | Weighted |
 |:----------|:-------|:------|:---------|
 | 1. STP-STD Traceability | 30% | 95 | 28.5 |
-| 2. STD YAML Structure | 20% | 70 | 14.0 |
-| 3. Pattern Matching | 10% | 50 | 5.0 |
-| 4. Test Step Quality | 15% | 90 | 13.5 |
-| 4.5. Content Policy | 10% | 75 | 7.5 |
-| 5. PSE Docstring Quality | 10% | 88 | 8.8 |
-| 6. Code Generation Readiness | 5% | 80 | 4.0 |
-| **Total** | **100%** | | **81.3** |
+| 2. STD YAML Structure | 20% | 98 | 19.6 |
+| 3. Pattern Matching | 10% | 95 | 9.5 |
+| 4. Test Step Quality | 15% | 95 | 14.25 |
+| 4.5. Content Policy | 10% | 100 | 10.0 |
+| 5. PSE Docstring Quality | 10% | 95 | 9.5 |
+| 6. Code Generation Readiness | 5% | 95 | 4.75 |
+| **Total** | **100%** | | **96.1** |
 
 ---
 
