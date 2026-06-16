@@ -1,0 +1,18 @@
+status: success
+jira_id: GH-16
+file_path: /sandbox/workspace/output/GH-16_test_plan.md
+test_counts:
+  unit: 7
+  tier1: 3
+  tier2: 0
+  total: 10
+validation:
+  passed: 17
+  failed: 0
+  warnings: 1
+lsp_analysis: true
+lsp_findings:
+  - "gcp.Client has no QuotaProject field — compilation issue detected"
+  - "Call chain: installOIDC → Provision → provisionSelfManaged → GetProjectNumber → DoRequest"
+  - "GetProjectNumber referenced in 5 locations across 3 files"
+  - "DoRequest referenced in 25 locations across 4 files"
