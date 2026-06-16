@@ -10,10 +10,12 @@
 version: "1.0"
 
 routes:
+  - prefix: "FS"
+    project: "example"
   # Example: uncomment and customize for your project
   # - prefix: "MYPROJ"
   #   project: "example"
 
-# null = error on unknown prefix (fail-fast)
-# Set to a project ID to use as fallback for unrecognized prefixes
-default_project: null
+# Fallback for unrecognized prefixes (e.g., synthesized FS-NNNN tickets).
+# Set to null for fail-fast on unknown prefixes.
+default_project: "example"

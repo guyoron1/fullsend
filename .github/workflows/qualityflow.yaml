@@ -1,0 +1,819 @@
+# fullsend-stage: qf
+# lint-workflow-size: max-lines=1300
+#
+# QualityFlow pipeline — multi-agent QE test planning and code generation.
+# Triggered by commenting /fs-qf on a PR. Jira ticket is auto-detected from
+# the comment (e.g. /fs-qf CNV-12345), PR title, body, or branch name.
+# Falls back to a synthetic FS-{issue} ID from GitHub issue references.
+#
+# Pipeline: stp-builder → stp-reviewer → stp-refiner → std-builder →
+#           std-reviewer → std-refiner → go-test-generator → python-test-generator
+name: QualityFlow
+
+permissions:
+  actions: write
+  id-token: write
+  contents: write
+  issues: write
+  packages: read
+  pull-requests: write
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  qualityflow:
+    name: QualityFlow
+    runs-on: ubuntu-latest
+    if: >-
+      github.event.issue.pull_request
+      && github.event.comment.user.type != 'Bot'
+      && (
+        github.event.comment.body == '/fs-qf'
+        || startsWith(github.event.comment.body, '/fs-qf ')
+        || startsWith(github.event.comment.body, format('{0}{1}', '/fs-qf', fromJSON('"\n"')))
+      )
+      && (
+        github.event.comment.author_association == 'OWNER'
+        || github.event.comment.author_association == 'MEMBER'
+        || github.event.comment.author_association == 'COLLABORATOR'
+        || github.event.comment.author_association == 'CONTRIBUTOR'
+      )
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Prepare QF workspace
+        run: |
+          set -euo pipefail
+          QF_SRC="qualityflow"
+          if [[ ! -d "${QF_SRC}" ]]; then
+            echo "::error::qualityflow/ directory not found — is the QF branch merged?"
+            exit 1
+          fi
+          LAYERED_DIRS="agents harness skills policies scripts env config plugins images"
+          for dir in ${LAYERED_DIRS}; do
+            if [[ -d "${QF_SRC}/${dir}" ]]; then
+              mkdir -p "${dir}"
+              cp -r "${QF_SRC}/${dir}/." "${dir}/"
+            fi
+          done
+          mkdir -p .github/scripts
+          SRC="internal/scaffold/fullsend-repo"
+          if [[ -f "${SRC}/.github/scripts/setup-agent-env.sh" ]]; then
+            cp "${SRC}/.github/scripts/setup-agent-env.sh" .github/scripts/setup-agent-env.sh
+          fi
+          echo "::notice::QF workspace prepared — agents, harness, skills, config layered"
+
+      - name: Validate enrollment and extract repo metadata
+        id: repo-parts
+        uses: ./internal/scaffold/fullsend-repo/.github/actions/validate-enrollment
+        with:
+          source_repo: ${{ github.repository }}
+          install_mode: per-repo
+
+      - name: Mint qualityflow token
+        id: app-token
+        uses: ./internal/scaffold/fullsend-repo/.github/actions/mint-token
+        with:
+          role: coder
+          repos: ${{ steps.repo-parts.outputs.name }}
+          mint_url: ${{ vars.FULLSEND_MINT_URL }}
+
+      - name: Extract PR info
+        id: pr-info
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          set -euo pipefail
+          HEAD_REF=$(gh api "repos/${{ github.repository }}/pulls/${PR_NUMBER}" --jq '.head.ref')
+          BASE_REF=$(gh api "repos/${{ github.repository }}/pulls/${PR_NUMBER}" --jq '.base.ref')
+          echo "pr_number=${PR_NUMBER}" >> "${GITHUB_OUTPUT}"
+          echo "head_ref=${HEAD_REF}" >> "${GITHUB_OUTPUT}"
+          echo "base_ref=${BASE_REF}" >> "${GITHUB_OUTPUT}"
+          echo "::notice::PR #${PR_NUMBER}: ${HEAD_REF} -> ${BASE_REF}"
+
+      - name: Extract ticket ID
+        id: ticket
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        run: |
+          set -euo pipefail
+          TICKET=""
+
+          # 1. Try /fs-qf comment body (e.g. "/fs-qf CNV-72329")
+          if [[ -n "${COMMENT_BODY}" ]]; then
+            TICKET=$(printf '%s\n' "${COMMENT_BODY}" | grep -oE '[A-Z][A-Z0-9]+-[0-9]+' | head -1 || true)
+          fi
+
+          # 2. Fallback: PR title
+          if [[ -z "${TICKET}" ]]; then
+            PR_TITLE=$(gh api "repos/${{ github.repository }}/pulls/${PR_NUMBER}" --jq '.title' 2>/dev/null || true)
+            if [[ -n "${PR_TITLE}" ]]; then
+              TICKET=$(printf '%s\n' "${PR_TITLE}" | grep -oE '[A-Z][A-Z0-9]+-[0-9]+' | head -1 || true)
+            fi
+          fi
+
+          # 3. Fallback: PR body
+          if [[ -z "${TICKET}" ]]; then
+            PR_BODY=$(gh api "repos/${{ github.repository }}/pulls/${PR_NUMBER}" --jq '.body' 2>/dev/null || true)
+            if [[ -n "${PR_BODY}" ]]; then
+              TICKET=$(printf '%s\n' "${PR_BODY}" | grep -oE '[A-Z][A-Z0-9]+-[0-9]+' | head -1 || true)
+            fi
+          fi
+
+          # 4. Fallback: branch name
+          if [[ -z "${TICKET}" ]]; then
+            HEAD_REF="${{ steps.pr-info.outputs.head_ref }}"
+            TICKET=$(printf '%s\n' "${HEAD_REF}" | grep -oE '[A-Z][A-Z0-9]+-[0-9]+' | head -1 || true)
+          fi
+
+          # 5. Fallback: synthesize from GitHub issue reference (#NNNN)
+          if [[ -z "${TICKET}" ]]; then
+            PR_TITLE=$(gh api "repos/${{ github.repository }}/pulls/${PR_NUMBER}" --jq '.title' 2>/dev/null || true)
+            HEAD_REF="${{ steps.pr-info.outputs.head_ref }}"
+            GH_ISSUE=$(printf '%s\n%s\n%s\n' "${COMMENT_BODY}" "${PR_TITLE}" "${HEAD_REF}" \
+              | grep -oE '#[0-9]+|/[0-9]+-' | head -1 | grep -oE '[0-9]+' || true)
+            if [[ -n "${GH_ISSUE}" ]]; then
+              TICKET="FS-${GH_ISSUE}"
+              echo "::warning::No Jira ticket found — using synthetic ID: ${TICKET} (from GitHub issue #${GH_ISSUE})"
+            fi
+          fi
+
+          # 6. Last resort: use PR number
+          if [[ -z "${TICKET}" ]]; then
+            TICKET="FS-${PR_NUMBER}"
+            echo "::warning::No ticket or issue reference found — using PR-based ID: ${TICKET}"
+          fi
+
+          echo "ticket=${TICKET}" >> "${GITHUB_OUTPUT}"
+          echo "::notice::Ticket ID: ${TICKET}"
+
+      - name: Checkout PR branch
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ github.repository }}
+          token: ${{ steps.app-token.outputs.token }}
+          ref: ${{ steps.pr-info.outputs.head_ref }}
+          path: pr-repo
+          fetch-depth: 1
+          persist-credentials: true
+
+      - name: Record PRE_AGENT_HEAD
+        id: pre-head
+        run: |
+          PRE_AGENT_HEAD=$(git -C pr-repo rev-parse HEAD)
+          echo "sha=${PRE_AGENT_HEAD}" >> "${GITHUB_OUTPUT}"
+          echo "::notice::PRE_AGENT_HEAD=${PRE_AGENT_HEAD}"
+
+      - name: Setup GCP and prepare credentials
+        uses: ./internal/scaffold/fullsend-repo/.github/actions/setup-gcp
+        with:
+          gcp_wif_provider: ${{ secrets.FULLSEND_GCP_WIF_PROVIDER }}
+          gcp_project_id: ${{ secrets.FULLSEND_GCP_PROJECT_ID }}
+
+      - name: Setup agent environment
+        env:
+          AGENT_PREFIX: QF_
+          QF_GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          QF_ANTHROPIC_VERTEX_PROJECT_ID: ${{ secrets.FULLSEND_GCP_PROJECT_ID }}
+          QF_CLOUD_ML_REGION: ${{ vars.FULLSEND_GCP_REGION }}
+          QF_JIRA_BASE_URL: ${{ secrets.JIRA_URL }}
+          QF_JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          QF_JIRA_USER_EMAIL: ${{ secrets.JIRA_EMAIL }}
+        run: bash .github/scripts/setup-agent-env.sh
+
+      - name: Patch GCP credentials for URL-based OIDC refresh
+        run: |
+          set -euo pipefail
+          cat > /tmp/patch-gcp-creds.sh << 'PATCH_EOF'
+          #!/bin/bash
+          set -euo pipefail
+          CRED_FILE="${GOOGLE_APPLICATION_CREDENTIALS}"
+          if [[ ! -f "${CRED_FILE}" ]]; then
+            echo "::warning::No credential file at ${CRED_FILE}, skipping patch"
+            exit 0
+          fi
+          OIDC_URL="${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=$(python3 -c "
+          import json, urllib.parse
+          with open('${CRED_FILE}') as f:
+              c = json.load(f)
+          print(urllib.parse.quote(c.get('audience', ''), safe=''))
+          ")"
+          OIDC_TOKEN="${ACTIONS_ID_TOKEN_REQUEST_TOKEN}"
+          python3 -c "
+          import json, sys
+          cred_file = sys.argv[1]
+          oidc_url = sys.argv[2]
+          oidc_token = sys.argv[3]
+          with open(cred_file) as f:
+              cred = json.load(f)
+          cred['credential_source'] = {
+              'url': oidc_url,
+              'headers': {'Authorization': 'bearer ' + oidc_token},
+              'format': {'type': 'json', 'subject_token_field_name': 'value'}
+          }
+          with open(cred_file, 'w') as f:
+              json.dump(cred, f, indent=2)
+          " "${CRED_FILE}" "${OIDC_URL}" "${OIDC_TOKEN}"
+          echo "::notice::Patched ${CRED_FILE} to use URL-based OIDC source"
+          PATCH_EOF
+          chmod +x /tmp/patch-gcp-creds.sh
+          bash /tmp/patch-gcp-creds.sh
+
+      - name: Inject agent push instructions
+        env:
+          TICKET: ${{ steps.ticket.outputs.ticket }}
+        run: |
+          cat > "${{ github.workspace }}/pr-repo/CLAUDE.md" << 'AGENT_EOF'
+          # QualityFlow Agent — Output Preservation
+
+          CRITICAL REQUIREMENT: Before finishing your task, you MUST push all
+          generated output files to the PR branch.
+
+          After writing all output files to $FULLSEND_OUTPUT_DIR, run:
+
+          ```bash
+          cd "$FULLSEND_TARGET_REPO_DIR"
+          git config user.email "qualityflow[bot]@users.noreply.github.com"
+          git config user.name "QualityFlow"
+          REMOTE_URL=$(git remote get-url origin)
+          REPO_NAME=$(echo "$REMOTE_URL" | sed -n 's|.*github\.com[:/]\(.*\)\.git|\1|p')
+          BRANCH=$(git rev-parse --abbrev-ref HEAD)
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${REPO_NAME}.git"
+          git add outputs/
+          git commit -m "Add QualityFlow output [skip ci]" || true
+          git push origin "HEAD:$BRANCH" || echo "Push failed"
+          ```
+
+          This is MANDATORY.
+          AGENT_EOF
+
+      # ── Helper: restore PR checkout after each FullSend stage ──
+
+      - name: Create restore script
+        env:
+          GH_TOKEN_VAR: app-token
+        run: |
+          cat > /tmp/restore-pr-repo.sh << 'RESTORE_EOF'
+          #!/bin/bash
+          set -euo pipefail
+          PR_REPO="${GITHUB_WORKSPACE}/pr-repo"
+          HEAD_REF="$1"
+          TOKEN="$2"
+          if [[ ! -d "${PR_REPO}/.git" ]]; then
+            echo "::notice::PR repo was cleaned up by FullSend, re-cloning..."
+            rm -rf "${PR_REPO}"
+            git clone --depth 1 --branch "${HEAD_REF}" \
+              "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+              "${PR_REPO}"
+          else
+            git -C "${PR_REPO}" remote set-url origin \
+              "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+            git -C "${PR_REPO}" fetch origin "${HEAD_REF}" 2>/dev/null || true
+            git -C "${PR_REPO}" reset --hard "origin/${HEAD_REF}" 2>/dev/null || true
+          fi
+          echo "::notice::PR repo HEAD: $(git -C "${PR_REPO}" log --oneline -1)"
+          RESTORE_EOF
+          chmod +x /tmp/restore-pr-repo.sh
+
+      # ── Helper: re-inject CLAUDE.md after each restore ──
+
+      - name: Create reinject script
+        run: |
+          cat > /tmp/reinject-claude-md.sh << 'REINJECT_EOF'
+          #!/bin/bash
+          set -euo pipefail
+          cat > "$GITHUB_WORKSPACE/pr-repo/CLAUDE.md" << 'AGENT_EOF'
+          # QualityFlow Agent — Output Preservation
+
+          CRITICAL REQUIREMENT: Before finishing your task, you MUST push all
+          generated output files to the PR branch.
+
+          After writing all output files to $FULLSEND_OUTPUT_DIR, run:
+
+          ```bash
+          cd "$FULLSEND_TARGET_REPO_DIR"
+          git config user.email "qualityflow[bot]@users.noreply.github.com"
+          git config user.name "QualityFlow"
+          REMOTE_URL=$(git remote get-url origin)
+          REPO_NAME=$(echo "$REMOTE_URL" | sed -n 's|.*github\.com[:/]\(.*\)\.git|\1|p')
+          BRANCH=$(git rev-parse --abbrev-ref HEAD)
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${REPO_NAME}.git"
+          git add outputs/
+          git commit -m "Add QualityFlow output [skip ci]" || true
+          git push origin "HEAD:$BRANCH" || echo "Push failed"
+          ```
+
+          This is MANDATORY.
+          AGENT_EOF
+          REINJECT_EOF
+          chmod +x /tmp/reinject-claude-md.sh
+
+      # ───────────────────── Stage 1: STP Builder ─────────────────────
+
+      - name: "QF Stage 1: STP Builder"
+        id: stage1
+        continue-on-error: true
+        uses: ./internal/scaffold/fullsend-repo/.github/actions/fullsend
+        env:
+          PR_NUMBER: ${{ steps.pr-info.outputs.pr_number }}
+          REPO_FULL_NAME: ${{ github.repository }}
+          TARGET_BRANCH: ${{ steps.pr-info.outputs.head_ref }}
+          TRIGGER_SOURCE: slash-command
+          JIRA_TICKET: ${{ steps.ticket.outputs.ticket }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PUSH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PRE_AGENT_HEAD: ${{ steps.pre-head.outputs.sha }}
+          PR_CHECKOUT_PATH: ${{ github.workspace }}/pr-repo
+          SOURCE_REPO_PATH: ${{ github.workspace }}/pr-repo
+        with:
+          agent: stp-builder
+          version: latest
+
+      - name: Stage handoff — sync STP output
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          TICKET: ${{ steps.ticket.outputs.ticket }}
+        run: |
+          set -euo pipefail
+          bash /tmp/restore-pr-repo.sh "${{ steps.pr-info.outputs.head_ref }}" "${GH_TOKEN}"
+          DEST="${GITHUB_WORKSPACE}/pr-repo/outputs/stp/${TICKET}"
+          if [[ -f "${DEST}/${TICKET}_test_plan.md" ]]; then
+            echo "::notice::STP already on PR branch"
+          else
+            STP_FILE=$(find "${GITHUB_WORKSPACE}/output" -name "*_test_plan.md" -type f 2>/dev/null | head -1)
+            if [[ -n "${STP_FILE}" ]]; then
+              mkdir -p "${DEST}"
+              cp "${STP_FILE}" "${DEST}/"
+              git -C "${GITHUB_WORKSPACE}/pr-repo" config user.email "qualityflow[bot]@users.noreply.github.com"
+              git -C "${GITHUB_WORKSPACE}/pr-repo" config user.name "QualityFlow"
+              git -C "${GITHUB_WORKSPACE}/pr-repo" add "outputs/"
+              git -C "${GITHUB_WORKSPACE}/pr-repo" commit -m "Add STP for ${TICKET} [skip ci]" || true
+              git -C "${GITHUB_WORKSPACE}/pr-repo" push origin "HEAD:${{ steps.pr-info.outputs.head_ref }}" || true
+            else
+              echo "::warning::No STP output found"
+            fi
+          fi
+
+      # ───────────────────── Stage 2: STP Reviewer ─────────────────────
+
+      - name: Restore PR checkout (Stage 2)
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          bash /tmp/restore-pr-repo.sh "${{ steps.pr-info.outputs.head_ref }}" "${GH_TOKEN}"
+          bash /tmp/reinject-claude-md.sh
+
+      - name: Refresh GCP credentials (Stage 2)
+        uses: ./internal/scaffold/fullsend-repo/.github/actions/setup-gcp
+        with:
+          gcp_wif_provider: ${{ secrets.FULLSEND_GCP_WIF_PROVIDER }}
+          gcp_project_id: ${{ secrets.FULLSEND_GCP_PROJECT_ID }}
+
+      - name: Patch GCP credentials (Stage 2)
+        run: bash /tmp/patch-gcp-creds.sh
+
+      - name: "QF Stage 2: STP Reviewer"
+        id: stage2
+        continue-on-error: true
+        uses: ./internal/scaffold/fullsend-repo/.github/actions/fullsend
+        env:
+          PR_NUMBER: ${{ steps.pr-info.outputs.pr_number }}
+          REPO_FULL_NAME: ${{ github.repository }}
+          TARGET_BRANCH: ${{ steps.pr-info.outputs.head_ref }}
+          TRIGGER_SOURCE: slash-command
+          JIRA_TICKET: ${{ steps.ticket.outputs.ticket }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PUSH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PRE_AGENT_HEAD: ${{ steps.pre-head.outputs.sha }}
+          PR_CHECKOUT_PATH: ${{ github.workspace }}/pr-repo
+          SOURCE_REPO_PATH: ${{ github.workspace }}/pr-repo
+        with:
+          agent: stp-reviewer
+          version: latest
+
+      # ───────────────────── Stage 3: STP Refiner ─────────────────────
+
+      - name: Restore PR checkout (Stage 3)
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          bash /tmp/restore-pr-repo.sh "${{ steps.pr-info.outputs.head_ref }}" "${GH_TOKEN}"
+          bash /tmp/reinject-claude-md.sh
+
+      - name: Refresh GCP credentials (Stage 3)
+        uses: ./internal/scaffold/fullsend-repo/.github/actions/setup-gcp
+        with:
+          gcp_wif_provider: ${{ secrets.FULLSEND_GCP_WIF_PROVIDER }}
+          gcp_project_id: ${{ secrets.FULLSEND_GCP_PROJECT_ID }}
+
+      - name: Patch GCP credentials (Stage 3)
+        run: bash /tmp/patch-gcp-creds.sh
+
+      - name: "QF Stage 3: STP Refiner"
+        id: stage3
+        continue-on-error: true
+        uses: ./internal/scaffold/fullsend-repo/.github/actions/fullsend
+        env:
+          PR_NUMBER: ${{ steps.pr-info.outputs.pr_number }}
+          REPO_FULL_NAME: ${{ github.repository }}
+          TARGET_BRANCH: ${{ steps.pr-info.outputs.head_ref }}
+          TRIGGER_SOURCE: slash-command
+          JIRA_TICKET: ${{ steps.ticket.outputs.ticket }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PUSH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PRE_AGENT_HEAD: ${{ steps.pre-head.outputs.sha }}
+          PR_CHECKOUT_PATH: ${{ github.workspace }}/pr-repo
+          SOURCE_REPO_PATH: ${{ github.workspace }}/pr-repo
+        with:
+          agent: stp-refiner
+          version: latest
+
+      # ───────────────────── Stage 4: STD Builder ─────────────────────
+
+      - name: Restore PR checkout (Stage 4)
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          bash /tmp/restore-pr-repo.sh "${{ steps.pr-info.outputs.head_ref }}" "${GH_TOKEN}"
+          bash /tmp/reinject-claude-md.sh
+
+      - name: Refresh GCP credentials (Stage 4)
+        uses: ./internal/scaffold/fullsend-repo/.github/actions/setup-gcp
+        with:
+          gcp_wif_provider: ${{ secrets.FULLSEND_GCP_WIF_PROVIDER }}
+          gcp_project_id: ${{ secrets.FULLSEND_GCP_PROJECT_ID }}
+
+      - name: Patch GCP credentials (Stage 4)
+        run: bash /tmp/patch-gcp-creds.sh
+
+      - name: "QF Stage 4: STD Builder"
+        id: stage4
+        continue-on-error: true
+        uses: ./internal/scaffold/fullsend-repo/.github/actions/fullsend
+        env:
+          PR_NUMBER: ${{ steps.pr-info.outputs.pr_number }}
+          REPO_FULL_NAME: ${{ github.repository }}
+          TARGET_BRANCH: ${{ steps.pr-info.outputs.head_ref }}
+          TRIGGER_SOURCE: slash-command
+          JIRA_TICKET: ${{ steps.ticket.outputs.ticket }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PUSH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PRE_AGENT_HEAD: ${{ steps.pre-head.outputs.sha }}
+          PR_CHECKOUT_PATH: ${{ github.workspace }}/pr-repo
+          SOURCE_REPO_PATH: ${{ github.workspace }}/pr-repo
+        with:
+          agent: std-builder
+          version: latest
+
+      - name: Stage handoff — sync STD output
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          TICKET: ${{ steps.ticket.outputs.ticket }}
+        run: |
+          set -euo pipefail
+          bash /tmp/restore-pr-repo.sh "${{ steps.pr-info.outputs.head_ref }}" "${GH_TOKEN}"
+          DEST="${GITHUB_WORKSPACE}/pr-repo/outputs/std/${TICKET}"
+          if [[ -f "${DEST}/${TICKET}_test_description.yaml" ]]; then
+            echo "::notice::STD already on PR branch"
+          else
+            STD_FILE=$(find "${GITHUB_WORKSPACE}/output" -name "*_test_description.yaml" -type f 2>/dev/null | head -1)
+            if [[ -n "${STD_FILE}" ]]; then
+              mkdir -p "${DEST}" "${DEST}/go-tests" "${DEST}/python-tests"
+              cp "${STD_FILE}" "${DEST}/"
+              for stub in $(find "${GITHUB_WORKSPACE}/output" -name "*_stubs_test.go" -o -name "test_*_stubs.py" 2>/dev/null); do
+                if [[ "${stub}" == *_test.go ]]; then
+                  cp "${stub}" "${DEST}/go-tests/"
+                else
+                  cp "${stub}" "${DEST}/python-tests/"
+                fi
+              done
+              git -C "${GITHUB_WORKSPACE}/pr-repo" config user.email "qualityflow[bot]@users.noreply.github.com"
+              git -C "${GITHUB_WORKSPACE}/pr-repo" config user.name "QualityFlow"
+              git -C "${GITHUB_WORKSPACE}/pr-repo" add "outputs/"
+              git -C "${GITHUB_WORKSPACE}/pr-repo" commit -m "Add STD for ${TICKET} [skip ci]" || true
+              git -C "${GITHUB_WORKSPACE}/pr-repo" push origin "HEAD:${{ steps.pr-info.outputs.head_ref }}" || true
+            else
+              echo "::warning::No STD output found"
+            fi
+          fi
+
+      # ── Mid-pipeline token refresh (original expires after ~60 min) ──
+
+      - name: Refresh qualityflow token (mid-pipeline)
+        id: mid-token
+        uses: ./internal/scaffold/fullsend-repo/.github/actions/mint-token
+        with:
+          role: coder
+          repos: ${{ steps.repo-parts.outputs.name }}
+          mint_url: ${{ vars.FULLSEND_MINT_URL }}
+
+      # ───────────────────── Stage 5: STD Reviewer ─────────────────────
+
+      - name: Restore PR checkout (Stage 5)
+        env:
+          GH_TOKEN: ${{ steps.mid-token.outputs.token }}
+        run: |
+          bash /tmp/restore-pr-repo.sh "${{ steps.pr-info.outputs.head_ref }}" "${GH_TOKEN}"
+          bash /tmp/reinject-claude-md.sh
+
+      - name: Refresh GCP credentials (Stage 5)
+        uses: ./internal/scaffold/fullsend-repo/.github/actions/setup-gcp
+        with:
+          gcp_wif_provider: ${{ secrets.FULLSEND_GCP_WIF_PROVIDER }}
+          gcp_project_id: ${{ secrets.FULLSEND_GCP_PROJECT_ID }}
+
+      - name: Patch GCP credentials (Stage 5)
+        run: bash /tmp/patch-gcp-creds.sh
+
+      - name: "QF Stage 5: STD Reviewer"
+        id: stage5
+        continue-on-error: true
+        uses: ./internal/scaffold/fullsend-repo/.github/actions/fullsend
+        env:
+          PR_NUMBER: ${{ steps.pr-info.outputs.pr_number }}
+          REPO_FULL_NAME: ${{ github.repository }}
+          TARGET_BRANCH: ${{ steps.pr-info.outputs.head_ref }}
+          TRIGGER_SOURCE: slash-command
+          JIRA_TICKET: ${{ steps.ticket.outputs.ticket }}
+          GH_TOKEN: ${{ steps.mid-token.outputs.token }}
+          PUSH_TOKEN: ${{ steps.mid-token.outputs.token }}
+          PRE_AGENT_HEAD: ${{ steps.pre-head.outputs.sha }}
+          PR_CHECKOUT_PATH: ${{ github.workspace }}/pr-repo
+          SOURCE_REPO_PATH: ${{ github.workspace }}/pr-repo
+        with:
+          agent: std-reviewer
+          version: latest
+
+      # ───────────────────── Stage 6: STD Refiner ─────────────────────
+
+      - name: Restore PR checkout (Stage 6)
+        env:
+          GH_TOKEN: ${{ steps.mid-token.outputs.token }}
+        run: |
+          bash /tmp/restore-pr-repo.sh "${{ steps.pr-info.outputs.head_ref }}" "${GH_TOKEN}"
+          bash /tmp/reinject-claude-md.sh
+
+      - name: Refresh GCP credentials (Stage 6)
+        uses: ./internal/scaffold/fullsend-repo/.github/actions/setup-gcp
+        with:
+          gcp_wif_provider: ${{ secrets.FULLSEND_GCP_WIF_PROVIDER }}
+          gcp_project_id: ${{ secrets.FULLSEND_GCP_PROJECT_ID }}
+
+      - name: Patch GCP credentials (Stage 6)
+        run: bash /tmp/patch-gcp-creds.sh
+
+      - name: "QF Stage 6: STD Refiner"
+        id: stage6
+        continue-on-error: true
+        uses: ./internal/scaffold/fullsend-repo/.github/actions/fullsend
+        env:
+          PR_NUMBER: ${{ steps.pr-info.outputs.pr_number }}
+          REPO_FULL_NAME: ${{ github.repository }}
+          TARGET_BRANCH: ${{ steps.pr-info.outputs.head_ref }}
+          TRIGGER_SOURCE: slash-command
+          JIRA_TICKET: ${{ steps.ticket.outputs.ticket }}
+          GH_TOKEN: ${{ steps.mid-token.outputs.token }}
+          PUSH_TOKEN: ${{ steps.mid-token.outputs.token }}
+          PRE_AGENT_HEAD: ${{ steps.pre-head.outputs.sha }}
+          PR_CHECKOUT_PATH: ${{ github.workspace }}/pr-repo
+          SOURCE_REPO_PATH: ${{ github.workspace }}/pr-repo
+        with:
+          agent: std-refiner
+          version: latest
+
+      # ───────────────────── Stage 7: Go Test Generator ─────────────────────
+
+      - name: Restore PR checkout (Stage 7)
+        env:
+          GH_TOKEN: ${{ steps.mid-token.outputs.token }}
+        run: |
+          bash /tmp/restore-pr-repo.sh "${{ steps.pr-info.outputs.head_ref }}" "${GH_TOKEN}"
+          bash /tmp/reinject-claude-md.sh
+
+      - name: Refresh GCP credentials (Stage 7)
+        uses: ./internal/scaffold/fullsend-repo/.github/actions/setup-gcp
+        with:
+          gcp_wif_provider: ${{ secrets.FULLSEND_GCP_WIF_PROVIDER }}
+          gcp_project_id: ${{ secrets.FULLSEND_GCP_PROJECT_ID }}
+
+      - name: Patch GCP credentials (Stage 7)
+        run: bash /tmp/patch-gcp-creds.sh
+
+      - name: "QF Stage 7: Go Test Generator"
+        id: stage7
+        continue-on-error: true
+        uses: ./internal/scaffold/fullsend-repo/.github/actions/fullsend
+        env:
+          PR_NUMBER: ${{ steps.pr-info.outputs.pr_number }}
+          REPO_FULL_NAME: ${{ github.repository }}
+          TARGET_BRANCH: ${{ steps.pr-info.outputs.head_ref }}
+          TRIGGER_SOURCE: slash-command
+          JIRA_TICKET: ${{ steps.ticket.outputs.ticket }}
+          GH_TOKEN: ${{ steps.mid-token.outputs.token }}
+          PUSH_TOKEN: ${{ steps.mid-token.outputs.token }}
+          PRE_AGENT_HEAD: ${{ steps.pre-head.outputs.sha }}
+          PR_CHECKOUT_PATH: ${{ github.workspace }}/pr-repo
+          SOURCE_REPO_PATH: ${{ github.workspace }}/pr-repo
+        with:
+          agent: go-test-generator
+          version: latest
+
+      # ───────────────────── Stage 8: Python Test Generator ─────────────────────
+
+      - name: Restore PR checkout (Stage 8)
+        env:
+          GH_TOKEN: ${{ steps.mid-token.outputs.token }}
+        run: |
+          bash /tmp/restore-pr-repo.sh "${{ steps.pr-info.outputs.head_ref }}" "${GH_TOKEN}"
+          bash /tmp/reinject-claude-md.sh
+
+      - name: Refresh GCP credentials (Stage 8)
+        uses: ./internal/scaffold/fullsend-repo/.github/actions/setup-gcp
+        with:
+          gcp_wif_provider: ${{ secrets.FULLSEND_GCP_WIF_PROVIDER }}
+          gcp_project_id: ${{ secrets.FULLSEND_GCP_PROJECT_ID }}
+
+      - name: Patch GCP credentials (Stage 8)
+        run: bash /tmp/patch-gcp-creds.sh
+
+      - name: "QF Stage 8: Python Test Generator"
+        id: stage8
+        continue-on-error: true
+        uses: ./internal/scaffold/fullsend-repo/.github/actions/fullsend
+        env:
+          PR_NUMBER: ${{ steps.pr-info.outputs.pr_number }}
+          REPO_FULL_NAME: ${{ github.repository }}
+          TARGET_BRANCH: ${{ steps.pr-info.outputs.head_ref }}
+          TRIGGER_SOURCE: slash-command
+          JIRA_TICKET: ${{ steps.ticket.outputs.ticket }}
+          GH_TOKEN: ${{ steps.mid-token.outputs.token }}
+          PUSH_TOKEN: ${{ steps.mid-token.outputs.token }}
+          PRE_AGENT_HEAD: ${{ steps.pre-head.outputs.sha }}
+          PR_CHECKOUT_PATH: ${{ github.workspace }}/pr-repo
+          SOURCE_REPO_PATH: ${{ github.workspace }}/pr-repo
+        with:
+          agent: python-test-generator
+          version: latest
+
+      # ───────────────────── Post-pipeline: organize and clean up ─────────────────────
+
+      - name: Refresh token for post-pipeline
+        if: always()
+        id: post-token
+        uses: ./internal/scaffold/fullsend-repo/.github/actions/mint-token
+        with:
+          role: coder
+          repos: ${{ steps.repo-parts.outputs.name }}
+          mint_url: ${{ vars.FULLSEND_MINT_URL }}
+
+      - name: Restore PR checkout (post-pipeline)
+        if: always()
+        env:
+          GH_TOKEN: ${{ steps.post-token.outputs.token }}
+        run: bash /tmp/restore-pr-repo.sh "${{ steps.pr-info.outputs.head_ref }}" "${GH_TOKEN}"
+
+      - name: Organize tests and clean artifacts
+        if: always()
+        id: organize-tests
+        env:
+          GH_TOKEN: ${{ steps.post-token.outputs.token }}
+          TICKET: ${{ steps.ticket.outputs.ticket }}
+        run: |
+          set -euo pipefail
+          PR_REPO="${GITHUB_WORKSPACE}/pr-repo"
+          HEAD_REF="${{ steps.pr-info.outputs.head_ref }}"
+          QF_DIR="qf-tests/${TICKET}"
+
+          cd "${PR_REPO}"
+          git config user.email "qualityflow[bot]@users.noreply.github.com"
+          git config user.name "QualityFlow"
+          git remote set-url origin \
+            "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
+
+          GO_SRC="outputs/go-tests/${TICKET}"
+          GO_COUNT=0
+          if [[ -d "${GO_SRC}" ]]; then
+            mkdir -p "${QF_DIR}/go"
+            for f in "${GO_SRC}"/*_test.go; do
+              [[ -f "$f" ]] || continue
+              cp "$f" "${QF_DIR}/go/"
+              GO_COUNT=$((GO_COUNT + 1))
+            done
+          fi
+
+          PY_SRC="outputs/python-tests/${TICKET}"
+          PY_COUNT=0
+          if [[ -d "${PY_SRC}" ]]; then
+            mkdir -p "${QF_DIR}/python"
+            for f in "${PY_SRC}"/test_*.py "${PY_SRC}"/conftest.py; do
+              [[ -f "$f" ]] || continue
+              cp "$f" "${QF_DIR}/python/"
+              PY_COUNT=$((PY_COUNT + 1))
+            done
+          fi
+
+          if [[ "${GO_COUNT}" -gt 0 ]] || [[ "${PY_COUNT}" -gt 0 ]]; then
+            cat > "${QF_DIR}/README.md" << README_EOF
+          # QualityFlow Tests — ${TICKET}
+
+          Generated by the QualityFlow pipeline.
+
+          | Directory | Type | Framework |
+          |-----------|------|-----------|
+          | \`go/\` | Tier 1 (functional) | Go/Ginkgo |
+          | \`python/\` | Tier 2 (E2E) | Python/pytest |
+          README_EOF
+          fi
+
+          git rm -rf outputs/ 2>/dev/null || true
+          git rm -f CLAUDE.md 2>/dev/null || true
+          git add qf-tests/ 2>/dev/null || true
+
+          if git diff --cached --quiet; then
+            echo "::warning::No changes to commit"
+            echo "go_count=0" >> "${GITHUB_OUTPUT}"
+            echo "py_count=0" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          git commit -m "Add QualityFlow tests for ${TICKET}
+
+          Go tier 1: ${GO_COUNT} files → qf-tests/${TICKET}/go/
+          Python tier 2: ${PY_COUNT} files → qf-tests/${TICKET}/python/
+          [skip ci]"
+
+          git push origin "HEAD:${HEAD_REF}"
+          echo "go_count=${GO_COUNT}" >> "${GITHUB_OUTPUT}"
+          echo "py_count=${PY_COUNT}" >> "${GITHUB_OUTPUT}"
+
+      - name: Post pipeline summary
+        if: always()
+        env:
+          GH_TOKEN: ${{ steps.post-token.outputs.token }}
+          TICKET: ${{ steps.ticket.outputs.ticket }}
+          S1: ${{ steps.stage1.conclusion || 'skipped' }}
+          S2: ${{ steps.stage2.conclusion || 'skipped' }}
+          S3: ${{ steps.stage3.conclusion || 'skipped' }}
+          S4: ${{ steps.stage4.conclusion || 'skipped' }}
+          S5: ${{ steps.stage5.conclusion || 'skipped' }}
+          S6: ${{ steps.stage6.conclusion || 'skipped' }}
+          S7: ${{ steps.stage7.conclusion || 'skipped' }}
+          S8: ${{ steps.stage8.conclusion || 'skipped' }}
+          GO_COUNT: ${{ steps.organize-tests.outputs.go_count || '0' }}
+          PY_COUNT: ${{ steps.organize-tests.outputs.py_count || '0' }}
+        run: |
+          set -euo pipefail
+          PR_NUMBER="${{ steps.pr-info.outputs.pr_number }}"
+
+          icon() {
+            case "$1" in
+              success) echo "✅" ;;
+              failure) echo "❌" ;;
+              *) echo "⏭️" ;;
+            esac
+          }
+
+          BODY="<!-- qf-summary -->
+          ## QualityFlow Pipeline Summary
+
+          | Stage | Agent | Status |
+          |-------|-------|--------|
+          | 1 | STP Builder | $(icon "${S1}") |
+          | 2 | STP Reviewer | $(icon "${S2}") |
+          | 3 | STP Refiner | $(icon "${S3}") |
+          | 4 | STD Builder | $(icon "${S4}") |
+          | 5 | STD Reviewer | $(icon "${S5}") |
+          | 6 | STD Refiner | $(icon "${S6}") |
+          | 7 | Go Test Generator | $(icon "${S7}") |
+          | 8 | Python Test Generator | $(icon "${S8}") |
+
+          ### Test Output
+          | Type | Count | Location |
+          |------|-------|----------|
+          | Go/Ginkgo tier 1 | **${GO_COUNT}** files | \`qf-tests/${TICKET}/go/\` |
+          | Python/pytest tier 2 | **${PY_COUNT}** files | \`qf-tests/${TICKET}/python/\` |
+
+          **Ticket:** ${TICKET}
+
+          ---
+          *Generated by [QualityFlow](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})*"
+
+          BODY=$(echo "${BODY}" | sed 's/^          //')
+
+          EXISTING_ID=$(gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" \
+            --jq '.[] | select(.body | contains("<!-- qf-summary -->")) | .id' 2>/dev/null | head -1 || true)
+
+          if [[ -n "${EXISTING_ID}" ]]; then
+            gh api --method PATCH "repos/${{ github.repository }}/issues/comments/${EXISTING_ID}" \
+              -f body="${BODY}"
+          else
+            gh api --method POST "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" \
+              -f body="${BODY}"
+          fi
