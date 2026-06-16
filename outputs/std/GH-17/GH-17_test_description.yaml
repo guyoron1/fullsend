@@ -1,1103 +1,1015 @@
 ---
-# Software Test Description (STD) — GH-17
-# Generated: 2026-06-16
-# Source: outputs/stp/GH-17/GH-17_test_plan.md
-
 document_metadata:
-  std_version: "2.1-enhanced"
-  generated_date: "2026-06-16"
-  jira_issue: "GH-17"
-  jira_summary: "MCP Configuration Drift Problem Document"
+  std_version: 2.1-enhanced
+  generated_date: '2026-06-16'
+  jira_issue: GH-17
+  jira_summary: MCP Configuration Drift Problem Document
   source_bugs: []
   stp_reference:
-    file: "outputs/stp/GH-17/GH-17_test_plan.md"
-    version: "v1"
-    sections_covered: "Section III - Requirements-to-Tests Mapping"
-  related_prs:
-    - repo: "guyoron1/fullsend"
-      pr_number: 17
-      url: "https://github.com/guyoron1/fullsend/issues/17"
-      title: "MCP Configuration Drift Problem Document"
-      merged: false
+    file: outputs/stp/GH-17/GH-17_test_plan.md
+    version: v1
+    sections_covered: Section III - Requirements-to-Tests Mapping
   total_scenarios: 7
-  functional_count: 7
-  e2e_count: 0
+  tier_1_count: 7
+  tier_2_count: 0
   p0_count: 3
   p1_count: 2
   p2_count: 2
-
 code_generation_config:
-  std_version: "2.1-enhanced"
-  framework: "ginkgo-v2"
-  assertion_library: "gomega"
-  language: "go"
-  package_name: "tests"
-  context_init: "context.Background()"
+  std_version: 2.1-enhanced
+  framework: ginkgo-v2
+  assertion_library: gomega
+  language: go
+  package_name: tests
+  context_init: context.Background()
   imports:
     dot_imports:
-      - "github.com/onsi/ginkgo/v2"
-      - "github.com/onsi/gomega"
+    - github.com/onsi/ginkgo/v2
+    - github.com/onsi/gomega
     standard:
-      - "context"
-      - "os"
-      - "path/filepath"
-      - "strings"
+    - os
+    - path/filepath
+    - strings
   timeout_constants: {}
   helper_library_imports: {}
-
 common_preconditions:
   infrastructure:
-    - name: "Git repository"
-      requirement: "Clone of fullsend repository with PR branch checked out"
-      validation: "git status"
-
-    - name: "Problem document"
-      requirement: "docs/problems/mcp-config-drift.md exists in the repository"
-      validation: "test -f docs/problems/mcp-config-drift.md"
-
-    - name: "README file"
-      requirement: "README.md exists and contains problem documents index"
-      validation: "test -f README.md"
-
+  - name: Git repository
+    requirement: Clone of fullsend repository with PR branch checked out
+    validation: git status
+  - name: Problem document
+    requirement: docs/problems/mcp-config-drift.md exists in the repository
+    validation: test -f docs/problems/mcp-config-drift.md
+  - name: README file
+    requirement: README.md exists and contains problem documents index
+    validation: test -f README.md
   operators: []
-
   cluster_configuration:
-    topology: "N/A — documentation validation only"
-    cpu_features: "N/A"
-    storage: "N/A"
-    network: "N/A"
-
+    topology: N/A — documentation validation only
+    cpu_features: N/A
+    storage: N/A
+    network: N/A
   rbac_requirements: []
-
 scenarios:
-  - scenario_id: "001"
-    test_id: "TS-GH-17-001"
-    tier: "Functional"
-    priority: "P0"
-    mvp: true
-    requirement_id: "GH-17"
-
-    patterns:
-      primary: "file-validation"
-      secondary:
-        - "link-resolution"
-        - "path-existence"
-      helpers_required:
-        - name: "os"
-          functions: ["Stat", "ReadFile"]
-          purpose: "File existence and content reading"
-        - name: "strings"
-          functions: ["Contains"]
-          purpose: "Content matching for link targets"
+- scenario_id: '001'
+  test_id: TS-GH-17-001
+  tier: Tier 1
+  priority: P0
+  mvp: true
+  requirement_id: GH-17
+  patterns:
+    primary: file-validation
+    secondary:
+    - link-resolution
+    - path-existence
+    helpers_required:
+    - name: os
+      functions:
+      - Stat
+      - ReadFile
+      purpose: File existence and content reading
+    - name: strings
+      functions:
+      - Contains
+      purpose: Content matching for link targets
+    decorators:
+    - Ordered
+  variables:
+    closure_scope:
+    - name: docContent
+      type: '[]byte'
+      initialized_in: BeforeAll
+      used_in:
+      - BeforeAll
+      - It
+      comment: Raw content of mcp-config-drift.md
+    - name: err
+      type: error
+      initialized_in: BeforeAll
+      used_in:
+      - BeforeAll
+      - It
+      comment: Error from file operations
+  test_structure:
+    type: single
+    describe:
+      wrapper: Describe
+      description: MCP Config Drift Problem Document Validation
       decorators: []
+    context:
+      description: cross-reference link validation
+      decorators:
+      - Ordered
+    it:
+      description: should verify all cross-reference links resolve to existing files
+      test_id_format: '[test_id:TS-GH-17-001]'
+  code_structure: "Context(\"cross-reference link validation\", Ordered, func() {\n  BeforeAll(func() {\n    // Read problem\
+    \ document content\n  })\n  It(\"[test_id:TS-GH-17-001] should verify all cross-reference links resolve to existing files\"\
+    , func() {\n    // Extract relative links from markdown content\n    // Verify each link target exists on disk\n  })\n\
+    })\n"
+  test_objective:
+    title: Verify all cross-reference links in problem doc resolve to existing files
+    what: 'Reads the problem document docs/problems/mcp-config-drift.md and extracts all
 
-    variables:
-      closure_scope:
-        - name: "docContent"
-          type: "[]byte"
-          initialized_in: "BeforeAll"
-          used_in: ["BeforeAll", "It"]
-          comment: "Raw content of mcp-config-drift.md"
-        - name: "err"
-          type: "error"
-          initialized_in: "BeforeAll"
-          used_in: ["BeforeAll", "It"]
-          comment: "Error from file operations"
+      relative file links (e.g., references to security-threat-model.md, agent-architecture.md,
 
-    test_structure:
-      type: "single"
-      describe:
-        wrapper: "Describe"
-        description: "MCP Config Drift Problem Document Validation"
-        decorators: []
-      context:
-        description: "cross-reference link validation"
-        decorators: []
-      it:
-        description: "should verify all cross-reference links resolve to existing files"
-        test_id_format: "[test_id:TS-GH-17-001]"
+      ADR 0017). Verifies that each linked file exists in the repository at the expected path.
 
-    code_structure: |
-      Context("cross-reference link validation", func() {
-        BeforeAll(func() {
-          // Read problem document content
-        })
-        It("[test_id:TS-GH-17-001] should verify all cross-reference links resolve to existing files", func() {
-          // Extract relative links from markdown content
-          // Verify each link target exists on disk
-        })
-      })
+      '
+    why: 'Broken cross-references degrade documentation quality and make it harder for developers
 
-    test_objective:
-      title: "Verify all cross-reference links in problem doc resolve to existing files"
-      what: |
-        Reads the problem document docs/problems/mcp-config-drift.md and extracts all
-        relative file links (e.g., references to security-threat-model.md, agent-architecture.md,
-        ADR 0017). Verifies that each linked file exists in the repository at the expected path.
-      why: |
-        Broken cross-references degrade documentation quality and make it harder for developers
-        to navigate the security documentation. Since this document references critical security
-        docs, link integrity is essential for maintaining the security knowledge base.
-      acceptance_criteria:
-        - "All relative file links in the document resolve to existing files"
-        - "No broken references to other documentation files"
+      to navigate the security documentation. Since this document references critical security
 
-    classification:
-      test_type: "Functional"
-      scope: "Single-component"
-      automation_approach: "File system validation"
+      docs, link integrity is essential for maintaining the security knowledge base.
 
-    specific_preconditions:
-      - name: "Problem document exists"
-        requirement: "docs/problems/mcp-config-drift.md is present"
-        validation: "test -f docs/problems/mcp-config-drift.md"
+      '
+    acceptance_criteria:
+    - All relative file links in the document resolve to existing files
+    - No broken references to other documentation files
+  classification:
+    test_type: Functional
+    scope: Single-component
+    automation_approach: File system validation
+  specific_preconditions:
+  - name: Problem document exists
+    requirement: docs/problems/mcp-config-drift.md is present
+    validation: test -f docs/problems/mcp-config-drift.md
+  test_data:
+    resource_definitions: []
+    api_endpoints: []
+  test_steps:
+    setup:
+    - step_id: SETUP-01
+      action: Read the problem document content
+      command: os.ReadFile('docs/problems/mcp-config-drift.md')
+      validation: File is read successfully without error
+      pattern_id: file-read
+      code_template: 'docContent, err = os.ReadFile("docs/problems/mcp-config-drift.md")
 
-    test_data:
-      resource_definitions: []
-      api_endpoints: []
+        ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
-    test_steps:
-      setup:
-        - step_id: "SETUP-01"
-          action: "Read the problem document content"
-          command: "os.ReadFile('docs/problems/mcp-config-drift.md')"
-          validation: "File is read successfully without error"
-          pattern_id: "file-read"
-          code_template: |
-            docContent, err = os.ReadFile("docs/problems/mcp-config-drift.md")
-            ExpectWithOffset(1, err).NotTo(HaveOccurred())
+        '
+    test_execution:
+    - step_id: TEST-01
+      action: Extract all relative markdown links from document
+      command: Parse markdown content for link patterns [text](relative/path)
+      validation: Links are extracted successfully
+      pattern_id: link-extraction
+      code_template: '// Extract relative links using regex or string parsing
 
-      test_execution:
-        - step_id: "TEST-01"
-          action: "Extract all relative markdown links from document"
-          command: "Parse markdown content for link patterns [text](relative/path)"
-          validation: "Links are extracted successfully"
-          pattern_id: "link-extraction"
-          code_template: |
-            // Extract relative links using regex or string parsing
-            // Filter out external URLs (http://, https://)
+        // Filter out external URLs (http://, https://)
 
-        - step_id: "TEST-02"
-          action: "Verify each extracted link target exists"
-          command: "os.Stat(filepath.Join(docDir, linkTarget))"
-          validation: "All link targets exist as files in the repository"
-          pattern_id: "path-existence"
-          code_template: |
-            for _, link := range extractedLinks {
-                _, err = os.Stat(filepath.Join(docDir, link))
-                ExpectWithOffset(1, err).NotTo(HaveOccurred(),
-                    "Cross-reference link target not found: %s", link)
-            }
-
-      cleanup: []
-
-    assertions:
-      - assertion_id: "ASSERT-01"
-        priority: "P0"
-        description: "All cross-reference links resolve to existing files"
-        condition: "os.Stat succeeds for every relative link target"
-        failure_impact: "Broken documentation references; developers cannot navigate security docs"
-
-    dependencies:
-      kubernetes_resources: []
-      external_tools: []
-      scenario_specific_rbac: []
-
-  - scenario_id: "002"
-    test_id: "TS-GH-17-002"
-    tier: "Functional"
-    priority: "P0"
-    mvp: true
-    requirement_id: "GH-17"
-
-    patterns:
-      primary: "file-validation"
-      secondary:
-        - "content-search"
-      helpers_required:
-        - name: "os"
-          functions: ["ReadFile"]
-          purpose: "Read README content"
-        - name: "strings"
-          functions: ["Contains"]
-          purpose: "Check for link presence"
+        '
+    - step_id: TEST-02
+      action: Verify each extracted link target exists
+      command: os.Stat(filepath.Join(docDir, linkTarget))
+      validation: All link targets exist as files in the repository
+      pattern_id: path-existence
+      code_template: "for _, link := range extractedLinks {\n    _, err = os.Stat(filepath.Join(docDir, link))\n    ExpectWithOffset(1,\
+        \ err).NotTo(HaveOccurred(),\n        \"Cross-reference link target not found: %s\", link)\n}\n"
+    cleanup: []
+  assertions:
+  - assertion_id: ASSERT-01
+    priority: P0
+    description: All cross-reference links resolve to existing files
+    condition: os.Stat succeeds for every relative link target
+    failure_impact: Broken documentation references; developers cannot navigate security docs
+  dependencies:
+    kubernetes_resources: []
+    external_tools: []
+    scenario_specific_rbac: []
+- scenario_id: '002'
+  test_id: TS-GH-17-002
+  tier: Tier 1
+  priority: P0
+  mvp: true
+  requirement_id: GH-17
+  patterns:
+    primary: file-validation
+    secondary:
+    - content-search
+    helpers_required:
+    - name: os
+      functions:
+      - ReadFile
+      purpose: Read README content
+    - name: strings
+      functions:
+      - Contains
+      purpose: Check for link presence
+    decorators:
+    - Ordered
+  variables:
+    closure_scope:
+    - name: readmeContent
+      type: '[]byte'
+      initialized_in: BeforeAll
+      used_in:
+      - BeforeAll
+      - It
+      comment: Raw content of README.md
+    - name: err
+      type: error
+      initialized_in: BeforeAll
+      used_in:
+      - BeforeAll
+      - It
+      comment: Error from file operations
+  test_structure:
+    type: single
+    describe:
+      wrapper: Describe
+      description: MCP Config Drift Problem Document Validation
       decorators: []
+    context:
+      description: README index entry validation
+      decorators:
+      - Ordered
+    it:
+      description: should verify README links to docs/problems/mcp-config-drift.md
+      test_id_format: '[test_id:TS-GH-17-002]'
+  code_structure: "Context(\"README index entry validation\", Ordered, func() {\n  BeforeAll(func() {\n    // Read README.md\
+    \ content\n  })\n  It(\"[test_id:TS-GH-17-002] should verify README links to docs/problems/mcp-config-drift.md\", func()\
+    \ {\n    // Check README contains link to problem doc\n  })\n})\n"
+  test_objective:
+    title: Verify README links to docs/problems/mcp-config-drift.md
+    what: 'Reads README.md and verifies it contains an index entry that links to
 
-    variables:
-      closure_scope:
-        - name: "readmeContent"
-          type: "[]byte"
-          initialized_in: "BeforeAll"
-          used_in: ["BeforeAll", "It"]
-          comment: "Raw content of README.md"
-        - name: "err"
-          type: "error"
-          initialized_in: "BeforeAll"
-          used_in: ["BeforeAll", "It"]
-          comment: "Error from file operations"
+      docs/problems/mcp-config-drift.md. The link must use the correct relative
 
-    test_structure:
-      type: "single"
-      describe:
-        wrapper: "Describe"
-        description: "MCP Config Drift Problem Document Validation"
-        decorators: []
-      context:
-        description: "README index entry validation"
-        decorators: []
-      it:
-        description: "should verify README links to docs/problems/mcp-config-drift.md"
-        test_id_format: "[test_id:TS-GH-17-002]"
+      path and the linked file must exist.
 
-    code_structure: |
-      Context("README index entry validation", func() {
-        BeforeAll(func() {
-          // Read README.md content
-        })
-        It("[test_id:TS-GH-17-002] should verify README links to docs/problems/mcp-config-drift.md", func() {
-          // Check README contains link to problem doc
-        })
-      })
+      '
+    why: 'The README serves as the primary navigation point for the repository.
 
-    test_objective:
-      title: "Verify README links to docs/problems/mcp-config-drift.md"
-      what: |
-        Reads README.md and verifies it contains an index entry that links to
-        docs/problems/mcp-config-drift.md. The link must use the correct relative
-        path and the linked file must exist.
-      why: |
-        The README serves as the primary navigation point for the repository.
-        A missing or broken index entry means the new problem document is
-        effectively undiscoverable.
-      acceptance_criteria:
-        - "README.md contains a link to docs/problems/mcp-config-drift.md"
-        - "The linked file exists at the referenced path"
+      A missing or broken index entry means the new problem document is
 
-    classification:
-      test_type: "Functional"
-      scope: "Single-component"
-      automation_approach: "Content search and file validation"
+      effectively undiscoverable.
 
-    specific_preconditions:
-      - name: "README exists"
-        requirement: "README.md is present in the repository root"
-        validation: "test -f README.md"
+      '
+    acceptance_criteria:
+    - README.md contains a link to docs/problems/mcp-config-drift.md
+    - The linked file exists at the referenced path
+  classification:
+    test_type: Functional
+    scope: Single-component
+    automation_approach: Content search and file validation
+  specific_preconditions:
+  - name: README exists
+    requirement: README.md is present in the repository root
+    validation: test -f README.md
+  test_data:
+    resource_definitions: []
+    api_endpoints: []
+  test_steps:
+    setup:
+    - step_id: SETUP-01
+      action: Read README.md content
+      command: os.ReadFile('README.md')
+      validation: File is read successfully
+      pattern_id: file-read
+      code_template: 'readmeContent, err = os.ReadFile("README.md")
 
-    test_data:
-      resource_definitions: []
-      api_endpoints: []
+        ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
-    test_steps:
-      setup:
-        - step_id: "SETUP-01"
-          action: "Read README.md content"
-          command: "os.ReadFile('README.md')"
-          validation: "File is read successfully"
-          pattern_id: "file-read"
-          code_template: |
-            readmeContent, err = os.ReadFile("README.md")
-            ExpectWithOffset(1, err).NotTo(HaveOccurred())
-
-      test_execution:
-        - step_id: "TEST-01"
-          action: "Check README contains link to problem document"
-          command: "strings.Contains(readmeContent, 'docs/problems/mcp-config-drift.md')"
-          validation: "Link string is found in README content"
-          pattern_id: "content-search"
-          code_template: |
-            Expect(strings.Contains(string(readmeContent),
-                "docs/problems/mcp-config-drift.md")).To(BeTrue(),
-                "README.md should contain a link to the MCP config drift problem document")
-
-        - step_id: "TEST-02"
-          action: "Verify the linked file exists"
-          command: "os.Stat('docs/problems/mcp-config-drift.md')"
-          validation: "File exists at the referenced path"
-          pattern_id: "path-existence"
-          code_template: |
-            _, err = os.Stat("docs/problems/mcp-config-drift.md")
-            ExpectWithOffset(1, err).NotTo(HaveOccurred(),
-                "Problem document file should exist at docs/problems/mcp-config-drift.md")
-
-      cleanup: []
-
-    assertions:
-      - assertion_id: "ASSERT-01"
-        priority: "P0"
-        description: "README contains link to problem document"
-        condition: "strings.Contains returns true for the problem doc path"
-        failure_impact: "Problem document is undiscoverable from README navigation"
-      - assertion_id: "ASSERT-02"
-        priority: "P0"
-        description: "Linked file exists"
-        condition: "os.Stat succeeds for docs/problems/mcp-config-drift.md"
-        failure_impact: "README contains a broken link"
-
-    dependencies:
-      kubernetes_resources: []
-      external_tools: []
-      scenario_specific_rbac: []
-
-  - scenario_id: "003"
-    test_id: "TS-GH-17-003"
-    tier: "Functional"
-    priority: "P1"
-    mvp: false
-    requirement_id: "GH-17"
-
-    patterns:
-      primary: "content-validation"
-      secondary:
-        - "codebase-search"
-      helpers_required:
-        - name: "os"
-          functions: ["ReadFile"]
-          purpose: "Read document and source files"
-        - name: "strings"
-          functions: ["Contains"]
-          purpose: "Search for component references"
+        '
+    test_execution:
+    - step_id: TEST-01
+      action: Check README contains link to problem document
+      command: strings.Contains(readmeContent, 'docs/problems/mcp-config-drift.md')
+      validation: Link string is found in README content
+      pattern_id: content-search
+      code_template: "Expect(strings.Contains(string(readmeContent),\n    \"docs/problems/mcp-config-drift.md\")).To(BeTrue(),\n\
+        \    \"README.md should contain a link to the MCP config drift problem document\")\n"
+    - step_id: TEST-02
+      action: Verify the linked file exists
+      command: os.Stat('docs/problems/mcp-config-drift.md')
+      validation: File exists at the referenced path
+      pattern_id: path-existence
+      code_template: "_, err = os.Stat(\"docs/problems/mcp-config-drift.md\")\nExpectWithOffset(1, err).NotTo(HaveOccurred(),\n\
+        \    \"Problem document file should exist at docs/problems/mcp-config-drift.md\")\n"
+    cleanup: []
+  assertions:
+  - assertion_id: ASSERT-01
+    priority: P0
+    description: README contains link to problem document
+    condition: strings.Contains returns true for the problem doc path
+    failure_impact: Problem document is undiscoverable from README navigation
+  - assertion_id: ASSERT-02
+    priority: P0
+    description: Linked file exists
+    condition: os.Stat succeeds for docs/problems/mcp-config-drift.md
+    failure_impact: README contains a broken link
+  dependencies:
+    kubernetes_resources: []
+    external_tools: []
+    scenario_specific_rbac: []
+- scenario_id: '003'
+  test_id: TS-GH-17-003
+  tier: Tier 1
+  priority: P1
+  mvp: false
+  requirement_id: GH-17
+  patterns:
+    primary: content-validation
+    secondary:
+    - codebase-search
+    helpers_required:
+    - name: os
+      functions:
+      - ReadFile
+      purpose: Read document and source files
+    - name: strings
+      functions:
+      - Contains
+      purpose: Search for component references
+    decorators:
+    - Ordered
+  variables:
+    closure_scope:
+    - name: docContent
+      type: '[]byte'
+      initialized_in: BeforeAll
+      used_in:
+      - BeforeAll
+      - It
+      comment: Raw content of mcp-config-drift.md
+    - name: err
+      type: error
+      initialized_in: BeforeAll
+      used_in:
+      - BeforeAll
+      - It
+      comment: Error from file operations
+  test_structure:
+    type: single
+    describe:
+      wrapper: Describe
+      description: MCP Config Drift Problem Document Validation
       decorators: []
+    context:
+      description: security component reference validation
+      decorators:
+      - Ordered
+    it:
+      description: should verify references to security components match codebase
+      test_id_format: '[test_id:TS-GH-17-003]'
+  code_structure: "Context(\"security component reference validation\", Ordered, func() {\n  BeforeAll(func() {\n    // Read\
+    \ problem document content\n  })\n  It(\"[test_id:TS-GH-17-003] should verify references to security components match\
+    \ codebase\", func() {\n    // Check document mentions ToolAllowlistPreToolHook\n    // Check document mentions SSRFPreToolHook\n\
+    \    // Check document mentions GenerateClaudeSettings\n    // Verify these identifiers exist in the codebase\n  })\n\
+    })\n"
+  test_objective:
+    title: Verify references to ToolAllowlistPreToolHook, SSRFPreToolHook, and GenerateClaudeSettings match codebase
+    what: 'Reads the problem document and verifies that the security component names
 
-    variables:
-      closure_scope:
-        - name: "docContent"
-          type: "[]byte"
-          initialized_in: "BeforeAll"
-          used_in: ["BeforeAll", "It"]
-          comment: "Raw content of mcp-config-drift.md"
-        - name: "err"
-          type: "error"
-          initialized_in: "BeforeAll"
-          used_in: ["BeforeAll", "It"]
-          comment: "Error from file operations"
+      referenced (ToolAllowlistPreToolHook, SSRFPreToolHook, GenerateClaudeSettings)
 
-    test_structure:
-      type: "single"
-      describe:
-        wrapper: "Describe"
-        description: "MCP Config Drift Problem Document Validation"
-        decorators: []
-      context:
-        description: "security component reference validation"
-        decorators: []
-      it:
-        description: "should verify references to security components match codebase"
-        test_id_format: "[test_id:TS-GH-17-003]"
+      are mentioned in the document and correspond to actual identifiers in the
 
-    code_structure: |
-      Context("security component reference validation", func() {
-        BeforeAll(func() {
-          // Read problem document content
-        })
-        It("[test_id:TS-GH-17-003] should verify references to security components match codebase", func() {
-          // Check document mentions ToolAllowlistPreToolHook
-          // Check document mentions SSRFPreToolHook
-          // Check document mentions GenerateClaudeSettings
-          // Verify these identifiers exist in the codebase
-        })
-      })
+      source code.
 
-    test_objective:
-      title: "Verify references to ToolAllowlistPreToolHook, SSRFPreToolHook, and GenerateClaudeSettings match codebase"
-      what: |
-        Reads the problem document and verifies that the security component names
-        referenced (ToolAllowlistPreToolHook, SSRFPreToolHook, GenerateClaudeSettings)
-        are mentioned in the document and correspond to actual identifiers in the
-        source code.
-      why: |
-        Incorrect references to security components create confusion and may lead
-        developers to look for non-existent APIs. Ensuring accuracy maintains the
-        document's value as a security reference.
-      acceptance_criteria:
-        - "Document references ToolAllowlistPreToolHook and this identifier exists in codebase"
-        - "Document references SSRFPreToolHook and this identifier exists in codebase"
-        - "Document references GenerateClaudeSettings and this identifier exists in codebase"
+      '
+    why: 'Incorrect references to security components create confusion and may lead
 
-    classification:
-      test_type: "Functional"
-      scope: "Multi-component"
-      automation_approach: "Content search with codebase cross-reference"
+      developers to look for non-existent APIs. Ensuring accuracy maintains the
 
-    specific_preconditions:
-      - name: "Problem document exists"
-        requirement: "docs/problems/mcp-config-drift.md is present"
-        validation: "test -f docs/problems/mcp-config-drift.md"
+      document''s value as a security reference.
 
-    test_data:
-      resource_definitions: []
-      api_endpoints: []
-      security_components:
-        - identifier: "ToolAllowlistPreToolHook"
-          description: "Pre-tool hook that enforces tool allowlist"
-        - identifier: "SSRFPreToolHook"
-          description: "Pre-tool hook that validates against SSRF attacks"
-        - identifier: "GenerateClaudeSettings"
-          description: "Function that generates Claude settings configuration"
+      '
+    acceptance_criteria:
+    - Document references ToolAllowlistPreToolHook and this identifier exists in codebase
+    - Document references SSRFPreToolHook and this identifier exists in codebase
+    - Document references GenerateClaudeSettings and this identifier exists in codebase
+  classification:
+    test_type: Functional
+    scope: Multi-component
+    automation_approach: Content search with codebase cross-reference
+  specific_preconditions:
+  - name: Problem document exists
+    requirement: docs/problems/mcp-config-drift.md is present
+    validation: test -f docs/problems/mcp-config-drift.md
+  test_data:
+    resource_definitions: []
+    api_endpoints: []
+    security_components:
+    - identifier: ToolAllowlistPreToolHook
+      description: Pre-tool hook that enforces tool allowlist
+    - identifier: SSRFPreToolHook
+      description: Pre-tool hook that validates against SSRF attacks
+    - identifier: GenerateClaudeSettings
+      description: Function that generates Claude settings configuration
+  test_steps:
+    setup:
+    - step_id: SETUP-01
+      action: Read the problem document content
+      command: os.ReadFile('docs/problems/mcp-config-drift.md')
+      validation: File is read successfully
+      pattern_id: file-read
+      code_template: 'docContent, err = os.ReadFile("docs/problems/mcp-config-drift.md")
 
-    test_steps:
-      setup:
-        - step_id: "SETUP-01"
-          action: "Read the problem document content"
-          command: "os.ReadFile('docs/problems/mcp-config-drift.md')"
-          validation: "File is read successfully"
-          pattern_id: "file-read"
-          code_template: |
-            docContent, err = os.ReadFile("docs/problems/mcp-config-drift.md")
-            ExpectWithOffset(1, err).NotTo(HaveOccurred())
+        ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
-      test_execution:
-        - step_id: "TEST-01"
-          action: "Verify document references ToolAllowlistPreToolHook"
-          command: "strings.Contains(docContent, 'ToolAllowlistPreToolHook')"
-          validation: "Identifier found in document"
-          pattern_id: "content-search"
-          code_template: |
-            Expect(strings.Contains(string(docContent),
-                "ToolAllowlistPreToolHook")).To(BeTrue(),
-                "Document should reference ToolAllowlistPreToolHook")
-
-        - step_id: "TEST-02"
-          action: "Verify document references SSRFPreToolHook"
-          command: "strings.Contains(docContent, 'SSRFPreToolHook')"
-          validation: "Identifier found in document"
-          pattern_id: "content-search"
-          code_template: |
-            Expect(strings.Contains(string(docContent),
-                "SSRFPreToolHook")).To(BeTrue(),
-                "Document should reference SSRFPreToolHook")
-
-        - step_id: "TEST-03"
-          action: "Verify document references GenerateClaudeSettings"
-          command: "strings.Contains(docContent, 'GenerateClaudeSettings')"
-          validation: "Identifier found in document"
-          pattern_id: "content-search"
-          code_template: |
-            Expect(strings.Contains(string(docContent),
-                "GenerateClaudeSettings")).To(BeTrue(),
-                "Document should reference GenerateClaudeSettings")
-
-      cleanup: []
-
-    assertions:
-      - assertion_id: "ASSERT-01"
-        priority: "P1"
-        description: "ToolAllowlistPreToolHook is referenced in document"
-        condition: "String found in document content"
-        failure_impact: "Document does not accurately reference existing security components"
-      - assertion_id: "ASSERT-02"
-        priority: "P1"
-        description: "SSRFPreToolHook is referenced in document"
-        condition: "String found in document content"
-        failure_impact: "Document does not accurately reference existing security components"
-      - assertion_id: "ASSERT-03"
-        priority: "P1"
-        description: "GenerateClaudeSettings is referenced in document"
-        condition: "String found in document content"
-        failure_impact: "Document does not accurately reference existing security components"
-
-    dependencies:
-      kubernetes_resources: []
-      external_tools: []
-      scenario_specific_rbac: []
-
-  - scenario_id: "004"
-    test_id: "TS-GH-17-004"
-    tier: "Functional"
-    priority: "P2"
-    mvp: false
-    requirement_id: "GH-17"
-
-    patterns:
-      primary: "document-structure"
-      secondary:
-        - "content-search"
-      helpers_required:
-        - name: "os"
-          functions: ["ReadFile"]
-          purpose: "Read document content"
-        - name: "strings"
-          functions: ["Contains"]
-          purpose: "Search for section headings"
+        '
+    test_execution:
+    - step_id: TEST-01
+      action: Verify document references ToolAllowlistPreToolHook
+      command: strings.Contains(docContent, 'ToolAllowlistPreToolHook')
+      validation: Identifier found in document
+      pattern_id: content-search
+      code_template: "Expect(strings.Contains(string(docContent),\n    \"ToolAllowlistPreToolHook\")).To(BeTrue(),\n    \"\
+        Document should reference ToolAllowlistPreToolHook\")\n"
+    - step_id: TEST-02
+      action: Verify document references SSRFPreToolHook
+      command: strings.Contains(docContent, 'SSRFPreToolHook')
+      validation: Identifier found in document
+      pattern_id: content-search
+      code_template: "Expect(strings.Contains(string(docContent),\n    \"SSRFPreToolHook\")).To(BeTrue(),\n    \"Document\
+        \ should reference SSRFPreToolHook\")\n"
+    - step_id: TEST-03
+      action: Verify document references GenerateClaudeSettings
+      command: strings.Contains(docContent, 'GenerateClaudeSettings')
+      validation: Identifier found in document
+      pattern_id: content-search
+      code_template: "Expect(strings.Contains(string(docContent),\n    \"GenerateClaudeSettings\")).To(BeTrue(),\n    \"Document\
+        \ should reference GenerateClaudeSettings\")\n"
+    cleanup: []
+  assertions:
+  - assertion_id: ASSERT-01
+    priority: P1
+    description: ToolAllowlistPreToolHook is referenced in document
+    condition: String found in document content
+    failure_impact: Document does not accurately reference existing security components
+  - assertion_id: ASSERT-02
+    priority: P1
+    description: SSRFPreToolHook is referenced in document
+    condition: String found in document content
+    failure_impact: Document does not accurately reference existing security components
+  - assertion_id: ASSERT-03
+    priority: P1
+    description: GenerateClaudeSettings is referenced in document
+    condition: String found in document content
+    failure_impact: Document does not accurately reference existing security components
+  dependencies:
+    kubernetes_resources: []
+    external_tools: []
+    scenario_specific_rbac: []
+- scenario_id: '004'
+  test_id: TS-GH-17-004
+  tier: Tier 1
+  priority: P2
+  mvp: false
+  requirement_id: GH-17
+  patterns:
+    primary: document-structure
+    secondary:
+    - content-search
+    helpers_required:
+    - name: os
+      functions:
+      - ReadFile
+      purpose: Read document content
+    - name: strings
+      functions:
+      - Contains
+      purpose: Search for section headings
+    decorators:
+    - Ordered
+  variables:
+    closure_scope:
+    - name: docContent
+      type: '[]byte'
+      initialized_in: BeforeAll
+      used_in:
+      - BeforeAll
+      - It
+      comment: Raw content of mcp-config-drift.md
+    - name: err
+      type: error
+      initialized_in: BeforeAll
+      used_in:
+      - BeforeAll
+      - It
+      comment: Error from file operations
+  test_structure:
+    type: single
+    describe:
+      wrapper: Describe
+      description: MCP Config Drift Problem Document Validation
       decorators: []
+    context:
+      description: document structure validation
+      decorators:
+      - Ordered
+    it:
+      description: should verify document contains required sections
+      test_id_format: '[test_id:TS-GH-17-004]'
+  code_structure: "Context(\"document structure validation\", Ordered, func() {\n  BeforeAll(func() {\n    // Read problem\
+    \ document content\n  })\n  It(\"[test_id:TS-GH-17-004] should verify document contains required sections\", func() {\n\
+    \    // Check for problem statement section\n    // Check for attack scenarios section\n    // Check for defense considerations\
+    \ section\n    // Check for open questions section\n  })\n})\n"
+  test_objective:
+    title: Verify document contains required sections (problem statement, attack scenarios, defense considerations, open questions)
+    what: 'Reads the problem document and verifies it contains all required sections
 
-    variables:
-      closure_scope:
-        - name: "docContent"
-          type: "[]byte"
-          initialized_in: "BeforeAll"
-          used_in: ["BeforeAll", "It"]
-          comment: "Raw content of mcp-config-drift.md"
-        - name: "err"
-          type: "error"
-          initialized_in: "BeforeAll"
-          used_in: ["BeforeAll", "It"]
-          comment: "Error from file operations"
+      per problem document conventions: a problem statement, attack scenarios,
 
-    test_structure:
-      type: "single"
-      describe:
-        wrapper: "Describe"
-        description: "MCP Config Drift Problem Document Validation"
-        decorators: []
-      context:
-        description: "document structure validation"
-        decorators: []
-      it:
-        description: "should verify document contains required sections"
-        test_id_format: "[test_id:TS-GH-17-004]"
+      defense considerations, and open questions.
 
-    code_structure: |
-      Context("document structure validation", func() {
-        BeforeAll(func() {
-          // Read problem document content
-        })
-        It("[test_id:TS-GH-17-004] should verify document contains required sections", func() {
-          // Check for problem statement section
-          // Check for attack scenarios section
-          // Check for defense considerations section
-          // Check for open questions section
-        })
-      })
+      '
+    why: 'Problem documents must follow a consistent structure so that reviewers and
 
-    test_objective:
-      title: "Verify document contains required sections (problem statement, attack scenarios, defense considerations, open questions)"
-      what: |
-        Reads the problem document and verifies it contains all required sections
-        per problem document conventions: a problem statement, attack scenarios,
-        defense considerations, and open questions.
-      why: |
-        Problem documents must follow a consistent structure so that reviewers and
-        future readers can quickly locate relevant information. Missing sections
-        reduce the document's utility as a security reference.
-      acceptance_criteria:
-        - "Document contains a problem statement section"
-        - "Document contains an attack scenarios section"
-        - "Document contains a defense considerations section"
-        - "Document contains an open questions section"
+      future readers can quickly locate relevant information. Missing sections
 
-    classification:
-      test_type: "Functional"
-      scope: "Single-component"
-      automation_approach: "Content structure validation"
+      reduce the document''s utility as a security reference.
 
-    specific_preconditions:
-      - name: "Problem document exists"
-        requirement: "docs/problems/mcp-config-drift.md is present"
-        validation: "test -f docs/problems/mcp-config-drift.md"
+      '
+    acceptance_criteria:
+    - Document contains a problem statement section
+    - Document contains an attack scenarios section
+    - Document contains a defense considerations section
+    - Document contains an open questions section
+  classification:
+    test_type: Functional
+    scope: Single-component
+    automation_approach: Content structure validation
+  specific_preconditions:
+  - name: Problem document exists
+    requirement: docs/problems/mcp-config-drift.md is present
+    validation: test -f docs/problems/mcp-config-drift.md
+  test_data:
+    resource_definitions: []
+    api_endpoints: []
+    required_sections:
+    - heading_pattern: problem
+      description: Problem statement section
+    - heading_pattern: attack
+      description: Attack scenarios section
+    - heading_pattern: defense
+      description: Defense considerations section
+    - heading_pattern: open question
+      description: Open questions section
+  test_steps:
+    setup:
+    - step_id: SETUP-01
+      action: Read the problem document content
+      command: os.ReadFile('docs/problems/mcp-config-drift.md')
+      validation: File is read successfully
+      pattern_id: file-read
+      code_template: 'docContent, err = os.ReadFile("docs/problems/mcp-config-drift.md")
 
-    test_data:
-      resource_definitions: []
-      api_endpoints: []
-      required_sections:
-        - heading_pattern: "problem"
-          description: "Problem statement section"
-        - heading_pattern: "attack"
-          description: "Attack scenarios section"
-        - heading_pattern: "defense"
-          description: "Defense considerations section"
-        - heading_pattern: "open question"
-          description: "Open questions section"
+        ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
-    test_steps:
-      setup:
-        - step_id: "SETUP-01"
-          action: "Read the problem document content"
-          command: "os.ReadFile('docs/problems/mcp-config-drift.md')"
-          validation: "File is read successfully"
-          pattern_id: "file-read"
-          code_template: |
-            docContent, err = os.ReadFile("docs/problems/mcp-config-drift.md")
-            ExpectWithOffset(1, err).NotTo(HaveOccurred())
-
-      test_execution:
-        - step_id: "TEST-01"
-          action: "Verify document contains problem statement section"
-          command: "Search for heading containing 'problem' (case-insensitive)"
-          validation: "Problem statement heading found"
-          pattern_id: "content-search"
-          code_template: |
-            content := strings.ToLower(string(docContent))
-            Expect(strings.Contains(content, "problem")).To(BeTrue(),
-                "Document should contain a problem statement section")
-
-        - step_id: "TEST-02"
-          action: "Verify document contains attack scenarios section"
-          command: "Search for heading containing 'attack' (case-insensitive)"
-          validation: "Attack scenarios heading found"
-          pattern_id: "content-search"
-          code_template: |
-            Expect(strings.Contains(content, "attack")).To(BeTrue(),
-                "Document should contain an attack scenarios section")
-
-        - step_id: "TEST-03"
-          action: "Verify document contains defense considerations section"
-          command: "Search for heading containing 'defense' (case-insensitive)"
-          validation: "Defense considerations heading found"
-          pattern_id: "content-search"
-          code_template: |
-            Expect(strings.Contains(content, "defense")).To(BeTrue(),
-                "Document should contain a defense considerations section")
-
-        - step_id: "TEST-04"
-          action: "Verify document contains open questions section"
-          command: "Search for heading containing 'open question' (case-insensitive)"
-          validation: "Open questions heading found"
-          pattern_id: "content-search"
-          code_template: |
-            Expect(strings.Contains(content, "open question")).To(BeTrue(),
-                "Document should contain an open questions section")
-
-      cleanup: []
-
-    assertions:
-      - assertion_id: "ASSERT-01"
-        priority: "P2"
-        description: "All four required sections present in document"
-        condition: "Case-insensitive search finds problem, attack, defense, and open question headings"
-        failure_impact: "Document does not follow problem doc conventions"
-
-    dependencies:
-      kubernetes_resources: []
-      external_tools: []
-      scenario_specific_rbac: []
-
-  - scenario_id: "005"
-    test_id: "TS-GH-17-005"
-    tier: "Functional"
-    priority: "P0"
-    mvp: true
-    requirement_id: "GH-17"
-
-    patterns:
-      primary: "file-validation"
-      secondary:
-        - "link-resolution"
-        - "path-existence"
-      helpers_required:
-        - name: "os"
-          functions: ["ReadFile", "Stat"]
-          purpose: "Read document and verify file existence"
-        - name: "strings"
-          functions: ["Contains"]
-          purpose: "Search for specific link references"
+        '
+    test_execution:
+    - step_id: TEST-01
+      action: Verify document contains problem statement section
+      command: Search for heading containing 'problem' (case-insensitive)
+      validation: Problem statement heading found
+      pattern_id: content-search
+      code_template: "content := strings.ToLower(string(docContent))\nExpect(strings.Contains(content, \"problem\")).To(BeTrue(),\n\
+        \    \"Document should contain a problem statement section\")\n"
+    - step_id: TEST-02
+      action: Verify document contains attack scenarios section
+      command: Search for heading containing 'attack' (case-insensitive)
+      validation: Attack scenarios heading found
+      pattern_id: content-search
+      code_template: "Expect(strings.Contains(content, \"attack\")).To(BeTrue(),\n    \"Document should contain an attack\
+        \ scenarios section\")\n"
+    - step_id: TEST-03
+      action: Verify document contains defense considerations section
+      command: Search for heading containing 'defense' (case-insensitive)
+      validation: Defense considerations heading found
+      pattern_id: content-search
+      code_template: "Expect(strings.Contains(content, \"defense\")).To(BeTrue(),\n    \"Document should contain a defense\
+        \ considerations section\")\n"
+    - step_id: TEST-04
+      action: Verify document contains open questions section
+      command: Search for heading containing 'open question' (case-insensitive)
+      validation: Open questions heading found
+      pattern_id: content-search
+      code_template: "Expect(strings.Contains(content, \"open question\")).To(BeTrue(),\n    \"Document should contain an\
+        \ open questions section\")\n"
+    cleanup: []
+  assertions:
+  - assertion_id: ASSERT-01
+    priority: P2
+    description: All four required sections present in document
+    condition: Case-insensitive search finds problem, attack, defense, and open question headings
+    failure_impact: Document does not follow problem doc conventions
+  dependencies:
+    kubernetes_resources: []
+    external_tools: []
+    scenario_specific_rbac: []
+- scenario_id: '005'
+  test_id: TS-GH-17-005
+  tier: Tier 1
+  priority: P0
+  mvp: true
+  requirement_id: GH-17
+  patterns:
+    primary: file-validation
+    secondary:
+    - link-resolution
+    - path-existence
+    helpers_required:
+    - name: os
+      functions:
+      - ReadFile
+      - Stat
+      purpose: Read document and verify file existence
+    - name: strings
+      functions:
+      - Contains
+      purpose: Search for specific link references
+    decorators:
+    - Ordered
+  variables:
+    closure_scope:
+    - name: docContent
+      type: '[]byte'
+      initialized_in: BeforeAll
+      used_in:
+      - BeforeAll
+      - It
+      comment: Raw content of mcp-config-drift.md
+    - name: err
+      type: error
+      initialized_in: BeforeAll
+      used_in:
+      - BeforeAll
+      - It
+      comment: Error from file operations
+  test_structure:
+    type: single
+    describe:
+      wrapper: Describe
+      description: MCP Config Drift Problem Document Validation
       decorators: []
+    context:
+      description: security documentation cross-reference integrity
+      decorators:
+      - Ordered
+    it:
+      description: should verify links to security-threat-model.md, agent-architecture.md, and ADR 0017 resolve correctly
+      test_id_format: '[test_id:TS-GH-17-005]'
+  code_structure: "Context(\"security documentation cross-reference integrity\", Ordered, func() {\n  BeforeAll(func() {\n\
+    \    // Read problem document content\n  })\n  It(\"[test_id:TS-GH-17-005] should verify links to security docs and ADR\
+    \ resolve correctly\", func() {\n    // Check for security-threat-model.md reference and file existence\n    // Check\
+    \ for agent-architecture.md reference and file existence\n    // Check for ADR 0017 reference and file existence\n  })\n\
+    })\n"
+  test_objective:
+    title: Verify links to security-threat-model.md, agent-architecture.md, and ADR 0017 resolve correctly
+    what: 'Reads the problem document and verifies that the specific cross-references
 
-    variables:
-      closure_scope:
-        - name: "docContent"
-          type: "[]byte"
-          initialized_in: "BeforeAll"
-          used_in: ["BeforeAll", "It"]
-          comment: "Raw content of mcp-config-drift.md"
-        - name: "err"
-          type: "error"
-          initialized_in: "BeforeAll"
-          used_in: ["BeforeAll", "It"]
-          comment: "Error from file operations"
+      to security-threat-model.md, agent-architecture.md, and ADR 0017 are present
 
-    test_structure:
-      type: "single"
-      describe:
-        wrapper: "Describe"
-        description: "MCP Config Drift Problem Document Validation"
-        decorators: []
-      context:
-        description: "security documentation cross-reference integrity"
-        decorators: []
-      it:
-        description: "should verify links to security-threat-model.md, agent-architecture.md, and ADR 0017 resolve correctly"
-        test_id_format: "[test_id:TS-GH-17-005]"
+      in the document content and that the referenced files exist at the expected paths.
 
-    code_structure: |
-      Context("security documentation cross-reference integrity", func() {
-        BeforeAll(func() {
-          // Read problem document content
-        })
-        It("[test_id:TS-GH-17-005] should verify links to security docs and ADR resolve correctly", func() {
-          // Check for security-threat-model.md reference and file existence
-          // Check for agent-architecture.md reference and file existence
-          // Check for ADR 0017 reference and file existence
-        })
-      })
+      '
+    why: 'These three documents form the core security documentation set. The MCP config
 
-    test_objective:
-      title: "Verify links to security-threat-model.md, agent-architecture.md, and ADR 0017 resolve correctly"
-      what: |
-        Reads the problem document and verifies that the specific cross-references
-        to security-threat-model.md, agent-architecture.md, and ADR 0017 are present
-        in the document content and that the referenced files exist at the expected paths.
-      why: |
-        These three documents form the core security documentation set. The MCP config
-        drift problem document builds on their analysis. Broken links would disconnect
-        the security narrative and impair threat model traceability.
-      acceptance_criteria:
-        - "Document references security-threat-model.md and the file exists"
-        - "Document references agent-architecture.md and the file exists"
-        - "Document references ADR 0017 and the file exists"
+      drift problem document builds on their analysis. Broken links would disconnect
 
-    classification:
-      test_type: "Functional"
-      scope: "Multi-component"
-      automation_approach: "Content search with file existence validation"
+      the security narrative and impair threat model traceability.
 
-    specific_preconditions:
-      - name: "Problem document exists"
-        requirement: "docs/problems/mcp-config-drift.md is present"
-        validation: "test -f docs/problems/mcp-config-drift.md"
-      - name: "Security documentation exists"
-        requirement: "Referenced security docs are present in the repository"
-        validation: "find docs/ -name 'security-threat-model.md' -o -name 'agent-architecture.md'"
+      '
+    acceptance_criteria:
+    - Document references security-threat-model.md and the file exists
+    - Document references agent-architecture.md and the file exists
+    - Document references ADR 0017 and the file exists
+  classification:
+    test_type: Functional
+    scope: Multi-component
+    automation_approach: Content search with file existence validation
+  specific_preconditions:
+  - name: Problem document exists
+    requirement: docs/problems/mcp-config-drift.md is present
+    validation: test -f docs/problems/mcp-config-drift.md
+  - name: Security documentation exists
+    requirement: Referenced security docs are present in the repository
+    validation: find docs/ -name 'security-threat-model.md' -o -name 'agent-architecture.md'
+  test_data:
+    resource_definitions: []
+    api_endpoints: []
+    cross_references:
+    - name: security-threat-model.md
+      expected_pattern: security-threat-model
+    - name: agent-architecture.md
+      expected_pattern: agent-architecture
+    - name: ADR 0017
+      expected_pattern: '0017'
+  test_steps:
+    setup:
+    - step_id: SETUP-01
+      action: Read the problem document content
+      command: os.ReadFile('docs/problems/mcp-config-drift.md')
+      validation: File is read successfully
+      pattern_id: file-read
+      code_template: 'docContent, err = os.ReadFile("docs/problems/mcp-config-drift.md")
 
-    test_data:
-      resource_definitions: []
-      api_endpoints: []
-      cross_references:
-        - name: "security-threat-model.md"
-          expected_pattern: "security-threat-model"
-        - name: "agent-architecture.md"
-          expected_pattern: "agent-architecture"
-        - name: "ADR 0017"
-          expected_pattern: "0017"
+        ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
-    test_steps:
-      setup:
-        - step_id: "SETUP-01"
-          action: "Read the problem document content"
-          command: "os.ReadFile('docs/problems/mcp-config-drift.md')"
-          validation: "File is read successfully"
-          pattern_id: "file-read"
-          code_template: |
-            docContent, err = os.ReadFile("docs/problems/mcp-config-drift.md")
-            ExpectWithOffset(1, err).NotTo(HaveOccurred())
-
-      test_execution:
-        - step_id: "TEST-01"
-          action: "Verify document references security-threat-model.md"
-          command: "strings.Contains(docContent, 'security-threat-model')"
-          validation: "Reference found in document"
-          pattern_id: "content-search"
-          code_template: |
-            Expect(strings.Contains(string(docContent),
-                "security-threat-model")).To(BeTrue(),
-                "Document should reference security-threat-model.md")
-
-        - step_id: "TEST-02"
-          action: "Verify document references agent-architecture.md"
-          command: "strings.Contains(docContent, 'agent-architecture')"
-          validation: "Reference found in document"
-          pattern_id: "content-search"
-          code_template: |
-            Expect(strings.Contains(string(docContent),
-                "agent-architecture")).To(BeTrue(),
-                "Document should reference agent-architecture.md")
-
-        - step_id: "TEST-03"
-          action: "Verify document references ADR 0017"
-          command: "strings.Contains(docContent, '0017')"
-          validation: "Reference found in document"
-          pattern_id: "content-search"
-          code_template: |
-            Expect(strings.Contains(string(docContent),
-                "0017")).To(BeTrue(),
-                "Document should reference ADR 0017")
-
-      cleanup: []
-
-    assertions:
-      - assertion_id: "ASSERT-01"
-        priority: "P0"
-        description: "security-threat-model.md is referenced"
-        condition: "String 'security-threat-model' found in document"
-        failure_impact: "Missing link to core security threat model"
-      - assertion_id: "ASSERT-02"
-        priority: "P0"
-        description: "agent-architecture.md is referenced"
-        condition: "String 'agent-architecture' found in document"
-        failure_impact: "Missing link to agent architecture documentation"
-      - assertion_id: "ASSERT-03"
-        priority: "P0"
-        description: "ADR 0017 is referenced"
-        condition: "String '0017' found in document"
-        failure_impact: "Missing link to relevant Architecture Decision Record"
-
-    dependencies:
-      kubernetes_resources: []
-      external_tools: []
-      scenario_specific_rbac: []
-
-  - scenario_id: "006"
-    test_id: "TS-GH-17-006"
-    tier: "Functional"
-    priority: "P1"
-    mvp: false
-    requirement_id: "GH-17"
-
-    patterns:
-      primary: "content-validation"
-      secondary:
-        - "content-search"
-      helpers_required:
-        - name: "os"
-          functions: ["ReadFile"]
-          purpose: "Read document content"
-        - name: "strings"
-          functions: ["Contains"]
-          purpose: "Search for defense mechanism descriptions"
+        '
+    test_execution:
+    - step_id: TEST-01
+      action: Verify document references security-threat-model.md
+      command: strings.Contains(docContent, 'security-threat-model')
+      validation: Reference found in document
+      pattern_id: content-search
+      code_template: "Expect(strings.Contains(string(docContent),\n    \"security-threat-model\")).To(BeTrue(),\n    \"Document\
+        \ should reference security-threat-model.md\")\n"
+    - step_id: TEST-02
+      action: Verify document references agent-architecture.md
+      command: strings.Contains(docContent, 'agent-architecture')
+      validation: Reference found in document
+      pattern_id: content-search
+      code_template: "Expect(strings.Contains(string(docContent),\n    \"agent-architecture\")).To(BeTrue(),\n    \"Document\
+        \ should reference agent-architecture.md\")\n"
+    - step_id: TEST-03
+      action: Verify document references ADR 0017
+      command: strings.Contains(docContent, '0017')
+      validation: Reference found in document
+      pattern_id: content-search
+      code_template: "Expect(strings.Contains(string(docContent),\n    \"0017\")).To(BeTrue(),\n    \"Document should reference\
+        \ ADR 0017\")\n"
+    cleanup: []
+  assertions:
+  - assertion_id: ASSERT-01
+    priority: P0
+    description: security-threat-model.md is referenced
+    condition: String 'security-threat-model' found in document
+    failure_impact: Missing link to core security threat model
+  - assertion_id: ASSERT-02
+    priority: P0
+    description: agent-architecture.md is referenced
+    condition: String 'agent-architecture' found in document
+    failure_impact: Missing link to agent architecture documentation
+  - assertion_id: ASSERT-03
+    priority: P0
+    description: ADR 0017 is referenced
+    condition: String '0017' found in document
+    failure_impact: Missing link to relevant Architecture Decision Record
+  dependencies:
+    kubernetes_resources: []
+    external_tools: []
+    scenario_specific_rbac: []
+- scenario_id: '006'
+  test_id: TS-GH-17-006
+  tier: Tier 1
+  priority: P1
+  mvp: false
+  requirement_id: GH-17
+  patterns:
+    primary: content-validation
+    secondary:
+    - content-search
+    helpers_required:
+    - name: os
+      functions:
+      - ReadFile
+      purpose: Read document content
+    - name: strings
+      functions:
+      - Contains
+      purpose: Search for defense mechanism descriptions
+    decorators:
+    - Ordered
+  variables:
+    closure_scope:
+    - name: docContent
+      type: '[]byte'
+      initialized_in: BeforeAll
+      used_in:
+      - BeforeAll
+      - It
+      comment: Raw content of mcp-config-drift.md
+    - name: err
+      type: error
+      initialized_in: BeforeAll
+      used_in:
+      - BeforeAll
+      - It
+      comment: Error from file operations
+  test_structure:
+    type: single
+    describe:
+      wrapper: Describe
+      description: MCP Config Drift Problem Document Validation
       decorators: []
+    context:
+      description: existing defense mechanism accuracy
+      decorators:
+      - Ordered
+    it:
+      description: should verify description of existing defense mechanisms matches current implementation
+      test_id_format: '[test_id:TS-GH-17-006]'
+  code_structure: "Context(\"existing defense mechanism accuracy\", Ordered, func() {\n  BeforeAll(func() {\n    // Read problem\
+    \ document content\n  })\n  It(\"[test_id:TS-GH-17-006] should verify defense mechanism descriptions match implementation\"\
+    , func() {\n    // Verify SSRF validator is mentioned\n    // Verify tool allowlist hook is mentioned\n    // Verify credential\
+    \ isolation is mentioned\n  })\n})\n"
+  test_objective:
+    title: Verify description of existing defense mechanisms (SSRF validator, tool allowlist hook, credential isolation) matches
+      current implementation
+    what: 'Reads the problem document and verifies that the descriptions of existing
 
-    variables:
-      closure_scope:
-        - name: "docContent"
-          type: "[]byte"
-          initialized_in: "BeforeAll"
-          used_in: ["BeforeAll", "It"]
-          comment: "Raw content of mcp-config-drift.md"
-        - name: "err"
-          type: "error"
-          initialized_in: "BeforeAll"
-          used_in: ["BeforeAll", "It"]
-          comment: "Error from file operations"
+      defense mechanisms — SSRF validator, tool allowlist hook, and credential
 
-    test_structure:
-      type: "single"
-      describe:
-        wrapper: "Describe"
-        description: "MCP Config Drift Problem Document Validation"
-        decorators: []
-      context:
-        description: "existing defense mechanism accuracy"
-        decorators: []
-      it:
-        description: "should verify description of existing defense mechanisms matches current implementation"
-        test_id_format: "[test_id:TS-GH-17-006]"
+      isolation — are present. These are the current defenses referenced in the
 
-    code_structure: |
-      Context("existing defense mechanism accuracy", func() {
-        BeforeAll(func() {
-          // Read problem document content
-        })
-        It("[test_id:TS-GH-17-006] should verify defense mechanism descriptions match implementation", func() {
-          // Verify SSRF validator is mentioned
-          // Verify tool allowlist hook is mentioned
-          // Verify credential isolation is mentioned
-        })
-      })
+      document''s analysis of gaps in MCP config drift protection.
 
-    test_objective:
-      title: "Verify description of existing defense mechanisms (SSRF validator, tool allowlist hook, credential isolation) matches current implementation"
-      what: |
-        Reads the problem document and verifies that the descriptions of existing
-        defense mechanisms — SSRF validator, tool allowlist hook, and credential
-        isolation — are present. These are the current defenses referenced in the
-        document's analysis of gaps in MCP config drift protection.
-      why: |
-        If the document inaccurately describes existing defenses, readers may form
-        incorrect assumptions about the current security posture. Accurate descriptions
-        are critical for the gap analysis that motivates future MCP drift detection work.
-      acceptance_criteria:
-        - "Document mentions SSRF validation as an existing defense"
-        - "Document mentions tool allowlist as an existing defense"
-        - "Document mentions credential isolation as an existing defense"
+      '
+    why: 'If the document inaccurately describes existing defenses, readers may form
 
-    classification:
-      test_type: "Functional"
-      scope: "Single-component"
-      automation_approach: "Content accuracy validation"
+      incorrect assumptions about the current security posture. Accurate descriptions
 
-    specific_preconditions:
-      - name: "Problem document exists"
-        requirement: "docs/problems/mcp-config-drift.md is present"
-        validation: "test -f docs/problems/mcp-config-drift.md"
+      are critical for the gap analysis that motivates future MCP drift detection work.
 
-    test_data:
-      resource_definitions: []
-      api_endpoints: []
-      defense_mechanisms:
-        - name: "SSRF validator"
-          search_term: "SSRF"
-        - name: "Tool allowlist hook"
-          search_term: "allowlist"
-        - name: "Credential isolation"
-          search_term: "credential"
+      '
+    acceptance_criteria:
+    - Document mentions SSRF validation as an existing defense
+    - Document mentions tool allowlist as an existing defense
+    - Document mentions credential isolation as an existing defense
+  classification:
+    test_type: Functional
+    scope: Single-component
+    automation_approach: Content accuracy validation
+  specific_preconditions:
+  - name: Problem document exists
+    requirement: docs/problems/mcp-config-drift.md is present
+    validation: test -f docs/problems/mcp-config-drift.md
+  test_data:
+    resource_definitions: []
+    api_endpoints: []
+    defense_mechanisms:
+    - name: SSRF validator
+      search_term: SSRF
+    - name: Tool allowlist hook
+      search_term: allowlist
+    - name: Credential isolation
+      search_term: credential
+  test_steps:
+    setup:
+    - step_id: SETUP-01
+      action: Read the problem document content
+      command: os.ReadFile('docs/problems/mcp-config-drift.md')
+      validation: File is read successfully
+      pattern_id: file-read
+      code_template: 'docContent, err = os.ReadFile("docs/problems/mcp-config-drift.md")
 
-    test_steps:
-      setup:
-        - step_id: "SETUP-01"
-          action: "Read the problem document content"
-          command: "os.ReadFile('docs/problems/mcp-config-drift.md')"
-          validation: "File is read successfully"
-          pattern_id: "file-read"
-          code_template: |
-            docContent, err = os.ReadFile("docs/problems/mcp-config-drift.md")
-            ExpectWithOffset(1, err).NotTo(HaveOccurred())
+        ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
-      test_execution:
-        - step_id: "TEST-01"
-          action: "Verify document describes SSRF validation defense"
-          command: "strings.Contains(docContent, 'SSRF')"
-          validation: "SSRF reference found"
-          pattern_id: "content-search"
-          code_template: |
-            Expect(strings.Contains(string(docContent),
-                "SSRF")).To(BeTrue(),
-                "Document should describe SSRF validation as an existing defense")
-
-        - step_id: "TEST-02"
-          action: "Verify document describes tool allowlist defense"
-          command: "strings.Contains(docContent, 'allowlist')"
-          validation: "Allowlist reference found"
-          pattern_id: "content-search"
-          code_template: |
-            content := strings.ToLower(string(docContent))
-            Expect(strings.Contains(content, "allowlist")).To(BeTrue(),
-                "Document should describe tool allowlist as an existing defense")
-
-        - step_id: "TEST-03"
-          action: "Verify document describes credential isolation"
-          command: "strings.Contains(docContent, 'credential')"
-          validation: "Credential isolation reference found"
-          pattern_id: "content-search"
-          code_template: |
-            Expect(strings.Contains(content, "credential")).To(BeTrue(),
-                "Document should describe credential isolation as an existing defense")
-
-      cleanup: []
-
-    assertions:
-      - assertion_id: "ASSERT-01"
-        priority: "P1"
-        description: "SSRF validation defense is described"
-        condition: "Document content contains 'SSRF'"
-        failure_impact: "Missing defense mechanism in document analysis"
-      - assertion_id: "ASSERT-02"
-        priority: "P1"
-        description: "Tool allowlist defense is described"
-        condition: "Document content contains 'allowlist'"
-        failure_impact: "Missing defense mechanism in document analysis"
-      - assertion_id: "ASSERT-03"
-        priority: "P1"
-        description: "Credential isolation defense is described"
-        condition: "Document content contains 'credential'"
-        failure_impact: "Missing defense mechanism in document analysis"
-
-    dependencies:
-      kubernetes_resources: []
-      external_tools: []
-      scenario_specific_rbac: []
-
-  - scenario_id: "007"
-    test_id: "TS-GH-17-007"
-    tier: "Functional"
-    priority: "P2"
-    mvp: false
-    requirement_id: "GH-17"
-
-    patterns:
-      primary: "negative-validation"
-      secondary:
-        - "link-resolution"
-      helpers_required:
-        - name: "os"
-          functions: ["ReadFile", "Stat"]
-          purpose: "Read document and check file existence"
-        - name: "strings"
-          functions: ["Contains"]
-          purpose: "Extract link targets"
+        '
+    test_execution:
+    - step_id: TEST-01
+      action: Verify document describes SSRF validation defense
+      command: strings.Contains(docContent, 'SSRF')
+      validation: SSRF reference found
+      pattern_id: content-search
+      code_template: "Expect(strings.Contains(string(docContent),\n    \"SSRF\")).To(BeTrue(),\n    \"Document should describe\
+        \ SSRF validation as an existing defense\")\n"
+    - step_id: TEST-02
+      action: Verify document describes tool allowlist defense
+      command: strings.Contains(docContent, 'allowlist')
+      validation: Allowlist reference found
+      pattern_id: content-search
+      code_template: "content := strings.ToLower(string(docContent))\nExpect(strings.Contains(content, \"allowlist\")).To(BeTrue(),\n\
+        \    \"Document should describe tool allowlist as an existing defense\")\n"
+    - step_id: TEST-03
+      action: Verify document describes credential isolation
+      command: strings.Contains(docContent, 'credential')
+      validation: Credential isolation reference found
+      pattern_id: content-search
+      code_template: "Expect(strings.Contains(content, \"credential\")).To(BeTrue(),\n    \"Document should describe credential\
+        \ isolation as an existing defense\")\n"
+    cleanup: []
+  assertions:
+  - assertion_id: ASSERT-01
+    priority: P1
+    description: SSRF validation defense is described
+    condition: Document content contains 'SSRF'
+    failure_impact: Missing defense mechanism in document analysis
+  - assertion_id: ASSERT-02
+    priority: P1
+    description: Tool allowlist defense is described
+    condition: Document content contains 'allowlist'
+    failure_impact: Missing defense mechanism in document analysis
+  - assertion_id: ASSERT-03
+    priority: P1
+    description: Credential isolation defense is described
+    condition: Document content contains 'credential'
+    failure_impact: Missing defense mechanism in document analysis
+  dependencies:
+    kubernetes_resources: []
+    external_tools: []
+    scenario_specific_rbac: []
+- scenario_id: '007'
+  test_id: TS-GH-17-007
+  tier: Tier 1
+  priority: P2
+  mvp: false
+  requirement_id: GH-17
+  patterns:
+    primary: negative-validation
+    secondary:
+    - link-resolution
+    helpers_required:
+    - name: os
+      functions:
+      - ReadFile
+      - Stat
+      purpose: Read document and check file existence
+    - name: strings
+      functions:
+      - Contains
+      purpose: Extract link targets
+    decorators:
+    - Ordered
+  variables:
+    closure_scope:
+    - name: docContent
+      type: '[]byte'
+      initialized_in: BeforeAll
+      used_in:
+      - BeforeAll
+      - It
+      comment: Raw content of mcp-config-drift.md
+    - name: err
+      type: error
+      initialized_in: BeforeAll
+      used_in:
+      - BeforeAll
+      - It
+      comment: Error from file operations
+  test_structure:
+    type: single
+    describe:
+      wrapper: Describe
+      description: MCP Config Drift Problem Document Validation
       decorators: []
+    context:
+      description: '[NEGATIVE] broken cross-reference detection'
+      decorators:
+      - Ordered
+    it:
+      description: should detect broken links when a cross-referenced document is missing
+      test_id_format: '[test_id:TS-GH-17-007]'
+  code_structure: "Context(\"[NEGATIVE] broken cross-reference detection\", Ordered, func() {\n  BeforeAll(func() {\n    //\
+    \ Read problem document content\n  })\n  It(\"[test_id:TS-GH-17-007] should detect broken links when cross-referenced\
+    \ doc is missing\", func() {\n    // Attempt to resolve a known non-existent path\n    // Verify os.Stat returns an error\
+    \ for the missing file\n  })\n})\n"
+  test_objective:
+    title: Verify that a renamed or removed cross-referenced document causes a detectable link validation failure
+    what: 'Tests the negative case: verifies that the link validation approach can detect
 
-    variables:
-      closure_scope:
-        - name: "docContent"
-          type: "[]byte"
-          initialized_in: "BeforeAll"
-          used_in: ["BeforeAll", "It"]
-          comment: "Raw content of mcp-config-drift.md"
-        - name: "err"
-          type: "error"
-          initialized_in: "BeforeAll"
-          used_in: ["BeforeAll", "It"]
-          comment: "Error from file operations"
+      a broken cross-reference. Checks that os.Stat returns an error when given a
 
-    test_structure:
-      type: "single"
-      describe:
-        wrapper: "Describe"
-        description: "MCP Config Drift Problem Document Validation"
-        decorators: []
-      context:
-        description: "[NEGATIVE] broken cross-reference detection"
-        decorators: []
-      it:
-        description: "should detect broken links when a cross-referenced document is missing"
-        test_id_format: "[test_id:TS-GH-17-007]"
+      path to a non-existent document, confirming the validation method works.
 
-    code_structure: |
-      Context("[NEGATIVE] broken cross-reference detection", func() {
-        BeforeAll(func() {
-          // Read problem document content
-        })
-        It("[test_id:TS-GH-17-007] should detect broken links when cross-referenced doc is missing", func() {
-          // Attempt to resolve a known non-existent path
-          // Verify os.Stat returns an error for the missing file
-        })
-      })
+      '
+    why: 'If the validation method cannot detect broken links, the positive tests
 
-    test_objective:
-      title: "Verify that a renamed or removed cross-referenced document causes a detectable link validation failure"
-      what: |
-        Tests the negative case: verifies that the link validation approach can detect
-        a broken cross-reference. Checks that os.Stat returns an error when given a
-        path to a non-existent document, confirming the validation method works.
-      why: |
-        If the validation method cannot detect broken links, the positive tests
-        (scenarios 001, 005) provide false confidence. This negative test validates
-        the detection mechanism itself.
-      acceptance_criteria:
-        - "os.Stat returns an error for a known non-existent file path"
-        - "The error is detectable programmatically (os.IsNotExist returns true)"
+      (scenarios 001, 005) provide false confidence. This negative test validates
 
-    classification:
-      test_type: "Functional"
-      scope: "Single-component"
-      automation_approach: "Negative path validation"
+      the detection mechanism itself.
 
-    specific_preconditions:
-      - name: "Repository checkout"
-        requirement: "Clean repository checkout available"
-        validation: "git status"
-
-    test_data:
-      resource_definitions: []
-      api_endpoints: []
-      non_existent_path: "docs/problems/non-existent-doc-for-negative-test.md"
-
-    test_steps:
-      setup: []
-
-      test_execution:
-        - step_id: "TEST-01"
-          action: "Attempt to stat a known non-existent file path"
-          command: "os.Stat('docs/problems/non-existent-doc-for-negative-test.md')"
-          validation: "os.Stat returns an error"
-          pattern_id: "negative-validation"
-          code_template: |
-            _, err = os.Stat("docs/problems/non-existent-doc-for-negative-test.md")
-            Expect(err).To(HaveOccurred(),
-                "os.Stat should return an error for a non-existent file")
-            Expect(os.IsNotExist(err)).To(BeTrue(),
-                "Error should indicate file does not exist")
-
-      cleanup: []
-
-    assertions:
-      - assertion_id: "ASSERT-01"
-        priority: "P2"
-        description: "Non-existent file path causes os.Stat error"
-        condition: "os.Stat returns non-nil error and os.IsNotExist returns true"
-        failure_impact: "Link validation mechanism is unreliable — cannot detect broken references"
-
-    dependencies:
-      kubernetes_resources: []
-      external_tools: []
-      scenario_specific_rbac: []
+      '
+    acceptance_criteria:
+    - os.Stat returns an error for a known non-existent file path
+    - The error is detectable programmatically (os.IsNotExist returns true)
+  classification:
+    test_type: Functional
+    scope: Single-component
+    automation_approach: Negative path validation
+  specific_preconditions:
+  - name: Repository checkout
+    requirement: Clean repository checkout available
+    validation: git status
+  test_data:
+    resource_definitions: []
+    api_endpoints: []
+    non_existent_path: docs/problems/non-existent-doc-for-negative-test.md
+  test_steps:
+    setup: []
+    test_execution:
+    - step_id: TEST-01
+      action: Attempt to stat a known non-existent file path
+      command: os.Stat('docs/problems/non-existent-doc-for-negative-test.md')
+      validation: os.Stat returns an error
+      pattern_id: negative-validation
+      code_template: "_, err = os.Stat(\"docs/problems/non-existent-doc-for-negative-test.md\")\nExpect(err).To(HaveOccurred(),\n\
+        \    \"os.Stat should return an error for a non-existent file\")\nExpect(os.IsNotExist(err)).To(BeTrue(),\n    \"\
+        Error should indicate file does not exist\")\n"
+    cleanup: []
+  assertions:
+  - assertion_id: ASSERT-01
+    priority: P2
+    description: Non-existent file path causes os.Stat error
+    condition: os.Stat returns non-nil error and os.IsNotExist returns true
+    failure_impact: Link validation mechanism is unreliable — cannot detect broken references
+  dependencies:
+    kubernetes_resources: []
+    external_tools: []
+    scenario_specific_rbac: []
 ---

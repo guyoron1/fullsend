@@ -1,7 +1,7 @@
 # STD Review Report: GH-17
 
 **Reviewed:**
-- STD YAML: `outputs/std/GH-17/GH-17_test_description.yaml`
+- STD YAML: `outputs/std/GH-17/GH-17_test_description.yaml` (refined)
 - STP Source: `outputs/stp/GH-17/GH-17_test_plan.md`
 - Go Stubs: `outputs/std/GH-17/go-tests/mcp_config_drift_doc_validation_stubs_test.go`
 - Python Stubs: N/A
@@ -12,7 +12,7 @@
 
 ---
 
-## Verdict: APPROVED_WITH_FINDINGS
+## Verdict: APPROVED
 
 ## Summary
 
@@ -20,11 +20,11 @@
 |:-------|:------|
 | Dimensions reviewed | 7/7 |
 | Critical findings | 0 |
-| Major findings | 3 |
-| Minor findings | 3 |
-| Actionable findings | 6 |
+| Major findings | 0 |
+| Minor findings | 2 |
+| Actionable findings | 1 |
 | Confidence | MEDIUM |
-| Weighted score | 89 |
+| Weighted score | 96 |
 
 ## Traceability Summary
 
@@ -32,8 +32,8 @@
 |:-------|:------|
 | STP scenarios | 7 |
 | STD scenarios | 7 |
-| Forward coverage (STP->STD) | 7/7 (100%) |
-| Reverse coverage (STD->STP) | 7/7 (100%) |
+| Forward coverage (STP→STD) | 7/7 (100%) |
+| Reverse coverage (STD→STP) | 7/7 (100%) |
 | Orphan STD scenarios | 0 |
 | Missing STD scenarios | 0 |
 
@@ -43,27 +43,27 @@
 
 ### Dimension 1: STP-STD Traceability (Weight: 30%) — Score: 100/100
 
-**1a. Forward Traceability (STP -> STD):** All 7 STP scenarios in Section III have matching STD scenarios with high keyword overlap.
+**1a. Forward Traceability (STP → STD):** All 7 STP scenarios in Section III have matching STD scenarios with high keyword overlap.
 
 | STP Scenario | STD Match | Keyword Overlap | Priority Match | Tier Match |
 |:-------------|:----------|:----------------|:---------------|:-----------|
-| Cross-reference links resolve to existing files | TS-GH-17-001 | HIGH | P0=P0 | Functional=Functional |
-| README links to mcp-config-drift.md | TS-GH-17-002 | HIGH | P0=P0 | Functional=Functional |
-| Security component references match codebase | TS-GH-17-003 | HIGH | P1=P1 | Functional=Functional |
-| Document contains required sections | TS-GH-17-004 | HIGH | P2=P2 | Functional=Functional |
-| Links to security-threat-model.md, agent-architecture.md, ADR 0017 | TS-GH-17-005 | HIGH | P0=P0 | Functional=Functional |
-| Existing defense mechanisms match implementation | TS-GH-17-006 | HIGH | P1=P1 | Functional=Functional |
-| Broken cross-reference detection | TS-GH-17-007 | HIGH | P2=P2 | Functional=Functional |
+| Cross-reference links resolve to existing files | TS-GH-17-001 | HIGH | P0=P0 | ✓ |
+| README links to mcp-config-drift.md | TS-GH-17-002 | HIGH | P0=P0 | ✓ |
+| Security component references match codebase | TS-GH-17-003 | HIGH | P1=P1 | ✓ |
+| Document contains required sections | TS-GH-17-004 | HIGH | P2=P2 | ✓ |
+| Links to security-threat-model.md, agent-architecture.md, ADR 0017 | TS-GH-17-005 | HIGH | P0=P0 | ✓ |
+| Existing defense mechanisms match implementation | TS-GH-17-006 | HIGH | P1=P1 | ✓ |
+| Broken cross-reference detection | TS-GH-17-007 | HIGH | P2=P2 | ✓ |
 
-**1b. Reverse Traceability (STD -> STP):** All 7 STD scenarios map to `requirement_id: "GH-17"` which is present in STP Section III. PASS.
+**1b. Reverse Traceability (STD → STP):** All 7 STD scenarios map to `requirement_id: "GH-17"` which is present in STP Section III. PASS.
 
 **1c. Count Consistency (Zero-Trust Verification):**
 
 | Metadata Claim | Actual Count | Status |
 |:---------------|:-------------|:-------|
 | `total_scenarios: 7` | 7 scenarios in array | PASS |
-| `functional_count: 7` | 7 scenarios with `tier: "Functional"` | PASS |
-| `e2e_count: 0` | 0 e2e scenarios | PASS |
+| `tier_1_count: 7` | 7 scenarios with `tier: "Tier 1"` | PASS |
+| `tier_2_count: 0` | 0 Tier 2 scenarios | PASS |
 | `p0_count: 3` | 3 (001, 002, 005) | PASS |
 | `p1_count: 2` | 2 (003, 006) | PASS |
 | `p2_count: 2` | 2 (004, 007) | PASS |
@@ -76,48 +76,44 @@ No findings for Dimension 1.
 
 ---
 
-### Dimension 2: STD YAML Structure (Weight: 20%) — Score: 70/100
+### Dimension 2: STD YAML Structure (Weight: 20%) — Score: 100/100
 
-**2a. Document-Level Structure:** All required sections present. PASS.
+**2a. Document-Level Structure:** All required sections present (`document_metadata`, `code_generation_config`, `common_preconditions`, `scenarios`). `std_version` is "2.1-enhanced" in both locations. PASS.
 
-**2b. Per-Scenario Required Fields:** All 7 scenarios contain all required fields. Test IDs follow `TS-{JIRA_ID}-{NUM:03d}` format. No duplicate IDs.
+**2b. Per-Scenario Required Fields:** All 7 scenarios contain all required fields. Test IDs follow `TS-{JIRA_ID}-{NUM:03d}` format. No duplicate IDs. Tier values use correct `"Tier 1"` format. PASS.
 
-**2c. v2.1-Specific Checks:** Missing Ordered decorators.
+**2c. v2.1-Specific Checks:**
 
-#### Findings
+- `test_structure.context.decorators` includes `Ordered` for all 7 scenarios. PASS.
+- Code templates use `=` (not `:=`) for closure variables. PASS.
+- `Expect(err)` calls use `ExpectWithOffset(1, err)`. PASS.
+- `variables.closure_scope` includes appropriate variables for file-validation tests. PASS.
 
-| Finding ID | Severity | Description | Evidence | Remediation | Actionable |
-|:-----------|:---------|:------------|:---------|:------------|:-----------|
-| D2-2b-001 | MAJOR | Tier values use `"Functional"` instead of the expected `"Tier 1"` or `"Tier 2"` across all 7 scenarios. The v2.1-enhanced spec requires `"Tier 1"` or `"Tier 2"` as valid tier values. | `tier: "Functional"` in all scenarios. STP also uses `[Functional]` so this is consistently wrong across both artifacts. | Change `tier: "Functional"` to `tier: "Tier 1"` for all scenarios (these generate Go/Ginkgo stubs, which maps to Tier 1). Update STP Section III tier labels accordingly. | true |
-| D2-2c-001 | MAJOR | Missing `Ordered` decorator in `test_structure.context.decorators` for all 7 scenarios. Ginkgo v2 requires the `Ordered` decorator on Contexts that use `BeforeAll` — without it, `BeforeAll` is invalid and test execution will fail. | `test_structure.context.decorators: []` in all scenarios, while `code_structure` shows `BeforeAll` usage. | Add `Ordered` to `test_structure.context.decorators` for every scenario that uses `BeforeAll` in its `code_structure`. | true |
+No findings for Dimension 2.
 
 ---
 
-### Dimension 3: Pattern Matching Correctness (Weight: 10%) — Score: 90/100
+### Dimension 3: Pattern Matching Correctness (Weight: 10%) — Score: 100/100
 
 | Scenario | Primary Pattern | Helpers | Decorators | Status |
 |:---------|:----------------|:--------|:-----------|:-------|
-| 001 | file-validation | os, strings (2) | 0 | PASS |
-| 002 | file-validation | os, strings (2) | 0 | WARN |
-| 003 | content-validation | os, strings (2) | 0 | WARN |
-| 004 | document-structure | os, strings (2) | 0 | WARN |
-| 005 | file-validation | os, strings (2) | 0 | WARN |
-| 006 | content-validation | os, strings (2) | 0 | WARN |
-| 007 | negative-validation | os, strings (2) | 0 | WARN |
+| 001 | file-validation | os, strings (2) | Ordered (1) | PASS |
+| 002 | file-validation | os, strings (2) | Ordered (1) | PASS |
+| 003 | content-validation | os, strings (2) | Ordered (1) | PASS |
+| 004 | document-structure | os, strings (2) | Ordered (1) | PASS |
+| 005 | file-validation | os, strings (2) | Ordered (1) | PASS |
+| 006 | content-validation | os, strings (2) | Ordered (1) | PASS |
+| 007 | negative-validation | os, strings (2) | Ordered (1) | PASS |
 
-**3a. Primary Pattern Matching:** All primary patterns are reasonable and match scenario keywords. PASS.
+**3a. Primary Pattern Matching:** All primary patterns are appropriate for their scenarios. PASS.
 
 **3b. Helper Library Mapping:** Helpers are correct — `os` for file operations, `strings` for content search. PASS.
 
-**3c. Decorator Assignment:** All decorator arrays are empty — no tier decorators, no Ordered decorators assigned. This is consistent with the empty `decorator_mappings` in the example project config, but the Ordered decorator should be present regardless of project config (it is a Ginkgo framework requirement). Already captured in D2-2c-001.
+**3c. Decorator Assignment:** `Ordered` decorator is correctly assigned to all scenarios that use `BeforeAll`. PASS.
 
 **3d. Pattern Library:** No pattern library available at project config. Skipped.
 
-#### Findings
-
-| Finding ID | Severity | Description | Evidence | Remediation | Actionable |
-|:-----------|:---------|:------------|:---------|:------------|:-----------|
-| D3-3c-001 | MINOR | All decorator arrays are empty. While this project has no `decorator_mappings` configured, tier-level decorators and `Ordered` should still be assigned for code generation correctness. | `patterns.decorators: []` in all 7 scenarios. | Populate decorators with at minimum `Ordered` for Ginkgo contexts using `BeforeAll`. Tier decorators can be added when project decorator mappings are configured. | true |
+No findings for Dimension 3.
 
 ---
 
@@ -137,7 +133,7 @@ No findings for Dimension 1.
 
 **4b. Step Quality:** Actions are specific, commands are provided, validations describe expected outcomes, step IDs are sequential. PASS.
 
-**4c. Logical Flow:** Setup reads files -> execution checks content -> no resources to clean up. Logically sound.
+**4c. Logical Flow:** Setup reads files → execution checks content → no resources to clean up. Logically sound.
 
 **4d. Upgrade Tests:** N/A — no upgrade scenarios.
 
@@ -149,11 +145,11 @@ No findings for Dimension 1.
 
 | Finding ID | Severity | Description | Evidence | Remediation | Actionable |
 |:-----------|:---------|:------------|:---------|:------------|:-----------|
-| D4-4a-001 | MINOR | All 7 scenarios have `cleanup: []`. While this is acceptable for read-only documentation validation tests (no resources are created), it should be explicitly noted in the STD as intentional. | `test_steps.cleanup: []` in all scenarios. | No change needed — the empty cleanup is correct for these file-read-only tests. Consider adding a comment in the YAML noting cleanup is intentionally empty. | false |
+| D4-4a-001 | MINOR | All 7 scenarios have `cleanup: []`. While this is correct for read-only documentation validation tests (no resources are created), it could benefit from an explicit comment noting this is intentional. | `test_steps.cleanup: []` in all scenarios. | No change needed — the empty cleanup is correct for these file-read-only tests. | false |
 
 ---
 
-### Dimension 4.5: STD Content Policy (Weight: 10%) — Score: 75/100
+### Dimension 4.5: STD Content Policy (Weight: 10%) — Score: 100/100
 
 #### 4.5a. Banned Content
 
@@ -161,7 +157,7 @@ No findings for Dimension 1.
 
 | Check | Status | Detail |
 |:------|:-------|:-------|
-| PR URLs in metadata | FAIL | `related_prs` section contains PR URL |
+| PR URLs in metadata | PASS | `related_prs` section removed |
 | Branch names | PASS | None found |
 | Commit SHAs | PASS | None found |
 
@@ -181,11 +177,7 @@ Stubs use `PendingIt` with `Skip("Phase 1: Design only - awaiting implementation
 
 No infrastructure provisioning, no cluster setup, no feature gate code in stubs. PASS.
 
-#### Findings
-
-| Finding ID | Severity | Description | Evidence | Remediation | Actionable |
-|:-----------|:---------|:------------|:---------|:------------|:-----------|
-| D4.5-1a-001 | MAJOR | `document_metadata.related_prs` contains PR URLs. PR URLs are implementation artifacts that belong in the STP (Section I references), not the STD. The STD describes *what* to test, not *what code changed*. | `related_prs: [{repo: "guyoron1/fullsend", pr_number: 17, url: "https://github.com/guyoron1/fullsend/issues/17"}]` | Remove the `related_prs` section from `document_metadata`. The STP already references GH-17 in its metadata. If PR context is needed for traceability, it belongs in the STP only. | true |
+No findings for Dimension 4.5.
 
 ---
 
@@ -205,35 +197,37 @@ No infrastructure provisioning, no cluster setup, no feature gate code in stubs.
 
 **Quality Assessment:**
 
-- **Preconditions:** All are specific and reference concrete files (e.g., "docs/problems/mcp-config-drift.md is present in the repository"). PASS.
-- **Steps:** All are numbered and actionable (e.g., "Read the problem document content", "Search for reference to ToolAllowlistPreToolHook"). PASS.
-- **Expected:** All are measurable outcomes (e.g., "All relative file links in the document resolve to existing files"). PASS.
-- **PSE Section Classification:** No misclassifications detected — Preconditions describe state, Steps describe actions, Expected describes outcomes.
-- **Module-level comment:** References STP file correctly (`STP Reference: outputs/stp/GH-17/GH-17_test_plan.md`). No PR URLs in docstrings. PASS.
-- **Negative test indicator:** Scenario 007 correctly uses `[NEGATIVE]` prefix in Context description. PASS.
-- **Standalone readability:** PSE docstrings are self-explanatory without requiring STP context. PASS.
+- **Preconditions:** All are specific and reference concrete files. PASS.
+- **Steps:** All are numbered and actionable. PASS.
+- **Expected:** All are measurable outcomes. PASS.
+- **PSE Section Classification:** No misclassifications detected. PASS.
+- **Module-level comment:** References STP file correctly. No PR URLs in docstrings. PASS.
+- **Negative test indicator:** Scenario 007 correctly uses `[NEGATIVE]` prefix. PASS.
+- **Standalone readability:** PSE docstrings are self-explanatory. PASS.
 
-**Python Stubs:** N/A — no Python stubs generated (consistent with project generating only Go/Ginkgo tests).
+**Python Stubs:** N/A — no Python stubs generated (consistent with Tier 1 only project).
 
-No findings for Dimension 5.
+#### Findings
+
+| Finding ID | Severity | Description | Evidence | Remediation | Actionable |
+|:-----------|:---------|:------------|:---------|:------------|:-----------|
+| D5-5a-001 | MINOR | Go stubs reference `tier1` in Markers section but the STD YAML and stubs were generated before the tier label standardization. While functionally correct (Tier 1 = tier1 marker), for consistency with the refined STD YAML's `tier: "Tier 1"`, the marker comment could use the canonical form. | `Markers: - tier1` in stub file. | Consider updating stub marker comments to `Tier 1` for consistency with STD YAML. Low priority — the `tier1` marker name is the actual Ginkgo/CI marker string. | true |
 
 ---
 
-### Dimension 6: Code Generation Readiness (Weight: 5%) — Score: 90/100
+### Dimension 6: Code Generation Readiness (Weight: 5%) — Score: 100/100
 
 **6a. Variable Declarations:**
 
 | Scenario | Variables | Types Valid | Init Order | Status |
 |:---------|:----------|:-----------|:-----------|:-------|
-| 001 | docContent ([]byte), err (error) | YES | BeforeAll -> It | PASS |
-| 002 | readmeContent ([]byte), err (error) | YES | BeforeAll -> It | PASS |
-| 003 | docContent ([]byte), err (error) | YES | BeforeAll -> It | PASS |
-| 004 | docContent ([]byte), err (error) | YES | BeforeAll -> It | PASS |
-| 005 | docContent ([]byte), err (error) | YES | BeforeAll -> It | PASS |
-| 006 | docContent ([]byte), err (error) | YES | BeforeAll -> It | PASS |
-| 007 | docContent ([]byte), err (error) | YES | BeforeAll -> It | PASS |
-
-All variable types are valid Go types, initialization order is correct (BeforeAll before It). PASS.
+| 001 | docContent ([]byte), err (error) | YES | BeforeAll → It | PASS |
+| 002 | readmeContent ([]byte), err (error) | YES | BeforeAll → It | PASS |
+| 003 | docContent ([]byte), err (error) | YES | BeforeAll → It | PASS |
+| 004 | docContent ([]byte), err (error) | YES | BeforeAll → It | PASS |
+| 005 | docContent ([]byte), err (error) | YES | BeforeAll → It | PASS |
+| 006 | docContent ([]byte), err (error) | YES | BeforeAll → It | PASS |
+| 007 | docContent ([]byte), err (error) | YES | BeforeAll → It | PASS |
 
 **6b. Import Completeness:**
 
@@ -242,21 +236,18 @@ All variable types are valid Go types, initialization order is correct (BeforeAl
 | `os` (via os.ReadFile, os.Stat) | 001-007 | PASS |
 | `strings` (via strings.Contains) | 001-006 | PASS |
 | `path/filepath` (via filepath.Join) | 001 | PASS |
-| `context` | None | WARN — unused import |
+
+All imports are used. No unused imports. PASS.
 
 **6c. Code Structure Validity:**
 
-All 7 scenarios use valid Ginkgo `Context -> BeforeAll -> It` structure. Bracket matching is correct. test_id format `[test_id:TS-GH-17-XXX]` is consistently used. PASS.
+All 7 scenarios use valid Ginkgo `Context(…, Ordered, func() { BeforeAll → It })` structure. Bracket matching is correct. test_id format `[test_id:TS-GH-17-XXX]` is consistently used. PASS.
 
 **6d. Timeout Appropriateness:**
 
 No timeout constants defined or needed — all operations are synchronous file reads on the local filesystem. PASS.
 
-#### Findings
-
-| Finding ID | Severity | Description | Evidence | Remediation | Actionable |
-|:-----------|:---------|:------------|:---------|:------------|:-----------|
-| D6-6b-001 | MINOR | `context` is listed in `code_generation_config.imports.standard` but no scenario uses it. This will produce an unused import warning during compilation. | `imports.standard: ["context", "os", "path/filepath", "strings"]` — `context` not referenced in any scenario's code_template or helpers. | Remove `"context"` from `code_generation_config.imports.standard` since no scenario requires a `context.Context`. | true |
+No findings for Dimension 6.
 
 ---
 
@@ -264,17 +255,9 @@ No timeout constants defined or needed — all operations are synchronous file r
 
 Ordered by severity:
 
-1. **[MAJOR] D2-2b-001** — Tier labels use non-standard `"Functional"` value instead of `"Tier 1"`. **Remediation:** Replace `tier: "Functional"` with `tier: "Tier 1"` in all 7 scenarios and update `functional_count`/`e2e_count` metadata keys to `tier_1_count`/`tier_2_count`. **Actionable:** yes
+1. **[MINOR] D4-4a-001** — All scenarios have empty cleanup arrays. Acceptable for read-only documentation tests but could benefit from an explicit comment. **Actionable:** no
 
-2. **[MAJOR] D2-2c-001** — Missing `Ordered` decorator on all Ginkgo Contexts that use `BeforeAll`. Without `Ordered`, `BeforeAll` is invalid in Ginkgo v2 and tests will fail at runtime. **Remediation:** Add `Ordered` to `test_structure.context.decorators` for all 7 scenarios. **Actionable:** yes
-
-3. **[MAJOR] D4.5-1a-001** — `related_prs` section in `document_metadata` contains PR URLs, which are implementation artifacts that do not belong in the STD. **Remediation:** Remove `related_prs` from `document_metadata`. **Actionable:** yes
-
-4. **[MINOR] D3-3c-001** — All decorator arrays are empty. At minimum, `Ordered` should be populated for Ginkgo framework compliance. **Actionable:** yes
-
-5. **[MINOR] D6-6b-001** — Unused `context` import in `code_generation_config.imports.standard`. Will cause compilation warning. **Remediation:** Remove `"context"` from standard imports. **Actionable:** yes
-
-6. **[MINOR] D4-4a-001** — All scenarios have empty cleanup arrays. Acceptable for read-only documentation tests but could benefit from an explicit comment. **Actionable:** false
+2. **[MINOR] D5-5a-001** — Go stub marker comments use `tier1` rather than `Tier 1`. Functionally correct as `tier1` is the actual Ginkgo marker string. **Actionable:** yes (low priority)
 
 ---
 
@@ -283,13 +266,29 @@ Ordered by severity:
 | Dimension | Weight | Score | Weighted |
 |:----------|:-------|:------|:---------|
 | 1. STP-STD Traceability | 30% | 100 | 30.0 |
-| 2. STD YAML Structure | 20% | 70 | 14.0 |
-| 3. Pattern Matching | 10% | 90 | 9.0 |
+| 2. STD YAML Structure | 20% | 100 | 20.0 |
+| 3. Pattern Matching | 10% | 100 | 10.0 |
 | 4. Test Step Quality | 15% | 95 | 14.25 |
-| 4.5. Content Policy | 10% | 75 | 7.5 |
+| 4.5. Content Policy | 10% | 100 | 10.0 |
 | 5. PSE Docstring Quality | 10% | 95 | 9.5 |
-| 6. Code Gen Readiness | 5% | 90 | 4.5 |
-| **Total** | **100%** | — | **88.75** |
+| 6. Code Gen Readiness | 5% | 100 | 5.0 |
+| **Total** | **100%** | — | **98.75** |
+
+---
+
+## Refinement History
+
+This review was performed on the **refined** STD YAML after the following fixes were applied:
+
+| Finding ID | Severity | Fix Applied |
+|:-----------|:---------|:------------|
+| D2-2b-001 | MAJOR | Changed `tier: "Functional"` → `tier: "Tier 1"` in all 7 scenarios; updated metadata to `tier_1_count`/`tier_2_count` |
+| D2-2c-001 | MAJOR | Added `Ordered` to `test_structure.context.decorators` for all 7 scenarios |
+| D4.5-1a-001 | MAJOR | Removed `related_prs` section from `document_metadata` |
+| D3-3c-001 | MINOR | Added `Ordered` to `patterns.decorators` for all 7 scenarios |
+| D6-6b-001 | MINOR | Removed unused `"context"` import from `code_generation_config.imports.standard` |
+
+All 3 MAJOR and 2 actionable MINOR findings from the initial review have been resolved.
 
 ---
 
