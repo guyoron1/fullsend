@@ -69,14 +69,14 @@ jobs:
 
       - name: Validate enrollment and extract repo metadata
         id: repo-parts
-        uses: ./internal/scaffold/fullsend-repo/.github/actions/validate-enrollment
+        uses: ./.github/actions/validate-enrollment
         with:
           source_repo: ${{ github.repository }}
           install_mode: per-repo
 
       - name: Mint qualityflow token
         id: app-token
-        uses: ./internal/scaffold/fullsend-repo/.github/actions/mint-token
+        uses: ./.github/actions/mint-token
         with:
           role: coder
           repos: ${{ steps.repo-parts.outputs.name }}
@@ -172,7 +172,7 @@ jobs:
           echo "::notice::PRE_AGENT_HEAD=${PRE_AGENT_HEAD}"
 
       - name: Setup GCP and prepare credentials
-        uses: ./internal/scaffold/fullsend-repo/.github/actions/setup-gcp
+        uses: ./.github/actions/setup-gcp
         with:
           gcp_wif_provider: ${{ secrets.FULLSEND_GCP_WIF_PROVIDER }}
           gcp_project_id: ${{ secrets.FULLSEND_GCP_PROJECT_ID }}
@@ -320,7 +320,7 @@ jobs:
       - name: "QF Stage 1: STP Builder"
         id: stage1
         continue-on-error: true
-        uses: ./internal/scaffold/fullsend-repo/.github/actions/fullsend
+        uses: ./
         env:
           PR_NUMBER: ${{ steps.pr-info.outputs.pr_number }}
           REPO_FULL_NAME: ${{ github.repository }}
@@ -371,7 +371,7 @@ jobs:
           bash /tmp/reinject-claude-md.sh
 
       - name: Refresh GCP credentials (Stage 2)
-        uses: ./internal/scaffold/fullsend-repo/.github/actions/setup-gcp
+        uses: ./.github/actions/setup-gcp
         with:
           gcp_wif_provider: ${{ secrets.FULLSEND_GCP_WIF_PROVIDER }}
           gcp_project_id: ${{ secrets.FULLSEND_GCP_PROJECT_ID }}
@@ -382,7 +382,7 @@ jobs:
       - name: "QF Stage 2: STP Reviewer"
         id: stage2
         continue-on-error: true
-        uses: ./internal/scaffold/fullsend-repo/.github/actions/fullsend
+        uses: ./
         env:
           PR_NUMBER: ${{ steps.pr-info.outputs.pr_number }}
           REPO_FULL_NAME: ${{ github.repository }}
@@ -408,7 +408,7 @@ jobs:
           bash /tmp/reinject-claude-md.sh
 
       - name: Refresh GCP credentials (Stage 3)
-        uses: ./internal/scaffold/fullsend-repo/.github/actions/setup-gcp
+        uses: ./.github/actions/setup-gcp
         with:
           gcp_wif_provider: ${{ secrets.FULLSEND_GCP_WIF_PROVIDER }}
           gcp_project_id: ${{ secrets.FULLSEND_GCP_PROJECT_ID }}
@@ -419,7 +419,7 @@ jobs:
       - name: "QF Stage 3: STP Refiner"
         id: stage3
         continue-on-error: true
-        uses: ./internal/scaffold/fullsend-repo/.github/actions/fullsend
+        uses: ./
         env:
           PR_NUMBER: ${{ steps.pr-info.outputs.pr_number }}
           REPO_FULL_NAME: ${{ github.repository }}
@@ -445,7 +445,7 @@ jobs:
           bash /tmp/reinject-claude-md.sh
 
       - name: Refresh GCP credentials (Stage 4)
-        uses: ./internal/scaffold/fullsend-repo/.github/actions/setup-gcp
+        uses: ./.github/actions/setup-gcp
         with:
           gcp_wif_provider: ${{ secrets.FULLSEND_GCP_WIF_PROVIDER }}
           gcp_project_id: ${{ secrets.FULLSEND_GCP_PROJECT_ID }}
@@ -456,7 +456,7 @@ jobs:
       - name: "QF Stage 4: STD Builder"
         id: stage4
         continue-on-error: true
-        uses: ./internal/scaffold/fullsend-repo/.github/actions/fullsend
+        uses: ./
         env:
           PR_NUMBER: ${{ steps.pr-info.outputs.pr_number }}
           REPO_FULL_NAME: ${{ github.repository }}
@@ -508,7 +508,7 @@ jobs:
 
       - name: Refresh qualityflow token (mid-pipeline)
         id: mid-token
-        uses: ./internal/scaffold/fullsend-repo/.github/actions/mint-token
+        uses: ./.github/actions/mint-token
         with:
           role: coder
           repos: ${{ steps.repo-parts.outputs.name }}
@@ -524,7 +524,7 @@ jobs:
           bash /tmp/reinject-claude-md.sh
 
       - name: Refresh GCP credentials (Stage 5)
-        uses: ./internal/scaffold/fullsend-repo/.github/actions/setup-gcp
+        uses: ./.github/actions/setup-gcp
         with:
           gcp_wif_provider: ${{ secrets.FULLSEND_GCP_WIF_PROVIDER }}
           gcp_project_id: ${{ secrets.FULLSEND_GCP_PROJECT_ID }}
@@ -535,7 +535,7 @@ jobs:
       - name: "QF Stage 5: STD Reviewer"
         id: stage5
         continue-on-error: true
-        uses: ./internal/scaffold/fullsend-repo/.github/actions/fullsend
+        uses: ./
         env:
           PR_NUMBER: ${{ steps.pr-info.outputs.pr_number }}
           REPO_FULL_NAME: ${{ github.repository }}
@@ -561,7 +561,7 @@ jobs:
           bash /tmp/reinject-claude-md.sh
 
       - name: Refresh GCP credentials (Stage 6)
-        uses: ./internal/scaffold/fullsend-repo/.github/actions/setup-gcp
+        uses: ./.github/actions/setup-gcp
         with:
           gcp_wif_provider: ${{ secrets.FULLSEND_GCP_WIF_PROVIDER }}
           gcp_project_id: ${{ secrets.FULLSEND_GCP_PROJECT_ID }}
@@ -572,7 +572,7 @@ jobs:
       - name: "QF Stage 6: STD Refiner"
         id: stage6
         continue-on-error: true
-        uses: ./internal/scaffold/fullsend-repo/.github/actions/fullsend
+        uses: ./
         env:
           PR_NUMBER: ${{ steps.pr-info.outputs.pr_number }}
           REPO_FULL_NAME: ${{ github.repository }}
@@ -598,7 +598,7 @@ jobs:
           bash /tmp/reinject-claude-md.sh
 
       - name: Refresh GCP credentials (Stage 7)
-        uses: ./internal/scaffold/fullsend-repo/.github/actions/setup-gcp
+        uses: ./.github/actions/setup-gcp
         with:
           gcp_wif_provider: ${{ secrets.FULLSEND_GCP_WIF_PROVIDER }}
           gcp_project_id: ${{ secrets.FULLSEND_GCP_PROJECT_ID }}
@@ -609,7 +609,7 @@ jobs:
       - name: "QF Stage 7: Go Test Generator"
         id: stage7
         continue-on-error: true
-        uses: ./internal/scaffold/fullsend-repo/.github/actions/fullsend
+        uses: ./
         env:
           PR_NUMBER: ${{ steps.pr-info.outputs.pr_number }}
           REPO_FULL_NAME: ${{ github.repository }}
@@ -635,7 +635,7 @@ jobs:
           bash /tmp/reinject-claude-md.sh
 
       - name: Refresh GCP credentials (Stage 8)
-        uses: ./internal/scaffold/fullsend-repo/.github/actions/setup-gcp
+        uses: ./.github/actions/setup-gcp
         with:
           gcp_wif_provider: ${{ secrets.FULLSEND_GCP_WIF_PROVIDER }}
           gcp_project_id: ${{ secrets.FULLSEND_GCP_PROJECT_ID }}
@@ -646,7 +646,7 @@ jobs:
       - name: "QF Stage 8: Python Test Generator"
         id: stage8
         continue-on-error: true
-        uses: ./internal/scaffold/fullsend-repo/.github/actions/fullsend
+        uses: ./
         env:
           PR_NUMBER: ${{ steps.pr-info.outputs.pr_number }}
           REPO_FULL_NAME: ${{ github.repository }}
@@ -667,7 +667,7 @@ jobs:
       - name: Refresh token for post-pipeline
         if: always()
         id: post-token
-        uses: ./internal/scaffold/fullsend-repo/.github/actions/mint-token
+        uses: ./.github/actions/mint-token
         with:
           role: coder
           repos: ${{ steps.repo-parts.outputs.name }}
