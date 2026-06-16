@@ -29,7 +29,7 @@ technology, and testability before formal test planning.
 - [ ] **Review Requirements**
   - Reviewed the relevant requirements.
   - PR description clearly states the problem: `AlreadyExists` error blocked subsequent runs, requiring manual cleanup.
-  - Fix scope is well-defined: `EnsureProvider` in `internal/sandbox/sandbox.go`.
+  - Fix scope is well-defined: the `EnsureProvider` function's idempotency handling.
 - [ ] **Understand Value and Customer Use Cases**
   - Confirmed clear user stories and understood.
   - Understand the difference between community and product requirements.
@@ -68,7 +68,7 @@ technology, and testability before formal test planning.
 - [ ] **Test Environment Needs**
   - Determined necessary **test environment setups and tools**.
   - Unit tests require only Go toolchain. No cluster or real `openshell` binary needed.
-  - Functional tests for the `runAgent` integration would require a sandbox gateway.
+  - Regression tests for the agent run integration would require a sandbox gateway.
 - [ ] **API Extensions**
   - Reviewed new or modified APIs and their impact on testing.
   - No API changes. `EnsureProvider` function signature is unchanged. New `redactSecrets` is unexported.
@@ -82,7 +82,7 @@ This STP serves as the **overall roadmap for testing**, detailing the scope, app
 
 #### **1. Scope of Testing**
 
-Testing covers the idempotent provider creation logic in `internal/sandbox/sandbox.go`, including the AlreadyExists detection, delete-and-recreate flow, all error handling branches, and the extracted `redactSecrets` helper. Integration testing covers the `runAgent` workflow in `internal/cli/run.go` that iterates over provider definitions and calls `EnsureProvider`.
+Testing covers the idempotent provider creation logic, including AlreadyExists detection, delete-and-recreate flow, all error handling branches, and the centralized credential redaction helper. Integration testing covers the agent run workflow that iterates over provider definitions and calls EnsureProvider, included for regression confidence as the caller itself was not modified in this PR.
 
 **Testing Goals**
 
@@ -138,7 +138,7 @@ Testing covers the idempotent provider creation logic in `internal/sandbox/sandb
 - [ ] **Dependencies** -- Blocked by deliverables from other components/products
   - *Details:* Depends on `openshell` CLI being available. Tested via `EnsureAvailable` (unchanged).
 - [ ] **Cross Integrations** -- Does the feature affect other features or require testing by other teams?
-  - *Details:* `runAgent` in `internal/cli/run.go` is the sole caller. No cross-team impact.
+  - *Details:* The agent run workflow is the sole caller. No cross-team impact.
 
 **Infrastructure**
 
@@ -160,8 +160,8 @@ Testing covers the idempotent provider creation logic in `internal/sandbox/sandb
 
 #### **3.1. Testing Tools & Frameworks**
 
-- **Test Framework:** Standard (Go testing + testify)
-- **CI/CD:** Standard (GitHub Actions)
+- **Test Framework:** Standard
+- **CI/CD:** Standard
 - **Other Tools:** None
 
 #### **4. Entry Criteria**
@@ -221,12 +221,7 @@ This section links requirements to test coverage, enabling reviewers to verify a
   - *Priority:* P0
 
 - **[GH-15]** -- Provider recreation uses current credentials, not stale ones
-  - *Test Scenario:* TS-GH-15-004: Verify recreated provider receives fresh credentials
-  - *Tier:* Unit Tests
-  - *Priority:* P0
-
-- **[GH-15]** -- Provider recreation uses current credentials, not stale ones
-  - *Test Scenario:* TS-GH-15-005: Verify environment variables re-expanded on recreate
+  - *Test Scenario:* TS-GH-15-004: Verify recreated provider uses current credentials and environment (fresh credentials applied, environment variables re-expanded on recreate)
   - *Tier:* Unit Tests
   - *Priority:* P0
 
@@ -263,16 +258,21 @@ This section links requirements to test coverage, enabling reviewers to verify a
 - **[GH-15]** -- Secret values are never exposed in any error output
   - *Test Scenario:* TS-GH-15-012: Verify redaction with empty secrets list
   - *Tier:* Unit Tests
+  - *Priority:* P2
+
+- **[GH-15]** -- Non-AlreadyExists provider creation errors include redacted credentials
+  - *Test Scenario:* TS-GH-15-015: Verify credentials are redacted in non-AlreadyExists error output
+  - *Tier:* Unit Tests
   - *Priority:* P1
 
 - **[GH-15]** -- Agent run workflow handles idempotent provider setup without interruption
   - *Test Scenario:* TS-GH-15-013: Verify agent run succeeds with pre-existing providers
-  - *Tier:* Functional
+  - *Tier:* Regression
   - *Priority:* P1
 
 - **[GH-15]** -- Agent run workflow handles idempotent provider setup without interruption
   - *Test Scenario:* TS-GH-15-014: Verify agent run fails fast on non-idempotent error
-  - *Tier:* Functional
+  - *Tier:* Regression
   - *Priority:* P1
 
 ---
