@@ -4,8 +4,8 @@
 
 ### **Metadata & Tracking**
 
-- **Enhancement(s):** [GH-16](https://github.com/guyoron1/fullsend/pull/16)
-- **Feature Tracking:** [GH-16](https://github.com/guyoron1/fullsend/pull/16)
+- **Enhancement(s):** [Upstream PR #2231](https://github.com/fullsend-ai/fullsend/pull/2231) ([Fork PR #16](https://github.com/guyoron1/fullsend/pull/16))
+- **Feature Tracking:** [Upstream PR #2231](https://github.com/fullsend-ai/fullsend/pull/2231)
 - **Epic Tracking:** N/A
 - **QE Owner(s):** TBD
 - **Owning SIG:** N/A
@@ -58,6 +58,7 @@ technology, and testability before formal test planning.
 - [ ] **Technology Challenges**
   - Identified potential testing challenges related to the underlying technology.
   - Verifying the absence of an HTTP header requires inspection of outgoing requests in test servers. Existing `httptest.Server` infrastructure supports this.
+  - Internal call chain exercised: `installOIDC` → `Provision` → `provisionSelfManaged` → `GetProjectNumber` → `gcp.Client.DoRequest`. The fix targets the `GetProjectNumber` entry point which creates a shallow copy of the embedded `gcp.Client` and clears the `QuotaProject` field.
 - [ ] **Test Environment Needs**
   - Determined necessary **test environment setups and tools**.
   - No special environment needed. Standard Go test infrastructure with `httptest` servers is sufficient.
@@ -74,13 +75,13 @@ This STP serves as the **overall roadmap for testing**, detailing the scope, app
 
 #### **1. Scope of Testing**
 
-Testing covers the modified `GetProjectNumber` method on `LiveGCFClient` and its impact on the provisioning call chain: `installOIDC` → `Provision` → `provisionSelfManaged` → `GetProjectNumber` → `gcp.Client.DoRequest`. The focus is on verifying that the quota project header is correctly omitted for CRM API calls while ensuring no mutation of the original client state.
+Testing covers the GCP project number lookup used during OIDC provisioning and verifies that the Cloud Resource Manager API call no longer requires the `cloudresourcemanager` API to be enabled on the target project. Focus areas: (1) quota project header omission for CRM requests, (2) no regression in the provisioning flow, (3) original client state integrity after the lookup.
 
 **Testing Goals**
 
 **Functional Goals:**
-- **P0:** Verify `GetProjectNumber` omits the `x-goog-user-project` header when calling the CRM API
-- **P0:** Verify the original `gcp.Client` is not mutated by the shallow copy in `GetProjectNumber`
+- **P0:** Verify the GCP project number lookup omits the `x-goog-user-project` header when calling the CRM API
+- **P0:** Verify the original GCP client is not mutated by the project number lookup
 - **P1:** Verify error handling paths work correctly with the copied client
 
 **Quality Goals:**
@@ -140,18 +141,18 @@ Testing covers the modified `GetProjectNumber` method on `LiveGCFClient` and its
 - **Cluster Topology:** N/A (no cluster required)
 - **Platform & Product Version(s):** FullSend 0.x, Go 1.23+
 - **CPU Virtualization:** N/A
-- **Compute Resources:** Standard CI runner
+- **Compute Resources:** Standard CI runner — no GCP credentials required; tests use mock HTTP servers
 - **Special Hardware:** N/A
 - **Storage:** N/A
 - **Network:** N/A (mock HTTP servers used)
 - **Required Operators:** N/A
-- **Platform:** GitHub Actions
+- **Platform:** GitHub Actions — mock-based tests, no cloud provider access needed
 - **Special Configurations:** N/A
 
 #### **3.1. Testing Tools & Frameworks**
 
-- **Test Framework:** Standard Go testing (no new tools)
-- **CI/CD:** Standard (no new tools)
+- **Test Framework:** None beyond project standard
+- **CI/CD:** None beyond project standard
 - **Other Tools:** None
 
 #### **4. Entry Criteria**
@@ -204,7 +205,7 @@ This section links requirements to test coverage, enabling reviewers to verify a
   - *Priority:* P1
   - *Test Scenario:* Verify lookup handles empty project number response (TS-GH-16-003)
   - *Tier:* Unit Tests
-  - *Priority:* P1
+  - *Priority:* P2
 
 - **[GH-16]** -- QuotaProject clearing does not mutate the original GCFClient's embedded Client
   - *Test Scenario:* Verify original client unchanged after GetProjectNumber (TS-GH-16-004)
@@ -228,7 +229,7 @@ This section links requirements to test coverage, enabling reviewers to verify a
   - *Priority:* P1
   - *Test Scenario:* Verify HTTP 403 returns descriptive error message (TS-GH-16-009)
   - *Tier:* Unit Tests
-  - *Priority:* P1
+  - *Priority:* P2
 
 - **[GH-16]** -- OIDC dispatch layer installation succeeds through modified provisioning path
   - *Test Scenario:* Verify dispatch layer install with modified GCP client (TS-GH-16-010)

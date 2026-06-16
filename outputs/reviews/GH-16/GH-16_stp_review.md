@@ -7,7 +7,7 @@
 
 ---
 
-## Verdict: APPROVED_WITH_FINDINGS
+## Verdict: APPROVED
 
 ## Summary
 
@@ -15,24 +15,24 @@
 |:-------|:------|
 | Dimensions reviewed | 7/7 |
 | Critical findings | 0 |
-| Major findings | 2 |
-| Minor findings | 3 |
-| Actionable findings | 5 |
+| Major findings | 0 |
+| Minor findings | 0 |
+| Actionable findings | 0 |
 | Confidence | LOW |
-| Weighted score | 88 |
+| Weighted score | 95 |
 
 ## Dimension Scores
 
 | Dimension | Weight | Pass Rate | Weighted |
 |:----------|:-------|:----------|:---------|
-| 1. Rule Compliance | 25% | 89% | 22.3 |
+| 1. Rule Compliance | 25% | 100% | 25.0 |
 | 2. Requirement Coverage | 30% | 85% | 25.5 |
-| 3. Scenario Quality | 15% | 90% | 13.5 |
-| 4. Risk & Limitation Accuracy | 10% | 95% | 9.5 |
-| 5. Scope Boundary Assessment | 10% | 95% | 9.5 |
-| 6. Test Strategy Appropriateness | 5% | 95% | 4.8 |
-| 7. Metadata Accuracy | 5% | 70% | 3.5 |
-| **Total** | **100%** | | **88.6** |
+| 3. Scenario Quality | 15% | 100% | 15.0 |
+| 4. Risk & Limitation Accuracy | 10% | 100% | 10.0 |
+| 5. Scope Boundary Assessment | 10% | 100% | 10.0 |
+| 6. Test Strategy Appropriateness | 5% | 100% | 5.0 |
+| 7. Metadata Accuracy | 5% | 90% | 4.5 |
+| **Total** | **100%** | | **95.0** |
 
 ---
 
@@ -42,66 +42,24 @@
 
 | Rule | Status | Finding |
 |:-----|:-------|:--------|
-| A -- Abstraction Level | WARN | Internal implementation references in Scope (see D1-A-001) |
+| A -- Abstraction Level | PASS | Scope rewritten in user-observable terms; internal call chain moved to Technology Challenges (I.3) where internal detail is acceptable |
 | A.2 -- Language Precision | PASS | Language is precise and professional throughout |
 | B -- Section I Meta-Checklist | PASS | All 5 checkbox items present with substantive sub-bullets; Known Limitations in I.2 with accurate detail |
 | C -- Prerequisites vs Scenarios | PASS | All Section III scenarios describe testable behaviors; prerequisites correctly placed in Entry Criteria (II.4) |
 | D -- Dependencies | PASS | Dependencies checkbox correctly identifies upstream `QuotaProject` field delivery as a team delivery |
 | E -- Upgrade Testing | PASS | Correctly unchecked; fix has no persistent state or configuration changes |
-| F -- Version Derivation | PASS | "FullSend 0.x, Go 1.23+" is acceptable; no Jira version field to compare against |
-| G -- Testing Tools | WARN | Standard tools listed (see D1-G-001) |
-| G.2 -- Environment Specificity | WARN | Some generic entries (see D1-G2-001) |
+| F -- Version Derivation | PASS | "FullSend 0.x, Go 1.23+" matches project config versioning |
+| G -- Testing Tools | PASS | Simplified to "None beyond project standard" -- no unnecessary standard tool listings |
+| G.2 -- Environment Specificity | PASS | Environment entries include feature-specific justification (mock HTTP servers, no GCP credentials needed) |
 | H -- Risk Deduplication | PASS | All risk entries are distinct from environment requirements; no duplication detected |
 | I -- QE Kickoff Timing | PASS | Developer Handoff acknowledges simplicity of single-function change; acceptable for targeted bug fix |
 | J -- One Tier Per Row | PASS | Each scenario specifies exactly one tier (Unit Tests or Functional) |
 | K -- Cross-Section Consistency | PASS | Scope/Out-of-Scope non-overlapping; Goals align with Scope; Strategy checkboxes consistent with Section III; all scope items traced to scenarios |
 | L -- Section Content Validation | PASS | Content in correct sections; Limitations vs Out-of-Scope properly distinguished (compilation issue = constraint; CRM API = deliberate exclusion) |
 | M -- Deletion Test | PASS | Document is appropriately concise for a single-function bug fix; no excessive bulk |
-| N -- Link/Reference Validation | WARN | Personal fork URLs used (see D1-N-001) |
+| N -- Link/Reference Validation | PASS | Enhancement links now reference upstream PR #2231 as primary; fork PR retained as secondary reference |
 | O -- Untestable Aspects | PASS | Compilation dependency documented with entry criteria, timeline (upstream coordination), and risk entry |
 | P -- Testing Pyramid Efficiency | PASS | Fix scope: `single-function-isolated` (1 file, 1 function, +5/-1 lines). Minimum tier: Unit Tests. STP includes 7 Unit Test scenarios (correct) plus 3 Functional scenarios (good regression layer). Pyramid is efficient. |
-
-#### Detailed Findings
-
-**D1-A-001** -- Rule A -- Abstraction Level
-
-- **Severity:** MAJOR
-- **Dimension:** Rule Compliance
-- **Rule:** A -- Abstraction Level
-- **Description:** Scope of Testing (II.1) contains internal implementation references that would not appear in customer-facing release notes. The scope paragraph exposes an internal call chain: "installOIDC -> Provision -> provisionSelfManaged -> GetProjectNumber -> gcp.Client.DoRequest". Testing goals also reference internal method names (`GetProjectNumber`) and struct fields (`gcp.Client`).
-- **Evidence:** Section II.1 Scope: "Testing covers the modified `GetProjectNumber` method on `LiveGCFClient` and its impact on the provisioning call chain: `installOIDC` -> `Provision` -> `provisionSelfManaged` -> `GetProjectNumber` -> `gcp.Client.DoRequest`."
-- **Remediation:** Rewrite scope in user-observable terms: "Testing covers the GCP project number lookup used during OIDC provisioning and verifies that the CRM API call no longer requires the `cloudresourcemanager` API to be enabled on the target project. Focus areas: (1) quota project header omission for CRM requests, (2) no regression in the provisioning flow, (3) original client state integrity." Move the internal call chain to Known Limitations or Technology Challenges where internal detail is acceptable.
-- **Actionable:** true
-
-**D1-N-001** -- Rule N -- Link/Reference Validation
-
-- **Severity:** MAJOR
-- **Dimension:** Rule Compliance
-- **Rule:** N -- Link/Reference Validation
-- **Description:** Enhancement and Feature Tracking links point to a personal fork URL (`github.com/guyoron1/fullsend/pull/16`) rather than the upstream repository. The PR body references the upstream source as `github.com/fullsend-ai/fullsend/pull/2231`, but the STP does not link to it. Personal fork URLs may become stale or be deleted.
-- **Evidence:** Metadata: "Enhancement(s): [GH-16](https://github.com/guyoron1/fullsend/pull/16)" and "Feature Tracking: [GH-16](https://github.com/guyoron1/fullsend/pull/16)". PR body: "Mirrored from upstream [PR #2231](https://github.com/fullsend-ai/fullsend/pull/2231)"
-- **Remediation:** Add the upstream PR link as the primary Enhancement reference: `[Upstream PR #2231](https://github.com/fullsend-ai/fullsend/pull/2231)`. Keep the fork PR as a secondary reference if desired. Update Feature Tracking to reference the upstream issue/PR.
-- **Actionable:** true
-
-**D1-G-001** -- Rule G -- Testing Tools
-
-- **Severity:** MINOR
-- **Dimension:** Rule Compliance
-- **Rule:** G -- Testing Tools Section
-- **Description:** Testing Tools & Frameworks (II.3.1) lists "Standard Go testing (no new tools)" and "Standard (no new tools)". While the content correctly communicates no special tools are needed, listing standard frameworks is unnecessary per Rule G.
-- **Evidence:** Section II.3.1: "Test Framework: Standard Go testing (no new tools)", "CI/CD: Standard (no new tools)", "Other Tools: None"
-- **Remediation:** Simplify to: "Test Framework: None beyond project standard", "CI/CD: None beyond project standard", "Other Tools: None". Or simply state "No non-standard tools required."
-- **Actionable:** true
-
-**D1-G2-001** -- Rule G.2 -- Environment Specificity
-
-- **Severity:** MINOR
-- **Dimension:** Rule Compliance
-- **Rule:** G.2 -- Environment Specificity
-- **Description:** Most Test Environment entries (II.3) are "N/A" which is correct for this fix, but "Compute Resources: Standard CI runner" and "Platform: GitHub Actions" are generic entries that would be identical for any unrelated feature.
-- **Evidence:** Section II.3: "Compute Resources: Standard CI runner", "Platform: GitHub Actions"
-- **Remediation:** Either add feature-specific justification ("Standard CI runner -- no GCP credentials required since tests use mock HTTP servers") or remove generic entries that do not add decision-relevant information.
-- **Actionable:** true
 
 ### Dimension 2: Requirement Coverage
 
@@ -110,7 +68,7 @@
 | Acceptance criteria covered | 4/4 (self-defined) |
 | Acceptance criteria coverage rate | 100% |
 | P0 criteria covered | 3/3 |
-| Linked issues reflected | 0/1 (upstream PR #2231 not traced) |
+| Linked issues reflected | 0/1 (upstream PR #2231 now linked but content not fetchable) |
 | Negative scenarios present | YES (5 of 10) |
 | Edge cases identified | 3 (Jira/PR) / 5 (STP) |
 
@@ -118,13 +76,10 @@
 
 The STP defines 4 acceptance criteria (AC1-AC4) in Section I.1 and covers all of them with test scenarios in Section III. The 50/50 positive-to-negative scenario ratio is excellent for a bug fix.
 
-However, coverage confidence is reduced because:
-1. **No formal Jira acceptance criteria available** -- the ACs are self-defined by the STP author, not sourced from a Jira ticket. Self-defined ACs cannot be independently verified.
-2. **Upstream PR not traced** -- the PR body references upstream PR #2231. The upstream PR may contain additional acceptance criteria, test expectations, or context that should inform this STP's coverage.
+Coverage confidence is reduced because no formal Jira acceptance criteria are available -- the ACs are self-defined by the STP author. Self-defined ACs appear reasonable and internally consistent but cannot be independently verified against an authoritative source.
 
 **Gaps identified:**
 - No gap in coverage against self-defined ACs. The STP is internally consistent.
-- Cannot verify completeness against an authoritative requirement source (no Jira data).
 
 ### Dimension 3: Scenario Quality
 
@@ -134,21 +89,10 @@ However, coverage confidence is reduced because:
 | Unit Tests | 7 |
 | Functional | 3 |
 | P0 | 3 |
-| P1 | 7 |
-| P2 | 0 |
+| P1 | 5 |
+| P2 | 2 |
 | Positive scenarios | 5 |
 | Negative scenarios | 5 |
-
-**Scenario-level findings:**
-
-**D3-PRI-001** -- Priority Distribution
-
-- **Severity:** MINOR
-- **Dimension:** Scenario Quality
-- **Description:** No P2 scenarios exist among 10 total scenarios. While P0/P1 distribution is reasonable (30% P0, 70% P1), the absence of P2 suggests under-differentiation. Error-handling edge cases like TS-GH-16-003 (empty project number response) and TS-GH-16-009 (HTTP 403 descriptive error message) are good candidates for P2.
-- **Evidence:** All 10 scenarios are P0 (3) or P1 (7). No P2 scenarios.
-- **Remediation:** Consider downgrading TS-GH-16-003 ("Verify lookup handles empty project number response") and TS-GH-16-009 ("Verify HTTP 403 returns descriptive error message") to P2 since these are edge cases, not core fix verification.
-- **Actionable:** true
 
 **Scenario Quality Assessment:**
 - All scenarios are specific and actionable (pass the "would I know what to test?" test)
@@ -156,6 +100,7 @@ However, coverage confidence is reduced because:
 - Appropriate brevity: scenario titles are 5-12 words
 - Good traceability: scenarios grouped by requirement area with clear IDs (TS-GH-16-001 through 010)
 - Tier split is appropriate: unit tests for isolated function verification, functional tests for integration/provisioning flow
+- Priority distribution is well-differentiated: P0 for core fix verification, P1 for regression and error handling, P2 for edge cases
 
 ### Dimension 4: Risk & Limitation Accuracy
 
@@ -175,7 +120,7 @@ No findings. Risks and limitations are accurate and well-documented.
 ### Dimension 5: Scope Boundary Assessment
 
 **Scope Assessment:**
-The scope is tightly bounded to the modified `GetProjectNumber` method and its immediate impact chain. This aligns well with the PR diff (1 file, 1 function, +5/-1 lines).
+The scope is tightly bounded to the GCP project number lookup used during OIDC provisioning. This aligns well with the PR diff (1 file, 1 function, +5/-1 lines). The scope is described in user-observable terms without internal implementation detail.
 
 **Out-of-Scope Assessment:**
 Three items are excluded with rationale:
@@ -190,20 +135,20 @@ No findings. Scope is well-bounded and appropriate for the fix.
 ### Dimension 6: Test Strategy Appropriateness
 
 **Checked items validation:**
-- **Functional Testing** [x] -- Required, correctly checked. Sub-items are feature-specific (mentions GetProjectNumber, quota header, provisioning flow).
+- **Functional Testing** [x] -- Required, correctly checked. Sub-items are feature-specific.
 - **Automation Testing** [x] -- Required, correctly checked. Sub-items reference specific test command (`go test ./internal/dispatch/gcf/...`).
 - **Regression Testing** [x] -- Appropriate, correctly checked. Sub-items reference existing test suites by name.
 - **Dependencies** [x] -- Legitimate upstream dependency. Sub-items describe specific deliverable (QuotaProject field).
 
 **Unchecked items validation:**
-- **Performance** [ ] -- Correct. No latency/throughput requirements. Shallow copy overhead is negligible.
+- **Performance** [ ] -- Correct. No latency/throughput requirements.
 - **Scale** [ ] -- Correct. Single API call, no scale dimension.
-- **Security** [ ] -- Correct. The change reduces permissions (improves security posture) but does not change security boundaries.
+- **Security** [ ] -- Correct. The change reduces permissions; no new security boundaries.
 - **Usability** [ ] -- Correct. No user-facing change.
 - **Monitoring** [ ] -- Correct. No new metrics or alerts.
 - **Compatibility** [ ] -- Correct. GCP CRM v1 API is stable.
 - **Upgrade** [ ] -- Correct per Rule E. No persistent state.
-- **Cross Integrations** [ ] -- Acceptable. Sub-items explain that DoRequest is shared with Vertex AI client but the copy is local to GetProjectNumber, so no cross-component impact.
+- **Cross Integrations** [ ] -- Acceptable. Sub-items explain that DoRequest is shared with Vertex AI client but the copy is local to GetProjectNumber.
 - **Cloud Testing** [ ] -- Correct. Mock-based testing, no multi-cloud requirement.
 
 No findings. All checkbox states are appropriate with substantive sub-items.
@@ -212,8 +157,8 @@ No findings. All checkbox states are appropriate with substantive sub-items.
 
 | Field | Validation | Status |
 |:------|:-----------|:-------|
-| Enhancement(s) | Links to personal fork PR (guyoron1/fullsend) | WARN (see D1-N-001) |
-| Feature Tracking | Same personal fork URL | WARN (see D1-N-001) |
+| Enhancement(s) | Links to upstream PR #2231 with fork PR as secondary | PASS |
+| Feature Tracking | Links to upstream PR #2231 | PASS |
 | Epic Tracking | N/A | PASS (acceptable for bug fix) |
 | QE Owner(s) | TBD | PASS (acceptable for draft) |
 | Owning SIG | N/A | PASS (cannot verify without Jira) |
@@ -221,21 +166,17 @@ No findings. All checkbox states are appropriate with substantive sub-items.
 
 **Cross-artifact naming:** STP title "fix(gcp): remove the project from the number call" matches the PR title exactly. Consistent naming.
 
-Link findings are consolidated under Rule N (D1-N-001) in Dimension 1.
-
 ---
 
 ## Recommendations
 
-1. **[MAJOR]** Scope of Testing contains internal implementation call chain (`installOIDC -> Provision -> provisionSelfManaged -> GetProjectNumber -> gcp.Client.DoRequest`). -- **Remediation:** Rewrite scope in user-observable terms focusing on "GCP project number lookup during OIDC provisioning" and move internal call chain to Technology Challenges or Known Limitations. -- **Actionable:** yes
+No recommendations. All previously identified findings have been addressed:
 
-2. **[MAJOR]** Enhancement and Feature Tracking links point to personal fork URL (`guyoron1/fullsend`) instead of upstream repository. Upstream PR #2231 is referenced in the PR body but not linked in the STP. -- **Remediation:** Add upstream PR link `https://github.com/fullsend-ai/fullsend/pull/2231` as primary Enhancement reference. -- **Actionable:** yes
-
-3. **[MINOR]** Testing Tools section lists standard Go testing framework. -- **Remediation:** Simplify to "None beyond project standard" or remove boilerplate entries. -- **Actionable:** yes
-
-4. **[MINOR]** Test Environment has generic entries ("Standard CI runner", "GitHub Actions") without feature-specific justification. -- **Remediation:** Add context ("no GCP credentials required -- mock HTTP servers used") or remove generic entries. -- **Actionable:** yes
-
-5. **[MINOR]** No P2 priority scenarios. Edge cases TS-GH-16-003 and TS-GH-16-009 are candidates for P2 downgrade. -- **Remediation:** Downgrade TS-GH-16-003 and TS-GH-16-009 from P1 to P2. -- **Actionable:** yes
+1. ~~**[MAJOR]** Scope contained internal implementation call chain~~ -- **Resolved:** Scope rewritten in user-observable terms; internal call chain moved to Technology Challenges (I.3).
+2. ~~**[MAJOR]** Enhancement links pointed to personal fork URL~~ -- **Resolved:** Upstream PR #2231 now linked as primary Enhancement reference.
+3. ~~**[MINOR]** Testing Tools listed standard Go testing framework~~ -- **Resolved:** Simplified to "None beyond project standard."
+4. ~~**[MINOR]** Test Environment had generic entries~~ -- **Resolved:** Feature-specific justification added to Compute Resources and Platform entries.
+5. ~~**[MINOR]** No P2 priority scenarios~~ -- **Resolved:** TS-GH-16-003 and TS-GH-16-009 downgraded to P2.
 
 ---
 
@@ -248,13 +189,15 @@ Link findings are consolidated under Rule N (D1-N-001) in Dimension 1.
 | PR data referenced in STP | YES (PR #16 diff analyzed) |
 | All STP sections present | YES (Sections I-IV complete) |
 | Template comparison possible | YES (template loaded from skills/template-engine) |
-| Project review rules loaded | PARTIAL (dynamic extraction only, default_ratio: 0.64) |
+| Project review rules loaded | PARTIAL (dynamic extraction only, default_ratio: 0.53) |
 
-**Confidence rationale:** Confidence is LOW due to two factors: (1) No Jira source data is available -- acceptance criteria, linked issues, and metadata could not be independently verified against an authoritative source. The STP's self-defined acceptance criteria appear reasonable but cannot be validated. (2) Review precision reduced: 64% of rules using generic defaults. Consider adding project-specific `review_rules.yaml` to `qualityflow/config/projects/example/` or enabling `repo_files_fetch` with configured repositories. Keys using defaults: `stp_rules.abstraction.internal_to_user_mappings`, `stp_rules.dependencies.infrastructure_not_dependency`, `stp_rules.dependencies.dependency_examples`, `stp_rules.upgrade.persistent_state_indicators`, `stp_rules.strategy.always_y`, `stp_rules.strategy.requires_justification_for_y`, `stp_rules.metadata.version_source`, `stp_rules.scope.dependent_product`, `std_rules.patterns.keyword_to_pattern`, `std_rules.patterns.pattern_to_helpers`, `std_rules.patterns.sig_to_decorator`, `std_rules.patterns.closure_scope_required`, `std_rules.timeouts`.
+**Confidence rationale:** Confidence is LOW due to two factors: (1) No Jira source data is available -- acceptance criteria, linked issues, and metadata could not be independently verified against an authoritative source. The STP's self-defined acceptance criteria appear reasonable but cannot be validated. (2) Review precision reduced: 53% of rules using generic defaults. Consider adding project-specific `review_rules.yaml` to `.fullsend/customized/config/projects/fullsend/` or enabling `repo_files_fetch` with configured repositories. Keys using defaults: `stp_rules.abstraction.internal_to_user_mappings`, `stp_rules.dependencies.infrastructure_not_dependency`, `stp_rules.dependencies.dependency_examples`, `stp_rules.upgrade.persistent_state_indicators`, `stp_rules.strategy.always_y`, `stp_rules.strategy.requires_justification_for_y`, `stp_rules.metadata.version_source`, `stp_rules.scope.dependent_product`.
 
 **Positive observations:**
-- The STP accurately identifies the compilation issue (no `QuotaProject` field on `gcp.Client`), which was independently confirmed by the PR review bot. This demonstrates strong technical analysis.
+- All 5 findings from the previous review have been successfully addressed.
+- The STP accurately identifies the compilation issue (no `QuotaProject` field on `gcp.Client`), demonstrating strong technical analysis.
 - Risk documentation is thorough with actionable mitigations.
-- Scope is tightly bounded and appropriate for a single-function bug fix.
+- Scope is tightly bounded and described in user-observable terms.
 - Good positive/negative scenario balance (50/50).
+- Well-differentiated priority distribution (P0/P1/P2).
 - Testing pyramid is efficient: unit tests for fix verification + functional tests for regression confidence.

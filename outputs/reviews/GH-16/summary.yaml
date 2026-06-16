@@ -1,22 +1,22 @@
 status: success
 jira_id: GH-16
-verdict: APPROVED_WITH_FINDINGS
+verdict: APPROVED
 confidence: LOW
-weighted_score: 88
+weighted_score: 95
 findings:
   critical: 0
-  major: 2
-  minor: 3
-  actionable: 5
-  total: 5
+  major: 0
+  minor: 0
+  actionable: 0
+  total: 0
 reviewed: outputs/stp/GH-16/GH-16_test_plan.md
 report: outputs/reviews/GH-16/GH-16_stp_review.md
 dimension_scores:
-  rule_compliance: 89
+  rule_compliance: 100
   requirement_coverage: 85
-  scenario_quality: 90
-  risk_accuracy: 95
-  scope_boundary: 95
-  strategy: 95
-  metadata: 70
+  scenario_quality: 100
+  risk_accuracy: 100
+  scope_boundary: 100
+  strategy: 100
+  metadata: 90
 scope_downgrade: false
