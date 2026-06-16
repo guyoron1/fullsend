@@ -1,0 +1,29 @@
+status: success
+jira_id: GH-17
+stp_source: outputs/stp/GH-17/GH-17_test_plan.md
+std_yaml: outputs/std/GH-17/GH-17_test_description.yaml
+test_counts:
+  total: 17
+  tier1: 17
+  tier2: 0
+stubs:
+  go: 17
+  python: 0
+files_generated:
+  - GH-17_test_description.yaml
+  - go-tests/document_structure_stubs_test.go
+  - go-tests/cross_reference_links_stubs_test.go
+  - go-tests/readme_index_stubs_test.go
+  - go-tests/security_references_stubs_test.go
+  - go-tests/attack_scenarios_stubs_test.go
+  - go-tests/defense_approaches_stubs_test.go
+  - go-tests/claude_md_deletion_stubs_test.go
+priority_breakdown:
+  p0: 8
+  p1: 5
+  p2: 4
+notes:
+  - "All 17 STP scenarios mapped to STD YAML and Go test stubs"
+  - "Python stubs skipped (tier2_tests: false in project config)"
+  - "Framework: Go testing + testify (not Ginkgo)"
+  - "All stubs use t.Skip() for Phase 1 design review"
