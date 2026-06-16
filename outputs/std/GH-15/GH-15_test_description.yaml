@@ -1,0 +1,1165 @@
+---
+# Software Test Description (STD) — GH-15
+# Make EnsureProvider Idempotent via Delete-and-Recreate
+# Generated: 2026-06-16
+
+document_metadata:
+  std_version: "2.1-enhanced"
+  generated_date: "2026-06-16"
+  jira_issue: "GH-15"
+  jira_summary: "Make EnsureProvider Idempotent via Delete-and-Recreate"
+  source_bugs: []
+  stp_reference:
+    file: "outputs/stp/GH-15/GH-15_test_plan.md"
+    version: "v1"
+    sections_covered: "Section III - Requirements-to-Tests Mapping"
+  related_prs:
+    - repo: "fullsend-ai/fullsend"
+      pr_number: 2296
+      url: "https://github.com/fullsend-ai/fullsend/pull/2296"
+      title: "Make EnsureProvider Idempotent via Delete-and-Recreate"
+      merged: false
+  total_scenarios: 14
+  unit_test_count: 12
+  regression_count: 2
+  p0_count: 6
+  p1_count: 7
+  p2_count: 1
+
+code_generation_config:
+  std_version: "2.1-enhanced"
+  framework: "testing"
+  assertion_library: "testify"
+  language: "go"
+  package_name: "sandbox"
+  imports:
+    standard:
+      - "context"
+      - "testing"
+      - "os"
+      - "os/exec"
+      - "fmt"
+      - "strings"
+      - "path/filepath"
+    test_framework:
+      - path: "github.com/stretchr/testify/assert"
+      - path: "github.com/stretchr/testify/require"
+    project:
+      - "github.com/fullsend-ai/fullsend/internal/sandbox"
+  test_patterns:
+    function_prefix: "Test"
+    subtest_style: "t.Run"
+    assertion_style: "testify"
+
+common_preconditions:
+  infrastructure:
+    - name: "Go toolchain"
+      requirement: "Go 1.23+"
+      validation: "go version"
+    - name: "GitHub Actions runner"
+      requirement: "Standard CI runner"
+      validation: "N/A"
+  test_environment:
+    topology: "None"
+    platform: "GitHub Actions"
+    special_configurations: "Fake openshell shell scripts in $TMPDIR for unit tests"
+  rbac_requirements: []
+
+scenarios:
+  # ============================================================
+  # IDEMPOTENT PROVIDER CREATION — AlreadyExists Path (P0)
+  # ============================================================
+
+  - scenario_id: "001"
+    test_id: "TS-GH-15-001"
+    tier: "Unit Tests"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-15"
+    requirement_summary: "Provider creation is idempotent across repeated agent runs"
+
+    test_objective:
+      title: "Verify provider recreated when AlreadyExists returned"
+      what: |
+        This test validates that when EnsureProvider encounters an AlreadyExists
+        error from the openshell provider create command, it automatically deletes
+        the existing provider and recreates it. The test uses a fake openshell
+        binary that returns AlreadyExists on first create, succeeds on delete,
+        and succeeds on retry create.
+      why: |
+        Idempotent provider creation is critical for autonomous agent iteration.
+        Without this, a pre-existing provider from a prior run causes a hard
+        failure, requiring manual cleanup between agent invocations.
+      acceptance_criteria:
+        - "EnsureProvider returns nil error when provider already exists"
+        - "openshell provider delete is called with the correct provider name"
+        - "openshell provider create is retried after successful delete"
+
+    variables:
+      closure_scope:
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "TestExecution"]
+          comment: "Temporary directory for fake openshell binary"
+        - name: "fakeOpenshell"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup"]
+          comment: "Path to fake openshell script"
+        - name: "err"
+          type: "error"
+          initialized_in: "TestExecution"
+          used_in: ["TestExecution", "Assertion"]
+          comment: "Error from EnsureProvider call"
+
+    test_structure:
+      type: "single"
+      function_name: "TestEnsureProvider_AlreadyExists_RecreatesProvider"
+      subtests: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create temporary directory for fake openshell binary"
+          code_template: |
+            tmpDir = t.TempDir()
+        - step_id: "SETUP-02"
+          action: "Write fake openshell script that returns AlreadyExists on first create, succeeds on delete and retry"
+          code_template: |
+            fakeOpenshell = filepath.Join(tmpDir, "openshell")
+            // Script: first 'provider create' returns "AlreadyExists",
+            // 'provider delete' succeeds, second 'provider create' succeeds
+            writeScript(t, fakeOpenshell, alreadyExistsScript)
+        - step_id: "SETUP-03"
+          action: "Prepend tmpDir to PATH so fake openshell is found"
+          code_template: |
+            t.Setenv("PATH", tmpDir + ":" + os.Getenv("PATH"))
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call EnsureProvider with a provider definition and credentials"
+          code_template: |
+            err = EnsureProvider(provider, credentials)
+
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Temporary directory cleaned up by t.TempDir()"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "EnsureProvider succeeds (no error returned)"
+        condition: "err == nil"
+        failure_impact: "Idempotent provider creation is broken; agent runs will fail on pre-existing providers"
+        code_template: |
+          require.NoError(t, err)
+
+  - scenario_id: "002"
+    test_id: "TS-GH-15-002"
+    tier: "Unit Tests"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-15"
+    requirement_summary: "Provider creation is idempotent across repeated agent runs"
+
+    test_objective:
+      title: "Verify error when delete fails during recreate"
+      what: |
+        This test validates that when EnsureProvider detects AlreadyExists and
+        attempts to delete the existing provider, but the delete command fails,
+        the error is properly returned with redacted credentials.
+      why: |
+        Delete failures during the recreate path must surface clearly so
+        operators can diagnose infrastructure issues without credential leakage.
+      acceptance_criteria:
+        - "EnsureProvider returns a non-nil error when delete fails"
+        - "Error message indicates delete failure"
+        - "No credential values appear in the error message"
+
+    variables:
+      closure_scope:
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "TestExecution"]
+          comment: "Temporary directory for fake openshell binary"
+        - name: "err"
+          type: "error"
+          initialized_in: "TestExecution"
+          used_in: ["TestExecution", "Assertion"]
+          comment: "Error from EnsureProvider call"
+
+    test_structure:
+      type: "single"
+      function_name: "TestEnsureProvider_AlreadyExists_DeleteFails"
+      subtests: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create fake openshell that returns AlreadyExists on create, fails on delete"
+          code_template: |
+            tmpDir = t.TempDir()
+            writeScript(t, filepath.Join(tmpDir, "openshell"), deleteFailsScript)
+            t.Setenv("PATH", tmpDir + ":" + os.Getenv("PATH"))
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call EnsureProvider with provider definition containing credentials"
+          code_template: |
+            err = EnsureProvider(provider, credentials)
+
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Temporary directory cleaned up by t.TempDir()"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "EnsureProvider returns an error"
+        condition: "err != nil"
+        failure_impact: "Delete failures silently ignored, leaving stale providers"
+        code_template: |
+          require.Error(t, err)
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "Error message does not contain any credential values"
+        condition: "error message does not contain raw secret values"
+        failure_impact: "Credential leakage in error output"
+        code_template: |
+          assert.NotContains(t, err.Error(), secretValue)
+
+  - scenario_id: "003"
+    test_id: "TS-GH-15-003"
+    tier: "Unit Tests"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-15"
+    requirement_summary: "Provider creation is idempotent across repeated agent runs"
+
+    test_objective:
+      title: "Verify error when retry create fails after delete"
+      what: |
+        This test validates that when the provider is successfully deleted but
+        the retry create command fails, the error is properly surfaced with
+        redacted credentials.
+      why: |
+        The retry-create failure is a distinct failure mode from the initial
+        create and delete failures. It must be reported clearly to distinguish
+        from other error paths.
+      acceptance_criteria:
+        - "EnsureProvider returns a non-nil error when retry create fails"
+        - "Error message indicates retry create failure"
+        - "Credentials are redacted in the error output"
+
+    variables:
+      closure_scope:
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup"]
+          comment: "Temporary directory for fake openshell binary"
+        - name: "err"
+          type: "error"
+          initialized_in: "TestExecution"
+          used_in: ["TestExecution", "Assertion"]
+          comment: "Error from EnsureProvider call"
+
+    test_structure:
+      type: "single"
+      function_name: "TestEnsureProvider_AlreadyExists_RetryCreateFails"
+      subtests: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create fake openshell: AlreadyExists on create, delete succeeds, retry create fails"
+          code_template: |
+            tmpDir = t.TempDir()
+            writeScript(t, filepath.Join(tmpDir, "openshell"), retryCreateFailsScript)
+            t.Setenv("PATH", tmpDir + ":" + os.Getenv("PATH"))
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call EnsureProvider with provider definition"
+          code_template: |
+            err = EnsureProvider(provider, credentials)
+
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Temporary directory cleaned up by t.TempDir()"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "EnsureProvider returns an error"
+        condition: "err != nil"
+        failure_impact: "Retry create failures silently ignored"
+        code_template: |
+          require.Error(t, err)
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "Credentials are not present in error message"
+        condition: "error string does not contain raw credential values"
+        failure_impact: "Credential leakage in retry-create error output"
+        code_template: |
+          assert.NotContains(t, err.Error(), secretValue)
+
+  - scenario_id: "004"
+    test_id: "TS-GH-15-004"
+    tier: "Unit Tests"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-15"
+    requirement_summary: "Provider recreation uses current credentials, not stale ones"
+
+    test_objective:
+      title: "Verify recreated provider uses current credentials and environment"
+      what: |
+        This test validates that when a provider is deleted and recreated, the
+        recreate call uses the current credentials passed to EnsureProvider,
+        not stale credentials from the original provider. This ensures
+        environment variables are re-expanded on recreate.
+      why: |
+        Using stale credentials after recreate would leave the provider in a
+        broken state, defeating the purpose of idempotent recreation. Fresh
+        credentials ensure the provider works with current auth tokens.
+      acceptance_criteria:
+        - "Retry create command receives the current credential values"
+        - "Environment variables in credentials are freshly expanded"
+        - "Provider arguments match those from the original create call"
+
+    variables:
+      closure_scope:
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup"]
+          comment: "Temporary directory for fake openshell binary"
+        - name: "err"
+          type: "error"
+          initialized_in: "TestExecution"
+          used_in: ["TestExecution", "Assertion"]
+          comment: "Error from EnsureProvider call"
+        - name: "capturedArgs"
+          type: "[]string"
+          initialized_in: "TestExecution"
+          used_in: ["Assertion"]
+          comment: "Arguments captured from the retry create call"
+
+    test_structure:
+      type: "single"
+      function_name: "TestEnsureProvider_AlreadyExists_UsesFreshCredentials"
+      subtests: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create fake openshell that captures args on retry create and returns success"
+          code_template: |
+            tmpDir = t.TempDir()
+            writeScript(t, filepath.Join(tmpDir, "openshell"), captureArgsScript)
+            t.Setenv("PATH", tmpDir + ":" + os.Getenv("PATH"))
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call EnsureProvider with specific credentials"
+          code_template: |
+            err = EnsureProvider(provider, freshCredentials)
+
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Temporary directory cleaned up by t.TempDir()"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "EnsureProvider returns no error"
+        condition: "err == nil"
+        failure_impact: "Provider recreation failed"
+        code_template: |
+          require.NoError(t, err)
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "Retry create used the fresh credentials, not stale ones"
+        condition: "captured arguments contain the fresh credential values"
+        failure_impact: "Stale credentials used after recreate; provider may not authenticate"
+        code_template: |
+          assert.Contains(t, capturedArgs, freshCredentials.Token)
+
+  # ============================================================
+  # NON-ALREADYEXISTS ERROR PROPAGATION (P1)
+  # ============================================================
+
+  - scenario_id: "006"
+    test_id: "TS-GH-15-006"
+    tier: "Unit Tests"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-15"
+    requirement_summary: "Non-AlreadyExists provider creation errors propagate correctly"
+
+    test_objective:
+      title: "Verify non-AlreadyExists error returned without delete"
+      what: |
+        This test validates that when openshell provider create fails with an
+        error other than AlreadyExists, the error is returned directly without
+        triggering the delete-and-recreate path.
+      why: |
+        Non-AlreadyExists errors (e.g., invalid credentials, network failure)
+        should not trigger deletion of an existing provider. The error must
+        propagate unchanged to the caller.
+      acceptance_criteria:
+        - "EnsureProvider returns the original error"
+        - "openshell provider delete is NOT called"
+        - "Error message preserved from original failure"
+
+    variables:
+      closure_scope:
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup"]
+          comment: "Temporary directory for fake openshell binary"
+        - name: "err"
+          type: "error"
+          initialized_in: "TestExecution"
+          used_in: ["TestExecution", "Assertion"]
+          comment: "Error from EnsureProvider call"
+
+    test_structure:
+      type: "single"
+      function_name: "TestEnsureProvider_NonAlreadyExistsError_NoDelete"
+      subtests: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create fake openshell that fails with a generic error (not AlreadyExists)"
+          code_template: |
+            tmpDir = t.TempDir()
+            writeScript(t, filepath.Join(tmpDir, "openshell"), genericErrorScript)
+            t.Setenv("PATH", tmpDir + ":" + os.Getenv("PATH"))
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call EnsureProvider"
+          code_template: |
+            err = EnsureProvider(provider, credentials)
+
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Temporary directory cleaned up by t.TempDir()"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "EnsureProvider returns an error"
+        condition: "err != nil"
+        failure_impact: "Non-AlreadyExists errors silently ignored"
+        code_template: |
+          require.Error(t, err)
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "Delete was not called (error does not contain delete-related messages)"
+        condition: "openshell provider delete was not invoked"
+        failure_impact: "Existing provider incorrectly deleted on unrelated errors"
+
+  - scenario_id: "007"
+    test_id: "TS-GH-15-007"
+    tier: "Unit Tests"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-15"
+    requirement_summary: "Non-AlreadyExists provider creation errors propagate correctly"
+
+    test_objective:
+      title: "Verify original error message preserved in output"
+      what: |
+        This test validates that when a non-AlreadyExists error occurs, the
+        original error message from the openshell command is preserved in the
+        returned error, ensuring operators have actionable diagnostic context.
+      why: |
+        Error message fidelity is essential for debugging. Wrapping or
+        transforming errors could obscure the root cause of provider
+        creation failures.
+      acceptance_criteria:
+        - "Returned error contains the original error message from openshell"
+        - "Error context includes the provider name"
+
+    variables:
+      closure_scope:
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup"]
+          comment: "Temporary directory for fake openshell binary"
+        - name: "err"
+          type: "error"
+          initialized_in: "TestExecution"
+          used_in: ["TestExecution", "Assertion"]
+          comment: "Error from EnsureProvider call"
+
+    test_structure:
+      type: "single"
+      function_name: "TestEnsureProvider_NonAlreadyExistsError_PreservesMessage"
+      subtests: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create fake openshell that fails with a specific error message"
+          code_template: |
+            tmpDir = t.TempDir()
+            writeScript(t, filepath.Join(tmpDir, "openshell"), specificErrorScript)
+            t.Setenv("PATH", tmpDir + ":" + os.Getenv("PATH"))
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call EnsureProvider"
+          code_template: |
+            err = EnsureProvider(provider, credentials)
+
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Temporary directory cleaned up by t.TempDir()"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Error message contains the original openshell error text"
+        condition: "err.Error() contains the specific error message"
+        failure_impact: "Original error context lost, making debugging harder"
+        code_template: |
+          assert.Contains(t, err.Error(), "specific error from openshell")
+
+  # ============================================================
+  # CREDENTIAL REDACTION IN ERROR PATHS (P1)
+  # ============================================================
+
+  - scenario_id: "008"
+    test_id: "TS-GH-15-008"
+    tier: "Unit Tests"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-15"
+    requirement_summary: "Provider delete failure during recreate is reported with redacted secrets"
+
+    test_objective:
+      title: "Verify delete error does not leak credentials"
+      what: |
+        This test validates that when provider delete fails during the
+        recreate path, the error message returned by EnsureProvider has
+        all credential values replaced with '***'.
+      why: |
+        Security requirement: credentials must never appear in error output,
+        which may be logged, stored in CI artifacts, or displayed to users.
+      acceptance_criteria:
+        - "Error message does not contain any raw credential values"
+        - "Error message contains '***' in place of credential values"
+        - "Error still provides actionable context (provider name, failure type)"
+
+    variables:
+      closure_scope:
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup"]
+          comment: "Temporary directory for fake openshell binary"
+        - name: "err"
+          type: "error"
+          initialized_in: "TestExecution"
+          used_in: ["TestExecution", "Assertion"]
+          comment: "Error from EnsureProvider call"
+        - name: "secretToken"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "Assertion"]
+          comment: "Secret credential value that must be redacted"
+
+    test_structure:
+      type: "single"
+      function_name: "TestEnsureProvider_DeleteFails_RedactsCredentials"
+      subtests: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create fake openshell that includes credentials in delete error output"
+          code_template: |
+            secretToken = "super-secret-token-12345"
+            tmpDir = t.TempDir()
+            writeScript(t, filepath.Join(tmpDir, "openshell"), deleteFailsWithSecretScript)
+            t.Setenv("PATH", tmpDir + ":" + os.Getenv("PATH"))
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call EnsureProvider with credentials containing the secret token"
+          code_template: |
+            err = EnsureProvider(provider, credentialsWithSecret)
+
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Temporary directory cleaned up by t.TempDir()"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Error does not contain the raw secret token"
+        condition: "err.Error() does not contain secretToken"
+        failure_impact: "Credential leaked in delete error output"
+        code_template: |
+          assert.NotContains(t, err.Error(), secretToken)
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "Error contains redaction marker"
+        condition: "err.Error() contains '***'"
+        failure_impact: "Redaction not applied"
+        code_template: |
+          assert.Contains(t, err.Error(), "***")
+
+  - scenario_id: "009"
+    test_id: "TS-GH-15-009"
+    tier: "Unit Tests"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-15"
+    requirement_summary: "Provider create failure after delete is reported with redacted secrets"
+
+    test_objective:
+      title: "Verify retry create error does not leak credentials"
+      what: |
+        This test validates that when provider retry create fails after a
+        successful delete, the error message has all credential values
+        replaced with '***'.
+      why: |
+        The retry-create error path is distinct from the delete error path.
+        Both must independently redact credentials to prevent leakage.
+      acceptance_criteria:
+        - "Error message does not contain any raw credential values"
+        - "Error message contains '***' in place of credential values"
+
+    variables:
+      closure_scope:
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup"]
+          comment: "Temporary directory for fake openshell binary"
+        - name: "err"
+          type: "error"
+          initialized_in: "TestExecution"
+          used_in: ["TestExecution", "Assertion"]
+          comment: "Error from EnsureProvider call"
+        - name: "secretToken"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["Assertion"]
+          comment: "Secret credential value that must be redacted"
+
+    test_structure:
+      type: "single"
+      function_name: "TestEnsureProvider_RetryCreateFails_RedactsCredentials"
+      subtests: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create fake openshell: AlreadyExists → delete succeeds → retry create fails with secret in output"
+          code_template: |
+            secretToken = "super-secret-token-12345"
+            tmpDir = t.TempDir()
+            writeScript(t, filepath.Join(tmpDir, "openshell"), retryCreateFailsWithSecretScript)
+            t.Setenv("PATH", tmpDir + ":" + os.Getenv("PATH"))
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call EnsureProvider with credentials containing the secret token"
+          code_template: |
+            err = EnsureProvider(provider, credentialsWithSecret)
+
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Temporary directory cleaned up by t.TempDir()"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Error does not contain the raw secret token"
+        condition: "err.Error() does not contain secretToken"
+        failure_impact: "Credential leaked in retry-create error output"
+        code_template: |
+          assert.NotContains(t, err.Error(), secretToken)
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "Error contains redaction marker"
+        condition: "err.Error() contains '***'"
+        failure_impact: "Redaction not applied on retry-create path"
+        code_template: |
+          assert.Contains(t, err.Error(), "***")
+
+  # ============================================================
+  # redactSecrets FUNCTION TESTS (P0)
+  # ============================================================
+
+  - scenario_id: "010"
+    test_id: "TS-GH-15-010"
+    tier: "Unit Tests"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-15"
+    requirement_summary: "Secret values are never exposed in any error output"
+
+    test_objective:
+      title: "Verify redactSecrets replaces all credential values"
+      what: |
+        This test validates the redactSecrets helper function directly by
+        passing a string containing a single secret value and verifying
+        the secret is replaced with '***'.
+      why: |
+        redactSecrets is the centralized redaction function used by all
+        error paths. If it fails, all error output becomes a credential
+        leak vector.
+      acceptance_criteria:
+        - "Output string does not contain the original secret value"
+        - "Output string contains '***' where the secret was"
+        - "Non-secret parts of the string are preserved"
+
+    variables:
+      closure_scope:
+        - name: "input"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestExecution"]
+          comment: "Input string containing a secret"
+        - name: "secrets"
+          type: "[]string"
+          initialized_in: "TestSetup"
+          used_in: ["TestExecution"]
+          comment: "List of secret values to redact"
+        - name: "result"
+          type: "string"
+          initialized_in: "TestExecution"
+          used_in: ["Assertion"]
+          comment: "Output from redactSecrets"
+
+    test_structure:
+      type: "single"
+      function_name: "TestRedactSecrets_SingleSecret"
+      subtests: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Prepare input string with embedded secret and secrets list"
+          code_template: |
+            input = "error: authentication failed with token my-secret-token for provider foo"
+            secrets = []string{"my-secret-token"}
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call redactSecrets with input and secrets"
+          code_template: |
+            result = redactSecrets(input, secrets)
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Secret value is not present in output"
+        condition: "result does not contain 'my-secret-token'"
+        failure_impact: "Credential leakage through redactSecrets"
+        code_template: |
+          assert.NotContains(t, result, "my-secret-token")
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "Secret is replaced with redaction marker"
+        condition: "result contains '***'"
+        failure_impact: "Redaction marker not applied"
+        code_template: |
+          assert.Contains(t, result, "***")
+      - assertion_id: "ASSERT-03"
+        priority: "P0"
+        description: "Non-secret parts of string preserved"
+        condition: "result contains 'error: authentication failed with token'"
+        failure_impact: "Redaction destroyed non-secret context"
+        code_template: |
+          assert.Contains(t, result, "error: authentication failed with token")
+
+  - scenario_id: "011"
+    test_id: "TS-GH-15-011"
+    tier: "Unit Tests"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-15"
+    requirement_summary: "Secret values are never exposed in any error output"
+
+    test_objective:
+      title: "Verify redaction with multiple secret values"
+      what: |
+        This test validates that redactSecrets correctly replaces multiple
+        distinct secret values in the same input string. Each secret should
+        be independently replaced with '***'.
+      why: |
+        Provider definitions may include multiple credentials (e.g., token,
+        password, API key). All must be independently redacted.
+      acceptance_criteria:
+        - "All secret values are replaced with '***'"
+        - "No secret value remains in the output"
+
+    variables:
+      closure_scope:
+        - name: "input"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestExecution"]
+          comment: "Input string containing multiple secrets"
+        - name: "secrets"
+          type: "[]string"
+          initialized_in: "TestSetup"
+          used_in: ["TestExecution"]
+          comment: "List of multiple secret values"
+        - name: "result"
+          type: "string"
+          initialized_in: "TestExecution"
+          used_in: ["Assertion"]
+          comment: "Output from redactSecrets"
+
+    test_structure:
+      type: "single"
+      function_name: "TestRedactSecrets_MultipleSecrets"
+      subtests: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Prepare input string with two embedded secrets"
+          code_template: |
+            input = "token=secret-tok-1 password=secret-pass-2"
+            secrets = []string{"secret-tok-1", "secret-pass-2"}
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call redactSecrets"
+          code_template: |
+            result = redactSecrets(input, secrets)
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "First secret is not present in output"
+        condition: "result does not contain 'secret-tok-1'"
+        failure_impact: "First credential leaked"
+        code_template: |
+          assert.NotContains(t, result, "secret-tok-1")
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "Second secret is not present in output"
+        condition: "result does not contain 'secret-pass-2'"
+        failure_impact: "Second credential leaked"
+        code_template: |
+          assert.NotContains(t, result, "secret-pass-2")
+
+  - scenario_id: "012"
+    test_id: "TS-GH-15-012"
+    tier: "Unit Tests"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-15"
+    requirement_summary: "Secret values are never exposed in any error output"
+
+    test_objective:
+      title: "Verify redaction with empty secrets list"
+      what: |
+        This test validates that redactSecrets handles an empty secrets list
+        gracefully, returning the input string unchanged.
+      why: |
+        Edge case: if no credentials are configured, redactSecrets should
+        be a no-op rather than panicking or corrupting the message.
+      acceptance_criteria:
+        - "Output string equals the input string exactly"
+        - "No panic or error occurs"
+
+    variables:
+      closure_scope:
+        - name: "input"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestExecution"]
+          comment: "Input string with no secrets"
+        - name: "secrets"
+          type: "[]string"
+          initialized_in: "TestSetup"
+          used_in: ["TestExecution"]
+          comment: "Empty secrets list"
+        - name: "result"
+          type: "string"
+          initialized_in: "TestExecution"
+          used_in: ["Assertion"]
+          comment: "Output from redactSecrets"
+
+    test_structure:
+      type: "single"
+      function_name: "TestRedactSecrets_EmptySecrets"
+      subtests: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Prepare input string and empty secrets list"
+          code_template: |
+            input = "error: some failure message"
+            secrets = []string{}
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call redactSecrets with empty secrets"
+          code_template: |
+            result = redactSecrets(input, secrets)
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Output equals input (no modification)"
+        condition: "result == input"
+        failure_impact: "Empty secrets list causes unexpected string modification"
+        code_template: |
+          assert.Equal(t, input, result)
+
+  - scenario_id: "015"
+    test_id: "TS-GH-15-015"
+    tier: "Unit Tests"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-15"
+    requirement_summary: "Non-AlreadyExists provider creation errors include redacted credentials"
+
+    test_objective:
+      title: "Verify credentials are redacted in non-AlreadyExists error output"
+      what: |
+        This test validates that when a provider create fails with a
+        non-AlreadyExists error and the error output contains credential
+        values, those values are redacted before the error is returned.
+      why: |
+        Even on the non-AlreadyExists path, openshell may echo credentials
+        in its error output. All error paths must apply redaction.
+      acceptance_criteria:
+        - "Error returned by EnsureProvider does not contain raw credential values"
+        - "Error contains '***' where credentials were"
+
+    variables:
+      closure_scope:
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup"]
+          comment: "Temporary directory for fake openshell binary"
+        - name: "err"
+          type: "error"
+          initialized_in: "TestExecution"
+          used_in: ["TestExecution", "Assertion"]
+          comment: "Error from EnsureProvider call"
+        - name: "secretToken"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["Assertion"]
+          comment: "Secret credential value"
+
+    test_structure:
+      type: "single"
+      function_name: "TestEnsureProvider_NonAlreadyExists_RedactsCredentials"
+      subtests: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create fake openshell that fails with generic error containing credentials"
+          code_template: |
+            secretToken = "super-secret-token-12345"
+            tmpDir = t.TempDir()
+            writeScript(t, filepath.Join(tmpDir, "openshell"), genericErrorWithSecretScript)
+            t.Setenv("PATH", tmpDir + ":" + os.Getenv("PATH"))
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call EnsureProvider with credentials"
+          code_template: |
+            err = EnsureProvider(provider, credentialsWithSecret)
+
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Temporary directory cleaned up by t.TempDir()"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Error does not contain the raw secret token"
+        condition: "err.Error() does not contain secretToken"
+        failure_impact: "Credential leaked on non-AlreadyExists error path"
+        code_template: |
+          assert.NotContains(t, err.Error(), secretToken)
+
+  # ============================================================
+  # REGRESSION — Agent Run Integration (P1)
+  # ============================================================
+
+  - scenario_id: "013"
+    test_id: "TS-GH-15-013"
+    tier: "Regression"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-15"
+    requirement_summary: "Agent run workflow handles idempotent provider setup without interruption"
+
+    test_objective:
+      title: "Verify agent run succeeds with pre-existing providers"
+      what: |
+        This regression test validates that the runAgent workflow completes
+        successfully when providers already exist from a prior run. The test
+        simulates the scenario where all configured providers return
+        AlreadyExists on initial create, triggering the idempotent
+        delete-and-recreate path for each.
+      why: |
+        This is the primary user scenario: running fullsend multiple times
+        on the same sandbox infrastructure. If the agent run fails because
+        of pre-existing providers, the value of the idempotent fix is lost.
+      acceptance_criteria:
+        - "runAgent completes without error"
+        - "All providers are successfully recreated"
+        - "Agent proceeds to sandbox operations after provider setup"
+
+    variables:
+      closure_scope:
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup"]
+          comment: "Temporary directory for fake openshell binary"
+        - name: "err"
+          type: "error"
+          initialized_in: "TestExecution"
+          used_in: ["TestExecution", "Assertion"]
+          comment: "Error from runAgent call"
+
+    test_structure:
+      type: "single"
+      function_name: "TestRunAgent_PreExistingProviders_Succeeds"
+      subtests: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create fake openshell that returns AlreadyExists for all provider creates, succeeds on deletes and retries"
+          code_template: |
+            tmpDir = t.TempDir()
+            writeScript(t, filepath.Join(tmpDir, "openshell"), allProvidersAlreadyExistScript)
+            t.Setenv("PATH", tmpDir + ":" + os.Getenv("PATH"))
+        - step_id: "SETUP-02"
+          action: "Configure agent with multiple provider definitions"
+          code_template: |
+            agentConfig = buildTestAgentConfig(multipleProviders)
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call runAgent with the test configuration"
+          code_template: |
+            err = runAgent(agentConfig)
+
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Temporary directory cleaned up by t.TempDir()"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "runAgent completes without error"
+        condition: "err == nil"
+        failure_impact: "Agent run fails with pre-existing providers despite idempotent fix"
+        code_template: |
+          require.NoError(t, err)
+
+  - scenario_id: "014"
+    test_id: "TS-GH-15-014"
+    tier: "Regression"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-15"
+    requirement_summary: "Agent run workflow handles idempotent provider setup without interruption"
+
+    test_objective:
+      title: "Verify agent run fails fast on non-idempotent error"
+      what: |
+        This regression test validates that when a provider creation fails
+        with a non-AlreadyExists error during agent run, the workflow
+        fails fast and reports the error clearly.
+      why: |
+        Non-idempotent errors (e.g., invalid credentials, missing gateway)
+        should cause immediate failure rather than continuing with a
+        partially configured environment.
+      acceptance_criteria:
+        - "runAgent returns an error"
+        - "Error message includes the provider name and failure reason"
+        - "Subsequent providers are not attempted after failure"
+
+    variables:
+      closure_scope:
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup"]
+          comment: "Temporary directory for fake openshell binary"
+        - name: "err"
+          type: "error"
+          initialized_in: "TestExecution"
+          used_in: ["TestExecution", "Assertion"]
+          comment: "Error from runAgent call"
+
+    test_structure:
+      type: "single"
+      function_name: "TestRunAgent_NonIdempotentError_FailsFast"
+      subtests: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create fake openshell that fails with a non-AlreadyExists error on provider create"
+          code_template: |
+            tmpDir = t.TempDir()
+            writeScript(t, filepath.Join(tmpDir, "openshell"), nonIdempotentErrorScript)
+            t.Setenv("PATH", tmpDir + ":" + os.Getenv("PATH"))
+        - step_id: "SETUP-02"
+          action: "Configure agent with provider definitions"
+          code_template: |
+            agentConfig = buildTestAgentConfig(singleProvider)
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call runAgent"
+          code_template: |
+            err = runAgent(agentConfig)
+
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Temporary directory cleaned up by t.TempDir()"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "runAgent returns an error"
+        condition: "err != nil"
+        failure_impact: "Agent continues with partially configured environment"
+        code_template: |
+          require.Error(t, err)
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "Error message is actionable (contains provider name)"
+        condition: "err.Error() contains provider name"
+        failure_impact: "Error message not actionable for debugging"
+        code_template: |
+          assert.Contains(t, err.Error(), providerName)
