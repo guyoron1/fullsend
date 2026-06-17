@@ -22,7 +22,7 @@ class TestPostRetroProductionValidation:
 
     def test_retro_run_succeeds_on_restricted_permission_repo(self):
         """
-        Test that retro run succeeds on repo without issues:write permission.
+        [test_id:TS-GH-2305-012] Test that retro run succeeds on repo without issues:write permission.
 
         Preconditions:
             - Retro workflow run triggered on a repo where the app lacks issues:write
@@ -38,7 +38,7 @@ class TestPostRetroProductionValidation:
 
     def test_proposal_issues_created_despite_comment_403(self):
         """
-        Test that proposal issues are created despite comment-posting 403.
+        [test_id:TS-GH-2305-013] Test that proposal issues are created despite comment-posting 403.
 
         Preconditions:
             - Completed retro run that encountered 403 on comment posting
@@ -54,7 +54,7 @@ class TestPostRetroProductionValidation:
 
     def test_warning_annotation_visible_in_workflow_logs(self):
         """
-        Test that GitHub Actions warning annotation is visible in workflow logs.
+        [test_id:TS-GH-2305-014] Test that GitHub Actions warning annotation is visible in workflow logs.
 
         Preconditions:
             - Completed retro run that encountered 403 on comment posting

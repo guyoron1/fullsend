@@ -14,15 +14,9 @@ document_metadata:
     file: "outputs/stp/GH-2305/GH-2305_test_plan.md"
     version: "v1"
     sections_covered: "Section III - Requirements-to-Tests Mapping"
-  related_prs:
-    - repo: "fullsend-ai/fullsend"
-      pr_number: 2306
-      url: "https://github.com/fullsend-ai/fullsend/pull/2306"
-      title: "Retro post-script: treat 403/401 comment-posting errors as non-fatal"
-      merged: false
   total_scenarios: 14
-  functional_count: 11
-  e2e_count: 3
+  tier1_count: 11
+  tier2_count: 3
   p0_count: 7
   p1_count: 5
   p2_count: 2
@@ -95,10 +89,16 @@ scenarios:
 
   - scenario_id: "1"
     test_id: "TS-GH-2305-001"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-2305"
+
+    patterns:
+      primary: "shell-script-error-handling"
+      helpers_required: []
+
+    code_structure: "t.Run -> t.Skip"
 
     variables:
       closure_scope:
@@ -146,7 +146,7 @@ scenarios:
         - "Warning message indicates comment posting was skipped due to permissions"
 
     classification:
-      test_type: "Functional"
+      test_type: "Tier 1"
       scope: "Single-component"
       automation_approach: "Go test with exec.Command running shell script"
 
@@ -218,10 +218,16 @@ scenarios:
 
   - scenario_id: "2"
     test_id: "TS-GH-2305-002"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-2305"
+
+    patterns:
+      primary: "shell-script-error-handling"
+      helpers_required: []
+
+    code_structure: "t.Run -> t.Skip"
 
     variables:
       closure_scope:
@@ -267,7 +273,7 @@ scenarios:
         - "Warning references authentication/permission issue"
 
     classification:
-      test_type: "Functional"
+      test_type: "Tier 1"
       scope: "Single-component"
       automation_approach: "Go test with exec.Command running shell script"
 
@@ -335,10 +341,16 @@ scenarios:
 
   - scenario_id: "3"
     test_id: "TS-GH-2305-003"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-2305"
+
+    patterns:
+      primary: "shell-script-error-handling"
+      helpers_required: []
+
+    code_structure: "t.Run -> t.Skip"
 
     variables:
       closure_scope:
@@ -378,7 +390,7 @@ scenarios:
         - "Warning message contains PR_NUMBER value"
 
     classification:
-      test_type: "Functional"
+      test_type: "Tier 1"
       scope: "Single-component"
       automation_approach: "Go test with exec.Command running shell script"
 
@@ -440,10 +452,16 @@ scenarios:
 
   - scenario_id: "4"
     test_id: "TS-GH-2305-004"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-2305"
+
+    patterns:
+      primary: "shell-script-error-handling"
+      helpers_required: []
+
+    code_structure: "t.Run -> t.Skip"
 
     variables:
       closure_scope:
@@ -457,6 +475,11 @@ scenarios:
           initialized_in: "test_execution"
           used_in: ["test_execution"]
           comment: "Exit code from post-retro.sh"
+        - name: "stderr"
+          type: "string"
+          initialized_in: "test_execution"
+          used_in: ["test_execution"]
+          comment: "Captured stderr output from script"
 
     test_structure:
       type: "single"
@@ -483,7 +506,7 @@ scenarios:
         - "No ::warning:: annotation emitted (this is a fatal path)"
 
     classification:
-      test_type: "Functional"
+      test_type: "Tier 1"
       scope: "Single-component"
       automation_approach: "Go test with exec.Command running shell script"
 
@@ -508,7 +531,7 @@ scenarios:
       setup:
         - step_id: "SETUP-01"
           action: "Create temp dir and mock gh binary returning 500"
-          command: "mktemp -d && write mock"
+          command: "tmpDir=$(mktemp -d) && cat > $tmpDir/gh << EOF && chmod +x $tmpDir/gh"
           validation: "Mock binary exists"
 
       test_execution:
@@ -532,6 +555,11 @@ scenarios:
         description: "Script exits with non-zero exit code"
         condition: "exitCode != 0"
         failure_impact: "Server errors would be silently swallowed, masking API issues"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "No ::warning:: annotation emitted (fatal path)"
+        condition: "!strings.Contains(stderr, '::warning::')"
+        failure_impact: "Warning annotation on fatal errors misleads operators into thinking the error was handled"
 
     dependencies:
       kubernetes_resources: []
@@ -541,10 +569,16 @@ scenarios:
 
   - scenario_id: "5"
     test_id: "TS-GH-2305-005"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-2305"
+
+    patterns:
+      primary: "shell-script-error-handling"
+      helpers_required: []
+
+    code_structure: "t.Run -> t.Skip"
 
     variables:
       closure_scope:
@@ -558,6 +592,11 @@ scenarios:
           initialized_in: "test_execution"
           used_in: ["test_execution"]
           comment: "Exit code from post-retro.sh"
+        - name: "stderr"
+          type: "string"
+          initialized_in: "test_execution"
+          used_in: ["test_execution"]
+          comment: "Captured stderr output from script"
 
     test_structure:
       type: "single"
@@ -584,7 +623,7 @@ scenarios:
         - "Script exits with non-zero exit code"
 
     classification:
-      test_type: "Functional"
+      test_type: "Tier 1"
       scope: "Single-component"
       automation_approach: "Go test with exec.Command running shell script"
 
@@ -609,7 +648,7 @@ scenarios:
       setup:
         - step_id: "SETUP-01"
           action: "Create temp dir and mock gh binary returning 422"
-          command: "mktemp -d && write mock"
+          command: "tmpDir=$(mktemp -d) && cat > $tmpDir/gh << EOF && chmod +x $tmpDir/gh"
           validation: "Mock binary exists"
 
       test_execution:
@@ -633,6 +672,11 @@ scenarios:
         description: "Script exits with non-zero exit code"
         condition: "exitCode != 0"
         failure_impact: "Malformed request errors silently swallowed"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "No ::warning:: annotation emitted (fatal path)"
+        condition: "!strings.Contains(stderr, '::warning::')"
+        failure_impact: "Warning annotation on fatal errors misleads operators into thinking the error was handled"
 
     dependencies:
       kubernetes_resources: []
@@ -646,10 +690,16 @@ scenarios:
 
   - scenario_id: "6"
     test_id: "TS-GH-2305-006"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-2305"
+
+    patterns:
+      primary: "shell-script-error-handling"
+      helpers_required: []
+
+    code_structure: "t.Run -> t.Skip"
 
     variables:
       closure_scope:
@@ -695,7 +745,7 @@ scenarios:
         - "Comment body references the proposal issue"
 
     classification:
-      test_type: "Functional"
+      test_type: "Tier 1"
       scope: "Single-component"
       automation_approach: "Go test with exec.Command running shell script"
 
@@ -726,7 +776,7 @@ scenarios:
       setup:
         - step_id: "SETUP-01"
           action: "Create temp dir, success mock gh, and proposal fixture"
-          command: "mktemp -d && write fixtures"
+          command: "tmpDir=$(mktemp -d) && write mock gh script to $tmpDir/gh && chmod +x $tmpDir/gh && mkdir -p $tmpDir/results && write fixture files"
           validation: "All fixtures in place"
 
       test_execution:
@@ -765,10 +815,16 @@ scenarios:
 
   - scenario_id: "7"
     test_id: "TS-GH-2305-007"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-2305"
+
+    patterns:
+      primary: "shell-script-error-handling"
+      helpers_required: []
+
+    code_structure: "t.Run -> t.Skip"
 
     variables:
       closure_scope:
@@ -807,7 +863,7 @@ scenarios:
         - "Comment is posted even with zero proposals"
 
     classification:
-      test_type: "Functional"
+      test_type: "Tier 1"
       scope: "Single-component"
       automation_approach: "Go test with exec.Command running shell script"
 
@@ -826,7 +882,7 @@ scenarios:
       setup:
         - step_id: "SETUP-01"
           action: "Create temp dir, success mock gh, empty result dir"
-          command: "mktemp -d && write fixtures"
+          command: "tmpDir=$(mktemp -d) && write mock gh script to $tmpDir/gh && chmod +x $tmpDir/gh && mkdir -p $tmpDir/results && write fixture files"
           validation: "Fixtures in place, no proposal files"
 
       test_execution:
@@ -856,10 +912,16 @@ scenarios:
 
   - scenario_id: "8"
     test_id: "TS-GH-2305-008"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-2305"
+
+    patterns:
+      primary: "shell-script-error-handling"
+      helpers_required: []
+
+    code_structure: "t.Run -> t.Skip"
 
     variables:
       closure_scope:
@@ -899,7 +961,7 @@ scenarios:
         - "Script exits with code 0"
 
     classification:
-      test_type: "Functional"
+      test_type: "Tier 1"
       scope: "Single-component"
       automation_approach: "Go test with exec.Command running shell script"
 
@@ -921,7 +983,7 @@ scenarios:
       setup:
         - step_id: "SETUP-01"
           action: "Create temp dir, logging mock gh, and proposal fixtures"
-          command: "mktemp -d && write fixtures"
+          command: "tmpDir=$(mktemp -d) && write mock gh script to $tmpDir/gh && chmod +x $tmpDir/gh && mkdir -p $tmpDir/results && write fixture files"
           validation: "Fixtures in place"
 
       test_execution:
@@ -959,10 +1021,16 @@ scenarios:
 
   - scenario_id: "9"
     test_id: "TS-GH-2305-009"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-2305"
+
+    patterns:
+      primary: "shell-script-error-handling"
+      helpers_required: []
+
+    code_structure: "t.Run -> t.Skip"
 
     variables:
       closure_scope:
@@ -1002,7 +1070,7 @@ scenarios:
         - "Warning annotation emitted"
 
     classification:
-      test_type: "Functional"
+      test_type: "Tier 1"
       scope: "Single-component"
       automation_approach: "Go test with exec.Command running shell script"
 
@@ -1021,7 +1089,7 @@ scenarios:
       setup:
         - step_id: "SETUP-01"
           action: "Create temp dir, 403 mock, empty result dir"
-          command: "mktemp -d && write fixtures"
+          command: "tmpDir=$(mktemp -d) && write mock gh script to $tmpDir/gh && chmod +x $tmpDir/gh && mkdir -p $tmpDir/results && write fixture files"
           validation: "Fixtures in place"
 
       test_execution:
@@ -1050,10 +1118,16 @@ scenarios:
 
   - scenario_id: "10"
     test_id: "TS-GH-2305-010"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P2"
     mvp: false
     requirement_id: "GH-2305"
+
+    patterns:
+      primary: "shell-script-error-handling"
+      helpers_required: []
+
+    code_structure: "t.Run -> t.Skip"
 
     variables:
       closure_scope:
@@ -1094,7 +1168,7 @@ scenarios:
         - "Warning annotation emitted for comment failure"
 
     classification:
-      test_type: "Functional"
+      test_type: "Tier 1"
       scope: "Single-component"
       automation_approach: "Go test with exec.Command running shell script"
 
@@ -1122,7 +1196,7 @@ scenarios:
       setup:
         - step_id: "SETUP-01"
           action: "Create temp dir, selective mock, and 3 proposal files"
-          command: "mktemp -d && write fixtures"
+          command: "tmpDir=$(mktemp -d) && write mock gh script to $tmpDir/gh && chmod +x $tmpDir/gh && mkdir -p $tmpDir/results && write fixture files"
           validation: "3 proposal files exist"
 
       test_execution:
@@ -1161,10 +1235,16 @@ scenarios:
 
   - scenario_id: "11"
     test_id: "TS-GH-2305-011"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P2"
     mvp: false
     requirement_id: "GH-2305"
+
+    patterns:
+      primary: "shell-script-error-handling"
+      helpers_required: []
+
+    code_structure: "t.Run -> t.Skip"
 
     variables:
       closure_scope:
@@ -1203,7 +1283,7 @@ scenarios:
         - "Stdout contains 'Post-retro complete' or equivalent completion message"
 
     classification:
-      test_type: "Functional"
+      test_type: "Tier 1"
       scope: "Single-component"
       automation_approach: "Go test with exec.Command running shell script"
 
@@ -1219,7 +1299,7 @@ scenarios:
       setup:
         - step_id: "SETUP-01"
           action: "Create temp dir, success mock, and proposal fixture"
-          command: "mktemp -d && write fixtures"
+          command: "tmpDir=$(mktemp -d) && write mock gh script to $tmpDir/gh && chmod +x $tmpDir/gh && mkdir -p $tmpDir/results && write fixture files"
           validation: "Fixtures in place"
 
       test_execution:
@@ -1256,10 +1336,16 @@ scenarios:
 
   - scenario_id: "12"
     test_id: "TS-GH-2305-012"
-    tier: "End-to-End"
+    tier: "Tier 2"
     priority: "P0"
     mvp: true
     requirement_id: "GH-2305"
+
+    patterns:
+      primary: "workflow-validation"
+      helpers_required: []
+
+    code_structure: "class -> def test_ -> pass"
 
     variables:
       closure_scope:
@@ -1300,7 +1386,7 @@ scenarios:
         - "Logs contain warning about skipped comment"
 
     classification:
-      test_type: "End-to-End"
+      test_type: "Tier 2"
       scope: "Multi-component"
       automation_approach: "pytest with GitHub API validation"
 
@@ -1368,10 +1454,16 @@ scenarios:
 
   - scenario_id: "13"
     test_id: "TS-GH-2305-013"
-    tier: "End-to-End"
+    tier: "Tier 2"
     priority: "P0"
     mvp: true
     requirement_id: "GH-2305"
+
+    patterns:
+      primary: "workflow-validation"
+      helpers_required: []
+
+    code_structure: "class -> def test_ -> pass"
 
     variables:
       closure_scope:
@@ -1406,7 +1498,7 @@ scenarios:
         - "Proposal issues have correct labels and content"
 
     classification:
-      test_type: "End-to-End"
+      test_type: "Tier 2"
       scope: "Multi-component"
       automation_approach: "pytest with GitHub API validation"
 
@@ -1455,10 +1547,16 @@ scenarios:
 
   - scenario_id: "14"
     test_id: "TS-GH-2305-014"
-    tier: "End-to-End"
+    tier: "Tier 2"
     priority: "P1"
     mvp: false
     requirement_id: "GH-2305"
+
+    patterns:
+      primary: "workflow-validation"
+      helpers_required: []
+
+    code_structure: "class -> def test_ -> pass"
 
     variables:
       closure_scope:
@@ -1493,7 +1591,7 @@ scenarios:
         - "Warning text mentions comment posting failure reason"
 
     classification:
-      test_type: "End-to-End"
+      test_type: "Tier 2"
       scope: "Multi-component"
       automation_approach: "pytest with GitHub API validation"
 
