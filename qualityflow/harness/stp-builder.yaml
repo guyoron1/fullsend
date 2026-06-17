@@ -16,10 +16,6 @@ host_files:
     expand: true
   - src: ${GOOGLE_APPLICATION_CREDENTIALS}
     dest: /tmp/workspace/.gcp-credentials.json
-  # Source code repo for LSP analysis (set SOURCE_REPO_PATH on host).
-  - src: ${SOURCE_REPO_PATH}
-    dest: /tmp/workspace/source-repo
-    optional: true
 
 skills:
   - skills/project-resolver
