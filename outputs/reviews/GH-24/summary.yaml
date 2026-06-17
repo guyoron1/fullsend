@@ -1,0 +1,22 @@
+status: success
+jira_id: GH-24
+verdict: APPROVED_WITH_FINDINGS
+confidence: MEDIUM
+weighted_score: 89
+findings:
+  critical: 0
+  major: 3
+  minor: 4
+  actionable: 6
+  total: 7
+reviewed: outputs/stp/GH-24/GH-24_test_plan.md
+report: outputs/reviews/GH-24/GH-24_stp_review.md
+dimension_scores:
+  rule_compliance: 94
+  requirement_coverage: 85
+  scenario_quality: 90
+  risk_accuracy: 90
+  scope_boundary: 100
+  strategy: 100
+  metadata: 60
+scope_downgrade: false
