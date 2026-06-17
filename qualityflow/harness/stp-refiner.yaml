@@ -3,7 +3,7 @@
 # Needs Jira (curl) and GitHub (gh CLI) for re-verification against source data.
 agent: agents/stp-refiner.md
 model: opus
-image: images/qf-code
+image: ghcr.io/fullsend-ai/fullsend-code:latest
 policy: policies/qf-full.yaml
 agent_input: config
 

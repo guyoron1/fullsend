@@ -3,7 +3,7 @@
 # File-only: reads STP and config, no external API calls needed.
 agent: agents/std-builder.md
 model: opus
-image: images/qf-code
+image: ghcr.io/fullsend-ai/fullsend-code:latest
 policy: policies/qf-vertex.yaml
 agent_input: config
 

@@ -3,7 +3,7 @@
 # Needs Jira (curl) and GitHub (gh CLI) for ticket data and PR diffs.
 agent: agents/stp-builder.md
 model: opus
-image: images/qf-code
+image: ghcr.io/fullsend-ai/fullsend-code:latest
 policy: policies/qf-full.yaml
 agent_input: config
 
