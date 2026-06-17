@@ -1,0 +1,63 @@
+component_package_map:
+  cli:
+    package_path: "internal/cli/"
+    features:
+      - { name: "CLI Commands", path: "internal/cli/" }
+  sandbox:
+    package_path: "internal/sandbox/"
+    features:
+      - { name: "Sandbox Execution", path: "internal/sandbox/" }
+  harness:
+    package_path: "internal/harness/"
+    features:
+      - { name: "Agent Harness", path: "internal/harness/" }
+  dispatch:
+    package_path: "internal/dispatch/"
+    features:
+      - { name: "Workflow Dispatch", path: "internal/dispatch/" }
+  scaffold:
+    package_path: "internal/scaffold/"
+    features:
+      - { name: "Repo Scaffolding", path: "internal/scaffold/" }
+  forge:
+    package_path: "internal/forge/"
+    features:
+      - { name: "Code Generation", path: "internal/forge/" }
+  mint:
+    package_path: "internal/mint/"
+    features:
+      - { name: "Token Minting", path: "internal/mint/" }
+  inference:
+    package_path: "internal/inference/"
+    features:
+      - { name: "LLM Inference", path: "internal/inference/" }
+  security:
+    package_path: "internal/security/"
+    features:
+      - { name: "Security Scanning", path: "internal/security/" }
+  gcp:
+    package_path: "internal/gcp/"
+    features:
+      - { name: "GCP Integration", path: "internal/gcp/" }
+  config:
+    package_path: "internal/config/"
+    features:
+      - { name: "Configuration", path: "internal/config/" }
+  layers:
+    package_path: "internal/layers/"
+    features:
+      - { name: "Layer Management", path: "internal/layers/" }
+
+path_to_feature:
+  "internal/cli/": "CLI Commands"
+  "internal/sandbox/": "Sandbox Execution"
+  "internal/harness/": "Agent Harness"
+  "internal/dispatch/": "Workflow Dispatch"
+  "internal/scaffold/": "Repo Scaffolding"
+  "internal/forge/": "Code Generation"
+  "internal/mint/": "Token Minting"
+  "internal/inference/": "LLM Inference"
+  "internal/security/": "Security Scanning"
+  "internal/gcp/": "GCP Integration"
+  "internal/config/": "Configuration"
+  "internal/layers/": "Layer Management"

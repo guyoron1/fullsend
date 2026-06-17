@@ -1,0 +1,12 @@
+primary_repo:
+  name: "fullsend"
+  org: "fullsend-ai"
+  full_name: "fullsend-ai/fullsend"
+  url: "https://github.com/fullsend-ai/fullsend"
+  default_branch: "main"
+  language: "go"
+  build_system: "go"
+  build_command: "go test ./..."
+
+pr_url_patterns:
+  - "https://github.com/{org}/{repo}/pull/{number}"

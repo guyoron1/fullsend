@@ -1,0 +1,14 @@
+platform:
+  name: "GitHub Actions"
+  short_name: "GHA"
+  cli_tools:
+    - "fullsend"
+    - "gh"
+    - "go"
+
+cluster_requirements:
+  topology: "None"
+  min_worker_nodes: 0
+
+version_constraints:
+  go: "1.23+"
