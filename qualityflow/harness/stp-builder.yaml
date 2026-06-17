@@ -19,6 +19,7 @@ host_files:
   # Source code repo for LSP analysis (set SOURCE_REPO_PATH on host).
   - src: ${SOURCE_REPO_PATH}
     dest: /tmp/workspace/source-repo
+    optional: true
 
 skills:
   - skills/project-resolver
