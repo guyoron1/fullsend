@@ -118,24 +118,13 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           PR_NUMBER: ${{ github.event.issue.number }}
           COMMENT_BODY: ${{ github.event.comment.body }}
-          JIRA_URL_CHECK: ${{ secrets.JIRA_URL }}
         run: |
           set -euo pipefail
           JIRA_TICKET=""
-          FROM_COMMENT=false
 
           # Try /qf comment body first (e.g. "/qf CNV-72329").
           if [[ -n "${COMMENT_BODY}" ]]; then
             JIRA_TICKET=$(printf '%s\n' "${COMMENT_BODY}" | grep -oE '[A-Z][A-Z0-9]+-[0-9]+' | head -1 || true)
-            [[ -n "${JIRA_TICKET}" ]] && FROM_COMMENT=true
-          fi
-
-          # If ticket was explicitly provided in the comment, check for GH- prefix.
-          if [[ "${FROM_COMMENT}" == "true" && "${JIRA_TICKET}" == GH-* ]]; then
-            ISSUE_NUM="${JIRA_TICKET#GH-}"
-            echo "issue_source=github" >> "${GITHUB_OUTPUT}"
-            echo "issue_number=${ISSUE_NUM}" >> "${GITHUB_OUTPUT}"
-            echo "::notice::Explicit GitHub Issue from comment: ${JIRA_TICKET}"
           fi
 
           # Fallback: PR title.
@@ -158,15 +147,6 @@ jobs:
           if [[ -z "${JIRA_TICKET}" ]]; then
             HEAD_REF="${{ steps.pr-info.outputs.head_ref }}"
             JIRA_TICKET=$(printf '%s\n' "${HEAD_REF}" | grep -oE '[A-Z][A-Z0-9]+-[0-9]+' | head -1 || true)
-          fi
-
-          # If we found a ticket-like string but Jira is not configured,
-          # treat it as a non-Jira reference and fall through to GitHub mode.
-          if [[ -n "${JIRA_TICKET}" && -z "${JIRA_URL_CHECK}" ]]; then
-            if ! grep -q 'issue_source=' "${GITHUB_OUTPUT}" 2>/dev/null; then
-              echo "::notice::Found ${JIRA_TICKET} but no Jira configured — switching to GitHub mode"
-              JIRA_TICKET=""
-            fi
           fi
 
           # Fallback: linked GitHub Issue from PR body (Fixes #N, Closes #N, Resolves #N).
