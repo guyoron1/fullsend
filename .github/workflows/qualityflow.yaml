@@ -66,8 +66,9 @@ jobs:
           LAYERED_DIRS="agents skills schemas harness plugins policies scripts env docs"
           for dir in ${LAYERED_DIRS}; do
             if [[ -d "${SRC}/${dir}" ]]; then
-              mkdir -p "${dir}"
-              cp -r "${SRC}/${dir}/." "${dir}/"
+              # Remove existing dir to avoid file/symlink-vs-directory conflicts
+              rm -rf "${dir}"
+              cp -r "${SRC}/${dir}" "${dir}"
             fi
           done
           mkdir -p .github/scripts
