@@ -1,0 +1,3373 @@
+---
+# Software Test Description (STD) - v2.1-enhanced
+# Generated: 2026-06-17
+# Source: outputs/stp/GH-25/GH-25_test_plan.md
+
+document_metadata:
+  std_version: "2.1-enhanced"
+  generated_date: "2026-06-17"
+  jira_issue: "GH-25"
+  jira_summary: "perf(#2351): batch path-existence checks via Git Trees API"
+  source_bugs: []
+  stp_reference:
+    file: "outputs/stp/GH-25/GH-25_test_plan.md"
+    version: "v1"
+    sections_covered: "Section 3 - Test Scenarios"
+  related_prs:
+    - repo: "fullsend-ai/fullsend"
+      pr_number: 25
+      url: "https://github.com/fullsend-ai/fullsend/pull/25"
+      title: "perf(#2351): batch path-existence checks via Git Trees API"
+      merged: false
+  total_scenarios: 51
+  tier1_count: 16
+  unit_count: 35
+  p0_count: 51
+
+code_generation_config:
+  std_version: "2.1-enhanced"
+  framework: "testing"
+  assertion_library: "testify"
+  language: "go"
+  package_name: "tests"
+  imports:
+    standard:
+      - "context"
+      - "testing"
+      - "time"
+      - "fmt"
+      - "strings"
+    test_framework:
+      - "github.com/stretchr/testify/assert"
+      - "github.com/stretchr/testify/require"
+    project:
+      - "github.com/fullsend-ai/fullsend/internal/forge"
+      - "github.com/fullsend-ai/fullsend/internal/scaffold"
+      - "github.com/fullsend-ai/fullsend/internal/harness"
+      - "github.com/fullsend-ai/fullsend/internal/config"
+      - "github.com/fullsend-ai/fullsend/internal/cli"
+  test_patterns:
+    function_prefix: "Test"
+    subtest_style: "t.Run"
+    assertion_style: "testify"
+
+common_preconditions:
+  infrastructure:
+    - name: "Go toolchain"
+      requirement: "Go 1.23+"
+      validation: "go version"
+    - name: "GitHub CLI"
+      requirement: "gh CLI authenticated"
+      validation: "gh auth status"
+    - name: "fullsend binary"
+      requirement: "fullsend CLI built and available on PATH"
+      validation: "fullsend version"
+  platform:
+    name: "GitHub Actions"
+    topology: "None"
+    min_worker_nodes: 0
+  rbac_requirements: []
+
+scenarios:
+  # =========================================================================
+  # Section 3.1: forge.Client.ListRepositoryFiles (REQ-001, REQ-003)
+  # =========================================================================
+  - scenario_id: "001"
+    test_id: "TS-GH-25-001"
+    tier: "Tier1"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-001"
+    section: "forge.Client.ListRepositoryFiles"
+    package: "internal/forge"
+
+    variables:
+      closure_scope:
+        - name: "client"
+          type: "*github.LiveClient"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "t.Run"]
+          comment: "GitHub API client under test"
+        - name: "paths"
+          type: "[]string"
+          initialized_in: "t.Run"
+          used_in: ["t.Run"]
+          comment: "Returned file paths"
+        - name: "err"
+          type: "error"
+          initialized_in: "t.Run"
+          used_in: ["t.Run"]
+          comment: "Error from API call"
+
+    test_structure:
+      type: "table-driven"
+      function: "TestListRepositoryFiles"
+      subtest: "returns all blob paths for repository with files"
+
+    test_objective:
+      title: "ListRepositoryFiles on a repository with files returns all blob paths"
+      what: |
+        Validates that ListRepositoryFiles correctly retrieves all file paths
+        from a repository's default branch. The method should return only blob
+        entries (files), excluding tree entries (directories).
+      why: |
+        This is the core functionality replacing O(N) GetFileContent calls.
+        If blob filtering fails, ComparePathPresence will produce false positives
+        on directory entries.
+      acceptance_criteria:
+        - "Returns []string containing all file paths in the repository"
+        - "No tree/directory entries are included in the result"
+        - "No error is returned for a valid repository"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with httptest mock server"
+
+    specific_preconditions:
+      - name: "Mock GitHub API server"
+        requirement: "httptest server returning valid Git Trees API responses"
+        validation: "Server responds to /repos/{owner}/{repo}/git/trees/{sha}?recursive=1"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create httptest server with Git Trees API response containing blobs and trees"
+          command: "httptest.NewServer with handler returning tree response"
+          validation: "Server is running and accessible"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call ListRepositoryFiles with valid owner/repo"
+          command: "client.ListRepositoryFiles(ctx, owner, repo)"
+          validation: "Returns []string of blob paths only"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close httptest server"
+          command: "server.Close()"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "All blob paths are returned"
+        condition: "len(paths) matches expected blob count"
+        failure_impact: "File listing incomplete, path presence checks unreliable"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "No directory entries in result"
+        condition: "No path in result corresponds to a tree entry"
+        failure_impact: "False positives in path existence checks"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "002"
+    test_id: "TS-GH-25-002"
+    tier: "Tier1"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-001"
+    section: "forge.Client.ListRepositoryFiles"
+    package: "internal/forge"
+
+    variables:
+      closure_scope:
+        - name: "apiCallCount"
+          type: "int"
+          initialized_in: "TestSetup"
+          used_in: ["handler", "t.Run"]
+          comment: "Counter for API calls made"
+
+    test_structure:
+      type: "single"
+      function: "TestListRepositoryFiles"
+      subtest: "follows ref chain with exactly 3 API calls"
+
+    test_objective:
+      title: "ListRepositoryFiles follows the ref chain: default branch -> commit SHA -> tree SHA -> recursive tree"
+      what: |
+        Validates the API call sequence: get repo default branch, resolve branch
+        ref to commit SHA, get commit to extract tree SHA, then fetch recursive
+        tree. This ensures the method uses the documented 3-call chain.
+      why: |
+        The performance optimization depends on a fixed number of API calls
+        regardless of file count. If additional calls are made, the O(1)
+        guarantee is broken.
+      acceptance_criteria:
+        - "Exactly 3-4 API calls are issued (get repo, get ref, get commit, get tree)"
+        - "Calls follow the correct sequence"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with httptest mock server tracking call count"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create httptest server tracking API call count and sequence"
+          command: "httptest.NewServer with counting handler"
+          validation: "Server tracks each API endpoint hit"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call ListRepositoryFiles"
+          command: "client.ListRepositoryFiles(ctx, owner, repo)"
+          validation: "Returns successfully"
+        - step_id: "TEST-02"
+          action: "Verify API call count"
+          command: "assert.Equal(t, expectedCount, apiCallCount)"
+          validation: "Exactly 3-4 API calls were made"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close httptest server"
+          command: "server.Close()"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Fixed number of API calls"
+        condition: "apiCallCount == 3 or 4"
+        failure_impact: "Performance regression - more API calls than expected"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "003"
+    test_id: "TS-GH-25-003"
+    tier: "Tier1"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-001"
+    section: "forge.Client.ListRepositoryFiles"
+    package: "internal/forge"
+
+    variables:
+      closure_scope:
+        - name: "err"
+          type: "error"
+          initialized_in: "t.Run"
+          used_in: ["t.Run"]
+          comment: "Error from API call on non-existent repo"
+
+    test_structure:
+      type: "single"
+      function: "TestListRepositoryFiles"
+      subtest: "returns ErrNotFound for non-existent repository"
+
+    test_objective:
+      title: "ListRepositoryFiles on a non-existent repository returns ErrNotFound"
+      what: |
+        Validates that calling ListRepositoryFiles with a non-existent
+        repository returns an error wrapping forge.ErrNotFound rather than
+        an empty result or panic.
+      why: |
+        Callers (ComparePathPresence) need to distinguish "repo not found"
+        from "repo exists but has no files" to provide correct diagnostics.
+      acceptance_criteria:
+        - "Error wraps forge.ErrNotFound"
+        - "Returned paths slice is nil"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with httptest returning 404"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create httptest server returning 404 for repo endpoint"
+          command: "httptest.NewServer returning http.StatusNotFound"
+          validation: "Server returns 404"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call ListRepositoryFiles with non-existent owner/repo"
+          command: "client.ListRepositoryFiles(ctx, owner, repo)"
+          validation: "Returns error"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close httptest server"
+          command: "server.Close()"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Error wraps ErrNotFound"
+        condition: "errors.Is(err, forge.ErrNotFound)"
+        failure_impact: "Callers cannot distinguish missing repo from other errors"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "004"
+    test_id: "TS-GH-25-004"
+    tier: "Tier1"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-001"
+    section: "forge.Client.ListRepositoryFiles"
+    package: "internal/forge"
+
+    variables:
+      closure_scope:
+        - name: "err"
+          type: "error"
+          initialized_in: "t.Run"
+          used_in: ["t.Run"]
+          comment: "Error from truncated tree response"
+
+    test_structure:
+      type: "single"
+      function: "TestListRepositoryFiles"
+      subtest: "returns error on truncated tree"
+
+    test_objective:
+      title: "ListRepositoryFiles on a truncated tree (repo too large) returns an error"
+      what: |
+        Validates that when the GitHub API returns a truncated tree response
+        (repository has too many files for a single recursive tree call),
+        the method returns a descriptive error containing "truncated".
+      why: |
+        Truncated trees mean incomplete file listings. Silently returning
+        partial results would cause ComparePathPresence to report false
+        missing files.
+      acceptance_criteria:
+        - "Returns error containing 'truncated'"
+        - "Returned paths slice is nil"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with httptest returning truncated:true"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create httptest server returning tree response with truncated:true"
+          command: "httptest.NewServer with truncated tree JSON"
+          validation: "Server returns truncated tree"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call ListRepositoryFiles"
+          command: "client.ListRepositoryFiles(ctx, owner, repo)"
+          validation: "Returns error"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close httptest server"
+          command: "server.Close()"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Error message contains truncated"
+        condition: "strings.Contains(err.Error(), \"truncated\")"
+        failure_impact: "Silent data loss on large repositories"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "005"
+    test_id: "TS-GH-25-005"
+    tier: "Tier1"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-001"
+    section: "forge.Client.ListRepositoryFiles"
+    package: "internal/forge"
+
+    variables:
+      closure_scope:
+        - name: "paths"
+          type: "[]string"
+          initialized_in: "t.Run"
+          used_in: ["t.Run"]
+          comment: "Returned file paths from empty repo"
+
+    test_structure:
+      type: "single"
+      function: "TestListRepositoryFiles"
+      subtest: "returns empty slice for empty repository"
+
+    test_objective:
+      title: "ListRepositoryFiles on an empty repository returns empty slice"
+      what: |
+        Validates that an empty repository (no files) returns an empty
+        string slice without error, not nil.
+      why: |
+        Edge case handling. ComparePathPresence should gracefully handle
+        empty repos without panicking on nil slice operations.
+      acceptance_criteria:
+        - "Returns []string{}, not nil"
+        - "No error returned"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with httptest returning empty tree"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create httptest server returning empty tree response"
+          command: "httptest.NewServer with empty tree array"
+          validation: "Server returns empty tree"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call ListRepositoryFiles"
+          command: "client.ListRepositoryFiles(ctx, owner, repo)"
+          validation: "Returns empty slice, no error"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close httptest server"
+          command: "server.Close()"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Empty slice returned"
+        condition: "len(paths) == 0 && paths != nil"
+        failure_impact: "Nil pointer dereference in callers"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "006"
+    test_id: "TS-GH-25-006"
+    tier: "Tier1"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-001"
+    section: "forge.Client.ListRepositoryFiles"
+    package: "internal/forge"
+
+    variables:
+      closure_scope:
+        - name: "retryCount"
+          type: "int"
+          initialized_in: "TestSetup"
+          used_in: ["handler", "t.Run"]
+          comment: "Counter for retry attempts"
+
+    test_structure:
+      type: "single"
+      function: "TestListRepositoryFiles"
+      subtest: "retries on transient failures during ref resolution"
+
+    test_objective:
+      title: "ListRepositoryFiles retries on transient failures during ref resolution"
+      what: |
+        Validates that transient HTTP errors (502, 503) during the branch
+        ref resolution step trigger retry logic rather than immediate failure.
+      why: |
+        GitHub API can return transient errors under load. Without retry
+        logic, batch path checks would fail intermittently in CI environments.
+      acceptance_criteria:
+        - "Method retries after transient 502/503 error"
+        - "Eventually succeeds when API recovers"
+        - "Uses retryOnTransient for the branch ref API call"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with httptest returning 502 then 200"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create httptest server that returns 502 on first request then 200"
+          command: "httptest.NewServer with stateful handler"
+          validation: "Server tracks request count"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call ListRepositoryFiles"
+          command: "client.ListRepositoryFiles(ctx, owner, repo)"
+          validation: "Returns successfully after retry"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close httptest server"
+          command: "server.Close()"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Retry occurred"
+        condition: "retryCount > 1"
+        failure_impact: "Intermittent CI failures on transient GitHub API errors"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "007"
+    test_id: "TS-GH-25-007"
+    tier: "Unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-003"
+    section: "forge.Client.ListRepositoryFiles"
+    package: "internal/forge"
+
+    variables:
+      closure_scope:
+        - name: "fake"
+          type: "*forge.FakeClient"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "t.Run"]
+          comment: "Fake forge client with FileContents map"
+        - name: "paths"
+          type: "[]string"
+          initialized_in: "t.Run"
+          used_in: ["t.Run"]
+          comment: "Returned paths from fake"
+
+    test_structure:
+      type: "single"
+      function: "TestFakeListRepositoryFiles"
+      subtest: "returns paths from FileContents map"
+
+    test_objective:
+      title: "FakeClient.ListRepositoryFiles returns paths from FileContents map keyed by owner/repo/path"
+      what: |
+        Validates that the FakeClient implementation of ListRepositoryFiles
+        extracts file paths from the FileContents map by matching the
+        owner/repo/ prefix and stripping it from results.
+      why: |
+        Test infrastructure must behave predictably. If FakeClient doesn't
+        correctly filter by owner/repo prefix, unit tests for ComparePathPresence
+        will produce incorrect results.
+      acceptance_criteria:
+        - "Paths returned match keys with owner/repo/ prefix stripped"
+        - "Only paths matching the requested owner/repo are returned"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with FakeClient"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create FakeClient with FileContents map entries"
+          command: "forge.FakeClient{FileContents: map[string]string{...}}"
+          validation: "FakeClient created with test data"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call ListRepositoryFiles on FakeClient"
+          command: "fake.ListRepositoryFiles(ctx, owner, repo)"
+          validation: "Returns expected paths"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Correct paths returned"
+        condition: "assert.ElementsMatch(t, expected, paths)"
+        failure_impact: "FakeClient unusable for path presence testing"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "008"
+    test_id: "TS-GH-25-008"
+    tier: "Unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-003"
+    section: "forge.Client.ListRepositoryFiles"
+    package: "internal/forge"
+
+    variables:
+      closure_scope:
+        - name: "fake"
+          type: "*forge.FakeClient"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "t.Run"]
+          comment: "Fake forge client with injected error"
+
+    test_structure:
+      type: "single"
+      function: "TestFakeListRepositoryFiles"
+      subtest: "returns injected error"
+
+    test_objective:
+      title: "FakeClient.ListRepositoryFiles with injected error returns the error"
+      what: |
+        Validates that when Errors["ListRepositoryFiles"] is set on FakeClient,
+        the method returns that error without processing FileContents.
+      why: |
+        Tests for error handling in callers (ComparePathPresence) depend on
+        FakeClient correctly propagating injected errors.
+      acceptance_criteria:
+        - "Error from Errors[\"ListRepositoryFiles\"] is propagated"
+        - "Returned paths are nil"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with FakeClient error injection"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create FakeClient with injected error"
+          command: "forge.FakeClient{Errors: map[string]error{\"ListRepositoryFiles\": testErr}}"
+          validation: "FakeClient created with error injection"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call ListRepositoryFiles on FakeClient"
+          command: "fake.ListRepositoryFiles(ctx, owner, repo)"
+          validation: "Returns injected error"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Injected error returned"
+        condition: "assert.ErrorIs(t, err, testErr)"
+        failure_impact: "Error path testing broken for all callers"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  # =========================================================================
+  # Section 3.2: ComparePathPresence (REQ-002)
+  # =========================================================================
+  - scenario_id: "009"
+    test_id: "TS-GH-25-009"
+    tier: "Unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-002"
+    section: "ComparePathPresence"
+    package: "internal/scaffold"
+
+    variables:
+      closure_scope:
+        - name: "missing"
+          type: "[]string"
+          initialized_in: "t.Run"
+          used_in: ["t.Run"]
+          comment: "Missing paths returned"
+
+    test_structure:
+      type: "single"
+      function: "TestComparePathPresence"
+      subtest: "all expected paths exist"
+
+    test_objective:
+      title: "All expected paths exist in the repository"
+      what: |
+        Validates that when all expected paths are found in the repository
+        file listing, ComparePathPresence returns nil for the missing slice.
+      why: |
+        Happy path validation. Most repos will have all expected scaffold
+        files present.
+      acceptance_criteria:
+        - "Returns nil missing slice"
+        - "No error returned"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with FakeClient"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create FakeClient with FileContents matching all expected paths"
+          command: "FakeClient with all paths present"
+          validation: "FakeClient has all expected file entries"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call ComparePathPresence with expected paths"
+          command: "scaffold.ComparePathPresence(ctx, client, owner, repo, expectedPaths)"
+          validation: "Returns nil, nil"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "No missing paths"
+        condition: "missing == nil"
+        failure_impact: "False positive missing file reports"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "010"
+    test_id: "TS-GH-25-010"
+    tier: "Unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-002"
+    section: "ComparePathPresence"
+    package: "internal/scaffold"
+
+    variables:
+      closure_scope:
+        - name: "missing"
+          type: "[]string"
+          initialized_in: "t.Run"
+          used_in: ["t.Run"]
+          comment: "Missing paths returned"
+
+    test_structure:
+      type: "single"
+      function: "TestComparePathPresence"
+      subtest: "some expected paths are missing"
+
+    test_objective:
+      title: "Some expected paths are missing"
+      what: |
+        Validates that when some expected paths are not found in the repository,
+        ComparePathPresence returns a sorted slice of those missing paths.
+      why: |
+        Core business logic for scaffold gap analysis. Must correctly identify
+        which specific files are missing for actionable remediation.
+      acceptance_criteria:
+        - "Returns sorted []string of missing paths"
+        - "Only missing paths are in the result"
+        - "No error returned"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with FakeClient"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create FakeClient with some expected paths missing"
+          command: "FakeClient with partial path coverage"
+          validation: "FakeClient has subset of expected files"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call ComparePathPresence"
+          command: "scaffold.ComparePathPresence(ctx, client, owner, repo, expectedPaths)"
+          validation: "Returns sorted slice of missing paths"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Missing paths correctly identified"
+        condition: "assert.Equal(t, expectedMissing, missing)"
+        failure_impact: "Incorrect scaffold gap analysis"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "Missing paths are sorted"
+        condition: "sort.StringsAreSorted(missing)"
+        failure_impact: "Non-deterministic output"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "011"
+    test_id: "TS-GH-25-011"
+    tier: "Unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-002"
+    section: "ComparePathPresence"
+    package: "internal/scaffold"
+
+    variables:
+      closure_scope:
+        - name: "missing"
+          type: "[]string"
+          initialized_in: "t.Run"
+          used_in: ["t.Run"]
+          comment: "Missing paths returned"
+
+    test_structure:
+      type: "single"
+      function: "TestComparePathPresence"
+      subtest: "all expected paths are missing"
+
+    test_objective:
+      title: "All expected paths are missing"
+      what: |
+        Validates that when no expected paths are found, ComparePathPresence
+        returns a sorted slice of all expected paths as missing.
+      why: |
+        Edge case for completely unscaffolded repositories. The result
+        must be sorted for deterministic reporting.
+      acceptance_criteria:
+        - "Returns sorted slice of all expected paths"
+        - "No error returned"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with FakeClient"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create FakeClient with no matching paths"
+          command: "FakeClient with empty or non-matching FileContents"
+          validation: "No expected paths in FakeClient"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call ComparePathPresence"
+          command: "scaffold.ComparePathPresence(ctx, client, owner, repo, expectedPaths)"
+          validation: "Returns all expected paths as missing"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "All paths reported missing"
+        condition: "assert.Equal(t, expectedPaths, missing)"
+        failure_impact: "Incomplete gap analysis on empty repos"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "012"
+    test_id: "TS-GH-25-012"
+    tier: "Unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-002"
+    section: "ComparePathPresence"
+    package: "internal/scaffold"
+
+    variables:
+      closure_scope:
+        - name: "missing"
+          type: "[]string"
+          initialized_in: "t.Run"
+          used_in: ["t.Run"]
+          comment: "Missing paths returned"
+        - name: "err"
+          type: "error"
+          initialized_in: "t.Run"
+          used_in: ["t.Run"]
+          comment: "Error from call"
+
+    test_structure:
+      type: "single"
+      function: "TestComparePathPresence"
+      subtest: "empty expected paths returns immediately"
+
+    test_objective:
+      title: "Empty expected paths slice"
+      what: |
+        Validates that passing an empty expected paths slice returns nil, nil
+        immediately without making any API calls.
+      why: |
+        Performance guard. No API calls should be wasted when there's nothing
+        to check.
+      acceptance_criteria:
+        - "Returns nil, nil immediately"
+        - "No API call made (ListRepositoryFiles not called)"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with FakeClient verifying no calls"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create FakeClient (should not be called)"
+          command: "FakeClient with no setup"
+          validation: "FakeClient created"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call ComparePathPresence with empty slice"
+          command: "scaffold.ComparePathPresence(ctx, client, owner, repo, []string{})"
+          validation: "Returns nil, nil"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Nil missing and nil error"
+        condition: "missing == nil && err == nil"
+        failure_impact: "Unnecessary API calls on empty input"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "013"
+    test_id: "TS-GH-25-013"
+    tier: "Unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-002"
+    section: "ComparePathPresence"
+    package: "internal/scaffold"
+
+    variables:
+      closure_scope:
+        - name: "err"
+          type: "error"
+          initialized_in: "t.Run"
+          used_in: ["t.Run"]
+          comment: "Propagated error"
+
+    test_structure:
+      type: "single"
+      function: "TestComparePathPresence"
+      subtest: "propagates ListRepositoryFiles error"
+
+    test_objective:
+      title: "ListRepositoryFiles returns an error"
+      what: |
+        Validates that errors from ListRepositoryFiles are propagated with
+        context wrapping ("listing repository files").
+      why: |
+        Error propagation is critical for debugging. The wrapping message
+        helps operators identify which step failed.
+      acceptance_criteria:
+        - "Error propagated with 'listing repository files' context"
+        - "Original error preserved in chain"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with FakeClient error injection"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create FakeClient with ListRepositoryFiles error"
+          command: "FakeClient with injected error"
+          validation: "Error injection configured"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call ComparePathPresence"
+          command: "scaffold.ComparePathPresence(ctx, client, owner, repo, paths)"
+          validation: "Returns wrapped error"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Error contains context"
+        condition: "strings.Contains(err.Error(), \"listing repository files\")"
+        failure_impact: "Opaque error messages in production logs"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "014"
+    test_id: "TS-GH-25-014"
+    tier: "Unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-002"
+    section: "ComparePathPresence"
+    package: "internal/scaffold"
+
+    variables:
+      closure_scope:
+        - name: "missing"
+          type: "[]string"
+          initialized_in: "t.Run"
+          used_in: ["t.Run"]
+          comment: "Missing paths result"
+
+    test_structure:
+      type: "single"
+      function: "TestComparePathPresence"
+      subtest: "uses batch ListRepositoryFiles not per-path GetFileContent"
+
+    test_objective:
+      title: "ComparePathPresence uses ListRepositoryFiles (batch) not per-path GetFileContent"
+      what: |
+        Validates that the refactored ComparePathPresence uses the batch
+        ListRepositoryFiles method and never calls GetFileContent.
+      why: |
+        This is the core performance requirement. Injecting an error on
+        GetFileContent should not affect the result, proving only
+        ListRepositoryFiles is used.
+      acceptance_criteria:
+        - "Result is correct even with GetFileContent erroring"
+        - "Only ListRepositoryFiles is called"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with FakeClient - error on GetFileContent, valid ListRepositoryFiles"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create FakeClient with GetFileContent error but valid ListRepositoryFiles"
+          command: "FakeClient{Errors: {\"GetFileContent\": errFatal}, FileContents: valid}"
+          validation: "GetFileContent errors, ListRepositoryFiles works"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call ComparePathPresence"
+          command: "scaffold.ComparePathPresence(ctx, client, owner, repo, paths)"
+          validation: "Succeeds despite GetFileContent error"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Correct result without using GetFileContent"
+        condition: "err == nil && assert.Equal(t, expected, missing)"
+        failure_impact: "Still using O(N) per-path calls - performance regression"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  # =========================================================================
+  # Section 3.3: Harness Lint() Diagnostics (REQ-004, REQ-005)
+  # =========================================================================
+  - scenario_id: "015"
+    test_id: "TS-GH-25-015"
+    tier: "Unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-004"
+    section: "Harness Lint() Diagnostics"
+    package: "internal/harness"
+
+    variables:
+      closure_scope:
+        - name: "h"
+          type: "*Harness"
+          initialized_in: "TestSetup"
+          used_in: ["t.Run"]
+          comment: "Harness with role set"
+        - name: "diags"
+          type: "[]Diagnostic"
+          initialized_in: "t.Run"
+          used_in: ["t.Run"]
+          comment: "Lint diagnostics"
+
+    test_structure:
+      type: "table-driven"
+      function: "TestLint"
+      subtest: "harness with role returns nil"
+
+    test_objective:
+      title: "Lint() on harness with role set returns nil"
+      what: |
+        Validates that a harness with a non-empty role field produces no
+        lint diagnostics.
+      why: |
+        Role is the primary field being linted. A harness with role set
+        is compliant and should produce no warnings.
+      acceptance_criteria:
+        - "No diagnostics returned (nil)"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create Harness with role set"
+          command: "harness.Harness{Role: \"triage\"}"
+          validation: "Harness created"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call Lint()"
+          command: "diags := h.Lint()"
+          validation: "Returns nil"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "No diagnostics"
+        condition: "diags == nil"
+        failure_impact: "False lint warnings on compliant harnesses"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "016"
+    test_id: "TS-GH-25-016"
+    tier: "Unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-005"
+    section: "Harness Lint() Diagnostics"
+    package: "internal/harness"
+
+    variables:
+      closure_scope:
+        - name: "h"
+          type: "*Harness"
+          initialized_in: "TestSetup"
+          used_in: ["t.Run"]
+          comment: "Harness with empty role"
+        - name: "diags"
+          type: "[]Diagnostic"
+          initialized_in: "t.Run"
+          used_in: ["t.Run"]
+          comment: "Lint diagnostics"
+
+    test_structure:
+      type: "table-driven"
+      function: "TestLint"
+      subtest: "harness with empty role returns warning"
+
+    test_objective:
+      title: "Lint() on harness with empty role returns warning diagnostic"
+      what: |
+        Validates that a harness with an empty role field produces exactly
+        one warning diagnostic with Field="role" and a message about future
+        version requirement.
+      why: |
+        Phase 3 of ADR-0045 introduces role as a soft warning before Phase 4
+        makes it mandatory. The diagnostic must guide users to add role.
+      acceptance_criteria:
+        - "One SeverityWarning diagnostic returned"
+        - "Diagnostic.Field == \"role\""
+        - "Diagnostic.Message contains \"required in a future version\""
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create Harness with empty role"
+          command: "harness.Harness{Role: \"\"}"
+          validation: "Harness created with empty role"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call Lint()"
+          command: "diags := h.Lint()"
+          validation: "Returns one warning diagnostic"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Warning severity"
+        condition: "diags[0].Severity == SeverityWarning"
+        failure_impact: "Wrong severity level for role lint"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "Correct field"
+        condition: "diags[0].Field == \"role\""
+        failure_impact: "Diagnostic points to wrong field"
+      - assertion_id: "ASSERT-03"
+        priority: "P0"
+        description: "Future version message"
+        condition: "strings.Contains(diags[0].Message, \"required in a future version\")"
+        failure_impact: "Unclear guidance for users"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "017"
+    test_id: "TS-GH-25-017"
+    tier: "Unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-004"
+    section: "Harness Lint() Diagnostics"
+    package: "internal/harness"
+
+    test_structure:
+      type: "table-driven"
+      function: "TestLint"
+      subtest: "harness with role and slug returns nil"
+
+    test_objective:
+      title: "Lint() on harness with both role and slug set returns nil"
+      what: |
+        Validates that a fully configured harness with both role and slug
+        produces no lint diagnostics.
+      why: |
+        Ensures no false positives when both identity fields are set.
+      acceptance_criteria:
+        - "No diagnostics returned (nil)"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test"
+
+    specific_preconditions: []
+    variables:
+      closure_scope: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create Harness with role and slug"
+          command: "harness.Harness{Role: \"triage\", Slug: \"triage-agent\"}"
+          validation: "Harness created"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call Lint()"
+          command: "diags := h.Lint()"
+          validation: "Returns nil"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "No diagnostics"
+        condition: "diags == nil"
+        failure_impact: "False positives on fully configured harnesses"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "018"
+    test_id: "TS-GH-25-018"
+    tier: "Unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-004"
+    section: "Harness Lint() Diagnostics"
+    package: "internal/harness"
+
+    test_structure:
+      type: "table-driven"
+      function: "TestDiagnosticString"
+      subtest: "formats warning severity"
+
+    test_objective:
+      title: "Diagnostic.String() formats warning severity correctly"
+      what: |
+        Validates the string representation of a warning-severity diagnostic.
+      why: |
+        Diagnostic output is shown to users in CLI output. Formatting must
+        be consistent and parseable.
+      acceptance_criteria:
+        - "Returns \"warning: <field>: <message>\""
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test"
+
+    specific_preconditions: []
+    variables:
+      closure_scope: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create Diagnostic with SeverityWarning"
+          command: "Diagnostic{Severity: SeverityWarning, Field: \"role\", Message: \"test\"}"
+          validation: "Diagnostic created"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call String()"
+          command: "d.String()"
+          validation: "Returns formatted string"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Warning format"
+        condition: "result == \"warning: role: test\""
+        failure_impact: "Incorrect CLI output format"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "019"
+    test_id: "TS-GH-25-019"
+    tier: "Unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-004"
+    section: "Harness Lint() Diagnostics"
+    package: "internal/harness"
+
+    test_structure:
+      type: "table-driven"
+      function: "TestDiagnosticString"
+      subtest: "formats error severity"
+
+    test_objective:
+      title: "Diagnostic.String() formats error severity correctly"
+      what: |
+        Validates the string representation of an error-severity diagnostic.
+      why: |
+        Error diagnostics must be clearly distinguishable from warnings
+        in CLI output.
+      acceptance_criteria:
+        - "Returns \"error: <field>: <message>\""
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test"
+
+    specific_preconditions: []
+    variables:
+      closure_scope: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create Diagnostic with SeverityError"
+          command: "Diagnostic{Severity: SeverityError, Field: \"name\", Message: \"missing\"}"
+          validation: "Diagnostic created"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call String()"
+          command: "d.String()"
+          validation: "Returns formatted string"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Error format"
+        condition: "result == \"error: name: missing\""
+        failure_impact: "Error diagnostics indistinguishable from warnings"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "020"
+    test_id: "TS-GH-25-020"
+    tier: "Unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-004"
+    section: "Harness Lint() Diagnostics"
+    package: "internal/harness"
+
+    test_structure:
+      type: "table-driven"
+      function: "TestDiagnosticString"
+      subtest: "formats unknown severity"
+
+    test_objective:
+      title: "Diagnostic.String() formats unknown severity"
+      what: |
+        Validates that an unknown severity value produces a fallback
+        representation like "DiagnosticSeverity(N)".
+      why: |
+        Forward compatibility. New severity levels added in the future
+        should produce readable output rather than empty strings.
+      acceptance_criteria:
+        - "Returns \"DiagnosticSeverity(N): <field>: <message>\""
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test"
+
+    specific_preconditions: []
+    variables:
+      closure_scope: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create Diagnostic with unknown severity value"
+          command: "Diagnostic{Severity: DiagnosticSeverity(99), Field: \"x\", Message: \"y\"}"
+          validation: "Diagnostic created with unknown severity"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call String()"
+          command: "d.String()"
+          validation: "Returns fallback format"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Unknown severity format"
+        condition: "result == \"DiagnosticSeverity(99): x: y\""
+        failure_impact: "Unreadable output for future severity levels"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "021"
+    test_id: "TS-GH-25-021"
+    tier: "Unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-004"
+    section: "Harness Lint() Diagnostics"
+    package: "internal/harness"
+
+    test_structure:
+      type: "single"
+      function: "TestLint"
+      subtest: "returns nil not empty slice when no issues"
+
+    test_objective:
+      title: "Lint() returns nil (not empty slice) when no issues found"
+      what: |
+        Validates that Lint() returns a nil slice rather than an empty
+        allocated slice when there are no diagnostics. This allows callers
+        to use simple nil checks.
+      why: |
+        Go idiom: nil slice vs empty slice matters for conditional checks.
+        Callers should be able to use `if diags != nil` rather than
+        `len(diags) > 0`.
+      acceptance_criteria:
+        - "diags == nil is true"
+        - "Not just len(diags) == 0"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test"
+
+    specific_preconditions: []
+    variables:
+      closure_scope: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create compliant Harness"
+          command: "harness.Harness{Role: \"triage\"}"
+          validation: "Harness created"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call Lint() and check nil"
+          command: "diags := h.Lint()"
+          validation: "diags is nil"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Nil not empty"
+        condition: "diags == nil (pointer comparison, not len check)"
+        failure_impact: "Callers' nil checks fail despite no issues"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  # =========================================================================
+  # Section 3.4: DiscoverRemoteAgents (REQ-006, REQ-007)
+  # =========================================================================
+  - scenario_id: "022"
+    test_id: "TS-GH-25-022"
+    tier: "Unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-006"
+    section: "DiscoverRemoteAgents"
+    package: "internal/harness"
+
+    test_structure:
+      type: "table-driven"
+      function: "TestDiscoverRemoteAgents"
+      subtest: "multiple harness files sorted by role then filename"
+
+    test_objective:
+      title: "Multiple harness files in remote harness/ directory"
+      what: |
+        Validates that DiscoverRemoteAgents discovers all agent harness files
+        in the remote harness/ directory and returns them sorted by Role
+        then Filename for deterministic output.
+      why: |
+        Agent discovery must be deterministic for stable CI outputs and
+        for consumers who depend on ordering.
+      acceptance_criteria:
+        - "Returns []AgentInfo sorted by Role then Filename"
+        - "All valid harness files included"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with FakeClient"
+
+    specific_preconditions: []
+    variables:
+      closure_scope:
+        - name: "agents"
+          type: "[]AgentInfo"
+          initialized_in: "t.Run"
+          used_in: ["t.Run"]
+          comment: "Discovered agents"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create FakeClient with multiple harness files in harness/ directory"
+          command: "FakeClient with directory listing and file contents"
+          validation: "Multiple harness YAML files configured"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call DiscoverRemoteAgents"
+          command: "harness.DiscoverRemoteAgents(ctx, client, owner, repo, ref)"
+          validation: "Returns sorted []AgentInfo"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Sorted by Role then Filename"
+        condition: "agents are in expected sort order"
+        failure_impact: "Non-deterministic agent discovery"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "023"
+    test_id: "TS-GH-25-023"
+    tier: "Unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-006"
+    section: "DiscoverRemoteAgents"
+    package: "internal/harness"
+
+    test_structure:
+      type: "table-driven"
+      function: "TestDiscoverRemoteAgents"
+      subtest: "no harness directory returns nil nil"
+
+    test_objective:
+      title: "No harness/ directory exists (ErrNotFound)"
+      what: |
+        Validates that when the harness/ directory doesn't exist in the
+        remote repo, DiscoverRemoteAgents returns (nil, nil) gracefully.
+      why: |
+        Not all repos have agent harnesses. This must be a graceful no-op,
+        not an error condition.
+      acceptance_criteria:
+        - "Returns (nil, nil)"
+        - "No error returned"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with FakeClient returning ErrNotFound"
+
+    specific_preconditions: []
+    variables:
+      closure_scope: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create FakeClient returning ErrNotFound for ListDirectoryContents"
+          command: "FakeClient with directory not found error"
+          validation: "ErrNotFound configured"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call DiscoverRemoteAgents"
+          command: "harness.DiscoverRemoteAgents(ctx, client, owner, repo, ref)"
+          validation: "Returns nil, nil"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Nil result and nil error"
+        condition: "agents == nil && err == nil"
+        failure_impact: "Error on repos without harness directory"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "024"
+    test_id: "TS-GH-25-024"
+    tier: "Unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-006"
+    section: "DiscoverRemoteAgents"
+    package: "internal/harness"
+
+    test_structure:
+      type: "table-driven"
+      function: "TestDiscoverRemoteAgents"
+      subtest: "files without role or slug are skipped"
+
+    test_objective:
+      title: "Files without role or slug are skipped"
+      what: |
+        Validates that YAML files in the harness/ directory that contain
+        neither a role nor slug field are excluded from results.
+      why: |
+        Not all YAML files in harness/ may be agent definitions. Files
+        without identity fields should be silently skipped.
+      acceptance_criteria:
+        - "Only files with at least one of role/slug are returned"
+        - "Files with neither are excluded"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with FakeClient"
+
+    specific_preconditions: []
+    variables:
+      closure_scope: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create FakeClient with mix of harness files (some with role/slug, some without)"
+          command: "FakeClient with varied YAML content"
+          validation: "Mix of valid and non-agent YAML files"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call DiscoverRemoteAgents"
+          command: "harness.DiscoverRemoteAgents(ctx, client, owner, repo, ref)"
+          validation: "Only agent files returned"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Non-agent files excluded"
+        condition: "len(agents) matches expected count of files with role or slug"
+        failure_impact: "Non-agent files pollute agent discovery results"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "025"
+    test_id: "TS-GH-25-025"
+    tier: "Unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-006"
+    section: "DiscoverRemoteAgents"
+    package: "internal/harness"
+
+    test_structure:
+      type: "table-driven"
+      function: "TestDiscoverRemoteAgents"
+      subtest: "file with role only included"
+
+    test_objective:
+      title: "File with role only (no slug) is included"
+      what: |
+        Validates that a harness file with only a role field (no slug)
+        is included in results with Slug empty.
+      why: |
+        During ADR-0045 migration, some harnesses may have role but not
+        yet slug. Both identity fields are optional individually.
+      acceptance_criteria:
+        - "AgentInfo has Role set, Slug empty"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test"
+
+    specific_preconditions: []
+    variables:
+      closure_scope: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create FakeClient with harness file containing role only"
+          command: "YAML content: role: triage"
+          validation: "File has role, no slug"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call DiscoverRemoteAgents"
+          command: "harness.DiscoverRemoteAgents(ctx, client, owner, repo, ref)"
+          validation: "Returns AgentInfo with Role set"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Role set, Slug empty"
+        condition: "agent.Role == \"triage\" && agent.Slug == \"\""
+        failure_impact: "Role-only harnesses excluded from discovery"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "026"
+    test_id: "TS-GH-25-026"
+    tier: "Unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-006"
+    section: "DiscoverRemoteAgents"
+    package: "internal/harness"
+
+    test_structure:
+      type: "table-driven"
+      function: "TestDiscoverRemoteAgents"
+      subtest: "file with slug only included"
+
+    test_objective:
+      title: "File with slug only (no role) is included"
+      what: |
+        Validates that a harness file with only a slug field (no role)
+        is included in results with Role empty.
+      why: |
+        Legacy harnesses may have slug but not role. Both identity fields
+        are optional individually.
+      acceptance_criteria:
+        - "AgentInfo has Slug set, Role empty"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test"
+
+    specific_preconditions: []
+    variables:
+      closure_scope: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create FakeClient with harness file containing slug only"
+          command: "YAML content: slug: my-agent"
+          validation: "File has slug, no role"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call DiscoverRemoteAgents"
+          command: "harness.DiscoverRemoteAgents(ctx, client, owner, repo, ref)"
+          validation: "Returns AgentInfo with Slug set"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Slug set, Role empty"
+        condition: "agent.Slug == \"my-agent\" && agent.Role == \"\""
+        failure_impact: "Slug-only harnesses excluded from discovery"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "027"
+    test_id: "TS-GH-25-027"
+    tier: "Unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-006"
+    section: "DiscoverRemoteAgents"
+    package: "internal/harness"
+
+    test_structure:
+      type: "table-driven"
+      function: "TestDiscoverRemoteAgents"
+      subtest: "malformed YAML returns multi-error with valid files"
+
+    test_objective:
+      title: "Malformed YAML in one file returns multi-error with valid files"
+      what: |
+        Validates that a malformed YAML file in harness/ produces an error
+        containing the bad filename while still returning AgentInfo for
+        valid files (partial success).
+      why: |
+        One bad file shouldn't prevent discovery of all other agents.
+        Multi-error reporting helps operators fix specific files.
+      acceptance_criteria:
+        - "Error contains bad filename"
+        - "Valid AgentInfo still returned for good files"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with FakeClient"
+
+    specific_preconditions: []
+    variables:
+      closure_scope: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create FakeClient with one valid and one malformed YAML file"
+          command: "FakeClient with mixed content"
+          validation: "One valid, one malformed YAML"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call DiscoverRemoteAgents"
+          command: "harness.DiscoverRemoteAgents(ctx, client, owner, repo, ref)"
+          validation: "Returns agents and error"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Error contains bad filename"
+        condition: "strings.Contains(err.Error(), badFilename)"
+        failure_impact: "Cannot identify which file is malformed"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "Valid agents still returned"
+        condition: "len(agents) > 0"
+        failure_impact: "One bad file blocks all agent discovery"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "028"
+    test_id: "TS-GH-25-028"
+    tier: "Unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-006"
+    section: "DiscoverRemoteAgents"
+    package: "internal/harness"
+
+    test_structure:
+      type: "table-driven"
+      function: "TestDiscoverRemoteAgents"
+      subtest: "GetFileContentAtRef failure returns multi-error"
+
+    test_objective:
+      title: "GetFileContentAtRef failure for one file returns multi-error"
+      what: |
+        Validates that when GetFileContentAtRef fails for one specific file,
+        the error is included in a multi-error and valid files are still
+        processed and returned.
+      why: |
+        Transient failures fetching individual files should not block
+        discovery of other agents.
+      acceptance_criteria:
+        - "Error contains missing filename"
+        - "Valid AgentInfo still returned"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with FakeClient"
+
+    specific_preconditions: []
+    variables:
+      closure_scope: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create FakeClient where GetFileContentAtRef fails for one file"
+          command: "FakeClient with selective file content errors"
+          validation: "One file fetch fails, others succeed"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call DiscoverRemoteAgents"
+          command: "harness.DiscoverRemoteAgents(ctx, client, owner, repo, ref)"
+          validation: "Returns partial results with error"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Error contains missing filename"
+        condition: "strings.Contains(err.Error(), missingFilename)"
+        failure_impact: "Cannot identify which file failed to fetch"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "Valid agents returned"
+        condition: "len(agents) > 0"
+        failure_impact: "One fetch failure blocks all discovery"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "029"
+    test_id: "TS-GH-25-029"
+    tier: "Unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-006"
+    section: "DiscoverRemoteAgents"
+    package: "internal/harness"
+
+    test_structure:
+      type: "table-driven"
+      function: "TestDiscoverRemoteAgents"
+      subtest: "empty harness directory"
+
+    test_objective:
+      title: "Empty harness/ directory"
+      what: |
+        Validates that an empty harness/ directory returns an empty slice
+        with no error.
+      why: |
+        Directory exists but has no files — valid state during initial
+        repo setup. Should be distinguished from missing directory.
+      acceptance_criteria:
+        - "Returns empty slice, no error"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with FakeClient"
+
+    specific_preconditions: []
+    variables:
+      closure_scope: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create FakeClient with empty harness/ directory listing"
+          command: "FakeClient with empty directory contents"
+          validation: "Directory exists but is empty"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call DiscoverRemoteAgents"
+          command: "harness.DiscoverRemoteAgents(ctx, client, owner, repo, ref)"
+          validation: "Returns empty slice, no error"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Empty slice returned"
+        condition: "len(agents) == 0 && err == nil"
+        failure_impact: "Error on legitimately empty harness directory"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "030"
+    test_id: "TS-GH-25-030"
+    tier: "Unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-006"
+    section: "DiscoverRemoteAgents"
+    package: "internal/harness"
+
+    test_structure:
+      type: "table-driven"
+      function: "TestDiscoverRemoteAgents"
+      subtest: ".yml extension files discovered"
+
+    test_objective:
+      title: ".yml extension files are discovered"
+      what: |
+        Validates that files with .yml extension (not just .yaml) are
+        discovered and parsed by DiscoverRemoteAgents.
+      why: |
+        Both .yaml and .yml are common YAML extensions. Users should be
+        able to use either convention.
+      acceptance_criteria:
+        - "Files with .yml suffix are parsed and returned"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with FakeClient"
+
+    specific_preconditions: []
+    variables:
+      closure_scope: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create FakeClient with .yml extension harness files"
+          command: "FakeClient with .yml files in directory listing"
+          validation: ".yml files configured"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call DiscoverRemoteAgents"
+          command: "harness.DiscoverRemoteAgents(ctx, client, owner, repo, ref)"
+          validation: ".yml files included in results"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: ".yml files discovered"
+        condition: "agents includes entries from .yml files"
+        failure_impact: ".yml harness files silently ignored"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "031"
+    test_id: "TS-GH-25-031"
+    tier: "Unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-006"
+    section: "DiscoverRemoteAgents"
+    package: "internal/harness"
+
+    test_structure:
+      type: "table-driven"
+      function: "TestDiscoverRemoteAgents"
+      subtest: "non-YAML files skipped"
+
+    test_objective:
+      title: "Non-YAML files (.md, .txt) are skipped"
+      what: |
+        Validates that files with non-YAML extensions in harness/ directory
+        are silently skipped without error.
+      why: |
+        README.md or other documentation files in harness/ should not
+        cause parse errors or pollute agent discovery.
+      acceptance_criteria:
+        - "Only .yaml/.yml files processed"
+        - "No error for non-YAML files"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with FakeClient"
+
+    specific_preconditions: []
+    variables:
+      closure_scope: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create FakeClient with mix of YAML and non-YAML files"
+          command: "FakeClient with .yaml, .yml, .md, .txt files"
+          validation: "Mixed file types configured"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call DiscoverRemoteAgents"
+          command: "harness.DiscoverRemoteAgents(ctx, client, owner, repo, ref)"
+          validation: "Only YAML files in results"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Non-YAML files excluded"
+        condition: "No AgentInfo entries from .md or .txt files"
+        failure_impact: "Parse errors on README files in harness/"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "032"
+    test_id: "TS-GH-25-032"
+    tier: "Unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-006"
+    section: "DiscoverRemoteAgents"
+    package: "internal/harness"
+
+    test_structure:
+      type: "table-driven"
+      function: "TestDiscoverRemoteAgents"
+      subtest: "subdirectories skipped"
+
+    test_objective:
+      title: "Subdirectories in harness/ are skipped"
+      what: |
+        Validates that directory entries (Type: "dir") in harness/ listing
+        are skipped. Only file entries are processed.
+      why: |
+        GitHub API returns both files and subdirectories in ListDirectoryContents.
+        Attempting to fetch content of a directory would fail.
+      acceptance_criteria:
+        - "Only entries with Type: \"file\" processed"
+        - "Directories silently skipped"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with FakeClient"
+
+    specific_preconditions: []
+    variables:
+      closure_scope: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create FakeClient with directory listing containing subdirectories"
+          command: "FakeClient with file and dir type entries"
+          validation: "Mix of file and dir entries"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call DiscoverRemoteAgents"
+          command: "harness.DiscoverRemoteAgents(ctx, client, owner, repo, ref)"
+          validation: "Only file entries processed"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Directories skipped"
+        condition: "No errors from directory entries"
+        failure_impact: "Error when subdirectories exist in harness/"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "033"
+    test_id: "TS-GH-25-033"
+    tier: "Unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-006"
+    section: "DiscoverRemoteAgents"
+    package: "internal/harness"
+
+    test_structure:
+      type: "table-driven"
+      function: "TestDiscoverRemoteAgents"
+      subtest: "same role sorted by filename"
+
+    test_objective:
+      title: "Same role sorted by filename for deterministic output"
+      what: |
+        Validates that when two agents share the same role, they are sorted
+        alphabetically by Filename for deterministic ordering.
+      why: |
+        Deterministic output is essential for diff-based CI checks and
+        for consumers who hash or compare agent lists.
+      acceptance_criteria:
+        - "Agents with same role sorted alphabetically by Filename"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with FakeClient"
+
+    specific_preconditions: []
+    variables:
+      closure_scope: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create FakeClient with two harness files having same role"
+          command: "FakeClient with b.yaml and a.yaml both having role: triage"
+          validation: "Two files with same role configured"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call DiscoverRemoteAgents"
+          command: "harness.DiscoverRemoteAgents(ctx, client, owner, repo, ref)"
+          validation: "Results sorted by filename within same role"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Sorted by filename within role"
+        condition: "agents[0].Filename < agents[1].Filename"
+        failure_impact: "Non-deterministic ordering for same-role agents"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "034"
+    test_id: "TS-GH-25-034"
+    tier: "Unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-006"
+    section: "DiscoverRemoteAgents"
+    package: "internal/harness"
+
+    test_structure:
+      type: "table-driven"
+      function: "TestDiscoverRemoteAgents"
+      subtest: "Path field is empty for remote agents"
+
+    test_objective:
+      title: "Path field in returned AgentInfo is empty (remote agents have no local path)"
+      what: |
+        Validates that AgentInfo.Path is empty string for remotely
+        discovered agents, since they have no local filesystem path.
+      why: |
+        AgentInfo is shared between local and remote discovery. Remote
+        agents must not have a Path to avoid confusion with local files.
+      acceptance_criteria:
+        - "AgentInfo.Path is empty string"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test"
+
+    specific_preconditions: []
+    variables:
+      closure_scope: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create FakeClient with valid harness file"
+          command: "FakeClient with harness YAML"
+          validation: "Valid harness file configured"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call DiscoverRemoteAgents"
+          command: "harness.DiscoverRemoteAgents(ctx, client, owner, repo, ref)"
+          validation: "AgentInfo returned with empty Path"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Path is empty"
+        condition: "agent.Path == \"\""
+        failure_impact: "Remote agents confused with local agents"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "035"
+    test_id: "TS-GH-25-035"
+    tier: "Unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-006"
+    section: "DiscoverRemoteAgents"
+    package: "internal/harness"
+
+    test_structure:
+      type: "table-driven"
+      function: "TestDiscoverRemoteAgents"
+      subtest: "path prefix stripped to bare filename"
+
+    test_objective:
+      title: "Path prefix in directory entry is stripped to bare filename"
+      what: |
+        Validates that the harness/ path prefix from directory listing
+        entries is stripped, so Filename contains only the bare filename
+        (e.g., "triage.yaml" not "harness/triage.yaml").
+      why: |
+        Filename is used for display and identification. The harness/
+        prefix is an implementation detail of directory listing.
+      acceptance_criteria:
+        - "Filename is bare name without harness/ prefix"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test"
+
+    specific_preconditions: []
+    variables:
+      closure_scope: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create FakeClient with directory entry having harness/ prefix"
+          command: "FakeClient with entry path \"harness/triage.yaml\""
+          validation: "Directory entry has full path"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call DiscoverRemoteAgents"
+          command: "harness.DiscoverRemoteAgents(ctx, client, owner, repo, ref)"
+          validation: "Filename is stripped"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Prefix stripped"
+        condition: "agent.Filename == \"triage.yaml\""
+        failure_impact: "Filename contains redundant path prefix"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "036"
+    test_id: "TS-GH-25-036"
+    tier: "Unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-006"
+    section: "DiscoverRemoteAgents"
+    package: "internal/harness"
+
+    test_structure:
+      type: "table-driven"
+      function: "TestDiscoverRemoteAgents"
+      subtest: "ListDirectoryContents error propagates"
+
+    test_objective:
+      title: "ListDirectoryContents error propagates"
+      what: |
+        Validates that errors from ListDirectoryContents (other than
+        ErrNotFound) are propagated with context wrapping.
+      why: |
+        Non-404 errors (e.g., 500, auth failures) must be surfaced to
+        callers for proper error handling and debugging.
+      acceptance_criteria:
+        - "Error propagated"
+        - "Error contains 'listing harness directory'"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with FakeClient"
+
+    specific_preconditions: []
+    variables:
+      closure_scope: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create FakeClient with non-404 error for ListDirectoryContents"
+          command: "FakeClient with 500 error"
+          validation: "Error configured (not ErrNotFound)"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call DiscoverRemoteAgents"
+          command: "harness.DiscoverRemoteAgents(ctx, client, owner, repo, ref)"
+          validation: "Returns error"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Error contains context"
+        condition: "strings.Contains(err.Error(), \"listing harness directory\")"
+        failure_impact: "Opaque error messages for directory listing failures"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  # =========================================================================
+  # Section 3.5: Mint-URL Status Token Migration (REQ-008, REQ-010)
+  # =========================================================================
+  - scenario_id: "037"
+    test_id: "TS-GH-25-037"
+    tier: "Tier1"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-008"
+    section: "Mint-URL Status Token Migration"
+    package: "internal/cli"
+
+    test_structure:
+      type: "single"
+      function: "TestRunWithMintURL"
+      subtest: "mints fresh token for status comments"
+
+    test_objective:
+      title: "fullsend run with --mint-url mints a fresh token for status comments"
+      what: |
+        Validates that when --mint-url is provided, the CLI mints a fresh
+        token using the mint service URL and uses it for status comment
+        authentication. No --status-token is required.
+      why: |
+        Mint-URL is the new authentication path replacing static tokens.
+        This is the primary happy path for the migration.
+      acceptance_criteria:
+        - "Status comment uses minted token"
+        - "No --status-token required"
+        - "Command succeeds"
+
+    classification:
+      test_type: "Functional"
+      scope: "Multi-component"
+      automation_approach: "Go test with CLI flag parsing"
+
+    specific_preconditions:
+      - name: "Mint service mock"
+        requirement: "httptest server simulating mint token endpoint"
+        validation: "Mock returns valid token on POST"
+
+    variables:
+      closure_scope:
+        - name: "cmd"
+          type: "*cobra.Command"
+          initialized_in: "TestSetup"
+          used_in: ["t.Run"]
+          comment: "CLI command under test"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create CLI command with --mint-url flag"
+          command: "cmd.SetArgs([]string{\"run\", \"--mint-url\", mintURL})"
+          validation: "Command configured"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute CLI command"
+          command: "cmd.Execute()"
+          validation: "Token minted and used for status comments"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Token minted successfully"
+        condition: "Status comment created with minted token"
+        failure_impact: "New auth path broken"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "038"
+    test_id: "TS-GH-25-038"
+    tier: "Tier1"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-008"
+    section: "Mint-URL Status Token Migration"
+    package: "internal/cli"
+
+    test_structure:
+      type: "single"
+      function: "TestRunWithStatusToken"
+      subtest: "emits deprecation warning"
+
+    test_objective:
+      title: "fullsend run with deprecated --status-token emits deprecation warning"
+      what: |
+        Validates backward compatibility: the deprecated --status-token flag
+        still works but emits a deprecation warning to stderr.
+      why: |
+        Existing workflows using --status-token must continue to work during
+        migration. The warning guides users to switch to --mint-url.
+      acceptance_criteria:
+        - "Warning message printed to stderr"
+        - "Command still succeeds"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test capturing stderr"
+
+    specific_preconditions: []
+    variables:
+      closure_scope: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create CLI command with --status-token flag"
+          command: "cmd.SetArgs([]string{\"run\", \"--status-token\", token})"
+          validation: "Command configured with deprecated flag"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute CLI command and capture stderr"
+          command: "cmd.Execute() with stderr capture"
+          validation: "Deprecation warning in stderr"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Deprecation warning emitted"
+        condition: "stderr contains deprecation message"
+        failure_impact: "Users unaware of migration requirement"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "039"
+    test_id: "TS-GH-25-039"
+    tier: "Tier1"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-008"
+    section: "Mint-URL Status Token Migration"
+    package: "internal/cli"
+
+    test_structure:
+      type: "single"
+      function: "TestRunWithBothFlags"
+      subtest: "prefers mint-url over status-token"
+
+    test_objective:
+      title: "fullsend run with both --mint-url and --status-token prefers mint-url"
+      what: |
+        Validates that when both authentication flags are provided,
+        --mint-url takes precedence and --status-token is ignored.
+      why: |
+        During migration, both flags may be set. A clear precedence rule
+        prevents ambiguous behavior.
+      acceptance_criteria:
+        - "Mint-URL is used for authentication"
+        - "Status-token is ignored"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test"
+
+    specific_preconditions: []
+    variables:
+      closure_scope: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create CLI command with both flags"
+          command: "cmd.SetArgs([]string{\"run\", \"--mint-url\", mintURL, \"--status-token\", token})"
+          validation: "Both flags set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute CLI command"
+          command: "cmd.Execute()"
+          validation: "Mint-URL used, status-token ignored"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Mint-URL takes precedence"
+        condition: "Authentication uses minted token, not static token"
+        failure_impact: "Ambiguous authentication behavior"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "040"
+    test_id: "TS-GH-25-040"
+    tier: "Tier1"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-010"
+    section: "Mint-URL Status Token Migration"
+    package: "internal/cli"
+
+    test_structure:
+      type: "single"
+      function: "TestReconcileStatusWithMintURL"
+      subtest: "mints token successfully with role"
+
+    test_objective:
+      title: "reconcile-status with --mint-url and --role mints token successfully"
+      what: |
+        Validates that the reconcile-status subcommand successfully mints
+        a token when both --mint-url and --role are provided.
+      why: |
+        Reconcile-status is the secondary consumer of mint tokens. Both
+        flags are required for mint-based authentication.
+      acceptance_criteria:
+        - "Token minted and used for reconciliation"
+        - "No error returned"
+
+    classification:
+      test_type: "Functional"
+      scope: "Multi-component"
+      automation_approach: "Go test with CLI flag parsing"
+
+    specific_preconditions: []
+    variables:
+      closure_scope: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create reconcile-status command with --mint-url and --role"
+          command: "cmd.SetArgs([]string{\"reconcile-status\", \"--mint-url\", url, \"--role\", \"triage\"})"
+          validation: "Command configured"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute command"
+          command: "cmd.Execute()"
+          validation: "Token minted, reconciliation succeeds"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Successful reconciliation with mint token"
+        condition: "No error returned"
+        failure_impact: "Reconcile-status broken with new auth path"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "041"
+    test_id: "TS-GH-25-041"
+    tier: "Tier1"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-010"
+    section: "Mint-URL Status Token Migration"
+    package: "internal/cli"
+
+    test_structure:
+      type: "single"
+      function: "TestReconcileStatusMissingRole"
+      subtest: "returns error when role missing"
+
+    test_objective:
+      title: "reconcile-status with --mint-url but missing --role returns error"
+      what: |
+        Validates that providing --mint-url without --role produces a clear
+        error message, since role is required for token minting.
+      why: |
+        Role identifies the agent requesting the token. Without it, the
+        mint service cannot issue a properly scoped token.
+      acceptance_criteria:
+        - "Error: '--role is required when using --mint-url'"
+        - "Command exits with error"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test"
+
+    specific_preconditions: []
+    variables:
+      closure_scope: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create reconcile-status command with --mint-url only"
+          command: "cmd.SetArgs([]string{\"reconcile-status\", \"--mint-url\", url})"
+          validation: "Command configured without --role"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute command"
+          command: "cmd.Execute()"
+          validation: "Returns error about missing --role"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Error about missing role"
+        condition: "err.Error() contains '--role is required when using --mint-url'"
+        failure_impact: "Unclear error when role is missing"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "042"
+    test_id: "TS-GH-25-042"
+    tier: "Tier1"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-010"
+    section: "Mint-URL Status Token Migration"
+    package: "internal/cli"
+
+    test_structure:
+      type: "single"
+      function: "TestReconcileStatusDeprecatedToken"
+      subtest: "emits warning for deprecated token flag"
+
+    test_objective:
+      title: "reconcile-status with deprecated --token emits warning"
+      what: |
+        Validates backward compatibility for reconcile-status: the deprecated
+        --token flag still works but emits a deprecation warning.
+      why: |
+        Existing automation using --token must continue working during
+        migration period.
+      acceptance_criteria:
+        - "Warning printed to stderr"
+        - "Reconciliation proceeds successfully"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test capturing stderr"
+
+    specific_preconditions: []
+    variables:
+      closure_scope: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create reconcile-status command with --token"
+          command: "cmd.SetArgs([]string{\"reconcile-status\", \"--token\", token})"
+          validation: "Command configured with deprecated flag"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute command and capture stderr"
+          command: "cmd.Execute() with stderr capture"
+          validation: "Deprecation warning in stderr"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Deprecation warning emitted"
+        condition: "stderr contains deprecation message"
+        failure_impact: "Users unaware of migration path"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "043"
+    test_id: "TS-GH-25-043"
+    tier: "Tier1"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-010"
+    section: "Mint-URL Status Token Migration"
+    package: "internal/cli"
+
+    test_structure:
+      type: "single"
+      function: "TestReconcileStatusNoAuth"
+      subtest: "returns error when no auth provided"
+
+    test_objective:
+      title: "reconcile-status with neither --mint-url nor --token returns error"
+      what: |
+        Validates that running reconcile-status without any authentication
+        method produces a clear error about required authentication.
+      why: |
+        Authentication is mandatory. The error message must guide users
+        to provide --mint-url or set FULLSEND_MINT_URL.
+      acceptance_criteria:
+        - "Error: '--mint-url or FULLSEND_MINT_URL required'"
+        - "Command exits with error"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test"
+
+    specific_preconditions: []
+    variables:
+      closure_scope: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create reconcile-status command with no auth flags"
+          command: "cmd.SetArgs([]string{\"reconcile-status\"})"
+          validation: "Command configured without auth"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute command"
+          command: "cmd.Execute()"
+          validation: "Returns auth error"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Auth required error"
+        condition: "err.Error() contains '--mint-url or FULLSEND_MINT_URL required'"
+        failure_impact: "Unclear error when no auth provided"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "044"
+    test_id: "TS-GH-25-044"
+    tier: "Tier1"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-008"
+    section: "Mint-URL Status Token Migration"
+    package: "action.yml"
+
+    test_structure:
+      type: "single"
+      function: "TestActionYAMLMintURL"
+      subtest: "passes mint-url input via MINT_URL env var"
+
+    test_objective:
+      title: "Action.yml passes mint-url input to binary via MINT_URL env var"
+      what: |
+        Validates that the action.yml composite action correctly maps the
+        mint-url input to the MINT_URL environment variable for the binary.
+      why: |
+        GitHub Actions users configure mint-url as an action input. The
+        composite action must forward it correctly to the CLI binary.
+      acceptance_criteria:
+        - "MINT_URL env var set from inputs.mint-url"
+        - "Environment variable available to the binary step"
+
+    classification:
+      test_type: "Functional"
+      scope: "Multi-component"
+      automation_approach: "YAML parsing validation"
+
+    specific_preconditions: []
+    variables:
+      closure_scope: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Read action.yml and parse inputs/steps"
+          command: "Parse action.yml YAML"
+          validation: "action.yml parsed successfully"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify mint-url input mapped to MINT_URL env var"
+          command: "Check steps[].env for MINT_URL"
+          validation: "MINT_URL references inputs.mint-url"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "MINT_URL env var set correctly"
+        condition: "env.MINT_URL == inputs.mint-url"
+        failure_impact: "Mint-URL not passed to binary in GitHub Actions"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "045"
+    test_id: "TS-GH-25-045"
+    tier: "Tier1"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-008"
+    section: "Mint-URL Status Token Migration"
+    package: "action.yml"
+
+    test_structure:
+      type: "single"
+      function: "TestActionYAMLFinalizeStep"
+      subtest: "requires mint-url or status-token"
+
+    test_objective:
+      title: "Finalize orphaned status comment step requires mint-url or status-token"
+      what: |
+        Validates that the finalize step in action.yml has an if condition
+        checking for either mint-url or status-token before running.
+      why: |
+        The finalize step creates/updates status comments and needs
+        authentication. Running without auth would fail silently or error.
+      acceptance_criteria:
+        - "Step if condition checks inputs.mint-url != '' || inputs.status-token != ''"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "YAML parsing validation"
+
+    specific_preconditions: []
+    variables:
+      closure_scope: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Read action.yml and find finalize step"
+          command: "Parse action.yml YAML"
+          validation: "Finalize step found"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify if condition on finalize step"
+          command: "Check step.if for auth condition"
+          validation: "Condition checks for mint-url or status-token"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Auth condition present"
+        condition: "step.if contains mint-url and status-token checks"
+        failure_impact: "Finalize step runs without auth, causing failures"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  # =========================================================================
+  # Section 3.6: OrgConfig CreateIssues (REQ-009)
+  # =========================================================================
+  - scenario_id: "046"
+    test_id: "TS-GH-25-046"
+    tier: "Unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-009"
+    section: "OrgConfig CreateIssues"
+    package: "internal/config"
+
+    test_structure:
+      type: "table-driven"
+      function: "TestOrgConfigCreateIssues"
+      subtest: "parses allow_targets correctly"
+
+    test_objective:
+      title: "OrgConfig with create_issues.allow_targets parses correctly"
+      what: |
+        Validates that the CreateIssues configuration with AllowTargets
+        (Orgs and Repos lists) is correctly parsed from YAML.
+      why: |
+        Cross-repo issue creation is a security-sensitive feature. The
+        allowlist must be parsed correctly to prevent unauthorized access.
+      acceptance_criteria:
+        - "AllowTargets.Orgs populated from YAML"
+        - "AllowTargets.Repos populated from YAML"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with YAML parsing"
+
+    specific_preconditions: []
+    variables:
+      closure_scope:
+        - name: "cfg"
+          type: "*OrgConfig"
+          initialized_in: "t.Run"
+          used_in: ["t.Run"]
+          comment: "Parsed org config"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create YAML config with create_issues.allow_targets"
+          command: "YAML string with orgs and repos lists"
+          validation: "YAML is valid"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Parse YAML into OrgConfig"
+          command: "yaml.Unmarshal([]byte(yamlStr), &cfg)"
+          validation: "Parsing succeeds"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Orgs parsed"
+        condition: "assert.Equal(t, expectedOrgs, cfg.CreateIssues.AllowTargets.Orgs)"
+        failure_impact: "Cross-repo issue creation broken"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "Repos parsed"
+        condition: "assert.Equal(t, expectedRepos, cfg.CreateIssues.AllowTargets.Repos)"
+        failure_impact: "Repo-specific allowlist not enforced"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "047"
+    test_id: "TS-GH-25-047"
+    tier: "Unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-009"
+    section: "OrgConfig CreateIssues"
+    package: "internal/config"
+
+    test_structure:
+      type: "table-driven"
+      function: "TestOrgConfigCreateIssues"
+      subtest: "without create_issues uses empty defaults"
+
+    test_objective:
+      title: "OrgConfig without create_issues section uses empty defaults"
+      what: |
+        Validates that OrgConfig YAML without a create_issues section
+        results in a zero-value CreateIssues field without panicking.
+      why: |
+        Backward compatibility. Existing configs without the new field
+        must continue to parse correctly.
+      acceptance_criteria:
+        - "CreateIssues field is zero-value"
+        - "No panic or error"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with YAML parsing"
+
+    specific_preconditions: []
+    variables:
+      closure_scope: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create minimal YAML config without create_issues"
+          command: "YAML string without create_issues section"
+          validation: "YAML is valid"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Parse YAML into OrgConfig"
+          command: "yaml.Unmarshal([]byte(yamlStr), &cfg)"
+          validation: "Parsing succeeds"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Zero-value CreateIssues"
+        condition: "cfg.CreateIssues is zero-value struct"
+        failure_impact: "Panic on existing configs without create_issues"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "048"
+    test_id: "TS-GH-25-048"
+    tier: "Unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-009"
+    section: "OrgConfig CreateIssues"
+    package: "internal/config"
+
+    test_structure:
+      type: "table-driven"
+      function: "TestOrgConfigMintURL"
+      subtest: "parses dispatch.mint_url"
+
+    test_objective:
+      title: "MintURL field parsed from dispatch.mint_url in config"
+      what: |
+        Validates that OrgConfig.Dispatch.MintURL is correctly parsed
+        from the dispatch.mint_url YAML path.
+      why: |
+        MintURL is the new authentication endpoint. Config parsing must
+        correctly map the nested YAML path.
+      acceptance_criteria:
+        - "OrgConfig.Dispatch.MintURL contains the configured URL"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test with YAML parsing"
+
+    specific_preconditions: []
+    variables:
+      closure_scope: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create YAML config with dispatch.mint_url"
+          command: "YAML string with mint_url under dispatch"
+          validation: "YAML is valid"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Parse YAML into OrgConfig"
+          command: "yaml.Unmarshal([]byte(yamlStr), &cfg)"
+          validation: "Parsing succeeds"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "MintURL parsed"
+        condition: "assert.Equal(t, expectedURL, cfg.Dispatch.MintURL)"
+        failure_impact: "MintURL not available from config"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  # =========================================================================
+  # Section 3.7: Harness Scaffold Integration (Cross-cutting)
+  # =========================================================================
+  - scenario_id: "049"
+    test_id: "TS-GH-25-049"
+    tier: "Tier1"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-004"
+    section: "Harness Scaffold Integration"
+    package: "internal/harness"
+
+    test_structure:
+      type: "single"
+      function: "TestScaffoldIntegration"
+      subtest: "generated harness files pass Validate"
+
+    test_objective:
+      title: "Scaffold integration test validates harness files against schema"
+      what: |
+        Validates that all generated harness wrapper files pass the
+        Validate() method, ensuring scaffold output is schema-compliant.
+      why: |
+        Integration test ensuring scaffold generation and harness validation
+        work together. If scaffold generates invalid harnesses, downstream
+        tooling will fail.
+      acceptance_criteria:
+        - "All generated harness wrapper files pass Validate()"
+        - "No validation errors"
+
+    classification:
+      test_type: "Functional"
+      scope: "Multi-component"
+      automation_approach: "Go integration test"
+
+    specific_preconditions: []
+    variables:
+      closure_scope: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Generate harness wrapper files via scaffold"
+          command: "scaffold.GenerateHarnessWrappers(...)"
+          validation: "Files generated successfully"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Validate each generated harness file"
+          command: "harness.Validate() on each generated file"
+          validation: "All pass validation"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "All harnesses valid"
+        condition: "No validation errors for any generated harness"
+        failure_impact: "Scaffold generates invalid harness files"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "050"
+    test_id: "TS-GH-25-050"
+    tier: "Unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-007"
+    section: "Harness Scaffold Integration"
+    package: "internal/harness"
+
+    test_structure:
+      type: "single"
+      function: "TestParseRaw"
+      subtest: "parses valid YAML bytes"
+
+    test_objective:
+      title: "parseRaw() parses valid YAML bytes into Harness struct"
+      what: |
+        Validates that the parseRaw() helper correctly parses valid YAML
+        byte content into a populated Harness struct.
+      why: |
+        parseRaw is the new code path for YAML parsing extracted from
+        LoadRaw. It must produce identical results to the old code path.
+      acceptance_criteria:
+        - "Returns populated *Harness"
+        - "No error"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test"
+
+    specific_preconditions: []
+    variables:
+      closure_scope: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create valid YAML bytes for a harness"
+          command: "[]byte(\"role: triage\\nslug: triage-agent\")"
+          validation: "Valid YAML bytes"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call parseRaw with valid YAML"
+          command: "h, err := parseRaw(yamlBytes)"
+          validation: "Returns populated Harness"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Harness populated"
+        condition: "h != nil && h.Role == \"triage\""
+        failure_impact: "YAML parsing broken for remote discovery"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "No error"
+        condition: "err == nil"
+        failure_impact: "Valid YAML rejected"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "051"
+    test_id: "TS-GH-25-051"
+    tier: "Unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "REQ-007"
+    section: "Harness Scaffold Integration"
+    package: "internal/harness"
+
+    test_structure:
+      type: "single"
+      function: "TestParseRaw"
+      subtest: "invalid YAML returns parse error"
+
+    test_objective:
+      title: "parseRaw() with invalid YAML returns parse error"
+      what: |
+        Validates that parseRaw() returns nil and an error from
+        yaml.Unmarshal when given invalid YAML bytes.
+      why: |
+        Error handling for malformed harness files. DiscoverRemoteAgents
+        depends on parseRaw to surface parse errors clearly.
+      acceptance_criteria:
+        - "Returns nil Harness"
+        - "Error from yaml.Unmarshal"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go test"
+
+    specific_preconditions: []
+    variables:
+      closure_scope: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create invalid YAML bytes"
+          command: "[]byte(\":::invalid yaml\")"
+          validation: "Invalid YAML bytes"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call parseRaw with invalid YAML"
+          command: "h, err := parseRaw(invalidBytes)"
+          validation: "Returns error"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Nil harness"
+        condition: "h == nil"
+        failure_impact: "Partially parsed harness returned for bad YAML"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "Parse error returned"
+        condition: "err != nil"
+        failure_impact: "Invalid YAML silently accepted"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
