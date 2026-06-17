@@ -1,0 +1,51 @@
+status: success
+jira_id: GH-25
+std_source: outputs/std/GH-25/GH-25_test_description.yaml
+languages:
+  - language: go
+    framework: testing
+    files:
+      - list_repository_files_test.go
+      - compare_path_presence_test.go
+      - harness_lint_test.go
+      - discover_remote_agents_test.go
+      - mint_url_migration_test.go
+      - org_config_test.go
+      - harness_scaffold_integration_test.go
+    test_count: 51
+total_test_count: 51
+lsp_patterns_used: false
+coverage_validation:
+  std_scenarios: 51
+  generated_tests: 51
+  missing_scenarios: []
+  coverage_percentage: 100
+packages:
+  - package: forge_test
+    file: list_repository_files_test.go
+    tests: 8
+    test_ids: [TS-GH-25-001, TS-GH-25-002, TS-GH-25-003, TS-GH-25-004, TS-GH-25-005, TS-GH-25-006, TS-GH-25-007, TS-GH-25-008]
+  - package: scaffold_test
+    file: compare_path_presence_test.go
+    tests: 6
+    test_ids: [TS-GH-25-009, TS-GH-25-010, TS-GH-25-011, TS-GH-25-012, TS-GH-25-013, TS-GH-25-014]
+  - package: harness_test
+    file: harness_lint_test.go
+    tests: 7
+    test_ids: [TS-GH-25-015, TS-GH-25-016, TS-GH-25-017, TS-GH-25-018, TS-GH-25-019, TS-GH-25-020, TS-GH-25-021]
+  - package: harness_test
+    file: discover_remote_agents_test.go
+    tests: 15
+    test_ids: [TS-GH-25-022, TS-GH-25-023, TS-GH-25-024, TS-GH-25-025, TS-GH-25-026, TS-GH-25-027, TS-GH-25-028, TS-GH-25-029, TS-GH-25-030, TS-GH-25-031, TS-GH-25-032, TS-GH-25-033, TS-GH-25-034, TS-GH-25-035, TS-GH-25-036]
+  - package: cli_test
+    file: mint_url_migration_test.go
+    tests: 9
+    test_ids: [TS-GH-25-037, TS-GH-25-038, TS-GH-25-039, TS-GH-25-040, TS-GH-25-041, TS-GH-25-042, TS-GH-25-043, TS-GH-25-044, TS-GH-25-045]
+  - package: config_test
+    file: org_config_test.go
+    tests: 3
+    test_ids: [TS-GH-25-046, TS-GH-25-047, TS-GH-25-048]
+  - package: harness_test
+    file: harness_scaffold_integration_test.go
+    tests: 3
+    test_ids: [TS-GH-25-049, TS-GH-25-050, TS-GH-25-051]
