@@ -1,22 +1,24 @@
 status: success
 jira_id: GH-2305
 verdict: APPROVED_WITH_FINDINGS
-confidence: MEDIUM
-weighted_score: 96
+confidence: LOW
+weighted_score: 82
 findings:
   critical: 0
-  major: 0
+  major: 5
   minor: 4
-  actionable: 4
-  total: 4
-reviewed: outputs/stp/GH-2305/GH-2305_test_plan.md
-report: outputs/reviews/GH-2305/GH-2305_stp_review.md
+  actionable: 8
+  total: 9
+artifacts_reviewed:
+  std_yaml: true
+  go_stubs: true
+  python_stubs: true
+  stp_available: true
 dimension_scores:
-  rule_compliance: 96
-  requirement_coverage: 100
-  scenario_quality: 93
-  risk_accuracy: 90
-  scope_boundary: 100
-  strategy: 92
-  metadata: 100
-scope_downgrade: false
+  traceability: 95
+  yaml_structure: 75
+  pattern_matching: 50
+  step_quality: 88
+  content_policy: 70
+  pse_quality: 85
+  codegen_readiness: 80
