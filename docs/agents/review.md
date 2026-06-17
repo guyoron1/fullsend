@@ -27,6 +27,8 @@ If a prior review exists (e.g., re-review after fixes), it is injected into the 
 |---------|-------|--------|
 | `/fs-review` | Issue or PR comment | Triggers a review |
 
+Requires OWNER, MEMBER, or COLLABORATOR repository association.
+
 The `/fs-review` command does not accept arguments. The review agent also runs
 automatically when a PR is opened, synchronized (new commits pushed), or moved
 out of draft.
