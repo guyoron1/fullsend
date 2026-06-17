@@ -1,0 +1,7 @@
+status: success
+jira_id: GH-2305
+file_path: /sandbox/workspace/output/GH-2305_test_plan.md
+test_counts:
+  functional: 11
+  end_to_end: 3
+  total: 14
