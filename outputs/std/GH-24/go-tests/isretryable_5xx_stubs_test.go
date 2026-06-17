@@ -1,4 +1,4 @@
-package github_test
+package github
 
 import (
 	"net/http"
@@ -19,7 +19,7 @@ Preconditions:
     - None (pure function test)
 
 Steps:
-    1. Create HTTP response with each 5xx status code (500, 502, 503, 504)
+    1. Create HTTP response with each 5xx status code (500, 501, 502, 503, 504)
     2. Call isRetryable with the response
 
 Expected:
@@ -32,8 +32,9 @@ func TestIsRetryableReturnsTrue5xx(t *testing.T) {
 		name       string
 		statusCode int
 	}{
-		// [test_id:TS-GH-24-001] Verify isRetryable returns true for 500, 502, 503, 504
+		// [test_id:TS-GH-24-001] Verify isRetryable returns true for 500, 501, 502, 503, 504
 		{"500 Internal Server Error", http.StatusInternalServerError},
+		{"501 Not Implemented", http.StatusNotImplemented},
 		{"502 Bad Gateway", http.StatusBadGateway},
 		{"503 Service Unavailable", http.StatusServiceUnavailable},
 		{"504 Gateway Timeout", http.StatusGatewayTimeout},
@@ -53,20 +54,20 @@ Preconditions:
     - None (pure function test)
 
 Steps:
-    1. Create HTTP response with non-retryable server error codes (505, 511)
+    1. Create HTTP response with non-retryable 5xx server error codes (505, 511)
     2. Call isRetryable with the response
 
 Expected:
     - isRetryable returns false for each status code
 */
-func TestIsRetryableReturnsFalseNon5xx(t *testing.T) {
+func TestIsRetryableReturnsFalseNonRetryable5xx(t *testing.T) {
 	t.Skip("Phase 1: Design only - awaiting implementation")
 
 	tests := []struct {
 		name       string
 		statusCode int
 	}{
-		// [test_id:TS-GH-24-004] Verify non-5xx server errors (505, 511) are not retried
+		// [test_id:TS-GH-24-004] Verify non-retryable 5xx server errors (505, 511) are not retried
 		{"505 HTTP Version Not Supported", 505},
 		{"511 Network Authentication Required", 511},
 	}

@@ -13,12 +13,6 @@ document_metadata:
     file: "outputs/stp/GH-24/GH-24_test_plan.md"
     version: "v1"
     sections_covered: "Section III - Requirements-to-Tests Mapping"
-  related_prs:
-    - repo: "fullsend-ai/fullsend"
-      pr_number: 2342
-      url: "https://github.com/fullsend-ai/fullsend/pull/2342"
-      title: "fix(forge): retry 5xx server errors at the HTTP client level"
-      merged: true
   total_scenarios: 23
   functional_count: 23
   e2e_count: 0
@@ -30,7 +24,7 @@ code_generation_config:
   framework: "testing"
   assertion_library: "testify"
   language: "go"
-  package_name: "github_test"
+  package_name: "github"
   imports:
     standard:
       - "context"
@@ -109,6 +103,8 @@ scenarios:
       subtests:
         - name: "500 Internal Server Error"
           status_code: 500
+        - name: "501 Not Implemented"
+          status_code: 501
         - name: "502 Bad Gateway"
           status_code: 502
         - name: "503 Service Unavailable"
@@ -117,17 +113,19 @@ scenarios:
           status_code: 504
 
     test_objective:
-      title: "Verify isRetryable returns true for 500, 502, 503, 504"
+      title: "Verify isRetryable returns true for 500, 501, 502, 503, 504"
       what: |
         This test validates that the isRetryable() function correctly identifies
-        all 5xx status codes in the range 500-504 as retryable. Each status code
-        is tested individually to ensure comprehensive coverage of the retry decision logic.
+        all 5xx status codes in the range 500-504 as retryable, including 501 Not
+        Implemented. Each status code is tested individually to ensure comprehensive
+        coverage of the retry decision logic.
       why: |
         The core change moves 5xx retry from the wrapper level to do(). If isRetryable
         fails to recognize any 5xx code, that code path loses retry coverage entirely,
         leading to production failures like the original 502 Bad Gateway issue.
       acceptance_criteria:
         - "isRetryable returns true for HTTP 500"
+        - "isRetryable returns true for HTTP 501"
         - "isRetryable returns true for HTTP 502"
         - "isRetryable returns true for HTTP 503"
         - "isRetryable returns true for HTTP 504"
@@ -143,6 +141,9 @@ scenarios:
       status_codes:
         - code: 500
           name: "Internal Server Error"
+          expected_retryable: true
+        - code: 501
+          name: "Not Implemented"
           expected_retryable: true
         - code: 502
           name: "Bad Gateway"
@@ -182,7 +183,7 @@ scenarios:
       - assertion_id: "ASSERT-01"
         priority: "P0"
         description: "isRetryable returns true for each 5xx status code (500-504)"
-        condition: "isRetryable(resp) == true for status codes 500, 502, 503, 504"
+        condition: "isRetryable(resp) == true for status codes 500, 501, 502, 503, 504"
         failure_impact: "5xx errors would not be retried, causing production failures"
 
     dependencies:
@@ -432,7 +433,7 @@ scenarios:
 
     test_structure:
       type: "table-driven"
-      function: "TestIsRetryableReturnsFalseNon5xx"
+      function: "TestIsRetryableReturnsFalseNonRetryable5xx"
       subtests:
         - name: "505 HTTP Version Not Supported"
           status_code: 505
@@ -440,10 +441,10 @@ scenarios:
           status_code: 511
 
     test_objective:
-      title: "Verify non-5xx server errors (505, 511) are not retried"
+      title: "Verify non-retryable 5xx server errors (505, 511) are not retried"
       what: |
-        This test validates that isRetryable() returns false for server error codes
-        outside the 500-504 range (e.g., 505, 511). Only 500-504 should trigger retries.
+        This test validates that isRetryable() returns false for 5xx server error codes
+        outside the retryable 500-504 range (e.g., 505, 511). Only 500-504 should trigger retries.
       why: |
         The retry scope is deliberately limited to 500-504 (common transient errors).
         Codes like 505 (HTTP Version Not Supported) are not transient and should not be retried.
