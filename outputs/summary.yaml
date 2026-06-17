@@ -1,29 +1,22 @@
 status: success
 jira_id: GH-25
-file_path: /sandbox/workspace/output/GH-25_test_plan.md
-test_counts:
-  unit: 33
-  tier1: 18
-  total: 51
-skills_used:
-  - project-resolver
-  - pr-analyzer
-  - requirement-mapper
-  - scenario-builder
-  - tier-classifier
-  - template-engine
-  - table-generator
-  - pipeline-state
-lsp_analysis:
-  calls_made: 10
-  files_analyzed:
-    - internal/forge/forge.go
-    - internal/scaffold/pathpresence.go
-    - internal/harness/lint.go
-    - internal/harness/discover_remote.go
-    - internal/forge/github/github.go
-  symbols_traced:
-    - forge.Client.ListRepositoryFiles
-    - scaffold.ComparePathPresence
-    - harness.DiscoverRemoteAgents
-    - harness.Lint
+verdict: NEEDS_REVISION
+confidence: MEDIUM
+weighted_score: 57
+findings:
+  critical: 3
+  major: 7
+  minor: 4
+  actionable: 12
+  total: 14
+reviewed: outputs/stp/GH-25/GH-25_test_plan.md
+report: outputs/reviews/GH-25/GH-25_stp_review.md
+dimension_scores:
+  rule_compliance: 44
+  requirement_coverage: 70
+  scenario_quality: 75
+  risk_accuracy: 20
+  scope_boundary: 70
+  strategy: 10
+  metadata: 90
+scope_downgrade: false
