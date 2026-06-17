@@ -1,7 +1,22 @@
 status: success
 jira_id: GH-2305
-file_path: /sandbox/workspace/output/GH-2305_test_plan.md
-test_counts:
-  functional: 11
-  end_to_end: 3
-  total: 14
+verdict: APPROVED_WITH_FINDINGS
+confidence: MEDIUM
+weighted_score: 96
+findings:
+  critical: 0
+  major: 0
+  minor: 4
+  actionable: 4
+  total: 4
+reviewed: outputs/stp/GH-2305/GH-2305_test_plan.md
+report: outputs/reviews/GH-2305/GH-2305_stp_review.md
+dimension_scores:
+  rule_compliance: 96
+  requirement_coverage: 100
+  scenario_quality: 93
+  risk_accuracy: 90
+  scope_boundary: 100
+  strategy: 92
+  metadata: 100
+scope_downgrade: false
