@@ -1,0 +1,24 @@
+status: success
+jira_id: GH-25
+verdict: APPROVED_WITH_FINDINGS
+confidence: HIGH
+weighted_score: 92
+findings:
+  critical: 0
+  major: 1
+  minor: 3
+  actionable: 4
+  total: 4
+artifacts_reviewed:
+  std_yaml: true
+  go_stubs: true
+  python_stubs: false
+  stp_available: true
+dimension_scores:
+  traceability: 95
+  yaml_structure: 95
+  pattern_matching: 90
+  step_quality: 90
+  content_policy: 100
+  pse_quality: 85
+  codegen_readiness: 80
