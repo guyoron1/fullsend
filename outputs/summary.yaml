@@ -1,0 +1,13 @@
+status: success
+jira_id: GH-26
+file_path: /sandbox/workspace/output/GH-26_test_plan.md
+test_counts:
+  unit_tests: 16
+  functional: 11
+  end_to_end: 3
+  total: 30
+validation:
+  total_checks: 23
+  passed: 23
+  failed: 0
+  warnings: 0
