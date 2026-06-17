@@ -42,6 +42,6 @@ validation_loop:
   max_iterations: 2
 
 plugins:
-  - name: gopls-lsp
+  - plugins/gopls-lsp
 
 timeout_minutes: 15

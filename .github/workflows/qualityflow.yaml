@@ -322,7 +322,6 @@ jobs:
 
       - name: "QF Stage 1: STP Builder"
         id: stage1
-        continue-on-error: true
         uses: ./
         env:
           PR_NUMBER: ${{ steps.pr-info.outputs.pr_number }}
@@ -384,7 +383,6 @@ jobs:
 
       - name: "QF Stage 2: STP Reviewer"
         id: stage2
-        continue-on-error: true
         uses: ./
         env:
           PR_NUMBER: ${{ steps.pr-info.outputs.pr_number }}
@@ -421,7 +419,6 @@ jobs:
 
       - name: "QF Stage 3: STP Refiner"
         id: stage3
-        continue-on-error: true
         uses: ./
         env:
           PR_NUMBER: ${{ steps.pr-info.outputs.pr_number }}
@@ -458,7 +455,6 @@ jobs:
 
       - name: "QF Stage 4: STD Builder"
         id: stage4
-        continue-on-error: true
         uses: ./
         env:
           PR_NUMBER: ${{ steps.pr-info.outputs.pr_number }}
@@ -537,7 +533,6 @@ jobs:
 
       - name: "QF Stage 5: STD Reviewer"
         id: stage5
-        continue-on-error: true
         uses: ./
         env:
           PR_NUMBER: ${{ steps.pr-info.outputs.pr_number }}
@@ -574,7 +569,6 @@ jobs:
 
       - name: "QF Stage 6: STD Refiner"
         id: stage6
-        continue-on-error: true
         uses: ./
         env:
           PR_NUMBER: ${{ steps.pr-info.outputs.pr_number }}
@@ -611,7 +605,6 @@ jobs:
 
       - name: "QF Stage 7: Test Generator"
         id: stage7
-        continue-on-error: true
         uses: ./
         env:
           PR_NUMBER: ${{ steps.pr-info.outputs.pr_number }}
