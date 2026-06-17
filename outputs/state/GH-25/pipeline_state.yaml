@@ -1,0 +1,55 @@
+version: 1
+ticket_id: "GH-25"
+project_id: "fullsend"
+display_name: "FullSend"
+created: "2026-06-17T15:00:00Z"
+updated: "2026-06-17T15:05:00Z"
+
+phases:
+  stp:
+    status: completed
+    started: "2026-06-17T15:00:00Z"
+    completed: "2026-06-17T15:05:00Z"
+    output: "outputs/GH-25_test_plan.md"
+    output_checksum: null
+    skills_used:
+      - project-resolver
+      - pr-analyzer
+      - requirement-mapper
+      - scenario-builder
+      - tier-classifier
+      - template-engine
+      - table-generator
+    error: null
+
+  stp_review:
+    status: pending
+    verdict: null
+    findings: null
+    error: null
+
+  std:
+    status: pending
+    output: null
+    error: null
+
+  std_review:
+    status: pending
+    verdict: null
+    findings: null
+    error: null
+
+  go_codegen:
+    status: pending
+    output: null
+    error: null
+
+  python_codegen:
+    status: pending
+    output: null
+    error: null
+
+  cluster_tests:
+    status: pending
+    output: null
+    error: null
