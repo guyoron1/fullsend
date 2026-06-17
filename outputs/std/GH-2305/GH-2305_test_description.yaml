@@ -1,0 +1,1550 @@
+---
+# Software Test Description (STD) — GH-2305
+# Retro Post-Script Non-Fatal 403/401 Error Handling
+# Generated: 2026-06-17
+# Format: v2.1-enhanced (single comprehensive file)
+
+document_metadata:
+  std_version: "2.1-enhanced"
+  generated_date: "2026-06-17"
+  jira_issue: "GH-2305"
+  jira_summary: "Retro post-script should treat 403 comment-posting errors as non-fatal"
+  source_bugs: []
+  stp_reference:
+    file: "outputs/stp/GH-2305/GH-2305_test_plan.md"
+    version: "v1"
+    sections_covered: "Section III - Requirements-to-Tests Mapping"
+  related_prs:
+    - repo: "fullsend-ai/fullsend"
+      pr_number: 2306
+      url: "https://github.com/fullsend-ai/fullsend/pull/2306"
+      title: "Retro post-script: treat 403/401 comment-posting errors as non-fatal"
+      merged: false
+  total_scenarios: 14
+  functional_count: 11
+  e2e_count: 3
+  p0_count: 7
+  p1_count: 5
+  p2_count: 2
+
+code_generation_config:
+  std_version: "2.1-enhanced"
+  framework: "testing"
+  assertion_library: "testify"
+  language: "go"
+  package_name: "tests"
+  context_init: "context.Background()"
+  imports:
+    standard:
+      - "context"
+      - "testing"
+      - "os"
+      - "os/exec"
+      - "fmt"
+      - "strings"
+      - "path/filepath"
+      - "encoding/json"
+    test_framework:
+      - path: "github.com/stretchr/testify/assert"
+      - path: "github.com/stretchr/testify/require"
+    project:
+      - "github.com/fullsend-ai/fullsend/internal/scaffold"
+  timeout_constants:
+    default: "30s"
+    setup: "60s"
+  helper_library_imports: []
+
+common_preconditions:
+  infrastructure:
+    - name: "Go toolchain"
+      requirement: "Go 1.23+"
+      validation: "go version"
+    - name: "GitHub Actions runner"
+      requirement: "ubuntu-latest with bash 4+"
+      validation: "bash --version"
+    - name: "jq"
+      requirement: "jq available on PATH"
+      validation: "jq --version"
+
+  operators: []
+
+  cluster_configuration:
+    topology: "None"
+    cpu_features: "Standard"
+    storage: "Temporary filesystem (mktemp)"
+    network: "No network access required (mock gh binary)"
+
+  rbac_requirements: []
+
+  test_environment:
+    mock_gh_binary: "Mock gh binary injected via PATH override"
+    env_variables:
+      - name: "GH_MOCK_COMMENT_FAIL"
+        purpose: "Controls mock gh behavior for comment posting failures"
+      - name: "RETRO_RESULT_DIR"
+        purpose: "Directory containing retro agent results"
+      - name: "GITHUB_REPOSITORY"
+        purpose: "Target repository in owner/repo format"
+      - name: "PR_NUMBER"
+        purpose: "Pull request number for comment posting"
+
+scenarios:
+  # ============================================================
+  # Requirement Group: HTTP 401/403 errors treated as non-fatal
+  # ============================================================
+
+  - scenario_id: "1"
+    test_id: "TS-GH-2305-001"
+    tier: "Functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-2305"
+
+    variables:
+      closure_scope:
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["setup", "test_execution", "cleanup"]
+          comment: "Temporary directory for mock gh and test fixtures"
+        - name: "exitCode"
+          type: "int"
+          initialized_in: "test_execution"
+          used_in: ["test_execution"]
+          comment: "Exit code from post-retro.sh execution"
+        - name: "stderr"
+          type: "string"
+          initialized_in: "test_execution"
+          used_in: ["test_execution"]
+          comment: "Captured stderr output from script"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "post-retro.sh non-fatal error handling"
+      context:
+        description: "when gh api returns HTTP 403 on comment posting"
+      it:
+        description: "should exit 0 and emit a warning annotation"
+        test_id_format: "[test_id:TS-GH-2305-001]"
+
+    test_objective:
+      title: "Verify 403 error on comment posting exits 0 with warning"
+      what: |
+        Execute post-retro.sh with a mock gh binary that returns HTTP 403
+        when posting a comment to the GitHub Issues API. Validate that the
+        script exits with code 0 and emits a ::warning:: annotation instead
+        of failing the workflow run.
+      why: |
+        When the GitHub App token lacks issues:write permission on the source
+        repo, gh api returns 403. This should not cause the entire retro
+        workflow to fail since the retro agent already succeeded and proposals
+        were filed. Platform operators need accurate failure rates.
+      acceptance_criteria:
+        - "Script exits with code 0"
+        - "Stderr contains ::warning:: annotation"
+        - "Warning message indicates comment posting was skipped due to permissions"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with exec.Command running shell script"
+
+    specific_preconditions:
+      - name: "Mock gh binary"
+        requirement: "Mock that returns HTTP 403 for repos/*/issues/*/comments endpoint"
+        validation: "Mock binary is executable and on PATH"
+
+    test_data:
+      resource_definitions:
+        - name: "mock_gh_403"
+          type: "Shell script"
+          yaml: |
+            #!/bin/bash
+            if [[ "$*" == *"issues"*"comments"* ]]; then
+              echo "HTTP 403" >&2
+              exit 1
+            fi
+            echo '{}'
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create temporary directory for test fixtures"
+          command: "mktemp -d"
+          validation: "Directory exists"
+        - step_id: "SETUP-02"
+          action: "Create mock gh binary that returns 403 on comment posting"
+          command: "Write mock script to tmpDir/gh and chmod +x"
+          validation: "Mock binary is executable"
+        - step_id: "SETUP-03"
+          action: "Create minimal retro result fixtures"
+          command: "Create proposal JSON files in result directory"
+          validation: "Result directory contains expected files"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute post-retro.sh with mock gh on PATH"
+          command: "PATH=tmpDir:$PATH bash post-retro.sh"
+          validation: "Script completes without hanging"
+        - step_id: "TEST-02"
+          action: "Capture exit code and stderr"
+          command: "Store $? and stderr output"
+          validation: "Exit code and stderr are captured"
+
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Remove temporary directory"
+          command: "rm -rf tmpDir"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Script exits with code 0"
+        condition: "exitCode == 0"
+        failure_impact: "Workflow would fail despite successful retro agent execution"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "Stderr contains ::warning:: annotation"
+        condition: "strings.Contains(stderr, '::warning::')"
+        failure_impact: "Operators would have no visibility into skipped comment"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "bash 4+"
+        - "jq"
+      scenario_specific_rbac: []
+
+  - scenario_id: "2"
+    test_id: "TS-GH-2305-002"
+    tier: "Functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-2305"
+
+    variables:
+      closure_scope:
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["setup", "test_execution", "cleanup"]
+          comment: "Temporary directory for mock gh and test fixtures"
+        - name: "exitCode"
+          type: "int"
+          initialized_in: "test_execution"
+          used_in: ["test_execution"]
+          comment: "Exit code from post-retro.sh execution"
+        - name: "stderr"
+          type: "string"
+          initialized_in: "test_execution"
+          used_in: ["test_execution"]
+          comment: "Captured stderr output from script"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "post-retro.sh non-fatal error handling"
+      context:
+        description: "when gh api returns HTTP 401 on comment posting"
+      it:
+        description: "should exit 0 and emit a warning annotation"
+        test_id_format: "[test_id:TS-GH-2305-002]"
+
+    test_objective:
+      title: "Verify 401 error on comment posting exits 0 with warning"
+      what: |
+        Execute post-retro.sh with a mock gh binary that returns HTTP 401
+        when posting a comment. Validate that the script treats this as
+        non-fatal, exiting 0 with a warning annotation.
+      why: |
+        HTTP 401 indicates an authentication issue with the token. Like 403,
+        this should not cause workflow failure since the retro agent itself
+        succeeded. The error is environmental, not indicative of agent failure.
+      acceptance_criteria:
+        - "Script exits with code 0"
+        - "Stderr contains ::warning:: annotation"
+        - "Warning references authentication/permission issue"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with exec.Command running shell script"
+
+    specific_preconditions:
+      - name: "Mock gh binary"
+        requirement: "Mock that returns HTTP 401 for comment endpoint"
+        validation: "Mock binary is executable and on PATH"
+
+    test_data:
+      resource_definitions:
+        - name: "mock_gh_401"
+          type: "Shell script"
+          yaml: |
+            #!/bin/bash
+            if [[ "$*" == *"issues"*"comments"* ]]; then
+              echo "HTTP 401" >&2
+              exit 1
+            fi
+            echo '{}'
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create temporary directory and mock gh binary returning 401"
+          command: "mktemp -d && write mock script"
+          validation: "Mock binary exists and is executable"
+        - step_id: "SETUP-02"
+          action: "Create retro result fixtures"
+          command: "Create proposal JSON files"
+          validation: "Fixtures exist"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute post-retro.sh with mock gh on PATH"
+          command: "PATH=tmpDir:$PATH bash post-retro.sh"
+          validation: "Script completes"
+        - step_id: "TEST-02"
+          action: "Capture exit code and stderr"
+          command: "Store $? and stderr"
+          validation: "Values captured"
+
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Remove temporary directory"
+          command: "rm -rf tmpDir"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Script exits with code 0"
+        condition: "exitCode == 0"
+        failure_impact: "Workflow failure on auth errors even when agent succeeds"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "Stderr contains ::warning:: annotation"
+        condition: "strings.Contains(stderr, '::warning::')"
+        failure_impact: "No operator visibility into auth-related comment skip"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "bash 4+"
+        - "jq"
+      scenario_specific_rbac: []
+
+  - scenario_id: "3"
+    test_id: "TS-GH-2305-003"
+    tier: "Functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-2305"
+
+    variables:
+      closure_scope:
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["setup", "test_execution", "cleanup"]
+          comment: "Temporary directory for test fixtures"
+        - name: "stderr"
+          type: "string"
+          initialized_in: "test_execution"
+          used_in: ["test_execution"]
+          comment: "Captured stderr output"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "post-retro.sh non-fatal error handling"
+      context:
+        description: "when comment posting fails with 403"
+      it:
+        description: "should include repo and PR number in warning message"
+        test_id_format: "[test_id:TS-GH-2305-003]"
+
+    test_objective:
+      title: "Verify warning message contains repo and PR identifier"
+      what: |
+        When post-retro.sh encounters a 403 error on comment posting, the
+        emitted ::warning:: message should contain the target repository name
+        and PR number so operators can identify which comment was skipped.
+      why: |
+        Without identifying information in the warning, operators cannot
+        determine which repo/PR was affected when reviewing workflow logs
+        across multiple retro runs.
+      acceptance_criteria:
+        - "Warning message contains GITHUB_REPOSITORY value"
+        - "Warning message contains PR_NUMBER value"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with exec.Command running shell script"
+
+    specific_preconditions:
+      - name: "Mock gh binary"
+        requirement: "Mock that returns HTTP 403 for comment endpoint"
+        validation: "Mock binary is executable"
+      - name: "Environment variables"
+        requirement: "GITHUB_REPOSITORY and PR_NUMBER set to known values"
+        validation: "Variables exported before script execution"
+
+    test_data:
+      resource_definitions:
+        - name: "env_vars"
+          type: "Environment"
+          yaml: |
+            GITHUB_REPOSITORY: "test-org/test-repo"
+            PR_NUMBER: "42"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create temp dir, mock gh (403), and set env vars"
+          command: "export GITHUB_REPOSITORY=test-org/test-repo PR_NUMBER=42"
+          validation: "Environment configured"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute post-retro.sh and capture stderr"
+          command: "PATH=tmpDir:$PATH bash post-retro.sh 2>stderr.log"
+          validation: "Script completes with exit 0"
+        - step_id: "TEST-02"
+          action: "Parse warning message from stderr"
+          command: "grep '::warning::' stderr.log"
+          validation: "Warning line found"
+
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Remove temporary directory"
+          command: "rm -rf tmpDir"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Warning message contains repository identifier"
+        condition: "strings.Contains(warningMsg, 'test-org/test-repo')"
+        failure_impact: "Operators cannot identify affected repo in logs"
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "Warning message contains PR number"
+        condition: "strings.Contains(warningMsg, '42')"
+        failure_impact: "Operators cannot identify affected PR in logs"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "bash 4+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "4"
+    test_id: "TS-GH-2305-004"
+    tier: "Functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-2305"
+
+    variables:
+      closure_scope:
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["setup", "test_execution", "cleanup"]
+          comment: "Temporary directory for test fixtures"
+        - name: "exitCode"
+          type: "int"
+          initialized_in: "test_execution"
+          used_in: ["test_execution"]
+          comment: "Exit code from post-retro.sh"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "post-retro.sh fatal error handling"
+      context:
+        description: "when gh api returns HTTP 500 on comment posting"
+      it:
+        description: "should exit non-zero (fatal error)"
+        test_id_format: "[test_id:TS-GH-2305-004]"
+
+    test_objective:
+      title: "Verify 500 error on comment posting remains fatal"
+      what: |
+        Execute post-retro.sh with a mock gh binary that returns HTTP 500
+        (server error). Validate that the script treats this as a fatal error
+        and exits with a non-zero exit code.
+      why: |
+        Server errors (5xx) indicate transient or systemic GitHub API issues
+        that should be surfaced as failures for investigation, unlike
+        permission errors which are expected in cross-repo scenarios.
+      acceptance_criteria:
+        - "Script exits with non-zero exit code"
+        - "No ::warning:: annotation emitted (this is a fatal path)"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with exec.Command running shell script"
+
+    specific_preconditions:
+      - name: "Mock gh binary"
+        requirement: "Mock that returns HTTP 500 for comment endpoint"
+        validation: "Mock binary is executable"
+
+    test_data:
+      resource_definitions:
+        - name: "mock_gh_500"
+          type: "Shell script"
+          yaml: |
+            #!/bin/bash
+            if [[ "$*" == *"issues"*"comments"* ]]; then
+              echo "HTTP 500" >&2
+              exit 1
+            fi
+            echo '{}'
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create temp dir and mock gh binary returning 500"
+          command: "mktemp -d && write mock"
+          validation: "Mock binary exists"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute post-retro.sh with mock gh"
+          command: "PATH=tmpDir:$PATH bash post-retro.sh"
+          validation: "Script terminates"
+        - step_id: "TEST-02"
+          action: "Capture exit code"
+          command: "Store $?"
+          validation: "Exit code captured"
+
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Remove temporary directory"
+          command: "rm -rf tmpDir"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Script exits with non-zero exit code"
+        condition: "exitCode != 0"
+        failure_impact: "Server errors would be silently swallowed, masking API issues"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "bash 4+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "5"
+    test_id: "TS-GH-2305-005"
+    tier: "Functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-2305"
+
+    variables:
+      closure_scope:
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["setup", "test_execution", "cleanup"]
+          comment: "Temporary directory for test fixtures"
+        - name: "exitCode"
+          type: "int"
+          initialized_in: "test_execution"
+          used_in: ["test_execution"]
+          comment: "Exit code from post-retro.sh"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "post-retro.sh fatal error handling"
+      context:
+        description: "when gh api returns HTTP 422 on comment posting"
+      it:
+        description: "should exit non-zero (fatal error)"
+        test_id_format: "[test_id:TS-GH-2305-005]"
+
+    test_objective:
+      title: "Verify 422 error on comment posting remains fatal"
+      what: |
+        Execute post-retro.sh with a mock gh binary that returns HTTP 422
+        (unprocessable entity). Validate that the script treats this as fatal
+        and exits non-zero, since 422 indicates a malformed request that
+        needs developer attention.
+      why: |
+        422 errors indicate the comment payload is malformed or the endpoint
+        is incorrect. These are bugs in the script itself and must surface
+        as failures so they get fixed.
+      acceptance_criteria:
+        - "Script exits with non-zero exit code"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with exec.Command running shell script"
+
+    specific_preconditions:
+      - name: "Mock gh binary"
+        requirement: "Mock that returns HTTP 422 for comment endpoint"
+        validation: "Mock binary is executable"
+
+    test_data:
+      resource_definitions:
+        - name: "mock_gh_422"
+          type: "Shell script"
+          yaml: |
+            #!/bin/bash
+            if [[ "$*" == *"issues"*"comments"* ]]; then
+              echo "HTTP 422" >&2
+              exit 1
+            fi
+            echo '{}'
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create temp dir and mock gh binary returning 422"
+          command: "mktemp -d && write mock"
+          validation: "Mock binary exists"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute post-retro.sh with mock gh"
+          command: "PATH=tmpDir:$PATH bash post-retro.sh"
+          validation: "Script terminates"
+        - step_id: "TEST-02"
+          action: "Capture exit code"
+          command: "Store $?"
+          validation: "Exit code captured"
+
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Remove temporary directory"
+          command: "rm -rf tmpDir"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Script exits with non-zero exit code"
+        condition: "exitCode != 0"
+        failure_impact: "Malformed request errors silently swallowed"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "bash 4+"
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Requirement Group: Happy-path behavior preserved
+  # ============================================================
+
+  - scenario_id: "6"
+    test_id: "TS-GH-2305-006"
+    tier: "Functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-2305"
+
+    variables:
+      closure_scope:
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["setup", "test_execution", "cleanup"]
+          comment: "Temporary directory for test fixtures"
+        - name: "exitCode"
+          type: "int"
+          initialized_in: "test_execution"
+          used_in: ["test_execution"]
+          comment: "Exit code from post-retro.sh"
+        - name: "stdout"
+          type: "string"
+          initialized_in: "test_execution"
+          used_in: ["test_execution"]
+          comment: "Captured stdout from script"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "post-retro.sh happy path"
+      context:
+        description: "when comment posting succeeds with one proposal"
+      it:
+        description: "should exit 0 and post comment successfully"
+        test_id_format: "[test_id:TS-GH-2305-006]"
+
+    test_objective:
+      title: "Verify successful comment posting with one proposal"
+      what: |
+        Execute post-retro.sh with a mock gh binary that succeeds on all
+        API calls. The retro result directory contains one proposal issue.
+        Validate that the script posts a summary comment and exits 0.
+      why: |
+        This is the primary happy path ensuring that the error handling
+        changes did not regress the normal successful flow where the token
+        has proper permissions and comment posting works.
+      acceptance_criteria:
+        - "Script exits with code 0"
+        - "Mock gh was called with comment endpoint"
+        - "Comment body references the proposal issue"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with exec.Command running shell script"
+
+    specific_preconditions:
+      - name: "Mock gh binary"
+        requirement: "Mock that succeeds for all endpoints"
+        validation: "Mock binary returns exit 0 for comment endpoint"
+      - name: "Retro result with proposal"
+        requirement: "Result directory with one proposal JSON file"
+        validation: "Proposal file exists with valid JSON"
+
+    test_data:
+      resource_definitions:
+        - name: "mock_gh_success"
+          type: "Shell script"
+          yaml: |
+            #!/bin/bash
+            echo '{"id": 1}'
+        - name: "proposal_result"
+          type: "JSON file"
+          yaml: |
+            {
+              "issue_url": "https://github.com/test-org/test-repo/issues/100",
+              "title": "Refactor error handling in retro agent"
+            }
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create temp dir, success mock gh, and proposal fixture"
+          command: "mktemp -d && write fixtures"
+          validation: "All fixtures in place"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute post-retro.sh with success mock"
+          command: "PATH=tmpDir:$PATH bash post-retro.sh"
+          validation: "Script completes"
+        - step_id: "TEST-02"
+          action: "Capture exit code and verify comment was posted"
+          command: "Check mock call log for comment endpoint"
+          validation: "Comment endpoint was called"
+
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Remove temporary directory"
+          command: "rm -rf tmpDir"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Script exits with code 0"
+        condition: "exitCode == 0"
+        failure_impact: "Happy path broken by error handling changes"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "Comment posting was attempted"
+        condition: "mock gh was called with issues/*/comments"
+        failure_impact: "Summary comment not posted despite having permissions"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "bash 4+"
+        - "jq"
+      scenario_specific_rbac: []
+
+  - scenario_id: "7"
+    test_id: "TS-GH-2305-007"
+    tier: "Functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-2305"
+
+    variables:
+      closure_scope:
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["setup", "test_execution", "cleanup"]
+          comment: "Temporary directory for test fixtures"
+        - name: "exitCode"
+          type: "int"
+          initialized_in: "test_execution"
+          used_in: ["test_execution"]
+          comment: "Exit code from post-retro.sh"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "post-retro.sh happy path"
+      context:
+        description: "when comment posting succeeds with no proposals"
+      it:
+        description: "should exit 0 and post comment with zero proposals"
+        test_id_format: "[test_id:TS-GH-2305-007]"
+
+    test_objective:
+      title: "Verify successful comment posting with no proposals"
+      what: |
+        Execute post-retro.sh with a success mock when the retro agent
+        produced no proposal issues. Validate that the script still posts
+        a summary comment (indicating no proposals) and exits 0.
+      why: |
+        A retro run may legitimately find no actionable proposals. The script
+        should handle this gracefully and still post a summary comment.
+      acceptance_criteria:
+        - "Script exits with code 0"
+        - "Comment is posted even with zero proposals"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with exec.Command running shell script"
+
+    specific_preconditions:
+      - name: "Mock gh binary"
+        requirement: "Mock that succeeds for all endpoints"
+        validation: "Mock binary returns exit 0"
+      - name: "Empty retro result"
+        requirement: "Result directory with no proposal files"
+        validation: "Result directory exists but contains no proposals"
+
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create temp dir, success mock gh, empty result dir"
+          command: "mktemp -d && write fixtures"
+          validation: "Fixtures in place, no proposal files"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute post-retro.sh"
+          command: "PATH=tmpDir:$PATH bash post-retro.sh"
+          validation: "Script completes with exit 0"
+
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Remove temporary directory"
+          command: "rm -rf tmpDir"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Script exits with code 0"
+        condition: "exitCode == 0"
+        failure_impact: "Zero-proposal retro runs incorrectly marked as failures"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "bash 4+"
+        - "jq"
+      scenario_specific_rbac: []
+
+  - scenario_id: "8"
+    test_id: "TS-GH-2305-008"
+    tier: "Functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-2305"
+
+    variables:
+      closure_scope:
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["setup", "test_execution", "cleanup"]
+          comment: "Temporary directory for test fixtures"
+        - name: "callLog"
+          type: "string"
+          initialized_in: "test_execution"
+          used_in: ["test_execution"]
+          comment: "Log of mock gh API calls in order"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "post-retro.sh execution order"
+      context:
+        description: "when processing retro results"
+      it:
+        description: "should create proposal issues before posting comment"
+        test_id_format: "[test_id:TS-GH-2305-008]"
+
+    test_objective:
+      title: "Verify proposal issues created before comment posting"
+      what: |
+        Execute post-retro.sh with a mock gh that logs all API calls in
+        order. Validate that proposal issue creation calls happen before
+        the summary comment posting call.
+      why: |
+        The summary comment should reference created proposal issues. If
+        the comment is posted first, it cannot include proposal links.
+        Ordering is critical for a complete summary.
+      acceptance_criteria:
+        - "Issue creation API calls precede comment posting API call"
+        - "Script exits with code 0"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with exec.Command running shell script"
+
+    specific_preconditions:
+      - name: "Logging mock gh binary"
+        requirement: "Mock that logs all API calls to a file in order"
+        validation: "Call log file is created during execution"
+
+    test_data:
+      resource_definitions:
+        - name: "mock_gh_logging"
+          type: "Shell script"
+          yaml: |
+            #!/bin/bash
+            echo "$@" >> "$GH_CALL_LOG"
+            echo '{"id": 1, "html_url": "https://github.com/test/repo/issues/1"}'
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create temp dir, logging mock gh, and proposal fixtures"
+          command: "mktemp -d && write fixtures"
+          validation: "Fixtures in place"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute post-retro.sh with logging mock"
+          command: "GH_CALL_LOG=tmpDir/calls.log PATH=tmpDir:$PATH bash post-retro.sh"
+          validation: "Script completes and call log exists"
+        - step_id: "TEST-02"
+          action: "Parse call log to verify ordering"
+          command: "Read calls.log and check issue creation before comment"
+          validation: "Issue calls appear before comment call"
+
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Remove temporary directory"
+          command: "rm -rf tmpDir"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Issue creation calls precede comment posting call"
+        condition: "indexOf(issueCall) < indexOf(commentCall) in callLog"
+        failure_impact: "Summary comment would not contain proposal links"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "bash 4+"
+        - "jq"
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Requirement Group: Non-fatal error across proposal states
+  # ============================================================
+
+  - scenario_id: "9"
+    test_id: "TS-GH-2305-009"
+    tier: "Functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-2305"
+
+    variables:
+      closure_scope:
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["setup", "test_execution", "cleanup"]
+          comment: "Temporary directory"
+        - name: "exitCode"
+          type: "int"
+          initialized_in: "test_execution"
+          used_in: ["test_execution"]
+          comment: "Exit code from script"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "post-retro.sh non-fatal error with varying proposals"
+      context:
+        description: "when 403 occurs and no proposals exist"
+      it:
+        description: "should still exit 0"
+        test_id_format: "[test_id:TS-GH-2305-009]"
+
+    test_objective:
+      title: "Verify 403 with no proposals still exits 0"
+      what: |
+        Execute post-retro.sh with a 403 mock when the retro produced no
+        proposals. Validate that the combination of zero proposals AND
+        comment-posting failure still results in exit 0.
+      why: |
+        Edge case: if there are no proposals and the comment also fails,
+        the script should still exit 0. The retro agent succeeded even
+        if it found nothing actionable.
+      acceptance_criteria:
+        - "Script exits with code 0"
+        - "Warning annotation emitted"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with exec.Command running shell script"
+
+    specific_preconditions:
+      - name: "Mock gh binary returning 403"
+        requirement: "Mock returns 403 on comment endpoint"
+        validation: "Mock binary is executable"
+      - name: "Empty result directory"
+        requirement: "No proposal files in result directory"
+        validation: "Result directory exists but empty"
+
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create temp dir, 403 mock, empty result dir"
+          command: "mktemp -d && write fixtures"
+          validation: "Fixtures in place"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute post-retro.sh"
+          command: "PATH=tmpDir:$PATH bash post-retro.sh"
+          validation: "Script completes"
+
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Remove temporary directory"
+          command: "rm -rf tmpDir"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Script exits with code 0 despite 403 and no proposals"
+        condition: "exitCode == 0"
+        failure_impact: "Empty retro results with permission errors cause workflow failure"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "bash 4+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "10"
+    test_id: "TS-GH-2305-010"
+    tier: "Functional"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-2305"
+
+    variables:
+      closure_scope:
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["setup", "test_execution", "cleanup"]
+          comment: "Temporary directory"
+        - name: "exitCode"
+          type: "int"
+          initialized_in: "test_execution"
+          used_in: ["test_execution"]
+          comment: "Exit code from script"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "post-retro.sh non-fatal error with varying proposals"
+      context:
+        description: "when 403 occurs and multiple proposals exist"
+      it:
+        description: "should still exit 0 with all proposals created"
+        test_id_format: "[test_id:TS-GH-2305-010]"
+
+    test_objective:
+      title: "Verify 403 with multiple proposals still exits 0"
+      what: |
+        Execute post-retro.sh with a 403 mock when the retro produced
+        multiple proposal issues. Validate that all proposals are created
+        successfully and the comment-posting 403 still results in exit 0.
+      why: |
+        When multiple proposals exist, the script has more work to do before
+        reaching the comment step. This validates that multi-proposal retro
+        runs with permission errors still complete successfully.
+      acceptance_criteria:
+        - "Script exits with code 0"
+        - "All proposal issues were created (mock calls made)"
+        - "Warning annotation emitted for comment failure"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with exec.Command running shell script"
+
+    specific_preconditions:
+      - name: "Mock gh binary"
+        requirement: "Returns 403 on comment, succeeds on issue creation"
+        validation: "Mock handles both endpoints differently"
+      - name: "Multiple proposal fixtures"
+        requirement: "3+ proposal JSON files in result directory"
+        validation: "Multiple proposal files exist"
+
+    test_data:
+      resource_definitions:
+        - name: "proposals"
+          type: "JSON files"
+          yaml: |
+            # proposal_1.json
+            {"title": "Proposal 1", "body": "Description 1"}
+            # proposal_2.json
+            {"title": "Proposal 2", "body": "Description 2"}
+            # proposal_3.json
+            {"title": "Proposal 3", "body": "Description 3"}
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create temp dir, selective mock, and 3 proposal files"
+          command: "mktemp -d && write fixtures"
+          validation: "3 proposal files exist"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute post-retro.sh"
+          command: "PATH=tmpDir:$PATH bash post-retro.sh"
+          validation: "Script completes"
+        - step_id: "TEST-02"
+          action: "Verify all proposals were created"
+          command: "Check mock call log for 3 issue creation calls"
+          validation: "3 issue creation calls logged"
+
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Remove temporary directory"
+          command: "rm -rf tmpDir"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Script exits with code 0"
+        condition: "exitCode == 0"
+        failure_impact: "Multi-proposal retro runs fail on comment permissions"
+      - assertion_id: "ASSERT-02"
+        priority: "P2"
+        description: "All 3 proposal issues were created"
+        condition: "issueCreationCalls == 3"
+        failure_impact: "Some proposals silently dropped"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "bash 4+"
+        - "jq"
+      scenario_specific_rbac: []
+
+  - scenario_id: "11"
+    test_id: "TS-GH-2305-011"
+    tier: "Functional"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-2305"
+
+    variables:
+      closure_scope:
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["setup", "test_execution", "cleanup"]
+          comment: "Temporary directory"
+        - name: "stdout"
+          type: "string"
+          initialized_in: "test_execution"
+          used_in: ["test_execution"]
+          comment: "Captured stdout from script"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "post-retro.sh completion message"
+      context:
+        description: "when retro run completes successfully"
+      it:
+        description: "should print 'Post-retro complete' message"
+        test_id_format: "[test_id:TS-GH-2305-011]"
+
+    test_objective:
+      title: "Verify 'Post-retro complete' message on successful run"
+      what: |
+        Execute post-retro.sh with a fully successful mock (comment posts,
+        proposals created). Validate that stdout contains a "Post-retro
+        complete" message indicating the script finished all steps.
+      why: |
+        The completion message provides operators with a clear signal that
+        all post-retro steps ran. Its presence confirms the script reached
+        the end without early termination.
+      acceptance_criteria:
+        - "Stdout contains 'Post-retro complete' or equivalent completion message"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with exec.Command running shell script"
+
+    specific_preconditions:
+      - name: "Success mock gh"
+        requirement: "Mock that succeeds for all API calls"
+        validation: "Mock returns exit 0"
+
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create temp dir, success mock, and proposal fixture"
+          command: "mktemp -d && write fixtures"
+          validation: "Fixtures in place"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute post-retro.sh and capture stdout"
+          command: "PATH=tmpDir:$PATH bash post-retro.sh >stdout.log 2>&1"
+          validation: "Script completes"
+        - step_id: "TEST-02"
+          action: "Search stdout for completion message"
+          command: "grep -i 'complete' stdout.log"
+          validation: "Completion message found"
+
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Remove temporary directory"
+          command: "rm -rf tmpDir"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Completion message present in stdout"
+        condition: "strings.Contains(stdout, 'Post-retro complete') || strings.Contains(stdout, 'complete')"
+        failure_impact: "No clear indication that script finished all steps"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "bash 4+"
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Requirement Group: Production validation (End-to-End)
+  # ============================================================
+
+  - scenario_id: "12"
+    test_id: "TS-GH-2305-012"
+    tier: "End-to-End"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-2305"
+
+    variables:
+      closure_scope:
+        - name: "workflowRunID"
+          type: "string"
+          initialized_in: "test_execution"
+          used_in: ["test_execution"]
+          comment: "GitHub Actions workflow run ID"
+        - name: "conclusion"
+          type: "string"
+          initialized_in: "test_execution"
+          used_in: ["test_execution"]
+          comment: "Workflow run conclusion (success/failure)"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "post-retro.sh production validation"
+      context:
+        description: "when retro runs on a repo without issues:write permission"
+      it:
+        description: "should complete with conclusion 'success'"
+        test_id_format: "[test_id:TS-GH-2305-012]"
+
+    test_objective:
+      title: "Verify retro run succeeds on repo without issues:write permission"
+      what: |
+        Trigger a retro workflow run on a repository where the GitHub App
+        token lacks issues:write permission. Validate that the workflow
+        run completes with conclusion "success" instead of "failure".
+      why: |
+        This is the core production validation from GH-2305. Previous runs
+        (26291574658, 26915715367) on konflux-ci/caching#816 failed due to
+        403 on comment posting. After the fix, these should succeed.
+      acceptance_criteria:
+        - "Workflow run conclusion is 'success'"
+        - "Retro agent exit code is 0"
+        - "Logs contain warning about skipped comment"
+
+    classification:
+      test_type: "End-to-End"
+      scope: "Multi-component"
+      automation_approach: "pytest with GitHub API validation"
+
+    specific_preconditions:
+      - name: "Target repo without issues:write"
+        requirement: "A repository where the app lacks issues:write permission"
+        validation: "gh api repos/{owner}/{repo}/installation returns permissions without issues:write"
+      - name: "Retro workflow enabled"
+        requirement: "Retro workflow is configured and can be triggered"
+        validation: "Workflow file exists in .github/workflows/"
+
+    test_data:
+      resource_definitions:
+        - name: "target_repo"
+          type: "GitHub repository"
+          yaml: |
+            owner: "konflux-ci"
+            repo: "caching"
+            pr_number: 816
+            expected_permission_gap: "issues:write"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Identify target repo with restricted permissions"
+          command: "gh api repos/konflux-ci/caching/installation"
+          validation: "Installation exists without issues:write"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Trigger retro workflow run on target repo"
+          command: "gh workflow run retro.yml -R {repo} --field pr_number=816"
+          validation: "Workflow run starts"
+        - step_id: "TEST-02"
+          action: "Wait for workflow run to complete"
+          command: "gh run watch {run_id} --exit-status"
+          validation: "Run completes within timeout"
+        - step_id: "TEST-03"
+          action: "Check workflow conclusion"
+          command: "gh run view {run_id} --json conclusion"
+          validation: "conclusion == 'success'"
+
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "No cleanup needed (workflow is idempotent)"
+          command: "N/A"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Workflow run conclusion is 'success'"
+        condition: "conclusion == 'success'"
+        failure_impact: "Retro runs still failing on restricted-permission repos"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "Retro agent completed successfully"
+        condition: "Agent step exit code is 0"
+        failure_impact: "Agent failure masking the fix"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "gh CLI 2.0+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "13"
+    test_id: "TS-GH-2305-013"
+    tier: "End-to-End"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-2305"
+
+    variables:
+      closure_scope:
+        - name: "proposalIssues"
+          type: "[]string"
+          initialized_in: "test_execution"
+          used_in: ["test_execution"]
+          comment: "List of created proposal issue URLs"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "post-retro.sh production validation"
+      context:
+        description: "when comment posting fails with 403"
+      it:
+        description: "should still create proposal issues"
+        test_id_format: "[test_id:TS-GH-2305-013]"
+
+    test_objective:
+      title: "Verify proposal issues created despite comment-posting 403"
+      what: |
+        After a retro run on a restricted-permission repo, verify that
+        proposal issues were still created in the target repo even though
+        the summary comment could not be posted.
+      why: |
+        Proposal issues are the primary output of the retro agent. Comment
+        posting is a secondary notification. The fix must ensure proposals
+        are not blocked by comment failures.
+      acceptance_criteria:
+        - "At least one proposal issue was created"
+        - "Proposal issues have correct labels and content"
+
+    classification:
+      test_type: "End-to-End"
+      scope: "Multi-component"
+      automation_approach: "pytest with GitHub API validation"
+
+    specific_preconditions:
+      - name: "Completed retro run with 403"
+        requirement: "A retro workflow run that encountered 403 on comment posting"
+        validation: "Workflow run exists with success conclusion and warning annotation"
+
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Identify retro run that hit 403"
+          command: "Use run from scenario 12 or find existing run"
+          validation: "Run ID available"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "List issues created by retro agent"
+          command: "gh issue list -R {repo} --label retro-proposal --json number,title,createdAt"
+          validation: "Issues returned"
+        - step_id: "TEST-02"
+          action: "Verify proposal issues have expected content"
+          command: "gh issue view {issue_number} -R {repo} --json body,labels"
+          validation: "Issue body and labels are correct"
+
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "No cleanup needed (issues are valid deliverables)"
+          command: "N/A"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "At least one proposal issue was created"
+        condition: "len(proposalIssues) >= 1"
+        failure_impact: "Retro agent output lost due to comment-posting error handling"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "gh CLI 2.0+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "14"
+    test_id: "TS-GH-2305-014"
+    tier: "End-to-End"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-2305"
+
+    variables:
+      closure_scope:
+        - name: "workflowLogs"
+          type: "string"
+          initialized_in: "test_execution"
+          used_in: ["test_execution"]
+          comment: "Downloaded workflow run logs"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "post-retro.sh production validation"
+      context:
+        description: "when comment posting fails with 403"
+      it:
+        description: "should show warning annotation in workflow logs"
+        test_id_format: "[test_id:TS-GH-2305-014]"
+
+    test_objective:
+      title: "Verify GitHub Actions warning annotation visible in workflow logs"
+      what: |
+        After a retro run that encountered a 403 on comment posting, verify
+        that the ::warning:: annotation is visible in the GitHub Actions
+        workflow logs UI and API output.
+      why: |
+        The warning annotation is the primary operator feedback mechanism
+        for skipped comments. If it is not visible in the logs, operators
+        have no way to know a comment was skipped.
+      acceptance_criteria:
+        - "Workflow log contains ::warning:: annotation"
+        - "Warning text mentions comment posting failure reason"
+
+    classification:
+      test_type: "End-to-End"
+      scope: "Multi-component"
+      automation_approach: "pytest with GitHub API validation"
+
+    specific_preconditions:
+      - name: "Completed retro run with 403 warning"
+        requirement: "A workflow run that completed with a warning annotation"
+        validation: "Run available with conclusion 'success'"
+
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Identify retro run with 403 warning"
+          command: "Use run from scenario 12"
+          validation: "Run ID available"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Download workflow run logs"
+          command: "gh run view {run_id} --log"
+          validation: "Logs downloaded"
+        - step_id: "TEST-02"
+          action: "Search logs for warning annotation"
+          command: "grep '::warning::' logs.txt"
+          validation: "Warning annotation found"
+        - step_id: "TEST-03"
+          action: "Verify warning content"
+          command: "Parse warning text for expected keywords"
+          validation: "Warning mentions permissions/403"
+
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "No cleanup needed"
+          command: "N/A"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Warning annotation present in workflow logs"
+        condition: "strings.Contains(workflowLogs, '::warning::')"
+        failure_impact: "Operators cannot see comment-skip reason in workflow UI"
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "Warning text explains the reason"
+        condition: "warningText contains '403' or 'permission'"
+        failure_impact: "Warning exists but does not help diagnose the issue"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "gh CLI 2.0+"
+      scenario_specific_rbac: []

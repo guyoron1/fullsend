@@ -1,0 +1,11 @@
+status: success
+jira_id: GH-2305
+stp_source: outputs/stp/GH-2305/GH-2305_test_plan.md
+std_yaml: outputs/std/GH-2305/GH-2305_test_description.yaml
+test_counts:
+  total: 14
+  tier1: 11
+  tier2: 3
+stubs:
+  go: 11
+  python: 3
