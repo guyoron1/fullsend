@@ -1,0 +1,21 @@
+status: success
+jira_id: GH-24
+file_path: /sandbox/workspace/output/GH-24_test_plan.md
+test_counts:
+  unit_tests: 19
+  tier1: 0
+  tier2: 0
+  total: 19
+metadata:
+  upstream_pr: https://github.com/fullsend-ai/fullsend/pull/2342
+  local_pr: https://github.com/guyoron1/fullsend/pull/24
+  files_analyzed:
+    - internal/forge/github/github.go
+    - internal/forge/github/github_test.go
+  lsp_calls: 5
+  key_functions_traced:
+    - isRetryable (3 references across 2 files)
+    - retryOnRepoRace (6 references across 1 file)
+    - isTransientStatus (4 references across 2 files)
+    - do (20 call sites in github.go)
+  blast_radius: "~68 LiveClient methods inherit 5xx retry via do()"
