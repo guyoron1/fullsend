@@ -13,16 +13,10 @@ document_metadata:
     file: "outputs/stp/GH-25/GH-25_test_plan.md"
     version: "v1"
     sections_covered: "Section 3 - Test Scenarios"
-  related_prs:
-    - repo: "fullsend-ai/fullsend"
-      pr_number: 25
-      url: "https://github.com/fullsend-ai/fullsend/pull/25"
-      title: "perf(#2351): batch path-existence checks via Git Trees API"
-      merged: false
   total_scenarios: 51
   tier1_count: 16
   unit_count: 35
-  p0_count: 51
+  p0_count: 45
 
 code_generation_config:
   std_version: "2.1-enhanced"
@@ -704,7 +698,7 @@ scenarios:
       setup:
         - step_id: "SETUP-01"
           action: "Create FakeClient with FileContents matching all expected paths"
-          command: "FakeClient with all paths present"
+          command: "forge.FakeClient{FileContents: map[string]string{\"owner/repo/path1\": \"\", \"owner/repo/path2\": \"\"}}"
           validation: "FakeClient has all expected file entries"
       test_execution:
         - step_id: "TEST-01"
@@ -771,7 +765,7 @@ scenarios:
       setup:
         - step_id: "SETUP-01"
           action: "Create FakeClient with some expected paths missing"
-          command: "FakeClient with partial path coverage"
+          command: "forge.FakeClient{FileContents: map[string]string{\"owner/repo/path1\": \"\"}}"
           validation: "FakeClient has subset of expected files"
       test_execution:
         - step_id: "TEST-01"
@@ -842,7 +836,7 @@ scenarios:
       setup:
         - step_id: "SETUP-01"
           action: "Create FakeClient with no matching paths"
-          command: "FakeClient with empty or non-matching FileContents"
+          command: "forge.FakeClient{FileContents: map[string]string{}}"
           validation: "No expected paths in FakeClient"
       test_execution:
         - step_id: "TEST-01"
@@ -913,7 +907,7 @@ scenarios:
       setup:
         - step_id: "SETUP-01"
           action: "Create FakeClient (should not be called)"
-          command: "FakeClient with no setup"
+          command: "forge.FakeClient{}"
           validation: "FakeClient created"
       test_execution:
         - step_id: "TEST-01"
@@ -979,7 +973,7 @@ scenarios:
       setup:
         - step_id: "SETUP-01"
           action: "Create FakeClient with ListRepositoryFiles error"
-          command: "FakeClient with injected error"
+          command: "forge.FakeClient{Errors: map[string]error{\"ListRepositoryFiles\": testErr}}"
           validation: "Error injection configured"
       test_execution:
         - step_id: "TEST-01"
@@ -1400,7 +1394,7 @@ scenarios:
   - scenario_id: "020"
     test_id: "TS-GH-25-020"
     tier: "Unit"
-    priority: "P0"
+    priority: "P1"
     mvp: true
     requirement_id: "REQ-004"
     section: "Harness Lint() Diagnostics"
@@ -1459,7 +1453,7 @@ scenarios:
   - scenario_id: "021"
     test_id: "TS-GH-25-021"
     tier: "Unit"
-    priority: "P0"
+    priority: "P1"
     mvp: true
     requirement_id: "REQ-004"
     section: "Harness Lint() Diagnostics"
@@ -2138,7 +2132,7 @@ scenarios:
   - scenario_id: "032"
     test_id: "TS-GH-25-032"
     tier: "Unit"
-    priority: "P0"
+    priority: "P1"
     mvp: true
     requirement_id: "REQ-006"
     section: "DiscoverRemoteAgents"
@@ -2198,7 +2192,7 @@ scenarios:
   - scenario_id: "033"
     test_id: "TS-GH-25-033"
     tier: "Unit"
-    priority: "P0"
+    priority: "P1"
     mvp: true
     requirement_id: "REQ-006"
     section: "DiscoverRemoteAgents"
@@ -2257,7 +2251,7 @@ scenarios:
   - scenario_id: "034"
     test_id: "TS-GH-25-034"
     tier: "Unit"
-    priority: "P0"
+    priority: "P1"
     mvp: true
     requirement_id: "REQ-006"
     section: "DiscoverRemoteAgents"
@@ -2316,7 +2310,7 @@ scenarios:
   - scenario_id: "035"
     test_id: "TS-GH-25-035"
     tier: "Unit"
-    priority: "P0"
+    priority: "P1"
     mvp: true
     requirement_id: "REQ-006"
     section: "DiscoverRemoteAgents"
@@ -2518,7 +2512,7 @@ scenarios:
 
     test_structure:
       type: "single"
-      function: "TestRunWithStatusToken"
+      function: "TestRunWithMintURL"
       subtest: "emits deprecation warning"
 
     test_objective:
@@ -2578,7 +2572,7 @@ scenarios:
 
     test_structure:
       type: "single"
-      function: "TestRunWithBothFlags"
+      function: "TestRunWithMintURL"
       subtest: "prefers mint-url over status-token"
 
     test_objective:
@@ -2698,7 +2692,7 @@ scenarios:
 
     test_structure:
       type: "single"
-      function: "TestReconcileStatusMissingRole"
+      function: "TestReconcileStatusWithMintURL"
       subtest: "returns error when role missing"
 
     test_objective:
@@ -2758,7 +2752,7 @@ scenarios:
 
     test_structure:
       type: "single"
-      function: "TestReconcileStatusDeprecatedToken"
+      function: "TestReconcileStatusWithMintURL"
       subtest: "emits warning for deprecated token flag"
 
     test_objective:
@@ -2818,7 +2812,7 @@ scenarios:
 
     test_structure:
       type: "single"
-      function: "TestReconcileStatusNoAuth"
+      function: "TestReconcileStatusWithMintURL"
       subtest: "returns error when no auth provided"
 
     test_objective:
@@ -2938,7 +2932,7 @@ scenarios:
 
     test_structure:
       type: "single"
-      function: "TestActionYAMLFinalizeStep"
+      function: "TestActionYAMLMintURL"
       subtest: "requires mint-url or status-token"
 
     test_objective:
