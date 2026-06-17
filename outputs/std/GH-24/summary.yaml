@@ -1,0 +1,11 @@
+status: success
+jira_id: GH-24
+stp_source: outputs/stp/GH-24/GH-24_test_plan.md
+std_yaml: outputs/std/GH-24/GH-24_test_description.yaml
+test_counts:
+  total: 23
+  tier1: 23
+  tier2: 0
+stubs:
+  go: 23
+  python: 0
