@@ -1,14 +1,14 @@
 status: success
 jira_id: GH-23
-verdict: APPROVED_WITH_FINDINGS
+verdict: APPROVED
 confidence: MEDIUM
-weighted_score: 92
+weighted_score: 98
 findings:
   critical: 0
-  major: 2
-  minor: 2
-  actionable: 4
-  total: 4
+  major: 0
+  minor: 1
+  actionable: 0
+  total: 1
 artifacts_reviewed:
   std_yaml: true
   go_stubs: true
@@ -16,9 +16,9 @@ artifacts_reviewed:
   stp_available: true
 dimension_scores:
   traceability: 100
-  yaml_structure: 85
+  yaml_structure: 100
   pattern_matching: 95
-  step_quality: 90
-  content_policy: 80
+  step_quality: 100
+  content_policy: 100
   pse_quality: 95
   codegen_readiness: 95

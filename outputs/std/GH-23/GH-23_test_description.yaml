@@ -13,12 +13,6 @@ document_metadata:
     file: "outputs/stp/GH-23/GH-23_test_plan.md"
     version: "v1"
     sections_covered: "Section III - Requirements-to-Tests Mapping"
-  related_prs:
-    - repo: "fullsend-ai/fullsend"
-      pr_number: 23
-      url: "https://github.com/guyoron1/fullsend/issues/23"
-      title: "Add Lint() Diagnostic Method to Harness (ADR-0045 Phase 3)"
-      merged: false
   total_scenarios: 7
   functional_count: 7
   e2e_count: 0
@@ -65,7 +59,7 @@ common_preconditions:
 scenarios:
   - scenario_id: "1"
     test_id: "TS-GH-23-001"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-23"
@@ -197,7 +191,7 @@ scenarios:
 
   - scenario_id: "2"
     test_id: "TS-GH-23-002"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-23"
@@ -294,7 +288,7 @@ scenarios:
 
   - scenario_id: "3"
     test_id: "TS-GH-23-003"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-23"
@@ -390,7 +384,7 @@ scenarios:
 
   - scenario_id: "4"
     test_id: "TS-GH-23-004"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-23"
@@ -495,7 +489,7 @@ scenarios:
 
   - scenario_id: "5"
     test_id: "TS-GH-23-005"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-23"
@@ -600,7 +594,7 @@ scenarios:
 
   - scenario_id: "6"
     test_id: "TS-GH-23-006"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P2"
     mvp: false
     requirement_id: "GH-23"
@@ -705,7 +699,7 @@ scenarios:
 
   - scenario_id: "7"
     test_id: "TS-GH-23-007"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-23"
@@ -745,9 +739,7 @@ scenarios:
           assert.Error(t, err)
         })
         t.Run("valid harness returns nil", func(t *testing.T) {
-          h := harness.Harness{
-            // Populate all required fields for valid harness
-          }
+          h := harness.Harness{Slug: "test-harness", Role: "triage"}
           err := h.Validate()
           assert.NoError(t, err)
         })
@@ -790,9 +782,7 @@ scenarios:
         - name: "valid_harness"
           type: "harness.Harness"
           yaml: |
-            h := harness.Harness{
-              // All required fields populated
-            }
+            h := harness.Harness{Slug: "test-harness", Role: "triage"}
 
     test_steps:
       setup:
@@ -801,9 +791,9 @@ scenarios:
           command: "h := harness.Harness{}"
           validation: "Invalid harness created"
         - step_id: "SETUP-02"
-          action: "Create a valid Harness (all required fields populated)"
-          command: "h := harness.Harness{...all required fields...}"
-          validation: "Valid harness created"
+          action: "Create a valid Harness with Slug and Role populated"
+          command: "h := harness.Harness{Slug: \"test-harness\", Role: \"triage\"}"
+          validation: "Valid harness created with required fields"
       test_execution:
         - step_id: "TEST-01"
           action: "Call Validate() on invalid harness"
