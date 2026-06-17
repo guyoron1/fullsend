@@ -3,38 +3,36 @@
 **Reviewed:** outputs/stp/GH-23/GH-23_test_plan.md
 **Date:** 2026-06-17
 **Reviewer:** QualityFlow Automated Review (v1.1.0)
-**Review Rules Schema:** 1.1.0
+**Review Rules Schema:** N/A
 
 ---
 
-## Verdict: NEEDS_REVISION
+## Verdict: APPROVED_WITH_FINDINGS
 
 ## Summary
 
 | Metric | Value |
 |:-------|:------|
 | Dimensions reviewed | 7/7 |
-| Critical findings | 7 |
-| Major findings | 5 |
-| Minor findings | 1 |
-| Actionable findings | 12 |
+| Critical findings | 0 |
+| Major findings | 3 |
+| Minor findings | 3 |
+| Actionable findings | 5 |
 | Confidence | MEDIUM |
-| Weighted score | 5/100 |
-
-**CRITICAL DEFECT: The STP was generated for an entirely wrong feature.** The STP describes "Add vibe-kanban to the backlog" (a documentation-only backlog change), but the actual PR #23 is "feat(harness): add Lint() diagnostic method (ADR-0045 Phase 3 PR 1)" — a Go code change that adds `internal/harness/lint.go` and `internal/harness/lint_test.go` with a `Lint()` method, `DiagnosticSeverity` type, `Diagnostic` struct, and 6 unit test subtests. Every section of the STP is factually incorrect because it describes a different change. The STP must be regenerated from scratch against the correct source data.
+| Weighted score | 87/100 |
 
 ## Dimension Scores
 
 | Dimension | Weight | Pass Rate | Weighted |
 |:----------|:-------|:----------|:---------|
-| 1. Rule Compliance | 25% | 5% | 1.3 |
-| 2. Requirement Coverage | 30% | 0% | 0.0 |
-| 3. Scenario Quality | 15% | 0% | 0.0 |
-| 4. Risk & Limitation Accuracy | 10% | 0% | 0.0 |
-| 5. Scope Boundary Assessment | 10% | 0% | 0.0 |
-| 6. Test Strategy Appropriateness | 5% | 10% | 0.5 |
-| 7. Metadata Accuracy | 5% | 60% | 3.0 |
-| **Total** | **100%** | | **4.8** |
+| 1. Rule Compliance | 25% | 94% | 23.5 |
+| 2. Requirement Coverage | 30% | 85% | 25.5 |
+| 3. Scenario Quality | 15% | 90% | 13.5 |
+| 4. Risk & Limitation Accuracy | 10% | 100% | 10.0 |
+| 5. Scope Boundary Assessment | 10% | 100% | 10.0 |
+| 6. Test Strategy Appropriateness | 5% | 90% | 4.5 |
+| 7. Metadata Accuracy | 5% | 80% | 4.0 |
+| **Total** | **100%** | | **91.0** |
 
 ---
 
@@ -44,253 +42,188 @@
 
 | Rule | Status | Finding |
 |:-----|:-------|:--------|
-| A -- Abstraction Level | FAIL | STP describes wrong feature entirely. All scope items, goals, and descriptions reference "BACKLOG.md" and "vibe-kanban" which are not part of PR #23. The actual feature is the `Lint()` diagnostic method in the harness package. |
-| A.2 -- Language Precision | PASS | Language is precise and professional (for the wrong feature). |
-| B -- Section I Meta-Checklist | FAIL | All checkboxes are checked with sub-items describing a documentation-only change. The actual change is a Go code addition. Every sub-item's content is factually wrong. Section III is empty ("No test scenarios are required") despite the PR containing testable Go code. |
-| C -- Prerequisites vs Scenarios | PASS | N/A -- no scenarios exist to evaluate. |
-| D -- Dependencies | PASS | Dependencies correctly marked N/A, which happens to be correct for the actual PR as well. |
-| E -- Upgrade Testing | PASS | Upgrade testing correctly unchecked -- the `Lint()` method does not create persistent state. |
-| F -- Version Derivation | PASS | Version listed as "FullSend 0.x" which matches project config `current_version: "0.x"`. |
-| G -- Testing Tools | PASS | Tools listed as N/A. For the actual feature, this should list "Go testing + testify". |
-| G.2 -- Environment Specificity | FAIL | Environment section is entirely "N/A" but should specify Go 1.23+ toolchain requirements for the actual code change. |
-| H -- Risk Deduplication | PASS | No duplicated risks (all N/A). |
-| I -- QE Kickoff Timing | PASS | "No handoff required" -- acceptable for the actual change which is a small library addition. |
-| J -- One Tier Per Row | PASS | N/A -- no tier rows exist. |
-| K -- Cross-Section Consistency | FAIL | The STP is internally consistent (everything says "documentation-only, no testing needed") but this consistency is based on a false premise. The PR is a code change, so the entire cross-section narrative is wrong. Scope says "out of scope for functional testing" while the PR adds testable Go code. |
-| L -- Section Content Validation | FAIL | Feature Overview contains a fabricated description of a BACKLOG.md change. The actual PR modifies `docs/ADRs/0045-forge-portable-harness-schema.md`, adds `docs/plans/adr-0045-forge-portable-harness-phase3.md`, creates `internal/harness/lint.go` and `internal/harness/lint_test.go`, and updates `README.md`. |
-| M -- Deletion Test | FAIL | The entire STP fails the deletion test -- if removed, no information about the actual feature's test plan would be lost because it contains no information about the actual feature. |
-| N -- Link/Reference Validation | PASS | Enhancement link `https://github.com/fullsend-ai/fullsend/issues/23` is syntactically valid and points to the correct repository. |
-| O -- Untestable Aspects | FAIL | The STP claims the entire change is untestable ("No functional testing is possible or required") but the PR adds Go source code with 6 unit test subtests already written by the developer. The feature is clearly testable. |
+| A -- Abstraction Level | WARN | Feature Overview references internal file path `internal/harness/lint.go`. While acceptable in a developer-facing STP for a library-level feature, the Scope of Testing also references internal paths. Borderline — the feature IS an internal library method, so internal references are inherent to describing it. MINOR. |
+| A.2 -- Language Precision | PASS | Language is precise and professional throughout. No anthropomorphization, colloquial phrasing, or vague qualifiers. |
+| B -- Section I Meta-Checklist | PASS | All 5 checkboxes in I.1 are checked with substantive, feature-specific sub-items. All 5 checkboxes in I.3 are checked with relevant detail. Known Limitations (I.2) contains 3 meaningful limitations. |
+| C -- Prerequisites vs Scenarios | PASS | No prerequisites appear as test scenarios. All 7 scenarios describe testable behaviors. |
+| D -- Dependencies | PASS | Dependencies correctly unchecked. No other team deliveries are needed. |
+| E -- Upgrade Testing | PASS | Upgrade Testing correctly unchecked. `Lint()` does not create or modify persistent state. |
+| F -- Version Derivation | PASS | Version "FullSend 0.x" matches project config `current_version: "0.x"`. |
+| G -- Testing Tools | WARN | Testing Tools section lists Go `testing` package and testify, which are standard tools per `go.yaml` config (`framework: "testing"`, testify in `imports.test_framework`). Per Rule G, standard tools should not be listed. However, including them is informational and does not harm the STP. MINOR. |
+| G.2 -- Environment Specificity | PASS | Environment entries are feature-specific where applicable (Go 1.23+ toolchain). N/A entries are appropriate for a library-level feature with no infrastructure requirements. |
+| H -- Risk Deduplication | PASS | No risk entries duplicate information from Test Environment. Each risk addresses a distinct concern. |
+| I -- QE Kickoff Timing | PASS | "No formal handoff required" is appropriate for a small, self-contained library addition. |
+| J -- One Tier Per Row | PASS | Each scenario specifies exactly one tier classification `[Functional]`. No multi-tier entries. |
+| K -- Cross-Section Consistency | PASS | Scope, Out of Scope, Goals, Limitations, Strategy, and Scenarios are internally consistent. All scope items have corresponding scenarios. No out-of-scope items appear as scenarios. Strategy checkboxes align with scenario types. |
+| L -- Section Content Validation | PASS | Content appears in correct sections. No misplaced scenarios in Scope, no infrastructure in Dependencies, no environment items in Risks. Known Limitations are genuine constraints (no callers yet, single rule, precondition not enforced). |
+| M -- Deletion Test | PASS | All sections contribute decision-relevant information. Feature Overview is concise and not duplicative. Section III provides actionable test scenarios. |
+| N -- Link/Reference Validation | WARN | Enhancement link points to `https://github.com/fullsend-ai/fullsend/issues/23` — note the PR data shows the repo is `guyoron1/fullsend`, not `fullsend-ai/fullsend`. The link may point to the wrong organization. MAJOR. |
+| O -- Untestable Aspects | PASS | The STP correctly identifies the Validate() precondition as a risk (II.5 Untestable Aspects) with appropriate mitigation. No false untestability claims. |
 | P -- Testing Pyramid Efficiency | PASS | N/A -- not a bug ticket. |
 
 ### Dimension 2: Requirement Coverage
 
 | Metric | Value |
 |:-------|:------|
-| Acceptance criteria covered | 0/5 |
-| Acceptance criteria coverage rate | 0% |
-| P0 criteria covered | 0/3 |
-| Linked issues reflected | 0/1 |
-| Negative scenarios present | NO |
-| Coverage gaps found | 5 |
+| Acceptance criteria covered | 5/5 |
+| Acceptance criteria coverage rate | 100% |
+| P0 criteria covered | 3/3 |
+| Linked issues reflected | 1/1 |
+| Negative scenarios present | YES |
+| Coverage gaps found | 1 |
 
-**Source requirements from PR #23 body and diff:**
+**Source requirements from PR #23 (mapped to scenarios):**
 
-1. **`Lint()` method returns `[]Diagnostic`** -- non-fatal warnings separate from `Validate()`. **UNCOVERED.**
-2. **`DiagnosticSeverity` type with `SeverityWarning` and `SeverityError` constants.** **UNCOVERED.**
-3. **`Diagnostic` struct with `Severity`, `Field`, `Message` fields and `String()` method.** **UNCOVERED.**
-4. **First lint rule: warns when `role` field is missing** (preparing for Phase 4 which will make it required). **UNCOVERED.**
-5. **`Lint()` returns nil (not empty slice) when no diagnostics found.** **UNCOVERED.**
+1. **`Lint()` returns `[]Diagnostic` with warning when `role` is empty** → Covered by Scenario 1 (P0). ✅
+2. **`Lint()` returns nil when no issues found** → Covered by Scenario 2 (P0). ✅
+3. **`Diagnostic.String()` formats correctly for all severity levels** → Covered by Scenarios 4, 5, 6 (P1, P1, P2). ✅
+4. **All existing tests pass (regression)** → Covered by Scenario 7 (P0). ✅
+5. **`DiagnosticSeverity` type with constants** → Implicitly covered via Scenarios 4-6 (severity formatting). ✅
 
-**Linked issue:** Part of #2326 (ADR-0045 implementation). **NOT REFLECTED** in STP.
+**Linked issue:** #2326 (ADR-0045 implementation) → Reflected in Epic Tracking metadata. ✅
 
 **Gaps identified:**
-- No test scenarios exist at all. The STP explicitly states "No test scenarios are required" which is factually incorrect.
-- The PR itself includes 6 passing subtests demonstrating the feature IS testable:
-  - Harness with role -> no diagnostics
-  - Harness without role -> one warning diagnostic with field "role"
-  - Harness with role and slug -> no diagnostics
-  - `Diagnostic.String()` formats correctly for warning severity
-  - `Diagnostic.String()` formats correctly for error severity
-  - Unknown severity fallback
-  - `Lint()` returns nil (not empty slice) when no issues found
+- Scenario 7 (regression) describes running `make go-test` which is a meta-test ("verify tests pass") rather than a specific behavioral verification. While regression testing is appropriate, the scenario could be more specific about what Validate() behaviors must be preserved. MAJOR.
 
 ### Dimension 3: Scenario Quality
 
 | Metric | Value |
 |:-------|:------|
-| Total scenarios | 0 |
-| Tier 1 | 0 |
-| Tier 2 | 0 |
-| P0 | 0 |
-| P1 | 0 |
-| P2 | 0 |
-| Positive scenarios | 0 |
-| Negative scenarios | 0 |
+| Total scenarios | 7 |
+| Functional | 7 |
+| End-to-End | 0 |
+| P0 | 3 |
+| P1 | 3 |
+| P2 | 1 |
+| Positive scenarios | 5 |
+| Negative scenarios | 2 |
 
 **Scenario-level findings:**
-- No scenarios exist. The STP must be regenerated with test scenarios covering the `Lint()` method, `Diagnostic` type, and severity formatting.
+
+- Scenarios 1-6 are specific, actionable, and test distinct behaviors. Each describes a clear input, action, and expected outcome.
+- Scenario 1 (P0) serves as both positive and negative: positive that Lint() works, negative that missing role triggers a warning. Well-classified.
+- Scenario 6 (P2) is an appropriate edge case at the right priority level.
+- Scenario 7 (P0 regression) is somewhat generic — "Run all existing harness tests via make go-test" is a meta-test. It would be stronger as "Verify that Harness.Validate() returns the same errors for invalid harnesses as before the Lint() addition." MAJOR — see Finding F-002.
+- Priority distribution (3 P0, 3 P1, 1 P2) is reasonable. Core behaviors are P0, formatting details are P1, edge cases are P2.
 
 ### Dimension 4: Risk & Limitation Accuracy
 
-- **CRITICAL:** Known Limitations states "This is a documentation-only change. No functional testing is possible or required." This is factually false. The PR adds Go source code (`internal/harness/lint.go`) with a public API method. The developer has already written 6 passing unit tests. The limitation claim directly contradicts the source data.
-- **CRITICAL:** The STP states "The issue has no body text, labels, or acceptance criteria, limiting formal traceability." The PR body actually contains a detailed summary, test plan with 5 checked items, and links to the parent issue #2326. This claim is fabricated.
+- Known Limitations accurately reflect the feature's boundaries per the PR body and Phase 3 plan: no callers yet (PR 3), single lint rule, Validate() precondition not enforced.
+- Risks are appropriate. The Untestable Aspects risk about the Validate() precondition is a genuine uncertainty with actionable mitigation.
+- Test Coverage risk correctly notes the scope limitation (future rules not covered) with clear mitigation (each rule gets its own STP).
+- No limitations from the PR are missing from the STP.
 
 ### Dimension 5: Scope Boundary Assessment
 
-- **CRITICAL:** Scope claims "This change is entirely out of scope for functional testing. PR #23 modifies only `BACKLOG.md`." The PR does NOT modify `BACKLOG.md`. It modifies/adds: `internal/harness/lint.go` (new), `internal/harness/lint_test.go` (new), `docs/plans/adr-0045-forge-portable-harness-phase3.md` (new), `docs/ADRs/0045-forge-portable-harness-schema.md` (modified), `README.md` (modified). The scope assessment is entirely wrong.
-- **CRITICAL:** The `harness` component is listed in `components.yaml` as an in-scope component (`internal/harness/` -> "Agent Harness"). The PR directly modifies this component. The STP should have in-scope testing for the harness package's new `Lint()` functionality.
-- **Scope validation gate from project.yaml:** "Would removing FullSend's core orchestration make this test meaningless?" -- The `Lint()` method is part of the harness system which IS FullSend's core orchestration. This feature is squarely in scope.
+- Scope correctly covers the `Lint()` method, `DiagnosticSeverity` type, `Diagnostic` struct, and `String()` formatter.
+- The `harness` component (`internal/harness/`) is listed in `components.yaml` as in-scope ("Agent Harness"). The scope boundary is correctly assessed.
+- Scope validation gate from `project.yaml`: "Would removing FullSend's core orchestration make this test meaningless?" — Yes, `Lint()` is part of the harness system which is FullSend's core orchestration. Feature is squarely in scope.
+- Out-of-Scope items (CLI integration, future rules, performance) are appropriately excluded with rationale and references to the Phase 3 plan.
+- No scope items test capabilities the feature does not provide.
 
 ### Dimension 6: Test Strategy Appropriateness
 
-- **CRITICAL:** Functional Testing is unchecked. The PR adds a new public Go method (`Lint()`) with defined behavior (returns diagnostics for missing role). Functional Testing MUST be checked.
-- **MAJOR:** Automation Testing is unchecked. The developer has already written automated tests. Automation Testing should be checked with sub-items noting Go test framework usage.
-- **MAJOR:** Regression Testing is unchecked. The PR modifies the ADR-0045 document and the change must not break existing `Validate()` behavior. Regression testing should confirm `Validate()` is unchanged.
-- All other unchecked items (Performance, Scale, Security, Usability, Monitoring, Compatibility, Upgrade, Cloud) are correctly unchecked for this library-level code addition.
+- Functional Testing: Correctly checked with feature-specific sub-items. ✅
+- Automation Testing: Correctly checked with specific framework and coverage details. ✅
+- Regression Testing: Correctly checked with specific sub-items about Validate() unchanged. ✅
+- Performance Testing: Correctly unchecked with rationale (O(1) complexity). ✅
+- Scale Testing: Correctly unchecked. ✅
+- Security Testing: Correctly unchecked with rationale (no I/O, auth, or authorization). ✅
+- Usability Testing: Correctly unchecked with rationale (no UI/CLI changes). ✅
+- Monitoring: Correctly unchecked with rationale. ✅
+- Compatibility Testing: Correctly unchecked. ✅
+- Upgrade Testing: Correctly unchecked per Rule E (no persistent state). ✅
+- Dependencies: Correctly unchecked. ✅
+- Cross Integrations: Correctly unchecked with rationale (no callers). ✅
+- Cloud Testing: Correctly unchecked. ✅
+
+All strategy classifications are appropriate. No findings.
 
 ### Dimension 7: Metadata Accuracy
 
 | Field | Status | Finding |
 |:------|:-------|:--------|
-| Enhancement(s) | PASS | Links to GH-23 correctly. |
-| Feature Tracking | PASS | Links to GH-23. |
-| Epic Tracking | FAIL | States "None (standalone issue)" but PR body says "Part of #2326". Should reference #2326 as parent. |
+| Enhancement(s) | WARN | Links to GH-23 at `fullsend-ai/fullsend` but PR data shows repo is `guyoron1/fullsend`. See Rule N finding. |
+| Feature Tracking | PASS | Links to GH-23 consistently. |
+| Epic Tracking | PASS | Correctly references #2326 per PR body "Part of #2326". |
 | QE Owner(s) | PASS | "TBD" is acceptable for draft. |
-| Owning SIG | PASS | "N/A" -- acceptable given no SIG labels on the issue. |
-| Title | FAIL | STP title is "Add vibe-kanban to the backlog" but actual PR title is "feat(harness): add Lint() diagnostic method (ADR-0045 Phase 3 PR 1)". |
+| Owning SIG | PASS | "N/A" -- no SIG labels on the issue. |
+| Title | PASS | "Add Lint() Diagnostic Method to Harness (ADR-0045 Phase 3)" accurately reflects PR title "feat(harness): add Lint() diagnostic method (ADR-0045 Phase 3 PR 1)". |
 
 ---
 
 ## Findings Detail
 
 ### Finding F-001
-- **finding_id:** D1-K-001
-- **severity:** CRITICAL
+- **finding_id:** D1-N-001
+- **severity:** MAJOR
 - **dimension:** Rule Compliance
-- **rule:** K -- Cross-Section Consistency / Global
-- **description:** The entire STP was generated for the wrong feature. Every section describes "Add vibe-kanban to the backlog" (a documentation-only BACKLOG.md change), but PR #23 is "feat(harness): add Lint() diagnostic method (ADR-0045 Phase 3 PR 1)" which adds Go source code to `internal/harness/`.
-- **evidence:** STP Feature Overview: "GH-23 adds a single backlog item to `BACKLOG.md` to track the review of vibe-kanban." Actual PR body: "Adds `Lint()` method to the `Harness` struct returning `[]Diagnostic`."
-- **remediation:** Regenerate the entire STP from scratch using the correct PR #23 source data. The feature is a Go library addition to the harness package implementing `Lint()` diagnostics as part of ADR-0045 Phase 3.
+- **rule:** N -- Link/Reference Validation
+- **description:** Enhancement and Feature Tracking links point to `https://github.com/fullsend-ai/fullsend/issues/23` but the actual repository (per PR data) is `guyoron1/fullsend`. The links may resolve to the wrong resource or a non-existent page.
+- **evidence:** STP Metadata: `[GH-23](https://github.com/fullsend-ai/fullsend/issues/23)`. PR URL from GitHub API: `https://github.com/guyoron1/fullsend/pull/23`.
+- **remediation:** Update Enhancement(s) and Feature Tracking links to `https://github.com/guyoron1/fullsend/issues/23` to match the actual repository. Also update the Epic Tracking link to `https://github.com/guyoron1/fullsend/issues/2326`.
 - **actionable:** true
 
 ### Finding F-002
-- **finding_id:** D2-COV-001
-- **severity:** CRITICAL
-- **dimension:** Requirement Coverage
-- **rule:** Coverage Rate
-- **description:** Acceptance criteria coverage is 0% (0/5). The STP contains zero test scenarios. All 5 requirements from the PR are uncovered.
-- **evidence:** STP Section III: "No test scenarios are required for GH-23." PR test plan lists 5 checked verification items and 6 subtests in `lint_test.go`.
-- **remediation:** Add test scenarios for: (1) `Lint()` returns warning when role is missing, (2) `Lint()` returns nil when role is present, (3) `Diagnostic.String()` formats warning severity correctly, (4) `Diagnostic.String()` formats error severity correctly, (5) `Lint()` returns nil not empty slice for clean harness.
-- **actionable:** true
-
-### Finding F-003
-- **finding_id:** D5-SCOPE-001
-- **severity:** CRITICAL
-- **dimension:** Scope Boundary Assessment
-- **rule:** Scope Accuracy
-- **description:** Scope claims the change is "entirely out of scope for functional testing" and "modifies only BACKLOG.md." The PR does not modify BACKLOG.md. It adds new Go source files to `internal/harness/` which is a core in-scope FullSend component.
-- **evidence:** STP Scope: "PR #23 modifies only `BACKLOG.md`, a project management artifact." PR diff shows: `internal/harness/lint.go` (new), `internal/harness/lint_test.go` (new), `docs/plans/adr-0045-forge-portable-harness-phase3.md` (new).
-- **remediation:** Rewrite scope to cover the `Lint()` diagnostic method, `Diagnostic` type, and severity formatting in the harness package. Include testing goals for verifying warning behavior for missing role field and verifying `Validate()` is unchanged.
-- **actionable:** true
-
-### Finding F-004
-- **finding_id:** D4-RISK-001
-- **severity:** CRITICAL
-- **dimension:** Risk & Limitation Accuracy
-- **rule:** Limitation Accuracy
-- **description:** Known Limitations falsely states "This is a documentation-only change. No functional testing is possible or required." The PR adds Go code with a public API (`Lint()` method) and the developer has written 6 passing tests.
-- **evidence:** STP Known Limitations: "No functional testing is possible or required." PR test plan: "go test -v -run TestLint ./internal/harness/ -- all 6 subtests pass" with "100% coverage on lint.go."
-- **remediation:** Replace Known Limitations with actual limitations of the feature, such as: "Lint() is pure library code with no callers yet (callers added in Phase 3 PR 3)" and "Only one lint rule implemented (missing role); future rules are not covered by this STP."
-- **actionable:** true
-
-### Finding F-005
-- **finding_id:** D1-O-001
-- **severity:** CRITICAL
-- **dimension:** Rule Compliance
-- **rule:** O -- Untestable Aspects Documentation
-- **description:** The STP claims the entire feature is untestable, but the PR demonstrates 100% code coverage with 6 passing subtests. The feature is fully testable.
-- **evidence:** STP: "No testable product behavior is introduced or modified by this change." PR: "100% code coverage on `lint.go`. All existing tests pass."
-- **remediation:** Remove the untestability claim. Document actual testability: the `Lint()` method and `Diagnostic` type are fully testable via Go unit tests with the standard `testing` package and testify assertions.
-- **actionable:** true
-
-### Finding F-006
-- **finding_id:** D6-STRAT-001
-- **severity:** CRITICAL
-- **dimension:** Test Strategy Appropriateness
-- **rule:** Strategy Classification
-- **description:** Functional Testing and Automation Testing are both unchecked. The PR adds a new public Go method with defined behavioral contracts. Both must be checked.
-- **evidence:** STP Test Strategy: all items marked "Not applicable." PR adds `Harness.Lint()` with specific behavior: returns `[]Diagnostic` with warning when role is empty, returns nil when no issues found.
-- **remediation:** Check Functional Testing with sub-item: "Validates that Lint() correctly identifies missing role field and returns appropriate Diagnostic." Check Automation Testing with sub-item: "Go unit tests using testing + testify framework, targeting 100% coverage on lint.go."
-- **actionable:** true
-
-### Finding F-007
-- **finding_id:** D1-B-001
-- **severity:** CRITICAL
-- **dimension:** Rule Compliance
-- **rule:** B -- Section I Meta-Checklist
-- **description:** All Section I checkboxes are checked with sub-items describing a fabricated documentation-only change. The sub-item content is factually wrong for the actual PR.
-- **evidence:** STP I.1 Review Requirements: "GH-23 has no formal requirements." Actual PR has detailed requirements: `Lint()` method signature, `DiagnosticSeverity` enum, `Diagnostic` struct fields, nil-return convention.
-- **remediation:** Regenerate Section I with sub-items reflecting the actual harness `Lint()` feature: requirements from the Phase 3 plan document, testability of Go library code, acceptance criteria from PR body.
-- **actionable:** true
-
-### Finding F-008
-- **finding_id:** D7-META-001
-- **severity:** MAJOR
-- **dimension:** Metadata Accuracy
-- **rule:** Title Accuracy
-- **description:** STP title "Add vibe-kanban to the backlog" does not match PR #23 title "feat(harness): add Lint() diagnostic method (ADR-0045 Phase 3 PR 1)".
-- **evidence:** STP header: "Add vibe-kanban to the backlog - Quality Engineering Plan." PR title: "feat(harness): add Lint() diagnostic method (ADR-0045 Phase 3 PR 1)."
-- **remediation:** Change title to "Add Lint() Diagnostic Method to Harness (ADR-0045 Phase 3) - Quality Engineering Plan" or similar reflecting the actual feature.
-- **actionable:** true
-
-### Finding F-009
-- **finding_id:** D7-META-002
-- **severity:** MAJOR
-- **dimension:** Metadata Accuracy
-- **rule:** Epic Tracking
-- **description:** Epic Tracking states "None (standalone issue)" but the PR body explicitly says "Part of #2326."
-- **evidence:** STP: "Epic Tracking: None (standalone issue)." PR body: "Part of #2326."
-- **remediation:** Update Epic Tracking to reference issue #2326 with link `https://github.com/fullsend-ai/fullsend/issues/2326`.
-- **actionable:** true
-
-### Finding F-010
-- **finding_id:** D6-STRAT-002
-- **severity:** MAJOR
-- **dimension:** Test Strategy Appropriateness
-- **rule:** Regression Classification
-- **description:** Regression Testing is unchecked but the PR modifies ADR-0045 documentation and adds new code alongside existing `Validate()` method. Regression should verify `Validate()` behavior is unchanged.
-- **evidence:** PR description: "No existing files modified. `Validate()` is unchanged. No callers of `Lint()` are added yet." Despite no modification, regression testing should verify this claim.
-- **remediation:** Check Regression Testing with sub-item: "Verify existing Validate() method behavior is unchanged by the addition of Lint(). All existing harness tests must continue to pass."
-- **actionable:** true
-
-### Finding F-011
 - **finding_id:** D3-QUAL-001
 - **severity:** MAJOR
 - **dimension:** Scenario Quality
-- **rule:** Scenario Existence
-- **description:** Zero test scenarios exist. For a feature with 5 identifiable requirements, a minimum of 5-7 scenarios (positive and negative) should be present.
-- **evidence:** STP Section III: "No test scenarios are required for GH-23."
-- **remediation:** Add scenarios covering: (P0) Lint() warns on missing role, (P0) Lint() returns nil for valid harness, (P1) Diagnostic.String() formats warning correctly, (P1) Diagnostic.String() formats error correctly, (P1) Lint() returns nil not empty slice, (P2) Unknown severity fallback formatting, (P2) Lint() on harness with role and slug returns nil.
+- **rule:** Scenario Specificity
+- **description:** Scenario 7 (regression) is a meta-test that says "Run all existing harness tests via make go-test; verify all pass." This describes a CI execution step rather than a specific behavioral verification. A stronger scenario would specify what Validate() behaviors must be preserved.
+- **evidence:** STP Section III, Scenario 7: "Run all existing harness tests via make go-test; verify all pass without modification, confirming no regression from Lint() addition."
+- **remediation:** Rewrite to: "Verify that Harness.Validate() continues to return errors for structurally invalid harnesses (e.g., missing required fields) and returns nil for valid harnesses, unchanged by the addition of Lint()."
 - **actionable:** true
 
-### Finding F-012
-- **finding_id:** D4-RISK-002
+### Finding F-003
+- **finding_id:** D2-COV-001
 - **severity:** MAJOR
-- **dimension:** Risk & Limitation Accuracy
-- **rule:** Missing Limitations
-- **description:** The STP does not document actual known limitations of the Lint() feature that are described in the PR and Phase 3 plan.
-- **evidence:** Phase 3 plan: "No callers -- pure library code." "Future lint rules (not in this PR)." These are real limitations not captured.
-- **remediation:** Add Known Limitations: (1) "Lint() has no callers yet; CLI integration is in Phase 3 PR 3." (2) "Only one lint rule (missing role) is implemented; future rules (missing slug, forge section completeness) are out of scope for this PR."
+- **dimension:** Requirement Coverage
+- **rule:** Scenario Specificity (Regression)
+- **description:** The regression scenario (Scenario 7) does not specify which Validate() behaviors must be preserved. While all 5 functional acceptance criteria are covered by Scenarios 1-6, the regression requirement lacks behavioral specificity.
+- **evidence:** PR body: "No existing files modified. `Validate()` is unchanged." STP Scenario 7 only says "run make go-test."
+- **remediation:** Enhance the regression scenario to specify: "Verify Validate() returns errors for missing required fields and returns nil for valid Harness structs, confirming no behavioral change from the Lint() addition."
 - **actionable:** true
 
-### Finding F-013
+### Finding F-004
+- **finding_id:** D1-A-001
+- **severity:** MINOR
+- **dimension:** Rule Compliance
+- **rule:** A -- Abstraction Level
+- **description:** Feature Overview and Scope reference internal file path `internal/harness/lint.go`. While this is borderline for a library-level feature (the internal path IS the feature), user-facing language would describe the component as "the harness package" without file paths.
+- **evidence:** STP Feature Overview: "in `internal/harness/lint.go`." STP Scope: "added to the `Harness` struct in `internal/harness/lint.go`."
+- **remediation:** Consider replacing file paths with component-level references: "in the harness package" instead of "in `internal/harness/lint.go`." The Feature Overview may retain one file path reference for precision, but Scope should use abstracted language.
+- **actionable:** true
+
+### Finding F-005
 - **finding_id:** D1-G-001
 - **severity:** MINOR
 - **dimension:** Rule Compliance
 - **rule:** G -- Testing Tools
-- **description:** Testing Tools section is "N/A" but should reference the Go testing framework and testify assertions used for this feature.
-- **evidence:** STP Testing Tools: "N/A." `go.yaml` config: framework "testing", testify assertions.
-- **remediation:** Since Go testing + testify are standard tools for this project, "N/A" is actually acceptable per Rule G (standard tools should not be listed). However, if non-standard test helpers are needed, they should be listed here. No change required if standard-only.
+- **description:** Testing Tools section lists Go `testing` package and testify, which are standard tools per `go.yaml` config. Per Rule G, standard tools should not be listed.
+- **evidence:** STP Section II.3.1: "Go `testing` package with testify assertions." `go.yaml`: `framework: "testing"`, testify in `imports.test_framework`.
+- **remediation:** No change strictly required — listing standard tools is informational and does not harm the STP. Optionally, reduce to "Standard project tools (see go.yaml)" or leave as-is for clarity.
+- **actionable:** false
+
+### Finding F-006
+- **finding_id:** D7-META-001
+- **severity:** MINOR
+- **dimension:** Metadata Accuracy
+- **rule:** Link Consistency
+- **description:** Epic Tracking link format `[#2326](https://github.com/fullsend-ai/fullsend/issues/2326)` uses `#2326` as display text. While functional, the display text should match the Jira ID convention used elsewhere in the STP or include a descriptive label.
+- **evidence:** STP: `[#2326](https://github.com/fullsend-ai/fullsend/issues/2326) (ADR-0045 implementation)`.
+- **remediation:** Minor formatting preference. Current format is acceptable with the parenthetical description. No change required.
 - **actionable:** false
 
 ---
 
 ## Recommendations
 
-1. **[CRITICAL] F-001:** Regenerate the entire STP from scratch using the correct source data (PR #23: feat(harness): add Lint() diagnostic method). -- **Remediation:** Re-run the STP builder with correct PR data. The feature is a Go library addition to `internal/harness/` implementing `Lint()` diagnostics for ADR-0045 Phase 3. -- **Actionable:** yes
-2. **[CRITICAL] F-002:** Add test scenarios covering all 5 requirements from the PR. -- **Remediation:** Create 5-7 scenarios in Section III for `Lint()` behavior, `Diagnostic` formatting, and nil-return convention. -- **Actionable:** yes
-3. **[CRITICAL] F-003:** Rewrite scope to cover the actual harness `Lint()` feature. -- **Remediation:** Replace "documentation-only" scope with in-scope testing of `Lint()` method behavior and `Diagnostic` type. -- **Actionable:** yes
-4. **[CRITICAL] F-004:** Replace fabricated limitations with actual feature limitations. -- **Remediation:** Document: no callers yet (PR 3), only one lint rule implemented. -- **Actionable:** yes
-5. **[CRITICAL] F-005:** Remove false untestability claim. -- **Remediation:** State that the feature is fully testable via Go unit tests with 100% coverage achievable. -- **Actionable:** yes
-6. **[CRITICAL] F-006:** Check Functional Testing and Automation Testing in strategy. -- **Remediation:** Mark both as checked with feature-specific sub-items. -- **Actionable:** yes
-7. **[CRITICAL] F-007:** Regenerate Section I checkboxes with correct sub-items. -- **Remediation:** Describe actual requirements, testability, and acceptance criteria from PR body. -- **Actionable:** yes
-8. **[MAJOR] F-008:** Fix STP title to match actual feature. -- **Remediation:** Use "Add Lint() Diagnostic Method to Harness (ADR-0045 Phase 3)". -- **Actionable:** yes
-9. **[MAJOR] F-009:** Update Epic Tracking to reference #2326. -- **Remediation:** Add link to parent issue. -- **Actionable:** yes
-10. **[MAJOR] F-010:** Check Regression Testing in strategy. -- **Remediation:** Add sub-item about verifying Validate() is unchanged. -- **Actionable:** yes
-11. **[MAJOR] F-011:** Add 5-7 test scenarios. -- **Remediation:** Cover positive, negative, and edge cases for Lint() and Diagnostic. -- **Actionable:** yes
-12. **[MAJOR] F-012:** Document actual feature limitations from Phase 3 plan. -- **Remediation:** Add limitations about no callers and single lint rule. -- **Actionable:** yes
-13. **[MINOR] F-013:** Testing Tools "N/A" is acceptable for standard tools. -- **Remediation:** No change required unless non-standard helpers are needed. -- **Actionable:** no
+1. **[MAJOR] F-001:** Enhancement links point to wrong GitHub organization. -- **Remediation:** Update all links from `fullsend-ai/fullsend` to `guyoron1/fullsend` to match the actual repository. -- **Actionable:** yes
+2. **[MAJOR] F-002:** Regression scenario is a meta-test rather than a behavioral verification. -- **Remediation:** Rewrite Scenario 7 to specify concrete Validate() behaviors that must be preserved. -- **Actionable:** yes
+3. **[MAJOR] F-003:** Regression requirement lacks behavioral specificity in coverage mapping. -- **Remediation:** Same fix as F-002 — enhancing the regression scenario addresses both findings. -- **Actionable:** yes
+4. **[MINOR] F-004:** Internal file paths in Feature Overview and Scope. -- **Remediation:** Use component-level references where possible. -- **Actionable:** yes
+5. **[MINOR] F-005:** Standard testing tools listed in Section II.3.1. -- **Remediation:** No change required. -- **Actionable:** no
+6. **[MINOR] F-006:** Epic Tracking link display text format. -- **Remediation:** No change required. -- **Actionable:** no
 
 ---
 
@@ -300,9 +233,9 @@
 |:-------|:-------|
 | Jira source data available | NO (GitHub Issue/PR used as substitute) |
 | Linked issues fetched | PARTIAL (PR body references #2326 but not fetched) |
-| PR data referenced in STP | NO (STP references wrong PR content) |
-| All STP sections present | YES (structurally complete, content is wrong) |
+| PR data referenced in STP | YES (STP accurately reflects PR #23 content) |
+| All STP sections present | YES |
 | Template comparison possible | NO (no STP template file found) |
-| Project review rules loaded | YES (dynamically extracted, default_ratio=0.40) |
+| Project review rules loaded | NO (no review_rules.yaml; using general rules only) |
 
-**Confidence rationale:** Confidence is MEDIUM. GitHub PR data was available as a substitute for Jira, providing reliable source-of-truth for the actual feature. However, Jira was not available for formal acceptance criteria extraction, the parent issue #2326 was not fetched, and no STP template was available for structural comparison. Review precision is moderately reduced: 40% of review rules use generic defaults. Consider enabling `repo_files_fetch` in project config or adding a `review_rules.yaml` to improve precision.
+**Confidence rationale:** Confidence is MEDIUM. GitHub PR data was available as a reliable substitute for Jira, providing accurate source-of-truth for the actual feature. The STP content now correctly describes the `Lint()` diagnostic method feature from PR #23. However, Jira was not available for formal acceptance criteria extraction, the parent issue #2326 was not fetched for epic-level completeness validation, no STP template was available for structural comparison, and no project-specific review rules were loaded. Consider enabling `repo_files_fetch` in project config or adding a `review_rules.yaml` to improve review precision.
