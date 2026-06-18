@@ -1,0 +1,17 @@
+status: success
+jira_id: GH-28
+file_path: /sandbox/workspace/output/GH-28_test_plan.md
+test_counts:
+  unit_tests: 15
+  functional: 1
+  end_to_end: 0
+  total: 16
+validation:
+  passed: 17
+  failed: 0
+  warnings: 1
+pr_analyzed: "https://github.com/guyoron1/fullsend/pull/29"
+lsp_calls: 5
+files_analyzed:
+  - internal/sandbox/sandbox.go
+  - internal/cli/run.go
