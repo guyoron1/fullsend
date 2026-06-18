@@ -4,9 +4,9 @@
 
 ### **Metadata & Tracking**
 
-- **Enhancement(s):** [GH-30](https://github.com/guyoron1/fullsend/issues/30)
+- **Bug Fix:** [GH-30](https://github.com/guyoron1/fullsend/issues/30)
 - **Feature Tracking:** [GH-30](https://github.com/guyoron1/fullsend/issues/30)
-- **Epic Tracking:** GH-30 (standalone bug fix)
+- **Epic Tracking:** GH-30 (standalone defect — no parent epic)
 - **QE Owner(s):** TBD
 - **Owning SIG:** N/A
 - **Participating SIGs:** None
@@ -54,7 +54,7 @@ technology, and testability before formal test planning.
 
 - [ ] **Developer Handoff/QE Kickoff**
   - A meeting where Dev/Arch walked QE through the design, architecture, and implementation details. **Critical for identifying untestable aspects early.**
-  - PR #33 is self-explanatory: a mechanical replacement of `/tmp/repo` with `t.TempDir()` across 10 test functions.
+  - [PR #33](https://github.com/guyoron1/fullsend/pull/33) is self-explanatory: a mechanical replacement of `/tmp/repo` with `t.TempDir()` across 10 test functions.
 - [ ] **Technology Challenges**
   - Identified potential testing challenges related to the underlying technology.
   - No technology challenges. `t.TempDir()` is a standard Go testing library function available since Go 1.15.
@@ -82,7 +82,7 @@ Testing verifies that replacing hardcoded `/tmp/repo` with `t.TempDir()` in `int
 
 - **P0:** Verify all affected `runAgent` tests consistently reach their expected error assertions (openshell check or harness-not-found) without tar failures
 - **P0:** Verify test isolation — each test uses its own temporary directory independent of host filesystem state
-- **P1:** Verify `sandbox.UploadDir` correctly handles valid directory paths for tarball creation
+- **P1:** Verify OrgConfig-variant tests (HarnessLoadWithOrgConfig, MalformedOrgConfig, WithURLBase) reach expected error assertions consistently
 
 **Quality Goals:**
 
@@ -93,16 +93,17 @@ Testing verifies that replacing hardcoded `/tmp/repo` with `t.TempDir()` in `int
 - [ ] **Production `runAgent` behavior** -- *Rationale:* No production code is changed; only test setup code is modified -- *PM/Lead Agreement:* N/A
 - [ ] **Sandbox creation and execution** -- *Rationale:* Tests never reach sandbox creation; they fail at the openshell availability check by design -- *PM/Lead Agreement:* N/A
 - [ ] **Other test files in `internal/cli/`** -- *Rationale:* Only `run_test.go` contains the hardcoded path; other test files are unaffected -- *PM/Lead Agreement:* N/A
+- [ ] **UploadDir error handling for missing directories** -- *Rationale:* UploadDir error handling is pre-existing behavior unaffected by this fix; the fix only changes test setup so UploadDir receives a valid path -- *PM/Lead Agreement:* N/A
 
 #### **2. Test Strategy**
 
 **Functional**
 
-- [ ] **Functional Testing** -- Validates that the feature works according to specified requirements and user stories
+- [x] **Functional Testing** -- Validates that the feature works according to specified requirements and user stories
   - *Details:* Run the 10 affected test functions to confirm they reach expected error paths. Applicable.
-- [ ] **Automation Testing** -- Confirms test automation plan is in place for CI and regression coverage (all tests are expected to be automated)
+- [x] **Automation Testing** -- Confirms test automation plan is in place for CI and regression coverage (all tests are expected to be automated)
   - *Details:* All tests are already automated Go unit tests run via `go test`. No additional automation needed. Applicable.
-- [ ] **Regression Testing** -- Verifies that new changes do not break existing functionality
+- [x] **Regression Testing** -- Verifies that new changes do not break existing functionality
   - *Details:* Run `go test ./internal/cli/ -count=1` to confirm no regressions in the full test suite. Applicable.
 
 **Non-Functional**
@@ -139,9 +140,9 @@ Testing verifies that replacing hardcoded `/tmp/repo` with `t.TempDir()` in `int
 - **Cluster Topology:** N/A (no cluster required)
 - **Platform & Product Version(s):** Go 1.23+, any OS with POSIX temp directory support
 - **CPU Virtualization:** N/A
-- **Compute Resources:** Standard developer workstation or CI runner
+- **Compute Resources:** Any machine with Go 1.23+ and a writable temp directory (the fix relies on `t.TempDir()` which requires a functional OS temp directory)
 - **Special Hardware:** N/A
-- **Storage:** Standard filesystem with temp directory support
+- **Storage:** Filesystem with writable `/tmp` (or OS-equivalent) for `t.TempDir()` directory creation during test execution
 - **Network:** N/A (no network access required)
 - **Required Operators:** N/A
 - **Platform:** GitHub Actions (CI), Linux/macOS (local)
@@ -159,12 +160,12 @@ The following conditions must be met before testing can begin:
 
 - [ ] Requirements and design documents are **approved and merged**
 - [ ] Test environment can be **set up and configured** (see Section II.3 - Test Environment)
-- [ ] PR #33 changes are available on the test branch
+- [ ] [PR #33](https://github.com/guyoron1/fullsend/pull/33) changes are available on the test branch
 
 #### **5. Risks**
 
 - [ ] **Timeline/Schedule**
-  - Risk: N/A. Fix is a single-file, mechanical change already implemented in PR #33.
+  - Risk: N/A. Fix is a single-file, mechanical change already implemented in [PR #33](https://github.com/guyoron1/fullsend/pull/33).
   - Mitigation: N/A.
 - [ ] **Test Coverage**
   - Risk: Low. The fix touches 10 test functions; all must be validated.
@@ -218,8 +219,8 @@ This section links requirements to test coverage, enabling reviewers to verify a
   - *Tier:* Functional
   - *Priority:* P0
 
-- **[GH-30]** -- Test isolation across parallel execution
-  - *Test Scenario:* Verify concurrent test runs do not share or collide on temp directories
+- **[GH-30]** -- Each test function receives its own temporary directory
+  - *Test Scenario:* Verify that all 10 affected test functions each create and use a unique temporary directory via `t.TempDir()`, confirming the fix was applied consistently across all functions
   - *Tier:* Functional
   - *Priority:* P1
 
@@ -228,8 +229,8 @@ This section links requirements to test coverage, enabling reviewers to verify a
   - *Tier:* Functional
   - *Priority:* P1
 
-- **[GH-30]** -- UploadDir reports clear error for missing directory
-  - *Test Scenario:* Verify UploadDir fails gracefully with descriptive error for non-existent path
+- **[GH-30]** -- OrgConfig-variant tests reach openshell assertion without tar failure
+  - *Test Scenario:* Verify HarnessLoadWithOrgConfig, MalformedOrgConfig, and WithURLBase tests reach expected openshell error paths consistently
   - *Tier:* Functional
   - *Priority:* P1
 
