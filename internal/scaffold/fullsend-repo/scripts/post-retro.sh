@@ -134,8 +134,15 @@ if [[ "${COMMENT_RC}" -ne 0 ]]; then
   # Treat 403 and 401 as non-fatal — these are permanent permission errors
   # (e.g., "Resource not accessible by integration") that retrying won't fix.
   # The core deliverables (analysis + proposal issues) were already completed.
-  if echo "${COMMENT_OUTPUT}" | grep -qE 'HTTP (403|401)'; then
-    echo "::warning::Failed to post summary comment (HTTP auth error, non-fatal): ${COMMENT_OUTPUT}"
+  if echo "${COMMENT_OUTPUT}" | grep -qiE 'HTTP (403|401)'; then
+    # Sanitize for GHA: replace :: and URL-encoded newlines to prevent
+    # workflow command injection (matches extract-transcript-error.sh pattern).
+    SAFE_OUTPUT="${COMMENT_OUTPUT//::/ :}"
+    SAFE_OUTPUT="${SAFE_OUTPUT//%0A/ }"
+    SAFE_OUTPUT="${SAFE_OUTPUT//%0a/ }"
+    SAFE_OUTPUT="${SAFE_OUTPUT//%0D/ }"
+    SAFE_OUTPUT="${SAFE_OUTPUT//%0d/ }"
+    echo "::warning::Failed to post summary comment (HTTP auth error, non-fatal): ${SAFE_OUTPUT}"
   else
     echo "ERROR: failed to post summary comment: ${COMMENT_OUTPUT}"
     exit 1
