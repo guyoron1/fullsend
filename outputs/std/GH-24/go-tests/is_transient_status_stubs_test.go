@@ -27,6 +27,8 @@ Preconditions:
 func TestIsTransientStatus_Only404And409(t *testing.T) {
 
 	/*
+	Preconditions: None
+
 	Steps:
 	    1. Call isTransientStatus(404)
 
@@ -38,6 +40,8 @@ func TestIsTransientStatus_Only404And409(t *testing.T) {
 	})
 
 	/*
+	Preconditions: None
+
 	Steps:
 	    1. Call isTransientStatus(409)
 
@@ -50,6 +54,8 @@ func TestIsTransientStatus_Only404And409(t *testing.T) {
 
 	/*
 	[NEGATIVE]
+	Preconditions: None
+
 	Steps:
 	    1. Call isTransientStatus for each 5xx code (500, 502, 503, 504)
 
