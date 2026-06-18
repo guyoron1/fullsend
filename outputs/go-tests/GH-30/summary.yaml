@@ -1,0 +1,31 @@
+status: success
+jira_id: GH-30
+std_source: outputs/std/GH-30/GH-30_test_description.yaml
+languages:
+  - language: go
+    framework: testing
+    assertion_library: testify
+    build_tags:
+      - e2e
+    files:
+      - agent_run_tempdir_test.go
+    test_count: 8
+    scenarios_covered:
+      - TS-GH-30-001
+      - TS-GH-30-002
+      - TS-GH-30-003
+      - TS-GH-30-004
+      - TS-GH-30-005
+      - TS-GH-30-006
+      - TS-GH-30-007
+      - TS-GH-30-008
+total_test_count: 8
+total_std_scenarios: 8
+coverage: "8/8 (100%)"
+lsp_patterns_used: false
+notes:
+  - "STD specifies 0 e2e/Python scenarios; only Go tests generated"
+  - "Tier 2 (Python/pytest) enabled in config but no Python scenarios in STD"
+  - "All 8 scenarios are Tier 1 Go tests (P0: 3, P1: 5)"
+  - "Tests use os/exec to run go test subprocesses for integration validation"
+  - "Source repo not available for LSP analysis; pattern library fallback used"
