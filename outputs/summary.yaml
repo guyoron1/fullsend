@@ -1,0 +1,7 @@
+status: success
+jira_id: GH-25
+file_path: /sandbox/workspace/output/GH-25_test_plan.md
+test_counts:
+  tier1: 30
+  tier2: 0
+  total: 30
