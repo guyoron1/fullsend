@@ -14,12 +14,6 @@ document_metadata:
     file: "outputs/stp/GH-28/GH-28_test_plan.md"
     version: "v1"
     sections_covered: "Section III - Requirements-to-Tests Mapping"
-  related_prs:
-    - repo: "guyoron1/fullsend"
-      pr_number: 29
-      url: "https://github.com/guyoron1/fullsend/pull/29"
-      title: "EnsureProvider idempotency fix"
-      merged: true
   total_scenarios: 16
   functional_count: 16
   e2e_count: 0
@@ -58,13 +52,13 @@ common_preconditions:
   cluster_configuration:
     topology: "N/A (unit tests)"
     cpu_features: "Standard"
-    storage: "Local filesystem (t.TempDir)"
+    storage: "Local filesystem (GinkgoT().TempDir)"
     network: "N/A"
   rbac_requirements: []
   test_environment_notes: |
-    All tests use mocked openshell binaries via fake shell scripts in t.TempDir().
+    All tests use mocked openshell binaries via fake shell scripts in GinkgoT().TempDir().
     No real openshell CLI, gateway, or cluster is required.
-    Tests manipulate PATH via t.Setenv to inject mock binaries.
+    Tests manipulate PATH via GinkgoT().Setenv to inject mock binaries.
 
 scenarios:
   - scenario_id: "001"
@@ -153,7 +147,7 @@ scenarios:
       setup:
         - step_id: "SETUP-01"
           action: "Create temporary directory for mock binaries"
-          command: "t.TempDir()"
+          command: "GinkgoT().TempDir()"
           validation: "Directory exists"
         - step_id: "SETUP-02"
           action: "Write mock openshell script that returns AlreadyExists on create"
@@ -161,7 +155,7 @@ scenarios:
           validation: "Script is executable"
         - step_id: "SETUP-03"
           action: "Set PATH to include mock binary directory"
-          command: "t.Setenv(\"PATH\", tmpDir)"
+          command: "GinkgoT().Setenv(\"PATH\", tmpDir)"
           validation: "PATH updated"
       test_execution:
         - step_id: "TEST-01"
@@ -170,7 +164,7 @@ scenarios:
           validation: "Function returns nil error"
       cleanup:
         - step_id: "CLEANUP-01"
-          action: "Cleanup handled by t.TempDir and t.Setenv"
+          action: "Cleanup handled by GinkgoT().TempDir and GinkgoT().Setenv"
           command: "Automatic via Go test cleanup"
 
     assertions:
@@ -291,7 +285,7 @@ scenarios:
       cleanup:
         - step_id: "CLEANUP-01"
           action: "Cleanup temporary directory"
-          command: "Automatic via t.TempDir()"
+          command: "Automatic via GinkgoT().TempDir() + DeferCleanup()"
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -366,7 +360,24 @@ scenarios:
         validation: "Script handles multiple AlreadyExists cycles"
 
     test_data:
-      resource_definitions: []
+      resource_definitions:
+        - name: "mock_openshell_repeated_cycles"
+          type: "Shell script"
+          yaml: |
+            #!/bin/bash
+            STATE_FILE="$TMPDIR/openshell_create_count"
+            if [[ "$1" == "provider" && "$2" == "create" ]]; then
+              COUNT=$(cat "$STATE_FILE" 2>/dev/null || echo 0)
+              if [ "$COUNT" -gt 0 ]; then
+                echo "Error: AlreadyExists" >&2
+                exit 1
+              fi
+              echo $((COUNT + 1)) > "$STATE_FILE"
+              exit 0
+            elif [[ "$1" == "provider" && "$2" == "delete" ]]; then
+              echo 0 > "$STATE_FILE"
+              exit 0
+            fi
 
     test_steps:
       setup:
@@ -377,12 +388,12 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Call EnsureProvider three times in sequence"
-          command: "Loop: EnsureProvider(ctx, providerName, creds) x3"
+          command: "for i := 0; i < 3; i++ { err = EnsureProvider(ctx, providerName, creds); Expect(err).NotTo(HaveOccurred()) }"
           validation: "All three calls return nil error"
       cleanup:
         - step_id: "CLEANUP-01"
           action: "Cleanup temporary directory"
-          command: "Automatic via t.TempDir()"
+          command: "Automatic via GinkgoT().TempDir() + DeferCleanup()"
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -462,7 +473,13 @@ scenarios:
         validation: "Script output includes credential strings"
 
     test_data:
-      resource_definitions: []
+      resource_definitions:
+        - name: "mock_openshell_cred_leak"
+          type: "Shell script"
+          yaml: |
+            #!/bin/bash
+            echo "Error: failed to create provider with secret=$SECRET_VALUE" >&2
+            exit 1
 
     test_steps:
       setup:
@@ -482,7 +499,7 @@ scenarios:
       cleanup:
         - step_id: "CLEANUP-01"
           action: "Cleanup temporary directory"
-          command: "Automatic via t.TempDir()"
+          command: "Automatic via GinkgoT().TempDir() + DeferCleanup()"
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -568,7 +585,24 @@ scenarios:
         validation: "Script follows expected call sequence"
 
     test_data:
-      resource_definitions: []
+      resource_definitions:
+        - name: "mock_openshell_recreate_cred_leak"
+          type: "Shell script"
+          yaml: |
+            #!/bin/bash
+            STATE_FILE="$TMPDIR/openshell_state"
+            if [[ "$1" == "provider" && "$2" == "create" ]]; then
+              if [ ! -f "$STATE_FILE" ]; then
+                touch "$STATE_FILE"
+                echo "Error: AlreadyExists" >&2
+                exit 1
+              else
+                echo "Error: recreate failed with secret=$SECRET_VALUE" >&2
+                exit 1
+              fi
+            elif [[ "$1" == "provider" && "$2" == "delete" ]]; then
+              exit 0
+            fi
 
     test_steps:
       setup:
@@ -588,7 +622,7 @@ scenarios:
       cleanup:
         - step_id: "CLEANUP-01"
           action: "Cleanup temporary directory"
-          command: "Automatic via t.TempDir()"
+          command: "Automatic via GinkgoT().TempDir() + DeferCleanup()"
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -662,10 +696,19 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Go unit test with mocked openshell"
 
-    specific_preconditions: []
+    specific_preconditions:
+      - name: "Mock openshell echoing multiple credentials"
+        requirement: "Script that includes all credential values (client_id, client_secret, token) in error output"
+        validation: "Script output contains all secret strings"
 
     test_data:
-      resource_definitions: []
+      resource_definitions:
+        - name: "mock_openshell_multi_cred_error"
+          type: "Shell script"
+          yaml: |
+            #!/bin/bash
+            echo "Error: failed to create provider with client_id=$CLIENT_ID client_secret=$CLIENT_SECRET token=$TOKEN" >&2
+            exit 1
 
     test_steps:
       setup:
@@ -685,7 +728,7 @@ scenarios:
       cleanup:
         - step_id: "CLEANUP-01"
           action: "Cleanup temporary directory"
-          command: "Automatic via t.TempDir()"
+          command: "Automatic via GinkgoT().TempDir() + DeferCleanup()"
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -756,10 +799,19 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Go unit test with mocked openshell"
 
-    specific_preconditions: []
+    specific_preconditions:
+      - name: "Mock openshell with generic error"
+        requirement: "Script that fails with error not containing AlreadyExists (e.g., permission denied)"
+        validation: "Script returns non-zero with generic error message"
 
     test_data:
-      resource_definitions: []
+      resource_definitions:
+        - name: "mock_openshell_generic_error"
+          type: "Shell script"
+          yaml: |
+            #!/bin/bash
+            echo "Error: permission denied for provider $3" >&2
+            exit 1
 
     test_steps:
       setup:
@@ -775,7 +827,7 @@ scenarios:
       cleanup:
         - step_id: "CLEANUP-01"
           action: "Cleanup temporary directory"
-          command: "Automatic via t.TempDir()"
+          command: "Automatic via GinkgoT().TempDir() + DeferCleanup()"
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -849,10 +901,22 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Go unit test with mocked openshell"
 
-    specific_preconditions: []
+    specific_preconditions:
+      - name: "Mock openshell with call logging and permission denied error"
+        requirement: "Script that logs all invocations to a file and returns permission denied error on create"
+        validation: "Log file created and contains invocation records"
 
     test_data:
-      resource_definitions: []
+      resource_definitions:
+        - name: "mock_openshell_permission_denied_with_log"
+          type: "Shell script"
+          yaml: |
+            #!/bin/bash
+            echo "$@" >> "$TMPDIR/call_log"
+            if [[ "$1" == "provider" && "$2" == "create" ]]; then
+              echo "Error: permission denied" >&2
+              exit 1
+            fi
 
     test_steps:
       setup:
@@ -872,7 +936,7 @@ scenarios:
       cleanup:
         - step_id: "CLEANUP-01"
           action: "Cleanup temporary directory"
-          command: "Automatic via t.TempDir()"
+          command: "Automatic via GinkgoT().TempDir() + DeferCleanup()"
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -941,10 +1005,24 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Go unit test with mocked openshell"
 
-    specific_preconditions: []
+    specific_preconditions:
+      - name: "Mock openshell with AlreadyExists and delete failure"
+        requirement: "Script returns AlreadyExists on create, failure on delete"
+        validation: "Script handles both create and delete commands"
 
     test_data:
-      resource_definitions: []
+      resource_definitions:
+        - name: "mock_openshell_delete_failure"
+          type: "Shell script"
+          yaml: |
+            #!/bin/bash
+            if [[ "$1" == "provider" && "$2" == "create" ]]; then
+              echo "Error: AlreadyExists: provider already exists" >&2
+              exit 1
+            elif [[ "$1" == "provider" && "$2" == "delete" ]]; then
+              echo "Error: failed to delete provider" >&2
+              exit 1
+            fi
 
     test_steps:
       setup:
@@ -964,7 +1042,7 @@ scenarios:
       cleanup:
         - step_id: "CLEANUP-01"
           action: "Cleanup temporary directory"
-          command: "Automatic via t.TempDir()"
+          command: "Automatic via GinkgoT().TempDir() + DeferCleanup()"
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -1037,10 +1115,24 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Go unit test with mocked openshell"
 
-    specific_preconditions: []
+    specific_preconditions:
+      - name: "Mock openshell with AlreadyExists and delete failure"
+        requirement: "Script returns AlreadyExists on create, failure on delete, with specific provider name"
+        validation: "Script handles create and delete with provider name context"
 
     test_data:
-      resource_definitions: []
+      resource_definitions:
+        - name: "mock_openshell_delete_failure_named"
+          type: "Shell script"
+          yaml: |
+            #!/bin/bash
+            if [[ "$1" == "provider" && "$2" == "create" ]]; then
+              echo "Error: AlreadyExists: provider $3 already exists" >&2
+              exit 1
+            elif [[ "$1" == "provider" && "$2" == "delete" ]]; then
+              echo "Error: failed to delete provider $3" >&2
+              exit 1
+            fi
 
     test_steps:
       setup:
@@ -1060,7 +1152,7 @@ scenarios:
       cleanup:
         - step_id: "CLEANUP-01"
           action: "Cleanup temporary directory"
-          command: "Automatic via t.TempDir()"
+          command: "Automatic via GinkgoT().TempDir() + DeferCleanup()"
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -1130,10 +1222,30 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Go unit test with mocked openshell"
 
-    specific_preconditions: []
+    specific_preconditions:
+      - name: "Mock openshell with AlreadyExists, delete success, recreate failure"
+        requirement: "Script returns AlreadyExists on first create, succeeds on delete, fails on second create"
+        validation: "Script follows 3-step state sequence"
 
     test_data:
-      resource_definitions: []
+      resource_definitions:
+        - name: "mock_openshell_recreate_failure"
+          type: "Shell script"
+          yaml: |
+            #!/bin/bash
+            STATE_FILE="$TMPDIR/openshell_state"
+            if [[ "$1" == "provider" && "$2" == "create" ]]; then
+              if [ ! -f "$STATE_FILE" ]; then
+                touch "$STATE_FILE"
+                echo "Error: AlreadyExists: provider already exists" >&2
+                exit 1
+              else
+                echo "Error: failed to recreate provider" >&2
+                exit 1
+              fi
+            elif [[ "$1" == "provider" && "$2" == "delete" ]]; then
+              exit 0
+            fi
 
     test_steps:
       setup:
@@ -1153,7 +1265,7 @@ scenarios:
       cleanup:
         - step_id: "CLEANUP-01"
           action: "Cleanup temporary directory"
-          command: "Automatic via t.TempDir()"
+          command: "Automatic via GinkgoT().TempDir() + DeferCleanup()"
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -1200,12 +1312,12 @@ scenarios:
       context:
         description: "when recreate fails"
       it:
-        description: "should include redacted secrets in error"
+        description: "should not include raw secret values in error"
         test_id_format: "[test_id:TS-GH-28-012]"
 
     code_structure: |
       Context("when recreate fails", Ordered, func() {
-        It("[test_id:TS-GH-28-012] should include redacted secrets in error", func() {
+        It("[test_id:TS-GH-28-012] should not include raw secret values in error", func() {
           // Verify recreate error has credentials redacted
         })
       })
@@ -1226,11 +1338,32 @@ scenarios:
       test_type: "Functional"
       scope: "Single-component"
       automation_approach: "Go unit test with mocked openshell"
+      negative: true
 
-    specific_preconditions: []
+    specific_preconditions:
+      - name: "Mock openshell with recreate failure containing secrets"
+        requirement: "Script returns AlreadyExists on create, succeeds on delete, fails on recreate with credentials in output"
+        validation: "Recreate error output contains secret strings"
 
     test_data:
-      resource_definitions: []
+      resource_definitions:
+        - name: "mock_openshell_recreate_secret_leak"
+          type: "Shell script"
+          yaml: |
+            #!/bin/bash
+            STATE_FILE="$TMPDIR/openshell_state"
+            if [[ "$1" == "provider" && "$2" == "create" ]]; then
+              if [ ! -f "$STATE_FILE" ]; then
+                touch "$STATE_FILE"
+                echo "Error: AlreadyExists" >&2
+                exit 1
+              else
+                echo "Error: recreate failed secret=$SECRET_VALUE token=$TOKEN" >&2
+                exit 1
+              fi
+            elif [[ "$1" == "provider" && "$2" == "delete" ]]; then
+              exit 0
+            fi
 
     test_steps:
       setup:
@@ -1250,7 +1383,7 @@ scenarios:
       cleanup:
         - step_id: "CLEANUP-01"
           action: "Cleanup temporary directory"
-          command: "Automatic via t.TempDir()"
+          command: "Automatic via GinkgoT().TempDir() + DeferCleanup()"
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -1319,10 +1452,18 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Go unit test with mocked openshell"
 
-    specific_preconditions: []
+    specific_preconditions:
+      - name: "Mock openshell that succeeds on create"
+        requirement: "Script exits 0 on provider create command"
+        validation: "Script succeeds on first invocation"
 
     test_data:
-      resource_definitions: []
+      resource_definitions:
+        - name: "mock_openshell_success"
+          type: "Shell script"
+          yaml: |
+            #!/bin/bash
+            exit 0
 
     test_steps:
       setup:
@@ -1338,7 +1479,7 @@ scenarios:
       cleanup:
         - step_id: "CLEANUP-01"
           action: "Cleanup temporary directory"
-          command: "Automatic via t.TempDir()"
+          command: "Automatic via GinkgoT().TempDir() + DeferCleanup()"
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -1406,10 +1547,19 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Go unit test with mocked openshell"
 
-    specific_preconditions: []
+    specific_preconditions:
+      - name: "Mock openshell with call logging"
+        requirement: "Script that logs all invocations to a file and succeeds on create"
+        validation: "Log file created after invocation"
 
     test_data:
-      resource_definitions: []
+      resource_definitions:
+        - name: "mock_openshell_success_with_log"
+          type: "Shell script"
+          yaml: |
+            #!/bin/bash
+            echo "$@" >> "$TMPDIR/call_log"
+            exit 0
 
     test_steps:
       setup:
@@ -1429,7 +1579,7 @@ scenarios:
       cleanup:
         - step_id: "CLEANUP-01"
           action: "Cleanup temporary directory"
-          command: "Automatic via t.TempDir()"
+          command: "Automatic via GinkgoT().TempDir() + DeferCleanup()"
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -1498,10 +1648,18 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Go unit test with mocked openshell"
 
-    specific_preconditions: []
+    specific_preconditions:
+      - name: "Mock openshell with empty credentials"
+        requirement: "Script that succeeds on create, called with empty credential values"
+        validation: "Script ready and executable"
 
     test_data:
-      resource_definitions: []
+      resource_definitions:
+        - name: "mock_openshell_success"
+          type: "Shell script"
+          yaml: |
+            #!/bin/bash
+            exit 0
 
     test_steps:
       setup:
@@ -1517,7 +1675,7 @@ scenarios:
       cleanup:
         - step_id: "CLEANUP-01"
           action: "Cleanup temporary directory"
-          command: "Automatic via t.TempDir()"
+          command: "Automatic via GinkgoT().TempDir() + DeferCleanup()"
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -1593,7 +1751,23 @@ scenarios:
         validation: "All mocks installed and PATH configured"
 
     test_data:
-      resource_definitions: []
+      resource_definitions:
+        - name: "mock_openshell_pipeline"
+          type: "Shell script"
+          yaml: |
+            #!/bin/bash
+            STATE_FILE="$TMPDIR/openshell_state"
+            if [[ "$1" == "provider" && "$2" == "create" ]]; then
+              if [ ! -f "$STATE_FILE" ]; then
+                touch "$STATE_FILE"
+                echo "Error: AlreadyExists: provider already exists" >&2
+                exit 1
+              else
+                exit 0
+              fi
+            elif [[ "$1" == "provider" && "$2" == "delete" ]]; then
+              exit 0
+            fi
 
     test_steps:
       setup:

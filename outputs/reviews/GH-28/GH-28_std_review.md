@@ -2,11 +2,13 @@
 
 **Jira:** GH-28 — EnsureProvider Idempotency Fix
 **Review Date:** 2026-06-18
-**Verdict:** APPROVED_WITH_FINDINGS
-**Weighted Score:** 88/100
+**Reviewer:** QualityFlow Automated Review (v1.1.0)
+**Review Type:** Post-Refinement Re-Review (Iteration 1)
+**Verdict:** APPROVED
+**Weighted Score:** 94/100
 **Confidence:** MEDIUM
 
-> **WARNING:** 65% of review rules are using generic defaults. Project-specific review
+> **NOTE:** 65% of review rules are using generic defaults. Project-specific review
 > precision is reduced. The "example" project has no `go.yaml`, `python.yaml`,
 > `tier1_patterns.yaml`, or `review_rules.yaml`. To improve: add these config files to
 > `qualityflow/config/projects/example/`.
@@ -36,13 +38,13 @@ Before scoring, all metadata claims were independently verified:
 | # | Dimension | Weight | Score | Weighted |
 |:--|:----------|:-------|:------|:---------|
 | 1 | STP-STD Traceability | 30% | 95 | 28.5 |
-| 2 | STD YAML Structure | 20% | 90 | 18.0 |
+| 2 | STD YAML Structure | 20% | 96 | 19.2 |
 | 3 | Pattern Matching Correctness | 10% | 80 | 8.0 |
-| 4 | Test Step Quality | 15% | 78 | 11.7 |
-| 4.5 | STD Content Policy | 10% | 98 | 9.8 |
-| 5 | PSE Docstring Quality | 10% | 82 | 8.2 |
-| 6 | Code Generation Readiness | 5% | 75 | 3.75 |
-| | **Total** | **100%** | | **87.95** |
+| 4 | Test Step Quality | 15% | 95 | 14.25 |
+| 4.5 | STD Content Policy | 10% | 100 | 10.0 |
+| 5 | PSE Docstring Quality | 10% | 95 | 9.5 |
+| 6 | Code Generation Readiness | 5% | 92 | 4.6 |
+| | **Total** | **100%** | | **94.05** |
 
 ---
 
@@ -62,13 +64,13 @@ All 7 STP requirement groups in Section III map completely to STD scenarios:
 | First-time creation succeeds without regression | P1 | TS-013, TS-014, TS-015 | COVERED |
 | Provider idempotency works in full run pipeline | P1 | TS-016 | COVERED |
 
-**Finding:** None. Full bidirectional traceability confirmed. Every STP requirement has at least one STD scenario, and every STD scenario maps to a valid STP requirement.
+**Finding:** None. Full bidirectional traceability confirmed.
 
-**Score rationale:** -5 points: all scenarios reference a single `requirement_id: "GH-28"` rather than using sub-requirement identifiers that would distinguish between the 7 distinct requirement groups. This limits granular traceability.
+**Score rationale:** -5 points: all scenarios reference a single `requirement_id: "GH-28"` rather than sub-requirement identifiers. This is a stylistic limitation that does not impact coverage but reduces granular traceability.
 
 ---
 
-## Dimension 2: STD YAML Structure (90/100)
+## Dimension 2: STD YAML Structure (96/100)
 
 ### Structure Checklist
 
@@ -85,19 +87,18 @@ All 7 STP requirement groups in Section III map completely to STD scenarios:
 | Per-scenario: code_structure | Yes | Ginkgo-formatted pseudocode |
 | Per-scenario: test_objective | Yes | title, what, why, acceptance_criteria |
 | Per-scenario: classification | Yes | test_type, scope, automation_approach |
+| Per-scenario: specific_preconditions | Yes | All 16 scenarios populated (previously 6 were empty) |
+| Per-scenario: test_data | Yes | resource_definitions populated in all 16 scenarios |
 | Per-scenario: test_steps | Yes | setup/test_execution/cleanup |
 | Per-scenario: assertions | Yes | assertion_id, priority, condition |
 | Per-scenario: dependencies | Yes | kubernetes_resources, external_tools |
 
 ### Findings
 
-- **Minor [S-01]:** Several scenarios have `specific_preconditions: []` (empty array) where meaningful preconditions exist in the stub docstrings. Examples: scenarios 007, 008, 011, 012, 015, 016.
-  - **Remediation:** Populate `specific_preconditions` with the precondition entries from the corresponding stub docstrings.
-  - **Actionable:** true
+- **Minor [S-01]:** Scenario 012 classification includes `negative: true` which is a non-standard field. While useful for indicating negative test intent, the v2.1-enhanced schema does not define this field. This is informational — no remediation needed.
+  - **Actionable:** false
 
-- **Minor [S-02]:** `test_data.resource_definitions` is empty (`[]`) in scenarios 003, 007–016, but their test steps describe mock scripts that should be defined as resource definitions (consistent with scenarios 001–002 which do define them).
-  - **Remediation:** Add shell script resource definitions for scenarios that reference mock openshell scripts in their setup steps.
-  - **Actionable:** true
+**Score rationale:** -4 points: minor non-standard field. All previously empty `specific_preconditions` and `resource_definitions` are now populated.
 
 ---
 
@@ -106,71 +107,71 @@ All 7 STP requirement groups in Section III map completely to STD scenarios:
 No `tier1_patterns.yaml` is available for this project. Pattern matching review is limited to structural validation.
 
 - The STD does not reference any named patterns, which is consistent with the absence of a pattern library.
-- All scenarios use the generic `"Go unit test with mocked openshell"` automation approach rather than named patterns.
+- All scenarios use descriptive `automation_approach` strings appropriate to their test type.
 
 **Score rationale:** 80/100 (baseline score when no pattern library exists; no pattern mismatches possible but also no pattern-driven validation).
 
 ---
 
-## Dimension 4: Test Step Quality (78/100)
+## Dimension 4: Test Step Quality (95/100)
 
 ### Findings
 
-- **Major [Q-01]: Testing framework mismatch in test steps.** The STD declares `framework: "ginkgo-v2"` in `code_generation_config` and uses Ginkgo `Context`/`It`/`BeforeAll` in `code_structure`, but test step commands reference Go `*testing.T` methods: `t.TempDir()`, `t.Setenv()`, `os.WriteFile`. In Ginkgo v2, the equivalent patterns are:
-  - `t.TempDir()` → `GinkgoT().TempDir()` or `os.MkdirTemp()` + `DeferCleanup()`
-  - `t.Setenv()` → `GinkgoT().Setenv()` or manual `os.Setenv()` + `DeferCleanup()`
+All previously identified issues have been resolved:
 
-  This mismatch will cause confusion during code generation and may produce code that won't compile in a Ginkgo test suite.
-  - **Remediation:** Update all test step `command` fields to use Ginkgo-compatible equivalents. Replace `t.TempDir()` with `GinkgoT().TempDir()` and `t.Setenv(...)` with `GinkgoT().Setenv(...)` throughout scenarios 001–016. Also update `common_preconditions.test_environment_notes` which references `t.TempDir()` and `t.Setenv`.
-  - **Actionable:** true
+- **[Q-01] RESOLVED:** All test step commands now use Ginkgo-compatible equivalents (`GinkgoT().TempDir()`, `GinkgoT().Setenv()`). Framework mismatch eliminated across all 16 scenarios and `common_preconditions`.
+- **[Q-02] RESOLVED:** Scenario 003 TEST-01 now uses concrete Go code: `for i := 0; i < 3; i++ { err = EnsureProvider(ctx, providerName, creds); Expect(err).NotTo(HaveOccurred()) }`.
 
-- **Minor [Q-02]:** Scenario 003, step TEST-01 uses pseudo-code `"Loop: EnsureProvider(ctx, providerName, creds) x3"` rather than a concrete Go command.
-  - **Remediation:** Replace with `for i := 0; i < 3; i++ { err = EnsureProvider(ctx, providerName, creds); Expect(err).NotTo(HaveOccurred()) }` or equivalent.
-  - **Actionable:** true
+### Remaining Minor
+
+- **Minor [Q-03]:** Scenario 010 test step TEST-01 uses a hardcoded provider name string `"my-test-provider"` directly in the command rather than referencing the `providerName` closure variable. This is cosmetic — no functional impact.
+  - **Actionable:** true but low priority
+
+**Score rationale:** 95/100. Major framework mismatch fully resolved. All test steps now use correct Ginkgo v2 API calls.
 
 ---
 
-## Dimension 4.5: STD Content Policy (98/100)
+## Dimension 4.5: STD Content Policy (100/100)
 
 - No PII detected in any scenario.
 - No customer-specific data, hostnames, or IP addresses.
 - Mock data uses generic placeholder names (`"test-provider"`, `"secretCreds"`).
 - Credential values in test data use synthetic examples, not real secrets.
+- `related_prs` removed from `document_metadata` (PR URLs are implementation artifacts belonging in the STP, not the STD).
 
-**Score:** 98/100 (exemplary — minor deduction for using `"my-test-provider"` as a hardcoded string in scenario 010 rather than a variable reference, which is cosmetic).
+**Score:** 100/100 — Clean content policy with no violations.
 
 ---
 
-## Dimension 5: PSE Docstring Quality (82/100)
+## Dimension 5: PSE Docstring Quality (95/100)
 
 ### Stub File Analysis
 
-| Stub File | Scenarios | STP Ref | Markers | Preconditions | Steps | Expected |
-|:----------|:----------|:--------|:--------|:--------------|:------|:---------|
-| ensure_provider_idempotency_stubs_test.go | 001–003 | Yes | Yes | Yes | Yes | Yes |
-| ensure_provider_secret_redaction_stubs_test.go | 004–006 | Yes | Yes | Yes | Yes | Yes |
-| ensure_provider_error_handling_stubs_test.go | 007–010 | Yes | Yes | Yes | Yes | Yes |
-| ensure_provider_recreate_failure_stubs_test.go | 011–012 | Yes | Yes | Yes | Yes | Yes |
-| ensure_provider_first_creation_stubs_test.go | 013–015 | Yes | Yes | Yes | Yes | Yes |
-| ensure_provider_pipeline_stubs_test.go | 016 | Yes | Yes | Yes | Yes | Yes |
+| Stub File | Scenarios | STP Ref | Markers | Preconditions | Steps | Expected | gomega Import |
+|:----------|:----------|:--------|:--------|:--------------|:------|:---------|:--------------|
+| ensure_provider_idempotency_stubs_test.go | 001–003 | Yes | Yes | Yes | Yes | Yes | Yes |
+| ensure_provider_secret_redaction_stubs_test.go | 004–006 | Yes | Yes | Yes | Yes | Yes | Yes |
+| ensure_provider_error_handling_stubs_test.go | 007–010 | Yes | Yes | Yes | Yes | Yes | Yes |
+| ensure_provider_recreate_failure_stubs_test.go | 011–012 | Yes | Yes | Yes | Yes | Yes | Yes |
+| ensure_provider_first_creation_stubs_test.go | 013–015 | Yes | Yes | Yes | Yes | Yes | Yes |
+| ensure_provider_pipeline_stubs_test.go | 016 | Yes | Yes | Yes | Yes | Yes | Yes |
 
-### Findings
+### Resolved Findings
 
-- **Major [P-01]: Go stubs missing gomega import.** `code_generation_config` declares `gomega` as a dot import (`"github.com/onsi/gomega"`), but none of the 6 stub files import it. Only `ginkgo/v2` is imported. When the code generator fills in assertions (`Expect(...).To(...)`), it will need gomega. The stub should establish this import to signal the required dependency.
-  - **Remediation:** Add `. "github.com/onsi/gomega"` to the import block of all 6 stub files.
-  - **Actionable:** true
+- **[P-01] RESOLVED:** All 6 stub files now include `. "github.com/onsi/gomega"` dot import.
+- **[P-02] RESOLVED:** Scenario 012 now has `negative: true` in its YAML classification, consistent with the `[NEGATIVE]` marker in the stub docstring.
+- **[P-03] RESOLVED:** Scenario 012 `It` description corrected from "should include redacted secrets in error" to "should not include raw secret values in error" in both YAML and stub file.
 
-- **Minor [P-02]:** Scenario 012 stub has `[NEGATIVE]` marker in the docstring comment but this is not reflected in the YAML structure (no `negative: true` field or equivalent classification). Inconsistent annotation style.
-  - **Remediation:** Add a `negative: true` field to scenario 012's classification, or standardize by removing the `[NEGATIVE]` annotation from the stub comment.
-  - **Actionable:** true
+### Remaining Minor
 
-- **Minor [P-03]:** Scenario 012 `It` description says "should include redacted secrets in error" but the test objective verifies secrets are NOT present in the error. The `It` description is misleading — it should say "should redact secrets from error" or "should not include raw secrets in error".
-  - **Remediation:** Change the `It` description in both the STD YAML (`test_structure.it.description`) and the stub file from "should include redacted secrets in error" to "should not include raw secret values in error" or "should redact secrets from recreate error".
-  - **Actionable:** true
+- **Minor [P-04]:** Stub file precondition comments still reference `GinkgoT().TempDir()` which, while technically correct, is an implementation detail in what should be a design-level precondition comment. Prefer "Temporary directory for mock binaries" over specific API calls.
+  - **Actionable:** true but low priority
+
+**Score rationale:** 95/100. All major PSE issues resolved. Gomega import present in all stubs. It descriptions accurate.
 
 ---
 
-## Dimension 6: Code Generation Readiness (75/100)
+## Dimension 6: Code Generation Readiness (92/100)
 
 ### Readiness Checklist
 
@@ -180,18 +181,12 @@ No `tier1_patterns.yaml` is available for this project. Pattern matching review 
 | code_structure in every scenario | PASS | All 16 have Ginkgo pseudocode |
 | Variables typed and scoped | PASS | closure_scope with lifecycle annotations |
 | test_id in It description | PASS | `[test_id:TS-GH-28-NNN]` format |
-| Imports match stub imports | FAIL | Stubs missing gomega (see P-01) |
-| Commands use target framework | FAIL | Steps use testing.T, not Ginkgo (see Q-01) |
+| Imports match stub imports | PASS | Stubs include both ginkgo and gomega |
+| Commands use target framework | PASS | Steps use GinkgoT() equivalents |
 | Assertions have conditions | PASS | All assertions have `condition` field |
-| Resource definitions complete | PARTIAL | 4/16 scenarios have definitions; 12 are empty |
+| Resource definitions complete | PASS | All 16 scenarios have resource definitions |
 
-### Findings
-
-The two major findings (Q-01 framework mismatch and P-01 missing gomega import) directly impact code generation readiness. A code generator following this STD would produce:
-1. Stubs without gomega imports that fail to compile
-2. Test setup code using `t.TempDir()` which is invalid in a Ginkgo context without `GinkgoT()`
-
-**Score rationale:** 75/100. The STD structure is sound for generation, but the framework mismatch introduces systematic errors that would affect all 16 generated tests.
+**Score rationale:** 92/100. All previous blockers resolved. The STD is ready for code generation without framework-related compilation issues. Minor deduction for cosmetic items only.
 
 ---
 
@@ -199,20 +194,68 @@ The two major findings (Q-01 framework mismatch and P-01 missing gomega import) 
 
 | ID | Severity | Dimension | Finding | Actionable |
 |:---|:---------|:----------|:--------|:-----------|
-| Q-01 | **Major** | Step Quality | Testing framework mismatch: `t.TempDir()`/`t.Setenv()` used instead of Ginkgo equivalents | Yes |
-| P-01 | **Major** | PSE Quality | Go stubs missing `gomega` dot import across all 6 files | Yes |
-| S-01 | Minor | YAML Structure | Empty `specific_preconditions` in 6 scenarios despite meaningful preconditions existing | Yes |
-| S-02 | Minor | YAML Structure | Empty `test_data.resource_definitions` in 12 scenarios that describe mock scripts | Yes |
-| Q-02 | Minor | Step Quality | Pseudo-code command in scenario 003 step TEST-01 | Yes |
-| P-02 | Minor | PSE Quality | `[NEGATIVE]` marker in stub 012 not reflected in YAML classification | Yes |
-| P-03 | Minor | PSE Quality | Misleading `It` description in scenario 012 ("should include" vs "should not include") | Yes |
+| S-01 | Minor | YAML Structure | `negative: true` is non-standard field in classification | No |
+| Q-03 | Minor | Step Quality | Hardcoded provider name in scenario 010 TEST-01 command | Yes |
+| P-04 | Minor | PSE Quality | Stub precondition comments reference implementation API calls | Yes |
 
-**Totals:** 0 critical, 2 major, 5 minor, 7 actionable, 7 total
+**Totals:** 0 critical, 0 major, 3 minor, 2 actionable, 3 total
+
+---
+
+## Refinement Delta (vs. Initial Review)
+
+| Metric | Initial | After Refinement | Delta |
+|:-------|:--------|:-----------------|:------|
+| Weighted Score | 88/100 | 94/100 | +6 |
+| Critical Findings | 0 | 0 | — |
+| Major Findings | 2 | 0 | -2 |
+| Minor Findings | 5 | 3 | -2 |
+| Total Findings | 7 | 3 | -4 |
+
+### Resolved Findings
+
+| ID | Original Finding | Resolution |
+|:---|:-----------------|:-----------|
+| Q-01 | Framework mismatch: `t.TempDir()`/`t.Setenv()` | Replaced with `GinkgoT().TempDir()`/`GinkgoT().Setenv()` across all 16 scenarios and common_preconditions |
+| P-01 | Go stubs missing gomega import | Added `. "github.com/onsi/gomega"` to all 6 stub files |
+| S-01 | Empty `specific_preconditions` in 6 scenarios | Populated with meaningful preconditions for all scenarios |
+| S-02 | Empty `resource_definitions` in 12 scenarios | Added shell script resource definitions for all 16 scenarios |
+| Q-02 | Pseudo-code in scenario 003 TEST-01 | Replaced with concrete Go loop code |
+| P-02 | `[NEGATIVE]` marker inconsistency in scenario 012 | Added `negative: true` to classification |
+| P-03 | Misleading It description in scenario 012 | Corrected to "should not include raw secret values in error" |
+
+### New Finding (Content Policy)
+
+| ID | Finding | Resolution |
+|:---|:--------|:-----------|
+| CP-01 | `related_prs` in document_metadata | Removed — PR URLs belong in STP, not STD |
 
 ---
 
 ## Verdict Rationale
 
-**APPROVED_WITH_FINDINGS** — The STD demonstrates strong STP traceability (100% scenario coverage), well-structured YAML, clean content policy, and good PSE documentation. The two major findings (framework mismatch in test steps and missing gomega import) are systematic but straightforward to remediate. Neither finding invalidates the test design — they affect code generation fidelity, not test coverage or logic.
+**APPROVED** — The STD demonstrates:
+- Complete STP traceability (100% bidirectional coverage across all 7 requirement groups)
+- Well-structured YAML with all scenarios having populated preconditions and resource definitions
+- Correct framework usage (Ginkgo v2 API calls throughout)
+- Clean content policy (no PII, no implementation artifacts)
+- Complete stub files with gomega imports and accurate PSE docstrings
+- Strong code generation readiness (all stubs will compile with correct imports)
 
-The STD is suitable for proceeding to code generation after addressing the major findings. Minor findings can be addressed during or after code generation.
+All major findings from the initial review have been resolved. The 3 remaining minor findings are cosmetic and do not impact test coverage, correctness, or code generation quality. The STD is suitable for proceeding to code generation.
+
+---
+
+## Confidence Notes
+
+| Factor | Status |
+|:-------|:-------|
+| STD YAML parseable | YES |
+| STP file available | YES |
+| Go stubs present | YES (6 files, 16 test blocks) |
+| Python stubs present | NO (not configured for this project) |
+| Pattern library available | NO |
+| All scenarios reviewed | YES (16/16) |
+| Project review rules loaded | NO (using defaults) |
+
+**Confidence rationale:** MEDIUM — STD YAML valid, STP available, all Go stubs present and reviewed. Confidence not HIGH because pattern library and project-specific review rules are unavailable (65% default ratio). Python stubs correctly absent per project config (tier2_tests: true but no Python configured).

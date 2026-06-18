@@ -2,6 +2,7 @@ package tests
 
 import (
 	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
 /*
@@ -18,7 +19,7 @@ var _ = Describe("[GH-28] EnsureProvider recreate failure", func() {
 
 		Preconditions:
 			- Go toolchain 1.21+ available
-			- Mock openshell binaries configured via t.TempDir() and PATH override
+			- Mock openshell binaries configured via GinkgoT().TempDir() and PATH override
 	*/
 
 	Context("when recreate fails after successful delete", func() {
@@ -54,7 +55,7 @@ var _ = Describe("[GH-28] EnsureProvider recreate failure", func() {
 			- Secret not present in recreate error message
 			- Redaction applied specifically to recreate error output
 		*/
-		PendingIt("[test_id:TS-GH-28-012] should include redacted secrets in error", func() {
+		PendingIt("[test_id:TS-GH-28-012] should not include raw secret values in error", func() {
 			Skip("Phase 1: Design only - awaiting implementation")
 		})
 	})

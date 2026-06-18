@@ -2,6 +2,7 @@ package tests
 
 import (
 	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
 /*
@@ -19,7 +20,7 @@ var _ = Describe("[GH-28] EnsureProvider idempotency", func() {
 		Preconditions:
 			- Go toolchain 1.21+ available
 			- Ginkgo v2 and Gomega assertion library installed
-			- Mock openshell binaries configured via t.TempDir() and PATH override
+			- Mock openshell binaries configured via GinkgoT().TempDir() and PATH override
 	*/
 
 	Context("when provider already exists", func() {

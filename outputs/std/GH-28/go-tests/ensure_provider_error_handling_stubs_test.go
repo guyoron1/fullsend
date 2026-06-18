@@ -2,6 +2,7 @@ package tests
 
 import (
 	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
 /*
@@ -18,7 +19,7 @@ var _ = Describe("[GH-28] EnsureProvider error handling", func() {
 
 		Preconditions:
 			- Go toolchain 1.21+ available
-			- Mock openshell binaries configured via t.TempDir() and PATH override
+			- Mock openshell binaries configured via GinkgoT().TempDir() and PATH override
 	*/
 
 	Context("when create fails with non-AlreadyExists error", func() {
