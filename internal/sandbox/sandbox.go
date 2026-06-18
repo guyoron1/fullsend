@@ -100,9 +100,12 @@ func inGitDir(path, root string) bool {
 	return false
 }
 
-// EnsureProvider creates or updates a provider on the gateway. Credential
-// values may contain ${VAR} references which are expanded from the host
-// environment before being passed to openshell.
+// EnsureProvider creates or updates a provider on the gateway. If the
+// provider already exists, it is deleted and recreated so that credentials
+// are always current (reconciliation semantics, not skip-if-exists).
+//
+// Credential values may contain ${VAR} references which are expanded from the
+// host environment before being passed to openshell.
 //
 // Credentials use the bare-key form (--credential KEY) so that secret values
 // never appear on the process command line. The expanded values are injected
@@ -125,8 +128,8 @@ func EnsureProvider(name, providerType string, credentials, config map[string]st
 		}
 		// Provider already exists — delete and recreate so credentials
 		// are always up to date.
-		if delErr := deleteProvider(name); delErr != nil {
-			return fmt.Errorf("provider delete %q for recreate failed: %w", name, delErr)
+		if delErr := deleteProvider(name, secrets); delErr != nil {
+			return fmt.Errorf("provider delete %q failed: %w", name, delErr)
 		}
 		cmd = exec.Command("openshell", args...)
 		cmd.Env = append(os.Environ(), extraEnv...)
@@ -142,11 +145,16 @@ func EnsureProvider(name, providerType string, credentials, config map[string]st
 	return nil
 }
 
-// deleteProvider removes an existing provider by name.
-func deleteProvider(name string) error {
+// deleteProvider removes an existing provider by name. The secrets slice
+// is used to redact credential values from any error output.
+func deleteProvider(name string, secrets []string) error {
 	out, err := exec.Command("openshell", "provider", "delete", name).CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("%s", strings.TrimSpace(string(out)))
+		outStr := strings.TrimSpace(string(out))
+		for _, s := range secrets {
+			outStr = strings.ReplaceAll(outStr, s, "***")
+		}
+		return fmt.Errorf("%s", outStr)
 	}
 	return nil
 }

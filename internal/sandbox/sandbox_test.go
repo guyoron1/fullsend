@@ -547,6 +547,62 @@ exit 1
 	assert.Contains(t, err.Error(), "connection refused")
 }
 
+func TestEnsureProvider_RecreateFailure_RedactsSecrets(t *testing.T) {
+	// When the second create (recreate after AlreadyExists) fails, secret
+	// credential values must be redacted from the error output.
+	binDir := t.TempDir()
+	markerFile := filepath.Join(binDir, "created")
+
+	secretValue := "super-secret-token-12345"
+	t.Setenv("MY_SECRET", secretValue)
+
+	fakeOpenshell := filepath.Join(binDir, "openshell")
+	script := "#!/bin/sh\n" +
+		"if [ \"$1\" = \"provider\" ] && [ \"$2\" = \"create\" ]; then\n" +
+		"  if [ ! -f \"" + markerFile + "\" ]; then\n" +
+		"    echo marker > \"" + markerFile + "\"\n" +
+		"    echo 'Error: × status: AlreadyExists, message: \"provider already exists\"' >&2\n" +
+		"    exit 1\n" +
+		"  fi\n" +
+		"  echo \"failed with secret " + secretValue + " in output\" >&2\n" +
+		"  exit 1\n" +
+		"fi\n" +
+		"if [ \"$1\" = \"provider\" ] && [ \"$2\" = \"delete\" ]; then\n" +
+		"  exit 0\n" +
+		"fi\n" +
+		"exit 1\n"
+	require.NoError(t, os.WriteFile(fakeOpenshell, []byte(script), 0o755))
+	t.Setenv("PATH", binDir)
+
+	err := EnsureProvider("github", "github",
+		map[string]string{"MY_SECRET": "${MY_SECRET}"}, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "***", "secret should be redacted")
+	assert.NotContains(t, err.Error(), secretValue, "raw secret must not appear in error")
+}
+
+func TestEnsureProvider_NonAlreadyExistsError_RedactsSecrets(t *testing.T) {
+	// When create fails with a non-AlreadyExists error, secret credential
+	// values must be redacted from the error output.
+	binDir := t.TempDir()
+
+	secretValue := "another-secret-value-xyz"
+	t.Setenv("MY_TOKEN", secretValue)
+
+	fakeOpenshell := filepath.Join(binDir, "openshell")
+	script := "#!/bin/sh\n" +
+		"echo \"Error: auth failed with token " + secretValue + "\" >&2\n" +
+		"exit 1\n"
+	require.NoError(t, os.WriteFile(fakeOpenshell, []byte(script), 0o755))
+	t.Setenv("PATH", binDir)
+
+	err := EnsureProvider("github", "github",
+		map[string]string{"MY_TOKEN": "${MY_TOKEN}"}, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "***", "secret should be redacted")
+	assert.NotContains(t, err.Error(), secretValue, "raw secret must not appear in error")
+}
+
 func TestEnsureProvider_CreateSucceedsFirstTime(t *testing.T) {
 	// Simulate openshell: create succeeds immediately.
 	binDir := t.TempDir()
