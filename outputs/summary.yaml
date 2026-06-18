@@ -1,7 +1,22 @@
 status: success
 jira_id: GH-25
-file_path: /sandbox/workspace/output/GH-25_test_plan.md
-test_counts:
-  tier1: 30
-  tier2: 0
-  total: 30
+verdict: NEEDS_REVISION
+confidence: MEDIUM
+weighted_score: 67
+findings:
+  critical: 2
+  major: 5
+  minor: 3
+  actionable: 10
+  total: 10
+reviewed: outputs/stp/GH-25/GH-25_test_plan.md
+report: outputs/reviews/GH-25/GH-25_stp_review.md
+dimension_scores:
+  rule_compliance: 70
+  requirement_coverage: 60
+  scenario_quality: 75
+  risk_accuracy: 85
+  scope_boundary: 60
+  strategy: 40
+  metadata: 65
+scope_downgrade: false
