@@ -41,6 +41,7 @@ and `description`.
 |------------------------|--------|------------|--------------------------------------------------------------------------------|
 | `correctness`          | opus   | parallel   | Logic errors, edge cases, nil handling, API contracts, test adequacy/integrity |
 | `security`             | opus   | parallel   | Auth, data exposure, privilege escalation, injection defense, content security |
+| `test-coverage`        | opus   | parallel   | Test adequacy per behavioral change, tier fit, regression risk, STP traceability |
 | `intent-coherence`     | sonnet | parallel   | Authorization, scope, tier matching, architectural fit, design coherence       |
 | `style-conventions`    | sonnet | parallel   | Naming, error handling idioms, API shape, code organization                    |
 | `docs-currency`        | sonnet | parallel   | Documentation staleness (follows docs-review skill inline)                     |
@@ -196,6 +197,7 @@ review dimension using category as the key:
 |----------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------        |
 | correctness          | `logic-error`, `nil-deref`, `off-by-one`, `edge-case`, `api-contract`, `missing-test`, `test-inadequate`, `pattern-violation`, `test-weakened`, `test-removed`, `mock-loosened`, `assertion-weakened`, `coverage-reduced`, `test-poisoning`, `split-payload`, `stale-reference` |
 | security             | `auth-bypass`, `rbac-violation`, `data-exposure`, `privilege-escalation`, `injection-vuln`, `sandbox-escape`, `xss`, `ssrf`, `insecure-deserialization`, `prompt-injection`, `unicode-steganography`, `bidi-override`, `homoglyph-attack`, `instruction-smuggling`, `fail-open`, `permission-expansion`, `permission-reduction`, `role-escalation`, `workflow-permission`, `secret-exposure` |
+| test-coverage        | `test-missing`, `test-inadequate`, `test-tier-mismatch`, `test-isolation`, `test-traceability`, `test-regression-risk`                                                                                                                                                   |
 | intent-coherence     | `scope-exceeded`, `tier-mismatch`, `unauthorized-change`, `scope-creep`, `missing-authorization`, `misleading-label`, `design-direction`, `complexity-ratio`, `misplaced-abstraction`, `architectural-conflict`, `design-smell`, `over-engineering`, `under-engineering` |
 | style-conventions    | `naming-convention`, `error-handling-idiom`, `api-shape`, `code-organization`, `doc-style`, `pattern-inconsistency`                                                                                                                                                      |
 | docs-currency        | `stale-doc`, `missing-doc`, `incorrect-doc`, `incomplete-doc`                                                                                                                                                                                                            |
@@ -243,6 +245,8 @@ dimensions are relevant:
 - Changes touch auth, RBAC, permissions, secrets, data handling,
   string literals, config files, embedded text, or metadata →
   `security`
+- Production code has behavioral changes (not docs-only, config-only,
+  or CI-only) → `test-coverage`
 - Public APIs, exported interfaces, schemas, or CLI args are modified →
   `cross-repo-contracts`
 - Linked issues exist to verify against, or any non-trivial change →
@@ -258,7 +262,7 @@ All selected sub-agents run in parallel.
 **Dispatch sub-agents based on the classification — typically 3-6.**
 The orchestrator should auto-select which sub-agents are relevant for
 the specific change rather than dispatching all agents by default. A
-complex PR that triggers all conditions legitimately needs all 6.
+complex PR that triggers all conditions legitimately needs all 7.
 
 **Always included:** `correctness` and `style-conventions`.
 
@@ -266,6 +270,8 @@ complex PR that triggers all conditions legitimately needs all 6.
 
 - `security` — when auth, permissions, secrets, data handling, string
   literals, config, or metadata are touched
+- `test-coverage` — when production code has behavioral changes. Skip
+  for docs-only, config-only, CI-only, or label-only PRs.
 - `intent-coherence` — when linked issues exist or changes are
   non-trivial
 - `docs-currency` — when the repository has documentation files
@@ -275,15 +281,17 @@ complex PR that triggers all conditions legitimately needs all 6.
 
 **Dispatch examples:**
 
-| PR type                        | Agents dispatched                                                                |
-|--------------------------------|----------------------------------------------------------------------------------|
-| Implementation plan            | correctness, style-conventions, intent-coherence, docs-currency                  |
-| Typo fix in README             | correctness, style-conventions                                                   |
-| Bug fix in auth middleware     | correctness, security, style-conventions, intent-coherence                       |
-| New API endpoint with tests    | correctness, security, style-conventions, cross-repo-contracts                   |
-| Large refactor across packages | correctness, style-conventions, intent-coherence, docs-currency                  |
-| CI/CD pipeline change          | correctness, security, style-conventions, intent-coherence                       |
-| DB migration + API change      | correctness, security, style-conventions, cross-repo-contracts, docs-currency    |
+| PR type                        | Agents dispatched                                                                              |
+|--------------------------------|------------------------------------------------------------------------------------------------|
+| Implementation plan            | correctness, style-conventions, intent-coherence, docs-currency                                |
+| Typo fix in README             | correctness, style-conventions                                                                 |
+| Bug fix in auth middleware     | correctness, security, test-coverage, style-conventions, intent-coherence                      |
+| New API endpoint with tests    | correctness, security, test-coverage, style-conventions, cross-repo-contracts                  |
+| Large refactor across packages | correctness, test-coverage, style-conventions, intent-coherence, docs-currency                 |
+| CI/CD pipeline change          | correctness, security, style-conventions, intent-coherence                                     |
+| DB migration + API change      | correctness, security, test-coverage, style-conventions, cross-repo-contracts, docs-currency   |
+| Config-only change             | correctness, style-conventions                                                                 |
+| Docs-only update               | correctness, style-conventions, docs-currency                                                  |
 
 #### 3d. Prepare context packages
 
@@ -391,11 +399,12 @@ If a sub-agent fails to return findings (timeout, error, empty
 response), record a finding noting the gap. The severity depends on
 the sub-agent's tier:
 
-- **Opus-tier sub-agents** (`correctness`, `security`): record a
-  **high**-severity finding. These dimensions are safety-critical —
-  an approval that skipped security or correctness review is worse
-  than no review at all. A high finding ensures the outcome is at
-  minimum `request-changes` (see step 6f).
+- **Opus-tier sub-agents** (`correctness`, `security`,
+  `test-coverage`): record a **high**-severity finding. These
+  dimensions are safety-critical — an approval that skipped security,
+  correctness, or test coverage review is worse than no review at all.
+  A high finding ensures the outcome is at minimum `request-changes`
+  (see step 6f).
 - **Sonnet-tier sub-agents** (`intent-coherence`,
   `style-conventions`, `docs-currency`, `cross-repo-contracts`):
   record an **info**-level finding.
