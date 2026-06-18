@@ -115,12 +115,38 @@ func EnsureProvider(name, providerType string, credentials, config map[string]st
 	cmd.Env = append(os.Environ(), extraEnv...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		// Redact known credential values from error output.
 		outStr := string(out)
-		for _, s := range secrets {
-			outStr = strings.ReplaceAll(outStr, s, "***")
+		if !strings.Contains(outStr, "AlreadyExists") {
+			// Redact known credential values from error output.
+			for _, s := range secrets {
+				outStr = strings.ReplaceAll(outStr, s, "***")
+			}
+			return fmt.Errorf("provider create %q failed: %s", name, outStr)
 		}
-		return fmt.Errorf("provider create %q failed: %s", name, outStr)
+		// Provider already exists — delete and recreate so credentials
+		// are always up to date.
+		if delErr := deleteProvider(name); delErr != nil {
+			return fmt.Errorf("provider delete %q for recreate failed: %w", name, delErr)
+		}
+		cmd = exec.Command("openshell", args...)
+		cmd.Env = append(os.Environ(), extraEnv...)
+		out, err = cmd.CombinedOutput()
+		if err != nil {
+			outStr = string(out)
+			for _, s := range secrets {
+				outStr = strings.ReplaceAll(outStr, s, "***")
+			}
+			return fmt.Errorf("provider recreate %q failed: %s", name, outStr)
+		}
+	}
+	return nil
+}
+
+// deleteProvider removes an existing provider by name.
+func deleteProvider(name string) error {
+	out, err := exec.Command("openshell", "provider", "delete", name).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("%s", strings.TrimSpace(string(out)))
 	}
 	return nil
 }

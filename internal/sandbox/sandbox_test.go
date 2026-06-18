@@ -466,6 +466,101 @@ func TestSanitizeDownload_RemovesAppleDoubleInGitDir(t *testing.T) {
 	assert.NoError(t, err, "._* file outside .git/ should survive")
 }
 
+func TestEnsureProvider_AlreadyExists_DeleteAndRecreate(t *testing.T) {
+	// Simulate openshell: first "provider create" returns AlreadyExists,
+	// "provider delete" succeeds, second "provider create" succeeds.
+	binDir := t.TempDir()
+	logFile := filepath.Join(binDir, "calls.log")
+	markerFile := filepath.Join(binDir, "created")
+
+	fakeOpenshell := filepath.Join(binDir, "openshell")
+	// Uses only shell builtins (echo, [, >) so it works with a
+	// minimal PATH that contains only binDir.
+	script := "#!/bin/sh\n" +
+		`echo "$1 $2" >> "` + logFile + "\"\n" +
+		"if [ \"$1\" = \"provider\" ] && [ \"$2\" = \"create\" ]; then\n" +
+		"  if [ ! -f \"" + markerFile + "\" ]; then\n" +
+		"    echo marker > \"" + markerFile + "\"\n" +
+		"    echo 'Error: × status: AlreadyExists, message: \"provider already exists\"' >&2\n" +
+		"    exit 1\n" +
+		"  fi\n" +
+		"  exit 0\n" +
+		"fi\n" +
+		"if [ \"$1\" = \"provider\" ] && [ \"$2\" = \"delete\" ]; then\n" +
+		"  exit 0\n" +
+		"fi\n" +
+		"exit 1\n"
+	require.NoError(t, os.WriteFile(fakeOpenshell, []byte(script), 0o755))
+	t.Setenv("PATH", binDir)
+
+	err := EnsureProvider("github", "github", nil, nil)
+	assert.NoError(t, err, "EnsureProvider should succeed on AlreadyExists via delete+recreate")
+
+	// Verify all three calls were made (create, delete, create).
+	data, err := os.ReadFile(logFile)
+	require.NoError(t, err)
+	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+	require.Len(t, lines, 3, "expected 3 openshell calls")
+	assert.Equal(t, "provider create", lines[0])
+	assert.Equal(t, "provider delete", lines[1])
+	assert.Equal(t, "provider create", lines[2])
+}
+
+func TestEnsureProvider_AlreadyExists_DeleteFails(t *testing.T) {
+	// Simulate openshell: create returns AlreadyExists, delete fails.
+	binDir := t.TempDir()
+
+	fakeOpenshell := filepath.Join(binDir, "openshell")
+	script := `#!/bin/sh
+if [ "$1" = "provider" ] && [ "$2" = "create" ]; then
+  echo "Error: × status: AlreadyExists, message: \"provider already exists\"" >&2
+  exit 1
+fi
+if [ "$1" = "provider" ] && [ "$2" = "delete" ]; then
+  echo "delete failed: permission denied" >&2
+  exit 1
+fi
+exit 1
+`
+	require.NoError(t, os.WriteFile(fakeOpenshell, []byte(script), 0o755))
+	t.Setenv("PATH", binDir)
+
+	err := EnsureProvider("github", "github", nil, nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "provider delete")
+}
+
+func TestEnsureProvider_NonAlreadyExistsError(t *testing.T) {
+	// Simulate openshell: create fails with a non-AlreadyExists error.
+	binDir := t.TempDir()
+	fakeOpenshell := filepath.Join(binDir, "openshell")
+	script := `#!/bin/sh
+echo "Error: connection refused" >&2
+exit 1
+`
+	require.NoError(t, os.WriteFile(fakeOpenshell, []byte(script), 0o755))
+	t.Setenv("PATH", binDir)
+
+	err := EnsureProvider("github", "github", nil, nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "provider create")
+	assert.Contains(t, err.Error(), "connection refused")
+}
+
+func TestEnsureProvider_CreateSucceedsFirstTime(t *testing.T) {
+	// Simulate openshell: create succeeds immediately.
+	binDir := t.TempDir()
+	fakeOpenshell := filepath.Join(binDir, "openshell")
+	script := `#!/bin/sh
+exit 0
+`
+	require.NoError(t, os.WriteFile(fakeOpenshell, []byte(script), 0o755))
+	t.Setenv("PATH", binDir)
+
+	err := EnsureProvider("github", "github", nil, nil)
+	assert.NoError(t, err)
+}
+
 func TestInGitDir(t *testing.T) {
 	root := "/repo"
 	tests := []struct {
