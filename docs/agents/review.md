@@ -31,7 +31,7 @@ Requires OWNER, MEMBER, or COLLABORATOR repository association.
 
 The `/fs-review` command does not accept arguments. The review agent also runs
 automatically when a PR is opened, synchronized (new commits pushed), or moved
-out of draft.
+out of draft by a repository owner, member, or collaborator.
 
 ## Control labels
 
