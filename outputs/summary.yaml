@@ -1,7 +1,22 @@
 status: success
 jira_id: GH-30
-file_path: /sandbox/workspace/output/GH-30_test_plan.md
-test_counts:
-  functional: 8
-  end_to_end: 0
-  total: 8
+verdict: APPROVED_WITH_FINDINGS
+confidence: MEDIUM
+weighted_score: 91
+findings:
+  critical: 0
+  major: 1
+  minor: 6
+  actionable: 7
+  total: 7
+reviewed: outputs/stp/GH-30/GH-30_test_plan.md
+report: outputs/GH-30_stp_review.md
+dimension_scores:
+  rule_compliance: 89
+  requirement_coverage: 95
+  scenario_quality: 88
+  risk_accuracy: 95
+  scope_boundary: 90
+  strategy: 85
+  metadata: 80
+scope_downgrade: false
