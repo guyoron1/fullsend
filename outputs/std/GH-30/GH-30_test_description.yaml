@@ -1,0 +1,812 @@
+---
+# Software Test Description (STD) - GH-30
+# Fix Hardcoded /tmp/repo in Agent Run Tests
+# Generated: 2026-06-18
+
+document_metadata:
+  std_version: "2.1-enhanced"
+  generated_date: "2026-06-18"
+  jira_issue: "GH-30"
+  jira_summary: "Fix Hardcoded /tmp/repo in Agent Run Tests"
+  source_bugs:
+    - "GH-30"
+  stp_reference:
+    file: "outputs/stp/GH-30/GH-30_test_plan.md"
+    version: "v1"
+    sections_covered: "Section III - Requirements-to-Tests Mapping"
+  related_prs:
+    - repo: "guyoron1/fullsend"
+      pr_number: 33
+      url: "https://github.com/guyoron1/fullsend/pull/33"
+      title: "Fix hardcoded /tmp/repo in agent run tests"
+      merged: true
+  total_scenarios: 8
+  functional_count: 8
+  e2e_count: 0
+  p0_count: 3
+  p1_count: 5
+
+code_generation_config:
+  std_version: "2.1-enhanced"
+  framework: "testing"
+  assertion_library: "testify"
+  language: "go"
+  package_name: "cli_test"
+  context_init: "context.Background()"
+  imports:
+    standard:
+      - "context"
+      - "testing"
+      - "os"
+      - "os/exec"
+      - "fmt"
+      - "strings"
+      - "path/filepath"
+    test_framework:
+      - path: "github.com/stretchr/testify/assert"
+      - path: "github.com/stretchr/testify/require"
+    project:
+      - "github.com/fullsend-ai/fullsend/internal/config"
+      - "github.com/fullsend-ai/fullsend/internal/sandbox"
+  build_tags:
+    - "e2e"
+  test_patterns:
+    function_prefix: "Test"
+    subtest_style: "t.Run"
+    assertion_style: "testify"
+
+common_preconditions:
+  infrastructure:
+    - name: "Go toolchain"
+      requirement: "Go 1.23+"
+      validation: "go version"
+    - name: "Writable temp directory"
+      requirement: "OS temp directory must be writable for t.TempDir()"
+      validation: "test -w $(go env GOTMPDIR 2>/dev/null || echo /tmp)"
+  cluster_configuration:
+    topology: "None"
+    cpu_features: "Standard"
+    storage: "Local filesystem with writable /tmp"
+    network: "None required"
+  rbac_requirements: []
+  operators: []
+  test_framework:
+    language: "Go"
+    framework: "go test + testify"
+    ci_cd: "GitHub Actions"
+    run_command: "go test ./internal/cli/ -count=1 -v"
+
+scenarios:
+  - scenario_id: "001"
+    test_id: "TS-GH-30-001"
+    tier: "Functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-30"
+
+    variables:
+      closure_scope:
+        - name: "repoDir"
+          type: "string"
+          initialized_in: "test setup"
+          used_in: ["runAgent call"]
+          comment: "Temporary directory created by t.TempDir()"
+        - name: "err"
+          type: "error"
+          initialized_in: "test execution"
+          used_in: ["assertion"]
+          comment: "Error returned from runAgent"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "TestRunAgent_HarnessLoadPipeline uses isolated temp dir"
+      context:
+        description: "when repo directory is created via t.TempDir()"
+      it:
+        description: "should reach openshell error without tar failure"
+        test_id_format: "[test_id:TS-GH-30-001]"
+
+    test_objective:
+      title: "Verify harness-load-pipeline test reaches openshell error without tar failure"
+      what: |
+        Tests that TestRunAgent_HarnessLoadPipeline uses t.TempDir() instead of
+        hardcoded /tmp/repo. The test should consistently reach the openshell
+        availability check error rather than failing during tarball creation in
+        sandbox.UploadDir because the directory does not exist.
+      why: |
+        The hardcoded /tmp/repo path caused sporadic test failures when that
+        directory did not exist on the test machine. Using t.TempDir() ensures
+        the directory always exists, making the test deterministic and hermetic.
+      acceptance_criteria:
+        - "Test reaches openshell availability error, never tar creation error"
+        - "Test passes consistently with -count=5"
+        - "No reference to /tmp/repo in test function"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "go test with testify assertions"
+
+    specific_preconditions:
+      - name: "PR #33 changes merged"
+        requirement: "t.TempDir() replacement applied in run_test.go"
+        validation: "grep -c 't.TempDir()' internal/cli/run_test.go"
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create isolated temporary directory via t.TempDir()"
+          command: "repoDir := t.TempDir()"
+          validation: "Directory exists and is writable"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call runAgent with temporary directory as repo path"
+          command: "err := runAgent(ctx, repoDir, ...)"
+          validation: "Function returns error"
+        - step_id: "TEST-02"
+          action: "Verify error message contains openshell check, not tar failure"
+          command: "assert.Contains(t, err.Error(), expectedOpenshellError)"
+          validation: "Error message matches expected openshell error pattern"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "t.TempDir() auto-cleanup on test completion"
+          command: "Automatic via Go testing framework"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "runAgent returns openshell-related error, not tar error"
+        condition: "Error message contains openshell availability check failure"
+        failure_impact: "Test still depends on host filesystem state"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "002"
+    test_id: "TS-GH-30-002"
+    tier: "Functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-30"
+
+    variables:
+      closure_scope:
+        - name: "repoDir"
+          type: "string"
+          initialized_in: "test setup"
+          used_in: ["runAgent call"]
+          comment: "Temporary directory from t.TempDir()"
+        - name: "err"
+          type: "error"
+          initialized_in: "test execution"
+          used_in: ["assertion"]
+          comment: "Error returned from runAgent"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "All runAgent tests pass without pre-existing /tmp/repo"
+      context:
+        description: "when /tmp/repo does not exist on host"
+      it:
+        description: "should pass all 10 affected test functions"
+        test_id_format: "[test_id:TS-GH-30-002]"
+
+    test_objective:
+      title: "Verify all runAgent tests pass without pre-existing /tmp/repo directory"
+      what: |
+        Runs all 10 affected test functions in internal/cli/run_test.go without
+        a pre-existing /tmp/repo directory. Each test should use its own
+        t.TempDir() and pass without any tar-related failures.
+      why: |
+        The original bug manifested when /tmp/repo did not exist. This scenario
+        verifies the fix addresses the root cause by ensuring tests are fully
+        independent of host filesystem state.
+      acceptance_criteria:
+        - "All 10 test functions pass when /tmp/repo does not exist"
+        - "No test function references /tmp/repo"
+        - "All tests complete without tar creation errors"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "go test with testify assertions"
+
+    specific_preconditions:
+      - name: "/tmp/repo must not exist"
+        requirement: "Ensure /tmp/repo directory is absent before test run"
+        validation: "test ! -d /tmp/repo"
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Ensure /tmp/repo does not exist on the host"
+          command: "rm -rf /tmp/repo 2>/dev/null || true"
+          validation: "/tmp/repo directory does not exist"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run all affected test functions in run_test.go"
+          command: "go test ./internal/cli/ -run 'TestRunAgent' -v -count=1"
+          validation: "All tests pass (exit code 0)"
+        - step_id: "TEST-02"
+          action: "Verify no tar-related error in test output"
+          command: "Parse test output for absence of tar/archive error messages"
+          validation: "No tar error messages in output"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "No cleanup needed — t.TempDir() handles cleanup automatically"
+          command: "Automatic"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "All 10 affected test functions pass"
+        condition: "go test exit code is 0 for all runAgent tests"
+        failure_impact: "Fix did not resolve the hardcoded path dependency"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "No tar-related errors in test output"
+        condition: "Test output does not contain 'tar' or 'archive' error strings"
+        failure_impact: "Tests still fail due to missing directory"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "003"
+    test_id: "TS-GH-30-003"
+    tier: "Functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-30"
+
+    variables:
+      closure_scope:
+        - name: "repoDir"
+          type: "string"
+          initialized_in: "test setup"
+          used_in: ["runAgent call"]
+          comment: "Temporary directory from t.TempDir()"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "All runAgent tests pass with pre-existing /tmp/repo"
+      context:
+        description: "when /tmp/repo exists on host"
+      it:
+        description: "should pass all tests using their own temp dirs"
+        test_id_format: "[test_id:TS-GH-30-003]"
+
+    test_objective:
+      title: "Verify all runAgent tests pass with pre-existing /tmp/repo directory"
+      what: |
+        Runs all 10 affected test functions when /tmp/repo happens to exist on
+        the host. Tests should still use t.TempDir() and not accidentally use
+        /tmp/repo, proving isolation from host state.
+      why: |
+        Even when /tmp/repo exists, each test must use its own temporary
+        directory. This confirms the fix provides true isolation regardless
+        of the host environment.
+      acceptance_criteria:
+        - "All 10 test functions pass when /tmp/repo exists"
+        - "Tests use t.TempDir(), not /tmp/repo"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "go test with testify assertions"
+
+    specific_preconditions:
+      - name: "/tmp/repo must exist"
+        requirement: "Create /tmp/repo directory before test run"
+        validation: "test -d /tmp/repo"
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create /tmp/repo directory on host"
+          command: "mkdir -p /tmp/repo"
+          validation: "/tmp/repo directory exists"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run all affected test functions"
+          command: "go test ./internal/cli/ -run 'TestRunAgent' -v -count=1"
+          validation: "All tests pass"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Remove /tmp/repo created during setup"
+          command: "rm -rf /tmp/repo"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "All tests pass regardless of /tmp/repo existence"
+        condition: "go test exit code is 0"
+        failure_impact: "Tests may silently use /tmp/repo instead of t.TempDir()"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "004"
+    test_id: "TS-GH-30-004"
+    tier: "Functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-30"
+
+    variables:
+      closure_scope:
+        - name: "repoDir"
+          type: "string"
+          initialized_in: "test setup"
+          used_in: ["runAgent call"]
+          comment: "Temporary directory from t.TempDir()"
+        - name: "err"
+          type: "error"
+          initialized_in: "test execution"
+          used_in: ["assertion"]
+          comment: "Error from harness resolution"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "YML fallback harness resolution with isolated directory"
+      context:
+        description: "when YML fallback harness is configured"
+      it:
+        description: "should resolve harness and reach expected error"
+        test_id_format: "[test_id:TS-GH-30-004]"
+
+    test_objective:
+      title: "Verify YML fallback test resolves harness and reaches expected error"
+      what: |
+        Tests the YML fallback harness resolution path using an isolated
+        temporary directory. The test should resolve the harness file and
+        proceed to the expected error assertion without failing during
+        directory operations.
+      why: |
+        The YML fallback path was also affected by the hardcoded /tmp/repo.
+        This verifies that the fix was applied to this specific code path
+        and the test reaches its intended assertion point.
+      acceptance_criteria:
+        - "YML fallback test reaches expected harness resolution error"
+        - "No tar/directory-related failures"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "go test with testify assertions"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create isolated temp directory via t.TempDir()"
+          command: "repoDir := t.TempDir()"
+          validation: "Directory exists"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call runAgent with YML fallback harness config and temp dir"
+          command: "err := runAgent(ctx, repoDir, harnessYMLConfig)"
+          validation: "Returns expected harness resolution error"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Automatic cleanup via t.TempDir()"
+          command: "Automatic"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Test reaches harness resolution error path"
+        condition: "Error relates to harness resolution, not directory/tar operations"
+        failure_impact: "YML fallback path still has hardcoded path dependency"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "005"
+    test_id: "TS-GH-30-005"
+    tier: "Functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-30"
+
+    variables:
+      closure_scope:
+        - name: "repoDir"
+          type: "string"
+          initialized_in: "test setup"
+          used_in: ["runAgent call"]
+          comment: "Temporary directory from t.TempDir()"
+        - name: "err"
+          type: "error"
+          initialized_in: "test execution"
+          used_in: ["assertion"]
+          comment: "Error from harness-not-found path"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Harness-not-found with isolated directory"
+      context:
+        description: "when harness file is not present in repo directory"
+      it:
+        description: "should return descriptive error message"
+        test_id_format: "[test_id:TS-GH-30-005]"
+
+    test_objective:
+      title: "Verify harness-not-found returns descriptive error message"
+      what: |
+        Tests that the harness-not-found error path works correctly when using
+        a t.TempDir() directory. The empty temp directory should trigger the
+        harness-not-found error (not a tar error), producing a clear and
+        descriptive error message.
+      why: |
+        The harness-not-found test is a critical negative test that validates
+        error handling. It must produce a useful error message when the harness
+        file is missing, independent of the repo directory location.
+      acceptance_criteria:
+        - "Error message clearly indicates harness file not found"
+        - "Error does not mention tar/archive operations"
+        - "Error message includes the directory path searched"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "go test with testify assertions"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create empty temp directory via t.TempDir()"
+          command: "repoDir := t.TempDir()"
+          validation: "Empty directory exists"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call runAgent with empty temp dir (no harness file)"
+          command: "err := runAgent(ctx, repoDir, ...)"
+          validation: "Returns harness-not-found error"
+        - step_id: "TEST-02"
+          action: "Validate error message content"
+          command: "assert.Contains(t, err.Error(), 'harness')"
+          validation: "Error message references harness file"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Automatic cleanup via t.TempDir()"
+          command: "Automatic"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Error message indicates harness not found"
+        condition: "Error string contains 'harness' and 'not found' or equivalent"
+        failure_impact: "Harness-not-found detection broken by directory change"
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "Error does not reference tar/archive operations"
+        condition: "Error string does not contain 'tar', 'archive', or 'no such file'"
+        failure_impact: "Test reaches wrong error path"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "006"
+    test_id: "TS-GH-30-006"
+    tier: "Functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-30"
+
+    variables:
+      closure_scope:
+        - name: "tempDirs"
+          type: "[]string"
+          initialized_in: "test execution"
+          used_in: ["uniqueness assertion"]
+          comment: "Collected temp dir paths from each test function"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Each test function uses unique temporary directory"
+      context:
+        description: "when all 10 affected test functions execute"
+      it:
+        description: "should each create a unique t.TempDir() directory"
+        test_id_format: "[test_id:TS-GH-30-006]"
+
+    test_objective:
+      title: "Verify that all 10 affected test functions each create and use a unique temporary directory via t.TempDir()"
+      what: |
+        Confirms that each of the 10 affected test functions calls t.TempDir()
+        to create its own isolated directory. This validates the fix was applied
+        consistently across all functions and that no two tests share a directory.
+      why: |
+        Consistent application of t.TempDir() across all affected functions
+        prevents cross-test contamination and ensures the fix is complete, not
+        partial. If any function was missed, it would still be flaky.
+      acceptance_criteria:
+        - "All 10 test functions call t.TempDir()"
+        - "No test function uses hardcoded /tmp/repo"
+        - "Source code grep confirms t.TempDir() in all 10 functions"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "source code analysis + go test"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Identify all 10 affected test functions in run_test.go"
+          command: "grep -n 'func Test.*RunAgent\\|func Test.*Harness' internal/cli/run_test.go"
+          validation: "10 test functions identified"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify each function contains t.TempDir() call"
+          command: "For each function, verify t.TempDir() is called within its body"
+          validation: "All 10 functions contain t.TempDir()"
+        - step_id: "TEST-02"
+          action: "Verify no function references /tmp/repo"
+          command: "grep -c '/tmp/repo' internal/cli/run_test.go"
+          validation: "Count is 0"
+        - step_id: "TEST-03"
+          action: "Run all test functions to confirm they pass"
+          command: "go test ./internal/cli/ -run 'TestRunAgent|TestHarness' -v -count=1"
+          validation: "All tests pass"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "No cleanup needed"
+          command: "Automatic"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "All 10 functions use t.TempDir()"
+        condition: "Each of the 10 test functions contains a t.TempDir() call"
+        failure_impact: "Fix was not applied to all affected functions"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "No references to /tmp/repo remain"
+        condition: "grep for /tmp/repo in run_test.go returns 0 matches"
+        failure_impact: "Some functions still use hardcoded path"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "007"
+    test_id: "TS-GH-30-007"
+    tier: "Functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-30"
+
+    variables:
+      closure_scope:
+        - name: "repoDir"
+          type: "string"
+          initialized_in: "test setup"
+          used_in: ["UploadDir call"]
+          comment: "Temporary directory from t.TempDir()"
+        - name: "err"
+          type: "error"
+          initialized_in: "test execution"
+          used_in: ["assertion"]
+          comment: "Error from UploadDir"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "UploadDir with valid directory path"
+      context:
+        description: "when given an existing directory from t.TempDir()"
+      it:
+        description: "should succeed at tarball creation step"
+        test_id_format: "[test_id:TS-GH-30-007]"
+
+    test_objective:
+      title: "Verify UploadDir succeeds when given an existing directory path"
+      what: |
+        Tests that sandbox.UploadDir successfully creates a tarball when given
+        a valid directory path from t.TempDir(). The function should not fail
+        at the tar creation step (it may fail later at upload, which is expected).
+      why: |
+        The original bug was that UploadDir failed during tarball creation
+        because the directory did not exist. This verifies the fix ensures
+        UploadDir receives a valid directory and passes the tar step.
+      acceptance_criteria:
+        - "UploadDir does not fail with directory-not-found error"
+        - "If UploadDir fails, failure is at upload stage not tar creation"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "go test with testify assertions"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create temp directory with sample files"
+          command: "repoDir := t.TempDir(); os.WriteFile(filepath.Join(repoDir, 'test.txt'), []byte('test'), 0644)"
+          validation: "Directory with test file exists"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call UploadDir with valid temp directory"
+          command: "err := sandbox.UploadDir(ctx, repoDir)"
+          validation: "Error is not tar/directory related"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Automatic cleanup via t.TempDir()"
+          command: "Automatic"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "UploadDir passes tar creation step"
+        condition: "Error (if any) is not related to missing directory or tar creation"
+        failure_impact: "UploadDir still fails on valid directories"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "008"
+    test_id: "TS-GH-30-008"
+    tier: "Functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-30"
+
+    variables:
+      closure_scope:
+        - name: "repoDir"
+          type: "string"
+          initialized_in: "test setup"
+          used_in: ["runAgent call"]
+          comment: "Temporary directory from t.TempDir()"
+        - name: "err"
+          type: "error"
+          initialized_in: "test execution"
+          used_in: ["assertion"]
+          comment: "Error from OrgConfig variant test"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "OrgConfig-variant tests with isolated directories"
+      context:
+        description: "when running HarnessLoadWithOrgConfig, MalformedOrgConfig, and WithURLBase tests"
+      it:
+        description: "should reach expected openshell error paths consistently"
+        test_id_format: "[test_id:TS-GH-30-008]"
+
+    test_objective:
+      title: "Verify HarnessLoadWithOrgConfig, MalformedOrgConfig, and WithURLBase tests reach expected openshell error paths consistently"
+      what: |
+        Tests the three OrgConfig-variant test functions
+        (HarnessLoadWithOrgConfig, MalformedOrgConfig, WithURLBase) to confirm
+        they use t.TempDir() and consistently reach their expected openshell
+        error assertions without tar-related failures.
+      why: |
+        The OrgConfig variants exercise different harness loading configurations.
+        Each must be verified independently to confirm the fix was applied and
+        they reach their intended assertion points.
+      acceptance_criteria:
+        - "HarnessLoadWithOrgConfig reaches openshell error assertion"
+        - "MalformedOrgConfig reaches malformed config error assertion"
+        - "WithURLBase reaches openshell error assertion"
+        - "No tar/directory errors in any variant"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "go test with testify assertions"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create temp directory for each OrgConfig test variant"
+          command: "repoDir := t.TempDir()"
+          validation: "Directory exists for each variant"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run HarnessLoadWithOrgConfig test"
+          command: "go test ./internal/cli/ -run TestRunAgent_HarnessLoadWithOrgConfig -v"
+          validation: "Test passes, reaches openshell error"
+        - step_id: "TEST-02"
+          action: "Run MalformedOrgConfig test"
+          command: "go test ./internal/cli/ -run TestRunAgent_MalformedOrgConfig -v"
+          validation: "Test passes, reaches malformed config error"
+        - step_id: "TEST-03"
+          action: "Run WithURLBase test"
+          command: "go test ./internal/cli/ -run TestRunAgent_WithURLBase -v"
+          validation: "Test passes, reaches openshell error"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Automatic cleanup via t.TempDir()"
+          command: "Automatic"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "HarnessLoadWithOrgConfig reaches expected error"
+        condition: "Test passes and error is openshell-related"
+        failure_impact: "OrgConfig variant still has hardcoded path"
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "MalformedOrgConfig reaches expected error"
+        condition: "Test passes and error is config-related"
+        failure_impact: "Malformed config test path affected by directory fix"
+      - assertion_id: "ASSERT-03"
+        priority: "P1"
+        description: "WithURLBase reaches expected error"
+        condition: "Test passes and error is openshell-related"
+        failure_impact: "URLBase variant still has hardcoded path"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []

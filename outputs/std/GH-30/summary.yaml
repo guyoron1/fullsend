@@ -1,0 +1,11 @@
+status: success
+jira_id: GH-30
+stp_source: outputs/stp/GH-30/GH-30_test_plan.md
+std_yaml: outputs/std/GH-30/GH-30_test_description.yaml
+test_counts:
+  total: 8
+  tier1: 8
+  tier2: 0
+stubs:
+  go: 8
+  python: 0
