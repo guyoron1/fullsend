@@ -1,0 +1,24 @@
+status: success
+jira_id: GH-30
+verdict: APPROVED_WITH_FINDINGS
+confidence: MEDIUM
+weighted_score: 77
+findings:
+  critical: 0
+  major: 7
+  minor: 5
+  actionable: 11
+  total: 12
+artifacts_reviewed:
+  std_yaml: true
+  go_stubs: true
+  python_stubs: false
+  stp_available: true
+dimension_scores:
+  traceability: 93
+  yaml_structure: 75
+  pattern_matching: 50
+  step_quality: 78
+  content_policy: 72
+  pse_quality: 72
+  codegen_readiness: 62
