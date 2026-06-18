@@ -124,8 +124,22 @@ else
 fi
 
 echo "Posting summary comment on ${ORIGINATING_REPO}#${ORIGINATING_NUMBER}"
-jq -nc --arg body "${COMMENT}" '{body: $body}' | gh api \
+COMMENT_OUTPUT=""
+COMMENT_RC=0
+COMMENT_OUTPUT=$(jq -nc --arg body "${COMMENT}" '{body: $body}' | gh api \
   "repos/${ORIGINATING_REPO}/issues/${ORIGINATING_NUMBER}/comments" \
-  --input -
+  --input - 2>&1) || COMMENT_RC=$?
+
+if [[ "${COMMENT_RC}" -ne 0 ]]; then
+  # Treat 403 and 401 as non-fatal — these are permanent permission errors
+  # (e.g., "Resource not accessible by integration") that retrying won't fix.
+  # The core deliverables (analysis + proposal issues) were already completed.
+  if echo "${COMMENT_OUTPUT}" | grep -qE 'HTTP (403|401)'; then
+    echo "::warning::Failed to post summary comment (HTTP auth error, non-fatal): ${COMMENT_OUTPUT}"
+  else
+    echo "ERROR: failed to post summary comment: ${COMMENT_OUTPUT}"
+    exit 1
+  fi
+fi
 
 echo "Post-retro complete."
