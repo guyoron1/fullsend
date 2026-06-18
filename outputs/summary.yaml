@@ -1,24 +1,22 @@
 status: success
 jira_id: GH-24
-file_path: /sandbox/workspace/output/GH-24_test_plan.md
-test_counts:
-  unit_tests: 7
-  functional: 1
-  total: 8
-lsp_analysis:
-  calls_made: 5
-  functions_traced:
-    - isRetryable (3 references across 2 files)
-    - retryOnRepoRace (6 references in 1 file)
-    - isTransientStatus (4 references across 2 files)
-    - do (19 incoming callers)
-  blast_radius: 19 callers of do() inherit new 5xx retry behavior
-pr_data:
-  files_changed: 2 (excluding test stubs)
-  additions: 25
-  deletions: 22
-  key_changes:
-    - isRetryable now handles 5xx (500-504)
-    - retryOnTransient renamed to retryOnRepoRace
-    - isTransientStatus narrowed to 404/409 only
-    - Error message changed from "rate limited" to "retryable error"
+verdict: APPROVED_WITH_FINDINGS
+confidence: MEDIUM
+weighted_score: 84
+findings:
+  critical: 0
+  major: 5
+  minor: 4
+  actionable: 8
+  total: 9
+reviewed: outputs/stp/GH-24/GH-24_test_plan.md
+report: outputs/reviews/GH-24/GH-24_stp_review.md
+dimension_scores:
+  rule_compliance: 72
+  requirement_coverage: 85
+  scenario_quality: 90
+  risk_accuracy: 95
+  scope_boundary: 95
+  strategy: 95
+  metadata: 70
+scope_downgrade: false
