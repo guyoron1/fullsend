@@ -1,0 +1,1403 @@
+---
+# Software Test Description (STD) for GH-24
+# Retry 5xx Server Errors at the HTTP Client Level
+
+document_metadata:
+  std_version: "2.1-enhanced"
+  generated_date: "2026-06-18"
+  jira_issue: "GH-24"
+  jira_summary: "Retry 5xx Server Errors at the HTTP Client Level"
+  source_bugs: []
+  stp_reference:
+    file: "outputs/stp/GH-24/GH-24_test_plan.md"
+    version: "v1"
+    sections_covered: "Section III - Requirements-to-Tests Mapping"
+  related_prs:
+    - repo: "guyoron1/fullsend"
+      pr_number: 24
+      url: "https://github.com/guyoron1/fullsend/pull/24"
+      title: "Retry 5xx Server Errors at the HTTP Client Level"
+      merged: false
+    - repo: "fullsend-ai/fullsend"
+      pr_number: 2342
+      url: "https://github.com/fullsend-ai/fullsend/pull/2342"
+      title: "Mirror: Retry 5xx Server Errors at the HTTP Client Level"
+      merged: true
+  total_scenarios: 34
+  unit_test_count: 30
+  functional_count: 4
+  e2e_count: 0
+  p0_count: 15
+  p1_count: 19
+
+code_generation_config:
+  std_version: "2.1-enhanced"
+  framework: "testing"
+  assertion_library: "testify"
+  language: "go"
+  package_name: "github_test"
+  imports:
+    standard:
+      - "context"
+      - "fmt"
+      - "io"
+      - "net/http"
+      - "net/http/httptest"
+      - "strings"
+      - "sync/atomic"
+      - "testing"
+      - "time"
+    test_framework:
+      - path: "github.com/stretchr/testify/assert"
+      - path: "github.com/stretchr/testify/require"
+    project:
+      - "github.com/fullsend-ai/fullsend/internal/forge/github"
+
+common_preconditions:
+  infrastructure:
+    - name: "Go toolchain"
+      requirement: "Go 1.23+"
+      validation: "go version"
+    - name: "Module dependencies"
+      requirement: "All dependencies resolved"
+      validation: "go mod download"
+  test_environment:
+    topology: "None (unit tests only)"
+    platform: "Linux (CI), macOS/Linux (local)"
+    special_hardware: "None"
+    network: "net/http/httptest mock servers (localhost)"
+  test_utilities:
+    - name: "httptest.NewServer"
+      purpose: "Create mock HTTP servers for injecting specific status codes"
+    - name: "atomic.Int32"
+      purpose: "Thread-safe call counting across concurrent requests"
+
+# =============================================================================
+# SCENARIOS
+# =============================================================================
+
+scenarios:
+  # ===========================================================================
+  # Requirement Group 1: isRetryable() identifies 5xx as retryable
+  # Priority: P0 | Tier: Unit Tests
+  # ===========================================================================
+
+  - scenario_id: "1"
+    test_id: "TS-GH-24-001"
+    tier: "Unit Tests"
+    priority: "P0"
+    requirement_id: "GH-24"
+    test_objective:
+      title: "Verify isRetryable returns true for HTTP 500 (Internal Server Error)"
+      what: |
+        Tests that isRetryable correctly identifies HTTP 500 Internal Server Error
+        as a retryable status code and returns (true, nil).
+      why: |
+        HTTP 500 is the most common server error. The retry logic must handle it
+        to prevent transient failures from causing permanent operation failures.
+      acceptance_criteria:
+        - "isRetryable returns true when response status is 500"
+        - "isRetryable returns nil error for 500 responses"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create HTTP response with status 500"
+          command: "Construct *http.Response with StatusCode 500 and empty body"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call isRetryable with the 500 response"
+          command: "retryable, err := isRetryable(resp)"
+          validation: "retryable == true && err == nil"
+      cleanup: []
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "isRetryable returns true for 500"
+        condition: "retryable == true"
+        failure_impact: "500 errors would not be retried, causing transient failures to propagate"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "No error returned"
+        condition: "err == nil"
+        failure_impact: "Error would prevent retry logic from executing"
+    variables:
+      closure_scope:
+        - name: "resp"
+          type: "*http.Response"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Mock HTTP response with 500 status"
+        - name: "retryable"
+          type: "bool"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Return value from isRetryable"
+
+  - scenario_id: "2"
+    test_id: "TS-GH-24-002"
+    tier: "Unit Tests"
+    priority: "P0"
+    requirement_id: "GH-24"
+    test_objective:
+      title: "Verify isRetryable returns true for HTTP 502 (Bad Gateway)"
+      what: |
+        Tests that isRetryable correctly identifies HTTP 502 Bad Gateway
+        as a retryable status code. This is the specific error that triggered
+        the production failure motivating this change.
+      why: |
+        502 Bad Gateway was the production failure that motivated this change.
+        This is the highest-priority status code to validate.
+      acceptance_criteria:
+        - "isRetryable returns true when response status is 502"
+        - "isRetryable returns nil error for 502 responses"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create HTTP response with status 502"
+          command: "Construct *http.Response with StatusCode 502 and empty body"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call isRetryable with the 502 response"
+          command: "retryable, err := isRetryable(resp)"
+          validation: "retryable == true && err == nil"
+      cleanup: []
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "isRetryable returns true for 502"
+        condition: "retryable == true"
+        failure_impact: "The specific production failure (502 Bad Gateway) would not be retried"
+
+  - scenario_id: "3"
+    test_id: "TS-GH-24-003"
+    tier: "Unit Tests"
+    priority: "P0"
+    requirement_id: "GH-24"
+    test_objective:
+      title: "Verify isRetryable returns true for HTTP 503 (Service Unavailable)"
+      what: |
+        Tests that isRetryable correctly identifies HTTP 503 Service Unavailable
+        as a retryable status code. GitHub returns 503 during maintenance windows.
+      why: |
+        503 is returned during GitHub maintenance or overload. Retrying on 503
+        allows operations to succeed once GitHub recovers.
+      acceptance_criteria:
+        - "isRetryable returns true when response status is 503"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create HTTP response with status 503"
+          command: "Construct *http.Response with StatusCode 503 and empty body"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call isRetryable with the 503 response"
+          command: "retryable, err := isRetryable(resp)"
+          validation: "retryable == true && err == nil"
+      cleanup: []
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "isRetryable returns true for 503"
+        condition: "retryable == true"
+        failure_impact: "Maintenance-window failures would not be retried"
+
+  - scenario_id: "4"
+    test_id: "TS-GH-24-004"
+    tier: "Unit Tests"
+    priority: "P0"
+    requirement_id: "GH-24"
+    test_objective:
+      title: "Verify isRetryable returns true for HTTP 504 (Gateway Timeout)"
+      what: |
+        Tests that isRetryable correctly identifies HTTP 504 Gateway Timeout
+        as a retryable status code.
+      why: |
+        504 Gateway Timeout indicates upstream server timeout, which is typically
+        transient and should be retried.
+      acceptance_criteria:
+        - "isRetryable returns true when response status is 504"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create HTTP response with status 504"
+          command: "Construct *http.Response with StatusCode 504 and empty body"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call isRetryable with the 504 response"
+          command: "retryable, err := isRetryable(resp)"
+          validation: "retryable == true && err == nil"
+      cleanup: []
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "isRetryable returns true for 504"
+        condition: "retryable == true"
+        failure_impact: "Gateway timeout failures would not be retried"
+
+  - scenario_id: "5"
+    test_id: "TS-GH-24-005"
+    tier: "Unit Tests"
+    priority: "P0"
+    requirement_id: "GH-24"
+    test_objective:
+      title: "Verify isRetryable returns true for HTTP 501 (Not Implemented)"
+      what: |
+        Tests that isRetryable identifies HTTP 501 Not Implemented as retryable.
+        While less common, 501 falls in the 5xx range and should be treated uniformly.
+      why: |
+        Uniform treatment of all 5xx codes (500-504) ensures consistent retry
+        behavior without special-casing individual status codes.
+      acceptance_criteria:
+        - "isRetryable returns true when response status is 501"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create HTTP response with status 501"
+          command: "Construct *http.Response with StatusCode 501 and empty body"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call isRetryable with the 501 response"
+          command: "retryable, err := isRetryable(resp)"
+          validation: "retryable == true && err == nil"
+      cleanup: []
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "isRetryable returns true for 501"
+        condition: "retryable == true"
+        failure_impact: "501 errors would not be retried"
+
+  - scenario_id: "6"
+    test_id: "TS-GH-24-006"
+    tier: "Unit Tests"
+    priority: "P0"
+    requirement_id: "GH-24"
+    test_objective:
+      title: "Verify isRetryable drains response body on 5xx"
+      what: |
+        Tests that when isRetryable encounters a 5xx response, it properly drains
+        the response body using io.Copy(io.Discard, resp.Body) before returning.
+        This prevents connection leaks from undrained response bodies.
+      why: |
+        Undrained response bodies prevent HTTP connection reuse and can cause
+        resource leaks. The retry logic must drain bodies before retrying.
+      acceptance_criteria:
+        - "Response body is fully read/drained after isRetryable returns for 5xx"
+        - "Subsequent Read on body returns io.EOF"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create HTTP response with status 502 and non-empty body"
+          command: "Construct *http.Response with body containing test data"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call isRetryable with the response"
+          command: "retryable, err := isRetryable(resp)"
+          validation: "retryable == true"
+        - step_id: "TEST-02"
+          action: "Attempt to read response body after isRetryable returns"
+          command: "n, err := resp.Body.Read(buf)"
+          validation: "n == 0 && err == io.EOF"
+      cleanup: []
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Response body is drained"
+        condition: "Reading body after isRetryable returns 0 bytes and io.EOF"
+        failure_impact: "Connection leaks from undrained response bodies"
+
+  - scenario_id: "7"
+    test_id: "TS-GH-24-007"
+    tier: "Unit Tests"
+    priority: "P0"
+    requirement_id: "GH-24"
+    test_objective:
+      title: "Verify isRetryable returns false for non-retryable codes (400, 401, 404, 422)"
+      what: |
+        Tests that isRetryable correctly returns false for HTTP status codes that
+        should NOT trigger retries: 400 Bad Request, 401 Unauthorized,
+        404 Not Found, and 422 Unprocessable Entity.
+      why: |
+        Client errors (4xx) are not transient and should not be retried.
+        Retrying them would waste resources and delay error reporting. This is
+        a negative test to ensure the 5xx retry boundary is correct.
+      acceptance_criteria:
+        - "isRetryable returns false for status 400"
+        - "isRetryable returns false for status 401"
+        - "isRetryable returns false for status 404 (without rate limit headers)"
+        - "isRetryable returns false for status 422"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create HTTP responses for each non-retryable status code"
+          command: "Construct responses with StatusCode 400, 401, 404, 422"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call isRetryable for each non-retryable status code"
+          command: "Loop through codes, call isRetryable(resp)"
+          validation: "retryable == false for all codes"
+      cleanup: []
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "[NEGATIVE] isRetryable returns false for all non-retryable codes"
+        condition: "retryable == false for 400, 401, 404, 422"
+        failure_impact: "Client errors would be incorrectly retried"
+
+  # ===========================================================================
+  # Requirement Group 2: do() retries on 5xx with backoff
+  # Priority: P0 | Tier: Unit Tests
+  # ===========================================================================
+
+  - scenario_id: "8"
+    test_id: "TS-GH-24-008"
+    tier: "Unit Tests"
+    priority: "P0"
+    requirement_id: "GH-24"
+    test_objective:
+      title: "Verify do() retries and succeeds after transient 502"
+      what: |
+        Tests that the do() function retries an HTTP request after receiving a 502
+        Bad Gateway response and succeeds when the subsequent attempt returns 200.
+        Uses httptest.NewServer to simulate a server that fails once then succeeds.
+      why: |
+        This is the core functionality being introduced: do() must automatically
+        retry on 5xx errors so all 19+ callers benefit without code changes.
+      acceptance_criteria:
+        - "do() returns successful response after initial 502 failure"
+        - "Mock server receives exactly 2 requests (1 failure + 1 success)"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock HTTP server that returns 502 on first call, 200 on second"
+          command: "httptest.NewServer with atomic counter tracking call count"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call do() with request to mock server"
+          command: "resp, err := client.do(ctx, req)"
+          validation: "err == nil && resp.StatusCode == 200"
+        - step_id: "TEST-02"
+          action: "Verify call count on mock server"
+          command: "assert callCount == 2"
+          validation: "Server received exactly 2 requests"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close mock server"
+          command: "server.Close()"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "do() returns successful response after retry"
+        condition: "err == nil && resp.StatusCode == 200"
+        failure_impact: "Transient 502 errors would not be retried at the HTTP client level"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "Exactly 2 requests were made"
+        condition: "callCount == 2"
+        failure_impact: "Retry count is incorrect — either no retry or too many retries"
+    variables:
+      closure_scope:
+        - name: "callCount"
+          type: "*atomic.Int32"
+          initialized_in: "setup"
+          used_in: ["setup", "test"]
+          comment: "Tracks number of HTTP requests received by mock server"
+        - name: "server"
+          type: "*httptest.Server"
+          initialized_in: "setup"
+          used_in: ["setup", "test", "cleanup"]
+          comment: "Mock HTTP server"
+
+  - scenario_id: "9"
+    test_id: "TS-GH-24-009"
+    tier: "Unit Tests"
+    priority: "P0"
+    requirement_id: "GH-24"
+    test_objective:
+      title: "Verify do() retries and succeeds after transient 503"
+      what: |
+        Tests that do() retries after receiving 503 Service Unavailable and
+        succeeds on a subsequent attempt returning 200.
+      why: |
+        Validates retry behavior for 503, commonly returned during GitHub
+        maintenance or temporary overload conditions.
+      acceptance_criteria:
+        - "do() returns successful response after initial 503 failure"
+        - "Mock server receives exactly 2 requests"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock HTTP server returning 503 then 200"
+          command: "httptest.NewServer with atomic counter"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call do() with request to mock server"
+          validation: "err == nil && resp.StatusCode == 200 && callCount == 2"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close mock server"
+          command: "server.Close()"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "do() succeeds after retrying 503"
+        condition: "err == nil && resp.StatusCode == 200"
+        failure_impact: "503 errors during maintenance would not be retried"
+
+  - scenario_id: "10"
+    test_id: "TS-GH-24-010"
+    tier: "Unit Tests"
+    priority: "P0"
+    requirement_id: "GH-24"
+    test_objective:
+      title: "Verify do() exhausts retries and returns error after persistent 500"
+      what: |
+        Tests that do() exhausts all retry attempts when the server persistently
+        returns 500 Internal Server Error, and returns an appropriate error message.
+      why: |
+        When a server error is persistent (not transient), do() must eventually
+        give up and return an error rather than retrying indefinitely.
+      acceptance_criteria:
+        - "do() returns non-nil error after maxRetries attempts"
+        - "Mock server receives exactly maxRetries+1 requests"
+        - "Error message indicates retry exhaustion"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock HTTP server that always returns 500"
+          command: "httptest.NewServer always returning 500"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call do() with request to mock server"
+          validation: "err != nil"
+        - step_id: "TEST-02"
+          action: "Verify total call count equals maxRetries + 1"
+          validation: "callCount == maxRetries + 1"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close mock server"
+          command: "server.Close()"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "[NEGATIVE] do() returns error after retry exhaustion"
+        condition: "err != nil"
+        failure_impact: "do() would retry indefinitely or silently fail"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "Correct number of attempts made"
+        condition: "callCount == maxRetries + 1"
+        failure_impact: "Retry count does not match expected maximum"
+
+  - scenario_id: "11"
+    test_id: "TS-GH-24-011"
+    tier: "Unit Tests"
+    priority: "P0"
+    requirement_id: "GH-24"
+    test_objective:
+      title: "Verify exhaustion error message reads 'retryable error after N attempts'"
+      what: |
+        Tests that the error message returned when do() exhausts retries contains
+        the text "retryable error" (not the old "rate limited" message) and includes
+        the number of attempts.
+      why: |
+        The error message was changed from "rate limited" to "retryable error" to
+        accurately reflect the broader scope of retry conditions.
+      acceptance_criteria:
+        - "Error message contains 'retryable error'"
+        - "Error message does NOT contain 'rate limited'"
+        - "Error message includes attempt count"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock HTTP server that always returns 500"
+          command: "httptest.NewServer always returning 500"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call do() and capture error message"
+          validation: "strings.Contains(err.Error(), 'retryable error')"
+        - step_id: "TEST-02"
+          action: "Verify error does not contain old message"
+          validation: "!strings.Contains(err.Error(), 'rate limited')"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close mock server"
+          command: "server.Close()"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Error message contains 'retryable error'"
+        condition: "strings.Contains(err.Error(), 'retryable error')"
+        failure_impact: "Error message does not reflect the new retry semantics"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "Error message does not contain old 'rate limited' text"
+        condition: "!strings.Contains(err.Error(), 'rate limited')"
+        failure_impact: "Old error message text was not updated"
+
+  - scenario_id: "12"
+    test_id: "TS-GH-24-012"
+    tier: "Unit Tests"
+    priority: "P0"
+    requirement_id: "GH-24"
+    test_objective:
+      title: "Verify do() respects context cancellation during retry backoff"
+      what: |
+        Tests that do() stops retrying and returns a context error when the
+        context is cancelled during the backoff sleep between retries.
+      why: |
+        Retry loops must respect context cancellation to prevent goroutine leaks
+        and ensure graceful shutdown when callers cancel operations.
+      acceptance_criteria:
+        - "do() returns context.Canceled error when context is cancelled during backoff"
+        - "do() does not make additional requests after context cancellation"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock HTTP server that always returns 502"
+          command: "httptest.NewServer always returning 502"
+        - step_id: "SETUP-02"
+          action: "Create cancellable context"
+          command: "ctx, cancel := context.WithCancel(context.Background())"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Cancel context after first request received"
+          command: "In server handler, call cancel() on first request"
+        - step_id: "TEST-02"
+          action: "Verify do() returns context error"
+          validation: "errors.Is(err, context.Canceled)"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close mock server and call cancel()"
+          command: "server.Close(); cancel()"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "[NEGATIVE] do() returns context error on cancellation"
+        condition: "errors.Is(err, context.Canceled)"
+        failure_impact: "Retry loop ignores context cancellation, causing goroutine leaks"
+
+  # ===========================================================================
+  # Requirement Group 3: No double-retry
+  # Priority: P0 | Tier: Unit Tests
+  # ===========================================================================
+
+  - scenario_id: "13"
+    test_id: "TS-GH-24-013"
+    tier: "Unit Tests"
+    priority: "P0"
+    requirement_id: "GH-24"
+    test_objective:
+      title: "Verify CreateOrUpdateFile with 504 retries only at do() level"
+      what: |
+        Tests that when CreateOrUpdateFile encounters a 504 during the PUT request,
+        the retry happens only at the do() level. The wrapping retryOnRepoRace
+        does not add additional 5xx retry attempts. Total call sequence should be:
+        GET (fetch SHA), PUT (504 fail), PUT (200 success) = 3 total calls.
+      why: |
+        Double-retry would cause excessive retries (retryOnRepoRace retries *
+        do() retries) and mask the true failure count, making debugging harder.
+      acceptance_criteria:
+        - "Mock server receives exactly 3 requests: 1 GET + 1 PUT (504) + 1 PUT (200)"
+        - "CreateOrUpdateFile returns success"
+        - "retryOnRepoRace does not re-invoke the operation for 5xx"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock HTTP server tracking request sequence"
+          command: "httptest.NewServer that returns 200 for GET, 504 for first PUT, 200 for second PUT"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call CreateOrUpdateFile"
+          validation: "err == nil"
+        - step_id: "TEST-02"
+          action: "Verify request sequence"
+          validation: "requests == [GET, PUT(504), PUT(200)]"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close mock server"
+          command: "server.Close()"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Exactly 3 requests made (no double-retry)"
+        condition: "callCount == 3"
+        failure_impact: "Double-retry causes excessive server load and incorrect retry counts"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "Operation succeeds after single-level retry"
+        condition: "err == nil"
+        failure_impact: "CreateOrUpdateFile fails despite server recovery"
+
+  - scenario_id: "14"
+    test_id: "TS-GH-24-014"
+    tier: "Unit Tests"
+    priority: "P0"
+    requirement_id: "GH-24"
+    test_objective:
+      title: "Verify CreateOrUpdateFile with all 5xx codes retries only at do() level"
+      what: |
+        Tests that CreateOrUpdateFile handles all 5xx status codes (500-504)
+        with retries occurring only at the do() level, not duplicated by
+        retryOnRepoRace. Uses table-driven subtests for each 5xx code.
+      why: |
+        Ensures uniform retry behavior across all 5xx codes, not just 502/504.
+        Table-driven approach provides comprehensive coverage efficiently.
+      acceptance_criteria:
+        - "For each 5xx code (500-504), retry happens only at do() level"
+        - "No additional retries from retryOnRepoRace for any 5xx code"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create table-driven test cases for codes 500, 501, 502, 503, 504"
+          command: "Define test table with statusCode field"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "For each code, create mock server and call CreateOrUpdateFile"
+          validation: "Each test case shows retry only at do() level"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close mock servers"
+          command: "server.Close() per subtest"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "All 5xx codes handled with single-level retry"
+        condition: "For each code in [500,501,502,503,504]: callCount matches do()-only retry"
+        failure_impact: "Some 5xx codes may trigger double-retry"
+
+  - scenario_id: "15"
+    test_id: "TS-GH-24-015"
+    tier: "Unit Tests"
+    priority: "P0"
+    requirement_id: "GH-24"
+    test_objective:
+      title: "Verify retryOnRepoRace does not re-invoke operation on do()-exhausted 5xx error"
+      what: |
+        Tests that when do() exhausts all retries on a persistent 5xx error and
+        returns an error, retryOnRepoRace does not attempt to retry the operation
+        again. The error should propagate directly to the caller.
+      why: |
+        If retryOnRepoRace retried after do() exhaustion, it would cause
+        maxRetries * repoRaceRetries total attempts, which is excessive.
+      acceptance_criteria:
+        - "retryOnRepoRace returns the do() exhaustion error without additional retries"
+        - "Total call count equals do() maxRetries + 1 (no retryOnRepoRace multiplier)"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock server that always returns 500"
+          command: "httptest.NewServer always returning 500"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call CreateOrUpdateFile (which uses retryOnRepoRace wrapping do())"
+          validation: "err != nil"
+        - step_id: "TEST-02"
+          action: "Verify total call count is not multiplied"
+          validation: "callCount == maxRetries + 1 (for GET) + maxRetries + 1 (for PUT), not multiplied"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close mock server"
+          command: "server.Close()"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "[NEGATIVE] retryOnRepoRace does not multiply retry attempts"
+        condition: "Total requests <= (maxRetries+1)*2 (GET + PUT exhaustion)"
+        failure_impact: "Retry multiplication causes excessive server load"
+
+  # ===========================================================================
+  # Requirement Group 4: retryOnRepoRace handles only 404/409
+  # Priority: P1 | Tier: Unit Tests
+  # ===========================================================================
+
+  - scenario_id: "16"
+    test_id: "TS-GH-24-016"
+    tier: "Unit Tests"
+    priority: "P1"
+    requirement_id: "GH-24"
+    test_objective:
+      title: "Verify retryOnRepoRace retries on 404 (async repo init)"
+      what: |
+        Tests that retryOnRepoRace correctly retries operations that receive
+        a 404 Not Found response, which indicates an async repo initialization
+        race condition where the repo exists but is not yet fully initialized.
+      why: |
+        404 during repo creation is a known race condition in GitHub's API.
+        The repo is created but content endpoints return 404 briefly.
+      acceptance_criteria:
+        - "retryOnRepoRace retries the operation when do() returns 404"
+        - "Operation succeeds on subsequent attempt returning 200"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock server returning 404 then 200"
+          command: "httptest.NewServer with call counter"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call operation wrapped in retryOnRepoRace"
+          validation: "err == nil && callCount > 1"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close mock server"
+          command: "server.Close()"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "retryOnRepoRace retries on 404"
+        condition: "Operation succeeds after retry"
+        failure_impact: "Repo initialization race conditions cause permanent failures"
+
+  - scenario_id: "17"
+    test_id: "TS-GH-24-017"
+    tier: "Unit Tests"
+    priority: "P1"
+    requirement_id: "GH-24"
+    test_objective:
+      title: "Verify retryOnRepoRace retries on 409 (branch ref conflict)"
+      what: |
+        Tests that retryOnRepoRace correctly retries operations that receive
+        a 409 Conflict response, which indicates a branch reference conflict
+        (e.g., concurrent pushes to the same branch).
+      why: |
+        409 Conflict during file operations indicates branch ref conflicts that
+        are transient and resolve on retry with an updated SHA.
+      acceptance_criteria:
+        - "retryOnRepoRace retries the operation when do() returns 409"
+        - "Operation succeeds on subsequent attempt"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock server returning 409 then 200"
+          command: "httptest.NewServer with call counter"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call operation wrapped in retryOnRepoRace"
+          validation: "err == nil && callCount > 1"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close mock server"
+          command: "server.Close()"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "retryOnRepoRace retries on 409"
+        condition: "Operation succeeds after retry"
+        failure_impact: "Branch ref conflicts cause permanent file operation failures"
+
+  - scenario_id: "18"
+    test_id: "TS-GH-24-018"
+    tier: "Unit Tests"
+    priority: "P1"
+    requirement_id: "GH-24"
+    test_objective:
+      title: "Verify retryOnRepoRace does not retry on 500"
+      what: |
+        Tests that retryOnRepoRace does NOT retry when do() returns a 500 error
+        (after do() has already exhausted its own 5xx retries). The 500 error
+        should propagate to the caller.
+      why: |
+        5xx retries are now handled by do(). retryOnRepoRace should only handle
+        404/409 repo race conditions, not 5xx errors.
+      acceptance_criteria:
+        - "retryOnRepoRace does not add retries for 500 errors"
+        - "Error from do() propagates directly"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock server always returning 500"
+          command: "httptest.NewServer always returning 500"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call operation wrapped in retryOnRepoRace"
+          validation: "err != nil"
+        - step_id: "TEST-02"
+          action: "Verify no additional retries from retryOnRepoRace"
+          validation: "callCount matches do()-only exhaustion"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close mock server"
+          command: "server.Close()"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "[NEGATIVE] retryOnRepoRace does not retry on 500"
+        condition: "No additional retries beyond do() exhaustion"
+        failure_impact: "retryOnRepoRace incorrectly retries 5xx errors"
+
+  - scenario_id: "19"
+    test_id: "TS-GH-24-019"
+    tier: "Unit Tests"
+    priority: "P1"
+    requirement_id: "GH-24"
+    test_objective:
+      title: "Verify retryOnRepoRace does not retry on 502"
+      what: |
+        Tests that retryOnRepoRace does NOT retry when do() returns a 502 error.
+        This validates the narrowed scope of retryOnRepoRace specifically for
+        502 (the production failure code).
+      why: |
+        Ensures the scope narrowing is correct for the specific error code
+        that triggered the production failure.
+      acceptance_criteria:
+        - "retryOnRepoRace does not add retries for 502 errors"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock server always returning 502"
+          command: "httptest.NewServer always returning 502"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call operation wrapped in retryOnRepoRace"
+          validation: "err != nil && no extra retries"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close mock server"
+          command: "server.Close()"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "[NEGATIVE] retryOnRepoRace does not retry on 502"
+        condition: "No additional retries beyond do() exhaustion"
+        failure_impact: "retryOnRepoRace incorrectly retries 502 errors"
+
+  - scenario_id: "20"
+    test_id: "TS-GH-24-020"
+    tier: "Unit Tests"
+    priority: "P1"
+    requirement_id: "GH-24"
+    test_objective:
+      title: "Verify retryOnRepoRace exhausts attempts and returns wrapped error"
+      what: |
+        Tests that retryOnRepoRace exhausts its retry attempts when the underlying
+        operation persistently returns 404 or 409, and returns a properly wrapped
+        error with context about the exhaustion.
+      why: |
+        Even transient errors can persist. retryOnRepoRace must eventually give up
+        and return a meaningful error to the caller.
+      acceptance_criteria:
+        - "retryOnRepoRace returns error after exhausting retry attempts"
+        - "Error message includes context about repo race retry exhaustion"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock server always returning 404"
+          command: "httptest.NewServer always returning 404"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call operation wrapped in retryOnRepoRace"
+          validation: "err != nil"
+        - step_id: "TEST-02"
+          action: "Verify error is wrapped with retry context"
+          validation: "Error message indicates retry exhaustion"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close mock server"
+          command: "server.Close()"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "[NEGATIVE] retryOnRepoRace returns error on exhaustion"
+        condition: "err != nil && error contains retry context"
+        failure_impact: "Silent failure when repo race retries exhausted"
+
+  # ===========================================================================
+  # Requirement Group 5: isTransientStatus returns true only for 404/409
+  # Priority: P1 | Tier: Unit Tests
+  # ===========================================================================
+
+  - scenario_id: "21"
+    test_id: "TS-GH-24-021"
+    tier: "Unit Tests"
+    priority: "P1"
+    requirement_id: "GH-24"
+    test_objective:
+      title: "Verify isTransientStatus returns true for 404"
+      what: |
+        Tests that isTransientStatus correctly identifies HTTP 404 as a transient
+        status code (indicating async repo initialization).
+      why: |
+        isTransientStatus is used by retryOnRepoRace to decide whether to retry.
+        404 must be treated as transient for repo race handling.
+      acceptance_criteria:
+        - "isTransientStatus(404) returns true"
+    test_steps:
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call isTransientStatus(404)"
+          validation: "returns true"
+      cleanup: []
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "isTransientStatus returns true for 404"
+        condition: "isTransientStatus(404) == true"
+        failure_impact: "Repo race retries would not trigger for 404"
+
+  - scenario_id: "22"
+    test_id: "TS-GH-24-022"
+    tier: "Unit Tests"
+    priority: "P1"
+    requirement_id: "GH-24"
+    test_objective:
+      title: "Verify isTransientStatus returns true for 409"
+      what: |
+        Tests that isTransientStatus correctly identifies HTTP 409 as a transient
+        status code (indicating branch ref conflict).
+      why: |
+        409 Conflict must be treated as transient for retryOnRepoRace to handle
+        branch reference conflicts during file operations.
+      acceptance_criteria:
+        - "isTransientStatus(409) returns true"
+    test_steps:
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call isTransientStatus(409)"
+          validation: "returns true"
+      cleanup: []
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "isTransientStatus returns true for 409"
+        condition: "isTransientStatus(409) == true"
+        failure_impact: "Branch ref conflict retries would not trigger"
+
+  - scenario_id: "23"
+    test_id: "TS-GH-24-023"
+    tier: "Unit Tests"
+    priority: "P1"
+    requirement_id: "GH-24"
+    test_objective:
+      title: "Verify isTransientStatus returns false for 500, 502, 503, 504"
+      what: |
+        Tests that isTransientStatus returns false for all 5xx status codes.
+        5xx errors are now handled by do() retries, not retryOnRepoRace.
+      why: |
+        The key change in this PR is removing 5xx from isTransientStatus.
+        This test validates the narrowed scope.
+      acceptance_criteria:
+        - "isTransientStatus returns false for 500"
+        - "isTransientStatus returns false for 502"
+        - "isTransientStatus returns false for 503"
+        - "isTransientStatus returns false for 504"
+    test_steps:
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call isTransientStatus for each 5xx code"
+          validation: "returns false for all"
+      cleanup: []
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "[NEGATIVE] isTransientStatus returns false for all 5xx"
+        condition: "isTransientStatus(code) == false for code in [500,502,503,504]"
+        failure_impact: "5xx codes incorrectly treated as transient by retryOnRepoRace"
+
+  # ===========================================================================
+  # Requirement Group 6: Error messages
+  # Priority: P1 | Tier: Unit Tests
+  # ===========================================================================
+
+  - scenario_id: "24"
+    test_id: "TS-GH-24-024"
+    tier: "Unit Tests"
+    priority: "P1"
+    requirement_id: "GH-24"
+    test_objective:
+      title: "Verify error message includes 'retryable error' (not 'rate limited')"
+      what: |
+        Tests that the error message returned by do() when retries are exhausted
+        contains "retryable error" instead of the old "rate limited" text.
+      why: |
+        The terminology change reflects that retries now cover 5xx errors,
+        not just rate limiting. Error messages should be accurate for debugging.
+      acceptance_criteria:
+        - "Error message contains 'retryable error'"
+        - "Error message does NOT contain 'rate limited'"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock server always returning 500"
+          command: "httptest.NewServer always returning 500"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call do() and capture error"
+          validation: "Error text matches expected format"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close mock server"
+          command: "server.Close()"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Error contains 'retryable error'"
+        condition: "strings.Contains(err.Error(), 'retryable error')"
+        failure_impact: "Misleading error messages in production logs"
+
+  - scenario_id: "25"
+    test_id: "TS-GH-24-025"
+    tier: "Unit Tests"
+    priority: "P1"
+    requirement_id: "GH-24"
+    test_objective:
+      title: "Verify error message includes method, path, and delay information"
+      what: |
+        Tests that the retry exhaustion error message includes the HTTP method,
+        request path, and backoff delay information for debugging.
+      why: |
+        Detailed error messages help operators diagnose which API call failed
+        and how long the retry sequence lasted.
+      acceptance_criteria:
+        - "Error message includes HTTP method (e.g., GET, PUT)"
+        - "Error message includes request path"
+        - "Error message includes delay/backoff information"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock server always returning 500"
+          command: "httptest.NewServer always returning 500"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call do() with a GET request to /repos/org/repo/contents/file"
+          validation: "Error message contains method and path"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close mock server"
+          command: "server.Close()"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Error includes method and path"
+        condition: "Error contains HTTP method and request URL path"
+        failure_impact: "Insufficient context in error messages for debugging"
+
+  - scenario_id: "26"
+    test_id: "TS-GH-24-026"
+    tier: "Unit Tests"
+    priority: "P1"
+    requirement_id: "GH-24"
+    test_objective:
+      title: "Verify error message includes Retry-After header value when present"
+      what: |
+        Tests that when a 5xx response includes a Retry-After header, the error
+        message incorporates this value in the delay information.
+      why: |
+        Some servers provide Retry-After hints. The error message should surface
+        this information for operational visibility.
+      acceptance_criteria:
+        - "Error message includes Retry-After value when header is present in response"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock server returning 503 with Retry-After: 30 header"
+          command: "httptest.NewServer returning 503 with Retry-After header"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call do() and capture error"
+          validation: "Error message references the Retry-After value"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close mock server"
+          command: "server.Close()"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Error includes Retry-After value"
+        condition: "Error message includes Retry-After delay value"
+        failure_impact: "Retry-After hints not visible in error output"
+
+  # ===========================================================================
+  # Requirement Group 7: File operations with retryOnRepoRace
+  # Priority: P1 | Tier: Functional
+  # ===========================================================================
+
+  - scenario_id: "27"
+    test_id: "TS-GH-24-027"
+    tier: "Functional"
+    priority: "P1"
+    requirement_id: "GH-24"
+    test_objective:
+      title: "Verify CreateOrUpdateFile succeeds on first attempt"
+      what: |
+        Tests the happy path where CreateOrUpdateFile succeeds on the first
+        attempt without triggering any retries. The GET request returns the
+        file SHA and the PUT request succeeds with 200.
+      why: |
+        Validates that the retry changes do not break the normal success path.
+        Most operations should succeed without retries.
+      acceptance_criteria:
+        - "CreateOrUpdateFile returns nil error"
+        - "Mock server receives exactly 2 requests (1 GET + 1 PUT)"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock server returning 200 for GET and PUT"
+          command: "httptest.NewServer returning file SHA for GET, 200 for PUT"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call CreateOrUpdateFile"
+          validation: "err == nil"
+        - step_id: "TEST-02"
+          action: "Verify call count"
+          validation: "callCount == 2 (1 GET + 1 PUT)"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close mock server"
+          command: "server.Close()"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "CreateOrUpdateFile succeeds without retries"
+        condition: "err == nil && callCount == 2"
+        failure_impact: "Normal file operations broken by retry changes"
+
+  - scenario_id: "28"
+    test_id: "TS-GH-24-028"
+    tier: "Functional"
+    priority: "P1"
+    requirement_id: "GH-24"
+    test_objective:
+      title: "Verify CreateOrUpdateFileOnBranch retries on 404 via retryOnRepoRace"
+      what: |
+        Tests that CreateOrUpdateFileOnBranch correctly retries when encountering
+        a 404 response (repo not yet initialized), using the retryOnRepoRace wrapper.
+      why: |
+        CreateOrUpdateFileOnBranch is used during initial repo setup when the
+        repo may not be fully initialized. 404 retries handle this race condition.
+      acceptance_criteria:
+        - "Operation retries on 404 and succeeds on subsequent 200"
+        - "retryOnRepoRace handles the 404 retry (not do())"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock server returning 404 for first GET, then 200 for subsequent requests"
+          command: "httptest.NewServer with call sequence tracking"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call CreateOrUpdateFileOnBranch"
+          validation: "err == nil"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close mock server"
+          command: "server.Close()"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "CreateOrUpdateFileOnBranch retries on 404"
+        condition: "Operation succeeds after 404 retry"
+        failure_impact: "Branch file operations fail during repo initialization"
+
+  - scenario_id: "29"
+    test_id: "TS-GH-24-029"
+    tier: "Functional"
+    priority: "P1"
+    requirement_id: "GH-24"
+    test_objective:
+      title: "Verify DeleteFile retries on 409 via retryOnRepoRace"
+      what: |
+        Tests that DeleteFile correctly retries when encountering a 409 Conflict
+        response (branch ref conflict during concurrent operations), using the
+        retryOnRepoRace wrapper.
+      why: |
+        409 during delete operations indicates a branch ref conflict that resolves
+        when the file SHA is refreshed on retry.
+      acceptance_criteria:
+        - "DeleteFile retries on 409 and succeeds on subsequent attempt"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock server returning 409 for first DELETE, 200 for second"
+          command: "httptest.NewServer with call sequence tracking"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call DeleteFile"
+          validation: "err == nil after retry"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close mock server"
+          command: "server.Close()"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "DeleteFile retries on 409"
+        condition: "Operation succeeds after 409 retry"
+        failure_impact: "File deletions fail on branch ref conflicts"
+
+  - scenario_id: "30"
+    test_id: "TS-GH-24-030"
+    tier: "Functional"
+    priority: "P1"
+    requirement_id: "GH-24"
+    test_objective:
+      title: "Verify putFileWithRetry passes through non-transient errors"
+      what: |
+        Tests that putFileWithRetry does not retry on non-transient errors
+        like 400 Bad Request or 422 Unprocessable Entity. These errors should
+        propagate immediately to the caller.
+      why: |
+        Client errors (4xx other than 404/409) indicate permanent problems
+        (bad input, validation failure) that will not resolve on retry.
+      acceptance_criteria:
+        - "putFileWithRetry returns error immediately for 400"
+        - "putFileWithRetry returns error immediately for 422"
+        - "No retry attempts made for non-transient errors"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock server returning 422"
+          command: "httptest.NewServer always returning 422"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call putFileWithRetry"
+          validation: "err != nil && callCount == 1 (no retry)"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close mock server"
+          command: "server.Close()"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "[NEGATIVE] Non-transient errors are not retried"
+        condition: "callCount == 1 for 400/422 errors"
+        failure_impact: "Non-transient errors wastefully retried"
+
+  # ===========================================================================
+  # Requirement Group 8: Rate limit behavior preserved
+  # Priority: P1 | Tier: Unit Tests
+  # ===========================================================================
+
+  - scenario_id: "31"
+    test_id: "TS-GH-24-031"
+    tier: "Unit Tests"
+    priority: "P1"
+    requirement_id: "GH-24"
+    test_objective:
+      title: "Verify isRetryable still returns true for 429 (Too Many Requests)"
+      what: |
+        Tests that the existing rate limit handling for HTTP 429 Too Many Requests
+        is preserved and still triggers retries via isRetryable.
+      why: |
+        The 5xx retry changes must not regress existing rate limit handling.
+        429 retries are critical for GitHub API compliance.
+      acceptance_criteria:
+        - "isRetryable returns true for 429 responses"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create HTTP response with status 429"
+          command: "Construct *http.Response with StatusCode 429"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call isRetryable with 429 response"
+          validation: "retryable == true"
+      cleanup: []
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "isRetryable still returns true for 429"
+        condition: "retryable == true"
+        failure_impact: "Rate limit handling regressed by 5xx retry changes"
+
+  - scenario_id: "32"
+    test_id: "TS-GH-24-032"
+    tier: "Unit Tests"
+    priority: "P1"
+    requirement_id: "GH-24"
+    test_objective:
+      title: "Verify isRetryable still returns true for 403 with Retry-After header"
+      what: |
+        Tests that isRetryable still handles HTTP 403 Forbidden responses that
+        include a Retry-After header (GitHub's secondary rate limit signal).
+      why: |
+        GitHub uses 403 + Retry-After for secondary rate limits. This existing
+        behavior must be preserved.
+      acceptance_criteria:
+        - "isRetryable returns true for 403 with Retry-After header"
+        - "isRetryable returns false for 403 without Retry-After header"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create HTTP response with status 403 and Retry-After header"
+          command: "Construct *http.Response with StatusCode 403, Header Retry-After: 60"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call isRetryable with 403 + Retry-After response"
+          validation: "retryable == true"
+      cleanup: []
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "isRetryable returns true for 403 with Retry-After"
+        condition: "retryable == true"
+        failure_impact: "Secondary rate limit handling regressed"
+
+  - scenario_id: "33"
+    test_id: "TS-GH-24-033"
+    tier: "Unit Tests"
+    priority: "P1"
+    requirement_id: "GH-24"
+    test_objective:
+      title: "Verify isRetryable still detects secondary rate limit in response body"
+      what: |
+        Tests that isRetryable detects GitHub's secondary rate limit signal in the
+        response body (JSON containing "secondary rate limit" or similar text)
+        for 403 responses without Retry-After header.
+      why: |
+        GitHub sometimes signals secondary rate limits via response body text
+        rather than headers. This detection must be preserved.
+      acceptance_criteria:
+        - "isRetryable returns true for 403 with rate limit text in body"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create HTTP 403 response with rate limit message in body"
+          command: "Construct *http.Response with body containing rate limit text"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call isRetryable with the response"
+          validation: "retryable == true"
+      cleanup: []
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "isRetryable detects secondary rate limit in body"
+        condition: "retryable == true"
+        failure_impact: "Body-based secondary rate limit detection regressed"
+
+  - scenario_id: "34"
+    test_id: "TS-GH-24-034"
+    tier: "Unit Tests"
+    priority: "P1"
+    requirement_id: "GH-24"
+    test_objective:
+      title: "Verify rate limit backoff timing is unchanged"
+      what: |
+        Tests that the backoff timing for rate-limited requests (429 and 403
+        with Retry-After) is unchanged by the 5xx retry modifications.
+        The Retry-After header value should still be respected.
+      why: |
+        Changing the backoff timing for rate limits could cause GitHub to
+        block the application. The existing timing must be preserved exactly.
+      acceptance_criteria:
+        - "Backoff delay for 429 uses Retry-After header value"
+        - "Backoff delay matches pre-change behavior"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock server returning 429 with Retry-After: 1"
+          command: "httptest.NewServer returning 429 then 200"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call do() and measure time between requests"
+          validation: "Backoff delay >= Retry-After value"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close mock server"
+          command: "server.Close()"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Rate limit backoff timing preserved"
+        condition: "Backoff delay respects Retry-After header"
+        failure_impact: "Rate limit backoff changed, risking API blocks"
+---
