@@ -8,11 +8,11 @@
 
 **Date:** 2026-06-18
 **Reviewer:** QualityFlow Automated Review (v1.1.0)
-**Review Rules Schema:** N/A (defaults only — no review_rules.yaml, no repo_rules)
+**Review Rules Schema:** 1.1.0
 
 ---
 
-## Verdict: APPROVED_WITH_FINDINGS
+## Verdict: APPROVED
 
 ## Summary
 
@@ -20,11 +20,11 @@
 |:-------|:------|
 | Dimensions reviewed | 7/7 |
 | Critical findings | 0 |
-| Major findings | 7 |
-| Minor findings | 5 |
-| Actionable findings | 11 |
+| Major findings | 0 |
+| Minor findings | 3 |
+| Actionable findings | 3 |
 | Confidence | MEDIUM |
-| Weighted score | 79 |
+| Weighted score | 93 |
 
 ## Traceability Summary
 
@@ -41,7 +41,7 @@
 
 ## Findings by Dimension
 
-### Dimension 1: STP-STD Traceability (Weight: 30% | Score: 93/100)
+### Dimension 1: STP-STD Traceability (Weight: 30% | Score: 98/100)
 
 **Forward Traceability (STP -> STD):**
 
@@ -74,15 +74,15 @@ All 8 STD scenarios have `requirement_id: "GH-30"` which maps to the GH-30 requi
 
 **Findings:**
 
-**D1-1a-001** | MAJOR | STP-STD Traceability
-- **Description:** STP uses tier label "Functional" and STD uses `tier: "Functional"`, but the STD spec expects `tier: "Tier 1"` or `tier: "Tier 2"`. The tier value "Functional" is non-standard and will not match standard tier-based filtering or reporting.
-- **Evidence:** All 8 scenarios have `tier: "Functional"` instead of `tier: "Tier 1"`.
-- **Remediation:** Change all `tier: "Functional"` to `tier: "Tier 1"` since the STD uses Go/testify framework and these are functional-level Go tests (Tier 1 in the QualityFlow taxonomy).
+**D1-1a-001** | MINOR | STP-STD Traceability
+- **Description:** Scenario 001 `specific_preconditions` still references "PR #33 changes merged" as a precondition name. While the remediation removed PR references from stubs, this YAML field retains the PR number in the precondition `name` field. The `requirement` field correctly describes the functional precondition.
+- **Evidence:** `name: "PR #33 changes merged"` in scenario 001 `specific_preconditions`.
+- **Remediation:** Rename to `name: "t.TempDir() replacement applied"` to remove the PR reference from the YAML.
 - **Actionable:** true
 
 ---
 
-### Dimension 2: STD YAML Structure (Weight: 20% | Score: 75/100)
+### Dimension 2: STD YAML Structure (Weight: 20% | Score: 95/100)
 
 **Document-Level Structure:**
 
@@ -100,66 +100,47 @@ All 8 STD scenarios have `requirement_id: "GH-30"` which maps to the GH-30 requi
 |:------|:------------------|:------|
 | scenario_id | YES | Sequential 001-008 |
 | test_id | YES | Format TS-GH-30-NNN |
-| tier | YES | Non-standard value (see D1-1a-001) |
+| tier | YES | All "Tier 1" (standard value) |
 | priority | YES | P0/P1 |
 | requirement_id | YES | All "GH-30" |
-| patterns | **NO** | Missing from all scenarios |
+| patterns | YES | Primary pattern assigned |
 | variables | YES | closure_scope present |
 | test_structure | YES | describe/context/it |
-| code_structure | **NO** | Missing from all scenarios |
+| code_structure | YES | type/function_name/subtest_style |
 | test_objective | YES | title/what/why/acceptance_criteria |
 | test_data | YES | resource_definitions + api_endpoints |
 | test_steps | YES | setup/test_execution/cleanup |
 | assertions | YES | At least 1 per scenario |
 
-**Findings:**
-
-**D2-2b-001** | MAJOR | STD YAML Structure
-- **Description:** `patterns` field is missing from all 8 scenarios. The v2.1-enhanced spec requires a `patterns` section with primary pattern and helpers_required for each scenario.
-- **Evidence:** No `patterns:` key found in any scenario block.
-- **Remediation:** Add `patterns:` section to each scenario with at least `primary: "test-isolation"` or appropriate pattern identifier, and `helpers_required: []`.
-- **Actionable:** true
-
-**D2-2b-002** | MAJOR | STD YAML Structure
-- **Description:** `code_structure` field is missing from all 8 scenarios. This field provides the framework-specific test structure hint needed for code generation.
-- **Evidence:** No `code_structure:` key found in any scenario block.
-- **Remediation:** Add `code_structure:` section to each scenario. For standard Go tests: `code_structure: { type: "test_function", function_name: "TestTS_GH30_NNN_...", subtest_style: "t.Run" }`.
-- **Actionable:** true
-
-**D2-2b-003** | MINOR | STD YAML Structure
-- **Description:** `test_id` format uses `TS-GH-30-NNN` which matches the default `TS-{JIRA_ID}-{NUM:03d}` pattern. Valid.
-- **Evidence:** test_id values: TS-GH-30-001 through TS-GH-30-008.
-- **Remediation:** None needed.
-- **Actionable:** false
+No findings.
 
 ---
 
-### Dimension 3: Pattern Matching Correctness (Weight: 10% | Score: 50/100)
+### Dimension 3: Pattern Matching Correctness (Weight: 10% | Score: 90/100)
 
-No pattern library exists at `config/projects/example/patterns/`. No `patterns` field is present in any scenario. Dimension 3 review is limited to general observations.
+All 8 scenarios now have pattern assignments. Pattern choices are reasonable given the scenario intent:
 
-| Scenario | Primary Pattern | Helpers | Decorators | Status |
-|:---------|:----------------|:--------|:-----------|:-------|
-| 001 | N/A | N/A | N/A | FAIL |
-| 002 | N/A | N/A | N/A | FAIL |
-| 003 | N/A | N/A | N/A | FAIL |
-| 004 | N/A | N/A | N/A | FAIL |
-| 005 | N/A | N/A | N/A | FAIL |
-| 006 | N/A | N/A | N/A | FAIL |
-| 007 | N/A | N/A | N/A | FAIL |
-| 008 | N/A | N/A | N/A | FAIL |
+| Scenario | Primary Pattern | Helpers | Status |
+|:---------|:----------------|:--------|:-------|
+| 001 | error-path-validation | [] | PASS |
+| 002 | test-isolation | [] | PASS |
+| 003 | test-isolation | [] | PASS |
+| 004 | error-path-validation | [] | PASS |
+| 005 | error-path-validation | [] | PASS |
+| 006 | source-code-analysis | [] | PASS |
+| 007 | error-path-validation | [] | PASS |
+| 008 | error-path-validation | [] | PASS |
 
-**Findings:**
+Pattern rationale:
+- Scenarios 001, 004, 005, 007, 008 test error paths (openshell, harness-not-found, tar) — `error-path-validation` is correct.
+- Scenarios 002, 003 test host filesystem isolation — `test-isolation` is correct.
+- Scenario 006 performs source code analysis (grep for t.TempDir()) — `source-code-analysis` is correct.
 
-**D3-3a-001** | MAJOR | Pattern Matching Correctness
-- **Description:** No primary pattern assigned to any of the 8 scenarios. Pattern metadata is required for code generation to select the correct test template.
-- **Evidence:** `patterns` key absent from all scenario blocks.
-- **Remediation:** Assign patterns based on scenario intent. Suggested mappings: scenarios 001-005, 007-008 -> `"test-isolation"` or `"error-path-validation"`. Scenario 006 -> `"source-code-analysis"`.
-- **Actionable:** true
+No pattern library exists for validation against. No findings.
 
 ---
 
-### Dimension 4: Test Step Quality (Weight: 15% | Score: 78/100)
+### Dimension 4: Test Step Quality (Weight: 15% | Score: 95/100)
 
 | Scenario | Setup | Execution | Cleanup | Assertions | Status |
 |:---------|:------|:----------|:--------|:-----------|:-------|
@@ -168,59 +149,38 @@ No pattern library exists at `config/projects/example/patterns/`. No `patterns` 
 | 003 | 1 | 1 | 1 | 1 | PASS |
 | 004 | 1 | 1 | 1 | 1 | PASS |
 | 005 | 1 | 2 | 1 | 2 | PASS |
-| 006 | 1 | 3 | 1 | 2 | WARN |
+| 006 | 1 | 3 | 1 | 2 | PASS |
 | 007 | 1 | 1 | 1 | 1 | PASS |
 | 008 | 1 | 3 | 1 | 3 | PASS |
 
-**Findings:**
+All test steps have specific actions, executable commands, and measurable validations. Previously flagged vague commands (scenario 006 TEST-01, scenario 002 TEST-02) have been replaced with executable grep/filter commands.
 
-**D4-4b-001** | MAJOR | Test Step Quality
-- **Description:** Scenario 006, step TEST-01 has a vague, non-executable command: "For each function, verify t.TempDir() is called within its body". This is a source code analysis instruction, not a testable action.
-- **Evidence:** `command: "For each function, verify t.TempDir() is called within its body"` (scenario 006, step TEST-01)
-- **Remediation:** Replace with an executable command, e.g., `command: "grep -c 't.TempDir()' internal/cli/run_test.go"` with `validation: "Count equals 10"`.
-- **Actionable:** true
-
-**D4-4b-002** | MINOR | Test Step Quality
-- **Description:** Scenario 002, step TEST-02 has a descriptive command rather than an executable one: "Parse test output for absence of tar/archive error messages".
-- **Evidence:** `command: "Parse test output for absence of tar/archive error messages"` (scenario 002, step TEST-02)
-- **Remediation:** Replace with executable command, e.g., `command: "go test ./internal/cli/ -run 'TestRunAgent' -v 2>&1 | grep -ci 'tar\\|archive'"` with `validation: "Count is 0"`.
-- **Actionable:** true
-
-**D4-4b-003** | MINOR | Test Step Quality
-- **Description:** Multiple scenarios mix Go code statements (e.g., `repoDir := t.TempDir()`) with shell commands in the `command` field. The command field should consistently use either Go code or shell commands, not a mix.
-- **Evidence:** Scenarios 001, 003, 004, 005, 007: setup steps use `command: "repoDir := t.TempDir()"` (Go code), while scenario 002 uses `command: "rm -rf /tmp/repo 2>/dev/null || true"` (shell).
-- **Remediation:** Standardize on Go code for unit test scenarios (since these are Go test steps) and add a `language: go` field to distinguish from shell commands. Or use a consistent format like `go_code: "repoDir := t.TempDir()"`.
+**D4-4b-001** | MINOR | Test Step Quality
+- **Description:** Some setup steps use Go code commands (e.g., `repoDir := t.TempDir()`) while execution steps in other scenarios use shell commands (e.g., `go test ./internal/cli/`). The `language: "go"` annotation has been added to Go-code setup steps, which helps differentiate. However, scenario 007 setup step mixes Go code with shell-style semicolons without the `language` annotation.
+- **Evidence:** Scenario 007 SETUP-01: `command: "repoDir := t.TempDir(); os.WriteFile(filepath.Join(repoDir, 'test.txt'), []byte('test'), 0644)"` — missing `language: "go"` annotation.
+- **Remediation:** Add `language: "go"` to scenario 007 SETUP-01 for consistency with other Go-code setup steps.
 - **Actionable:** true
 
 ---
 
-### Dimension 4.5: STD Content Policy (Weight: 10% | Score: 72/100)
+### Dimension 4.5: STD Content Policy (Weight: 10% | Score: 95/100)
 
-**Findings:**
+**STD YAML:**
+- `related_prs` section has been removed from `document_metadata`. PASS.
+- No PR URLs, branch names, or commit SHAs in metadata. PASS.
+- `framework_note` in `code_generation_config` provides design rationale without referencing PRs. PASS.
 
-**D4.5-4.5a-001** | MAJOR | STD Content Policy
-- **Description:** `document_metadata.related_prs` contains PR URL references. PR URLs are implementation artifacts that belong in the STP, not in the STD. The STD describes *what* to test, not *what code changed*.
-- **Evidence:**
-  ```yaml
-  related_prs:
-    - repo: "guyoron1/fullsend"
-      pr_number: 33
-      url: "https://github.com/guyoron1/fullsend/pull/33"
-      title: "Fix hardcoded /tmp/repo in agent run tests"
-      merged: true
-  ```
-- **Remediation:** Remove the `related_prs` section from `document_metadata`. PR references are already captured in the STP (Section I.3 and Section II.4).
-- **Actionable:** true
+**Stub Files:**
+- No PR URLs or PR number references in stub docstrings. PASS.
+- Shared preconditions use functional language ("Source code uses t.TempDir() instead of hardcoded /tmp/repo"). PASS.
+- No branch names or commit references. PASS.
+- No implementation details in stubs (all bodies are `t.Skip()` pending markers). PASS.
 
-**D4.5-4.5a-002** | MAJOR | STD Content Policy
-- **Description:** Go stub file docstring references "PR #33 changes merged" as a precondition in multiple test stubs. Stubs should not reference specific PRs.
-- **Evidence:** Stub header: `Shared Preconditions: ... PR #33 changes merged (t.TempDir() replacement applied in run_test.go)`. Scenario 001 stub: `Preconditions: PR #33 changes applied to TestRunAgent_HarnessLoadPipeline`.
-- **Remediation:** Replace PR references with functional preconditions, e.g., "t.TempDir() replacement applied in run_test.go" (without the PR number), or "Source code uses t.TempDir() instead of hardcoded /tmp/repo".
-- **Actionable:** true
+No findings.
 
 ---
 
-### Dimension 5: PSE Docstring Quality (Weight: 10% | Score: 72/100)
+### Dimension 5: PSE Docstring Quality (Weight: 10% | Score: 95/100)
 
 **Go Stubs:**
 
@@ -233,43 +193,48 @@ File: `agent_run_tempdir_stubs_test.go` (8 stubs reviewed)
 | TestTS_GH30_003_... | YES | Specific | Numbered | Measurable | YES | PASS |
 | TestTS_GH30_004_... | YES | Adequate | Numbered | Measurable | YES | PASS |
 | TestTS_GH30_005_... | YES | Adequate | Numbered | Measurable | YES | PASS |
-| TestTS_GH30_006_... | YES | Adequate | Numbered | Measurable | YES | WARN |
+| TestTS_GH30_006_... | YES | Adequate | Numbered | Measurable | YES | PASS |
 | TestTS_GH30_007_... | YES | Adequate | Numbered | Measurable | YES | PASS |
 | TestTS_GH30_008_... | YES | Adequate | Numbered | Measurable | YES | PASS |
 
-Positives:
-- All 8 stubs have PSE comment blocks with Preconditions/Steps/Expected sections
-- File header references STP file path and Jira ID
-- Test function names include test IDs (e.g., `TestTS_GH30_001_`)
-- All stubs use `t.Skip("Phase 1: Design only - awaiting implementation")` as pending marker
-- Only `testing` import (clean stub)
+Improvements from previous review:
+- All stubs now use Go line comment style (`//`) instead of block comments (`/* */`). PASS.
+- Scenario 006 stub Steps section now uses action verbs ("Analyze source", "Search source") instead of "Verify" language. PASS.
+- PR references removed from all docstrings. PASS.
+- File header references STP file path and Jira ID. PASS.
+- All stubs use `t.Skip("Phase 1: Design only - awaiting implementation")` as pending marker. PASS.
+- Only `testing` import (clean stub). PASS.
 
-**Findings:**
+**Python Stubs:** N/A (no python stubs directory found; `python.yaml` not present in project config)
 
-**D5-5a-001** | MINOR | PSE Docstring Quality
-- **Description:** PSE docstrings use block comment style (`/* ... */`) instead of standard Go line comments (`//`). While syntactically valid, line comments are the Go convention for documentation.
-- **Evidence:** All 8 stubs use `/* Preconditions: ... */` block comments.
-- **Remediation:** Convert block comments to `//` line comment style for Go convention consistency.
-- **Actionable:** true
-
-**D5-5c-001** | MINOR | PSE Docstring Quality
-- **Description:** Scenario 006 stub has a "Verify" action in Steps section: "Verify each function contains t.TempDir() call" and "Verify no function references /tmp/repo". Verification belongs in Expected, not Steps.
-- **Evidence:** Steps section of TestTS_GH30_006: `1. Verify each function contains t.TempDir() call` and `2. Verify no function references /tmp/repo`.
-- **Remediation:** Restructure: Steps should be "1. Analyze source of each test function for t.TempDir() calls" and "2. Search source for /tmp/repo references". Expected should be "Each function contains t.TempDir() call; no /tmp/repo references found".
-- **Actionable:** true
-
-**Python Stubs:** N/A (no python stubs directory found)
+No findings.
 
 ---
 
-### Dimension 6: Code Generation Readiness (Weight: 5% | Score: 62/100)
+### Dimension 6: Code Generation Readiness (Weight: 5% | Score: 88/100)
 
-**Findings:**
+**Framework Alignment:**
+- Project `go.yaml`: `framework: "testing"`. STD `code_generation_config.framework`: `"testing"`. Match confirmed.
+- `framework_note` documents the rationale for standard Go testing (target code uses standard testing package). PASS.
 
-**D6-6a-001** | MAJOR | Code Generation Readiness
-- **Description:** Framework mismatch between project configuration and STD. The `tier1.yaml` configures `framework: "ginkgo-v2"` with Ginkgo imports (`onsi/ginkgo/v2`, `onsi/gomega`), but the STD and stubs use standard Go `testing` package with `testify`. Code generation using the project's tier1 config would produce Ginkgo tests, but the STD designs standard Go tests.
-- **Evidence:** `tier1.yaml`: `framework: "ginkgo-v2"`. STD `code_generation_config`: `framework: "testing"`, `assertion_library: "testify"`. Stubs: `import "testing"` with `func Test...(t *testing.T)`.
-- **Remediation:** Either (a) update `code_generation_config` to use Ginkgo framework to match the project config, or (b) accept that this ticket uses standard Go testing (since it tests existing `run_test.go` functions that use standard testing) and document the override. Option (b) is likely correct since the fix targets existing non-Ginkgo test code.
+**Variable Declarations:**
+- All variable names are valid Go identifiers. PASS.
+- Types are valid Go types (`string`, `error`, `[]string`). PASS.
+- `initialized_in` and `used_in` are consistent within each scenario. PASS.
+
+**Import Completeness:**
+- Standard imports include `context`, `testing`, `os`, `os/exec`, `fmt`, `strings`, `path/filepath`. PASS.
+- Test framework imports include testify `assert` and `require`. PASS.
+- Project imports include `internal/config` and `internal/sandbox`. PASS.
+
+**Code Structure:**
+- All 8 scenarios have `code_structure` with `type`, `function_name`, and `subtest_style`. PASS.
+- Function names match stub function names. PASS.
+
+**D6-6a-001** | MINOR | Code Generation Readiness
+- **Description:** `document_metadata` uses `functional_count` instead of `tier_1_count` to describe the count of Tier 1 scenarios. Now that tier values have been corrected to "Tier 1", the metadata field name should align with the tier naming convention.
+- **Evidence:** `functional_count: 8` in `document_metadata` with all scenarios having `tier: "Tier 1"`.
+- **Remediation:** Rename `functional_count` to `tier_1_count` for consistency with the tier naming scheme.
 - **Actionable:** true
 
 ---
@@ -278,18 +243,9 @@ Positives:
 
 Ordered by severity:
 
-1. **[MAJOR] D1-1a-001: Non-standard tier values** — **Remediation:** Change `tier: "Functional"` to `tier: "Tier 1"` in all 8 scenarios. — **Actionable:** yes
-2. **[MAJOR] D2-2b-001: Missing `patterns` field** — **Remediation:** Add `patterns:` section to each scenario with appropriate pattern ID and helpers_required. — **Actionable:** yes
-3. **[MAJOR] D2-2b-002: Missing `code_structure` field** — **Remediation:** Add `code_structure:` section to each scenario with Go test function structure hints. — **Actionable:** yes
-4. **[MAJOR] D3-3a-001: No pattern assignments** — **Remediation:** Assign test patterns based on scenario intent (error-path-validation, test-isolation, source-code-analysis). — **Actionable:** yes
-5. **[MAJOR] D4.5-4.5a-001: PR URLs in STD metadata** — **Remediation:** Remove `related_prs` from `document_metadata`. — **Actionable:** yes
-6. **[MAJOR] D4.5-4.5a-002: PR references in stub docstrings** — **Remediation:** Replace "PR #33" references with functional descriptions. — **Actionable:** yes
-7. **[MAJOR] D6-6a-001: Framework mismatch** — **Remediation:** Document the framework override (standard testing vs Ginkgo) or align with project config. — **Actionable:** yes
-8. **[MAJOR] D4-4b-001: Vague command in scenario 006** — **Remediation:** Replace descriptive text with executable command. — **Actionable:** yes
-9. **[MINOR] D4-4b-002: Descriptive command in scenario 002** — **Remediation:** Replace with executable grep/filter command. — **Actionable:** yes
-10. **[MINOR] D4-4b-003: Mixed command languages** — **Remediation:** Standardize command format across scenarios. — **Actionable:** yes
-11. **[MINOR] D5-5a-001: Block comments vs line comments** — **Remediation:** Convert to Go line comment convention. — **Actionable:** yes
-12. **[MINOR] D5-5c-001: Verify steps misclassified** — **Remediation:** Move verification language from Steps to Expected in scenario 006. — **Actionable:** yes
+1. **[MINOR] D1-1a-001: PR reference in YAML precondition name** -- **Remediation:** Rename scenario 001 `specific_preconditions[0].name` from "PR #33 changes merged" to "t.TempDir() replacement applied". -- **Actionable:** yes
+2. **[MINOR] D4-4b-001: Missing language annotation in scenario 007** -- **Remediation:** Add `language: "go"` to scenario 007 SETUP-01 step. -- **Actionable:** yes
+3. **[MINOR] D6-6a-001: Metadata field naming** -- **Remediation:** Rename `functional_count` to `tier_1_count` in `document_metadata`. -- **Actionable:** yes
 
 ---
 
@@ -297,16 +253,16 @@ Ordered by severity:
 
 | Dimension | Weight | Score | Weighted |
 |:----------|:-------|:------|:---------|
-| 1. STP-STD Traceability | 30% | 93 | 27.9 |
-| 2. STD YAML Structure | 20% | 75 | 15.0 |
-| 3. Pattern Matching | 10% | 50 | 5.0 |
-| 4. Test Step Quality | 15% | 78 | 11.7 |
-| 4.5. Content Policy | 10% | 72 | 7.2 |
-| 5. PSE Docstring Quality | 10% | 72 | 7.2 |
-| 6. Code Generation Readiness | 5% | 62 | 3.1 |
-| **Total** | **100%** | | **77.1** |
+| 1. STP-STD Traceability | 30% | 98 | 29.4 |
+| 2. STD YAML Structure | 20% | 95 | 19.0 |
+| 3. Pattern Matching | 10% | 90 | 9.0 |
+| 4. Test Step Quality | 15% | 95 | 14.3 |
+| 4.5. Content Policy | 10% | 95 | 9.5 |
+| 5. PSE Docstring Quality | 10% | 95 | 9.5 |
+| 6. Code Generation Readiness | 5% | 88 | 4.4 |
+| **Total** | **100%** | | **95.1** |
 
-**Rounded weighted score: 77**
+**Rounded weighted score: 95**
 
 ---
 
@@ -320,6 +276,6 @@ Ordered by severity:
 | Python stubs present | NO |
 | Pattern library available | NO |
 | All scenarios reviewed | YES |
-| Project review rules loaded | NO (defaults only) |
+| Project review rules loaded | YES (extracted, default_ratio 0.64) |
 
-**Confidence rationale:** MEDIUM confidence. The STD YAML and STP are both available enabling full traceability review. Go stubs are present enabling PSE quality review. However, no pattern library exists (limiting Dimension 3 precision), no `review_rules.yaml` or `repo_rules` are available (all review rules using generic defaults — default_ratio > 0.60), and no Python stubs exist despite `tier2_tests: true` in project defaults. The framework mismatch between tier1 config (Ginkgo) and STD (standard testing) reduces code generation readiness confidence.
+**Confidence rationale:** MEDIUM confidence. The STD YAML and STP are both available enabling full traceability review. Go stubs are present enabling PSE quality review. Python stubs are absent but `python.yaml` is also absent from the project config, so this is expected. No pattern library exists (limiting Dimension 3 precision to heuristic validation only). Review precision reduced: 64% of rules using generic defaults. Consider adding project-specific `review_rules.yaml` to `config/projects/fullsend/` or enabling `repo_files_fetch` to improve precision.

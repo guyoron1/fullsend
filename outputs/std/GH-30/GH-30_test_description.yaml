@@ -14,14 +14,8 @@ document_metadata:
     file: "outputs/stp/GH-30/GH-30_test_plan.md"
     version: "v1"
     sections_covered: "Section III - Requirements-to-Tests Mapping"
-  related_prs:
-    - repo: "guyoron1/fullsend"
-      pr_number: 33
-      url: "https://github.com/guyoron1/fullsend/pull/33"
-      title: "Fix hardcoded /tmp/repo in agent run tests"
-      merged: true
   total_scenarios: 8
-  functional_count: 8
+  tier_1_count: 8
   e2e_count: 0
   p0_count: 3
   p1_count: 5
@@ -29,6 +23,7 @@ document_metadata:
 code_generation_config:
   std_version: "2.1-enhanced"
   framework: "testing"
+  framework_note: "Matches project go.yaml (framework: testing). Standard Go testing used because target code (internal/cli/run_test.go) uses standard testing package."
   assertion_library: "testify"
   language: "go"
   package_name: "cli_test"
@@ -79,10 +74,19 @@ common_preconditions:
 scenarios:
   - scenario_id: "001"
     test_id: "TS-GH-30-001"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-30"
+
+    patterns:
+      primary: "error-path-validation"
+      helpers_required: []
+
+    code_structure:
+      type: "test_function"
+      function_name: "TestTS_GH30_001_HarnessLoadPipelineReachesOpenshellError"
+      subtest_style: "t.Run"
 
     variables:
       closure_scope:
@@ -129,7 +133,7 @@ scenarios:
       automation_approach: "go test with testify assertions"
 
     specific_preconditions:
-      - name: "PR #33 changes merged"
+      - name: "t.TempDir() replacement applied"
         requirement: "t.TempDir() replacement applied in run_test.go"
         validation: "grep -c 't.TempDir()' internal/cli/run_test.go"
 
@@ -141,6 +145,7 @@ scenarios:
       setup:
         - step_id: "SETUP-01"
           action: "Create isolated temporary directory via t.TempDir()"
+          language: "go"
           command: "repoDir := t.TempDir()"
           validation: "Directory exists and is writable"
       test_execution:
@@ -172,10 +177,19 @@ scenarios:
 
   - scenario_id: "002"
     test_id: "TS-GH-30-002"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-30"
+
+    patterns:
+      primary: "test-isolation"
+      helpers_required: []
+
+    code_structure:
+      type: "test_function"
+      function_name: "TestTS_GH30_002_AllRunAgentTestsPassWithoutPreExistingTmpRepo"
+      subtest_style: "t.Run"
 
     variables:
       closure_scope:
@@ -242,8 +256,8 @@ scenarios:
           validation: "All tests pass (exit code 0)"
         - step_id: "TEST-02"
           action: "Verify no tar-related error in test output"
-          command: "Parse test output for absence of tar/archive error messages"
-          validation: "No tar error messages in output"
+          command: "go test ./internal/cli/ -run 'TestRunAgent' -v 2>&1 | grep -ci 'tar\\|archive'"
+          validation: "Count is 0"
       cleanup:
         - step_id: "CLEANUP-01"
           action: "No cleanup needed — t.TempDir() handles cleanup automatically"
@@ -269,10 +283,19 @@ scenarios:
 
   - scenario_id: "003"
     test_id: "TS-GH-30-003"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-30"
+
+    patterns:
+      primary: "test-isolation"
+      helpers_required: []
+
+    code_structure:
+      type: "test_function"
+      function_name: "TestTS_GH30_003_AllRunAgentTestsPassWithPreExistingTmpRepo"
+      subtest_style: "t.Run"
 
     variables:
       closure_scope:
@@ -351,10 +374,19 @@ scenarios:
 
   - scenario_id: "004"
     test_id: "TS-GH-30-004"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-30"
+
+    patterns:
+      primary: "error-path-validation"
+      helpers_required: []
+
+    code_structure:
+      type: "test_function"
+      function_name: "TestTS_GH30_004_YMLFallbackHarnessResolutionUsesIsolatedDir"
+      subtest_style: "t.Run"
 
     variables:
       closure_scope:
@@ -409,6 +441,7 @@ scenarios:
       setup:
         - step_id: "SETUP-01"
           action: "Create isolated temp directory via t.TempDir()"
+          language: "go"
           command: "repoDir := t.TempDir()"
           validation: "Directory exists"
       test_execution:
@@ -436,10 +469,19 @@ scenarios:
 
   - scenario_id: "005"
     test_id: "TS-GH-30-005"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-30"
+
+    patterns:
+      primary: "error-path-validation"
+      helpers_required: []
+
+    code_structure:
+      type: "test_function"
+      function_name: "TestTS_GH30_005_HarnessNotFoundReturnsDescriptiveError"
+      subtest_style: "t.Run"
 
     variables:
       closure_scope:
@@ -495,6 +537,7 @@ scenarios:
       setup:
         - step_id: "SETUP-01"
           action: "Create empty temp directory via t.TempDir()"
+          language: "go"
           command: "repoDir := t.TempDir()"
           validation: "Empty directory exists"
       test_execution:
@@ -531,10 +574,19 @@ scenarios:
 
   - scenario_id: "006"
     test_id: "TS-GH-30-006"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-30"
+
+    patterns:
+      primary: "source-code-analysis"
+      helpers_required: []
+
+    code_structure:
+      type: "test_function"
+      function_name: "TestTS_GH30_006_EachTestFunctionUsesUniqueTempDir"
+      subtest_style: "t.Run"
 
     variables:
       closure_scope:
@@ -588,9 +640,9 @@ scenarios:
           validation: "10 test functions identified"
       test_execution:
         - step_id: "TEST-01"
-          action: "Verify each function contains t.TempDir() call"
-          command: "For each function, verify t.TempDir() is called within its body"
-          validation: "All 10 functions contain t.TempDir()"
+          action: "Count t.TempDir() calls in run_test.go source"
+          command: "grep -c 't.TempDir()' internal/cli/run_test.go"
+          validation: "Count equals 10"
         - step_id: "TEST-02"
           action: "Verify no function references /tmp/repo"
           command: "grep -c '/tmp/repo' internal/cli/run_test.go"
@@ -624,10 +676,19 @@ scenarios:
 
   - scenario_id: "007"
     test_id: "TS-GH-30-007"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-30"
+
+    patterns:
+      primary: "error-path-validation"
+      helpers_required: []
+
+    code_structure:
+      type: "test_function"
+      function_name: "TestTS_GH30_007_UploadDirSucceedsWithValidDirectory"
+      subtest_style: "t.Run"
 
     variables:
       closure_scope:
@@ -681,6 +742,7 @@ scenarios:
       setup:
         - step_id: "SETUP-01"
           action: "Create temp directory with sample files"
+          language: "go"
           command: "repoDir := t.TempDir(); os.WriteFile(filepath.Join(repoDir, 'test.txt'), []byte('test'), 0644)"
           validation: "Directory with test file exists"
       test_execution:
@@ -708,10 +770,19 @@ scenarios:
 
   - scenario_id: "008"
     test_id: "TS-GH-30-008"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-30"
+
+    patterns:
+      primary: "error-path-validation"
+      helpers_required: []
+
+    code_structure:
+      type: "test_function"
+      function_name: "TestTS_GH30_008_OrgConfigVariantsReachExpectedErrorPaths"
+      subtest_style: "t.Run"
 
     variables:
       closure_scope:
@@ -768,6 +839,7 @@ scenarios:
       setup:
         - step_id: "SETUP-01"
           action: "Create temp directory for each OrgConfig test variant"
+          language: "go"
           command: "repoDir := t.TempDir()"
           validation: "Directory exists for each variant"
       test_execution:
