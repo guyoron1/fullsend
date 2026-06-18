@@ -1,25 +1,24 @@
-status: error
+status: success
 jira_id: GH-25
-verdict: BLOCKED
-confidence: HIGH
-weighted_score: 0
-error: "STD YAML not found at outputs/std/GH-25/GH-25_test_description.yaml"
+verdict: APPROVED_WITH_FINDINGS
+confidence: MEDIUM
+weighted_score: 79
 findings:
-  critical: 1
-  major: 0
-  minor: 0
-  actionable: 1
-  total: 1
+  critical: 0
+  major: 2
+  minor: 2
+  actionable: 2
+  total: 4
 artifacts_reviewed:
-  std_yaml: false
-  go_stubs: false
+  std_yaml: true
+  go_stubs: true
   python_stubs: false
   stp_available: true
 dimension_scores:
-  traceability: 0
-  yaml_structure: 0
-  pattern_matching: 0
-  step_quality: 0
-  content_policy: 0
-  pse_quality: 0
+  traceability: 85
+  yaml_structure: 65
+  pattern_matching: 90
+  step_quality: 85
+  content_policy: 95
+  pse_quality: 55
   codegen_readiness: 0
