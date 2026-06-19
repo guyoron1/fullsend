@@ -1,12 +1,13 @@
 # My-Project Test Plan
 
+
 ## **Migrate Uninstall Flows to Harness-First Agent Discovery - Quality Engineering Plan**
 
 ### Metadata & Tracking
 
-- **Enhancement:** [GH-43](https://github.com/guyoron1/fullsend/pull/43)
+- **Enhancement:** [GH-43](https://github.com/guyoron1/fullsend/pull/43) (fork PR; upstream mirror: fullsend-ai/fullsend#2364)
 - **Feature Tracking:** [GH-43](https://github.com/guyoron1/fullsend/pull/43)
-- **Epic Tracking:** Mirror of upstream fullsend-ai/fullsend#2364
+- **Epic Tracking:** [fullsend-ai/fullsend#2364](https://github.com/fullsend-ai/fullsend/issues/2364)
 - **QE Owner:** TBD
 - **Owning SIG:** N/A
 - **Participating SIGs:** N/A
@@ -46,13 +47,13 @@ This feature refactors the uninstall flows in both the org-level (`runUninstall`
 
 - The `harness.DiscoverRemoteAgents` function is imported from the `harness` package but defined upstream; this repo's `harness` package only has the local `DiscoverAgents(dir)` variant. Integration depends on upstream availability.
 - If the `.fullsend` config repo is completely deleted before uninstall, all three discovery tiers fail and the caller falls back to default naming convention — this is existing behavior preserved, not new.
-- Sandbox LSP analysis showed broken imports due to missing Go module dependencies (sandboxed environment limitation); gopls could not fully resolve the `harness.DiscoverRemoteAgents` symbol.
 
 #### I.3 — Technology and Design Review
 
 - [ ] **Developer handoff session completed.** -- Developer handoff or design review session completed.
-  - PR introduces `discover_slugs.go` as a new module in `internal/cli/` with a single exported function.
-  - Call graph: `newUninstallCmd` → `runUninstall` → `discoverAgentSlugs`; `newGitHubUninstallCmd` → `runGitHubUninstall` → `discoverAgentSlugs`.
+  - Handoff conducted via PR #43 review and upstream design discussion (fullsend-ai/fullsend#2364).
+  - Key design decision: three-tier fallback strategy for agent slug discovery, consolidating duplicated logic into a single reusable module.
+  - Participants: PR author (@guyoron1), upstream maintainers.
 
 - [ ] **Technology challenges and risks identified.** -- Technology challenges and risks identified.
   - Dependency on `harness.DiscoverRemoteAgents` which performs remote API calls to list/read harness directory contents.
@@ -73,17 +74,17 @@ This feature refactors the uninstall flows in both the org-level (`runUninstall`
 
 #### II.1 — Scope of Testing
 
-This test plan covers the refactored agent slug discovery logic in the fullsend CLI uninstall flows. Testing validates that the three-tier fallback (harness files → config agents block → empty) works correctly across both `runUninstall` (org-level) and `runGitHubUninstall` (GitHub-specific) code paths, including deduplication, role-based slug derivation, deprecation warnings, and partial error handling.
+This test plan covers the refactored agent slug discovery logic in the fullsend CLI uninstall flows. Testing validates that the three-tier fallback (harness files → config agents block → empty) works correctly across both the org-level and GitHub-specific uninstall code paths, including deduplication, role-based slug derivation, deprecation warnings, and partial error handling.
 
 **Testing Goals:**
 
 - **P0:** Verify harness-first discovery correctly resolves agent slugs from remote harness wrapper files.
 - **P0:** Verify fallback to config.yaml agents block with deprecation warning when harness files are absent.
-- **P0:** Verify default naming convention fallback when neither source provides slugs.
+- **P1:** Verify default naming convention fallback when neither source provides slugs.
 - **P1:** Verify slug deduplication across discovery sources.
 - **P1:** Verify slug derivation from role when slug field is empty.
 - **P1:** Verify partial error resilience when some harness files are malformed.
-- **P2:** Verify both `runUninstall` and `runGitHubUninstall` produce consistent behavior via shared `discoverAgentSlugs`.
+- **P2:** Verify both org-level and GitHub-specific uninstall produce consistent behavior via shared agent discovery.
 
 **Out of Scope (Testing Scope Exclusions):**
 
@@ -134,7 +135,7 @@ This test plan covers the refactored agent slug discovery logic in the fullsend 
 
 - [ ] **Compatibility Testing**
   - Applicable: Yes
-  - Backward compatibility with legacy config.yaml agents block must be preserved.
+  - Backward compatibility with legacy config.yaml agents block must be preserved. See Section III group 9 (Backward compatibility) for detailed verification items.
 
 - [ ] **Upgrade Testing**
   - Applicable: No
@@ -142,7 +143,7 @@ This test plan covers the refactored agent slug discovery logic in the fullsend 
 
 - [ ] **Dependencies**
   - Applicable: Yes
-  - Depends on `harness.DiscoverRemoteAgents` (upstream), `config.ParseOrgConfig`, `appsetup.AppSlug`.
+  - Depends on `harness.DiscoverRemoteAgents` (upstream fullsend-ai/fullsend). Internal packages (`config.ParseOrgConfig`, `appsetup.AppSlug`) are existing project infrastructure, not cross-team dependencies.
 
 - [ ] **Cross Integrations**
   - Applicable: No
@@ -157,9 +158,9 @@ This test plan covers the refactored agent slug discovery logic in the fullsend 
 #### II.3 — Test Environment
 
 - **Cluster Topology:** N/A — CLI unit tests, no cluster required
-- **Platform Version:** Go 1.22+ (per go.mod)
+- **Platform Version:** Go 1.26+ (per go.mod)
 - **CPU Virtualization:** N/A
-- **Compute:** Standard CI runner
+- **Compute:** Standard CI runner — no special compute requirements for mock-based unit tests
 - **Special Hardware:** None
 - **Storage:** None
 - **Network:** None — forge client is mocked
@@ -182,7 +183,7 @@ No new or special tools required. Standard Go testing with `testify` assertions.
 
 - [ ] **Timeline**
   - Risk: Upstream `DiscoverRemoteAgents` not yet available in this repo's harness package
-  - Mitigation: Function exists upstream (fullsend-ai/fullsend#2364); will be available after merge
+  - Mitigation: Function exists upstream (fullsend-ai/fullsend#2364); will be available after merge. If upstream merge is delayed, defer harness-first tier testing and test only config fallback path
   - Status: [ ] Resolved
 
 - [ ] **Coverage**
@@ -190,30 +191,16 @@ No new or special tools required. Standard Go testing with `testify` assertions.
   - Mitigation: 8 dedicated unit tests for `discoverAgentSlugs` cover all tiers and edge cases
   - Status: [x] Resolved
 
-- [ ] **Environment**
-  - Risk: None — unit tests with mocked dependencies
-  - Mitigation: N/A
-  - Status: [x] Resolved
-
 - [ ] **Untestable**
   - Risk: Real GitHub API interaction for harness file discovery not tested at unit level
   - Mitigation: Integration tested via `forge.FakeClient`; real API tested in e2e suite
   - Status: [ ] Accepted
-
-- [ ] **Resources**
-  - Risk: None
-  - Mitigation: N/A
-  - Status: [x] Resolved
 
 - [ ] **Dependencies**
   - Risk: `harness.DiscoverRemoteAgents` interface changes upstream could break `discoverAgentSlugs`
   - Mitigation: Function signature is stable; PR includes comprehensive tests that would catch breakage
   - Status: [ ] Monitoring
 
-- [ ] **Other**
-  - Risk: None identified
-  - Mitigation: N/A
-  - Status: [x] Resolved
 
 ---
 
@@ -225,68 +212,69 @@ No new or special tools required. Standard Go testing with `testify` assertions.
   - Verify harness wrapper files are preferred over config agents block
   - Verify slugs extracted from harness role and slug fields
   - Verify harness discovery skips agents block when harness provides slugs
-  - **Tier:** [Functional]
+  - **Tier:** [Tier 1]
   - **Priority:** P0
 
-- — Fallback to config.yaml agents block with deprecation warning
+- **GH-43** — Fallback to config.yaml agents block with deprecation warning
   - Verify agents block slugs returned when no harness files exist
   - Verify deprecation warning emitted for agents block fallback
   - Verify agents block skipped when it has zero entries
-  - **Tier:** [Functional]
+  - **Tier:** [Tier 1]
   - **Priority:** P0
 
-- — Default naming fallback when neither source provides slugs
+- **GH-43** — Default naming fallback when neither source provides slugs
   - Verify nil returned when no harness files and no config agents
   - Verify caller applies default role-based naming convention
-  - **Tier:** [Functional]
-  - **Priority:** P0
+  - **Tier:** [Tier 1]
+  - **Priority:** P1
 
-- — Slug derivation from role when slug field is empty
+- **GH-43** — Slug derivation from role when slug field is empty
   - Verify slug derived from appSet and role via AppSlug convention
   - Verify derivation works for both harness and config agent sources
-  - **Tier:** [Functional]
+  - **Tier:** [Tier 1]
   - **Priority:** P1
 
-- — Slug deduplication across discovery
+- **GH-43** — Slug deduplication across discovery
   - Verify duplicate slugs from multiple harness files are deduplicated
   - Verify first occurrence wins in deduplication order
-  - **Tier:** [Functional]
-  - **Priority:** P1
+  - **Tier:** [Tier 1]
+  - **Priority:** P2
 
-- — Partial error resilience for malformed harness files
+- **GH-43** — Partial error resilience for malformed harness files
   - Verify valid agents returned when some harness files fail to parse
   - Verify warning emitted for unreadable harness files
   - Verify fallback to agents block skipped when valid harness slugs exist despite errors
-  - **Tier:** [Functional]
+  - **Tier:** [Tier 1]
   - **Priority:** P1
 
-- — runUninstall integration with discoverAgentSlugs
-  - Verify runUninstall uses harness-discovered slugs for app deletion
-  - Verify runUninstall falls back to agents block with warning
-  - Verify runUninstall applies default roles when discovery returns empty
-  - **Tier:** [Functional]
+- **GH-43** — Org-level uninstall uses harness-discovered agents for app cleanup
+  - Verify org-level uninstall uses harness-discovered slugs for app deletion
+  - Verify org-level uninstall falls back to agents block with warning
+  - Verify org-level uninstall applies default roles when discovery returns empty
+  - **Tier:** [Tier 1]
   - **Priority:** P0
 
-- — runGitHubUninstall integration with discoverAgentSlugs
-  - Verify runGitHubUninstall uses harness-discovered slugs
-  - Verify runGitHubUninstall falls back to agents block with warning
-  - Verify runGitHubUninstall applies default roles when discovery returns empty
-  - **Tier:** [Functional]
+- **GH-43** — GitHub-specific uninstall uses harness-discovered agents for app cleanup
+  - Verify GitHub-specific uninstall uses harness-discovered slugs
+  - Verify GitHub-specific uninstall falls back to agents block with warning
+  - Verify GitHub-specific uninstall applies default roles when discovery returns empty
+  - **Tier:** [Tier 1]
   - **Priority:** P0
 
-- — Backward compatibility with existing uninstall behavior
+- **GH-43** — Backward compatibility with existing uninstall behavior
   - Verify existing uninstall tests pass without modification
   - Verify legacy slug-from-config path produces identical results
   - Verify error handling for missing config repo preserved
-  - **Tier:** [Functional]
-  - **Priority:** P1
+  - **Tier:** [Tier 1]
+  - **Priority:** P2
 
 ---
 
-### Section IV — Sign-off
+### Section IV — Sign-off and Approval
 
-| Role | Name | Date |
-|:-----|:-----|:-----|
-| QE Lead | TBD | |
-| Dev Lead | guyoron1 | |
-| PM | TBD | |
+This Software Test Plan requires approval from the following stakeholders:
+
+* **Reviewers:**
+  - TBD / @TBD
+* **Approvers:**
+  - guyoron1 / @guyoron1
