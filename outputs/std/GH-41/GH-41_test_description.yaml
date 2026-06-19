@@ -14,12 +14,6 @@ document_metadata:
     file: "outputs/stp/GH-41/GH-41_test_plan.md"
     version: "v1"
     sections_covered: "Section III - Requirements-to-Tests Mapping"
-  related_prs:
-    - repo: "guyoron1/fullsend"
-      pr_number: 41
-      url: "https://github.com/guyoron1/fullsend/pull/41"
-      title: "Post Medium+ Findings as File-Level Comments When Line Is Outside Diff Hunk"
-      merged: false
   total_scenarios: 18
   functional_count: 16
   e2e_count: 2
@@ -32,7 +26,7 @@ code_generation_config:
   framework: "ginkgo-v2"
   assertion_library: "gomega"
   language: "go"
-  package_name: "tests"
+  package_name: "postreview_test"
   context_init: []
   imports:
     dot_imports:
@@ -50,12 +44,12 @@ common_preconditions:
       requirement: "Go 1.22+"
       validation: "go version"
     - name: "fullsend repository"
-      requirement: "Source code with PR #41 changes applied"
+      requirement: "fullsend source code with file-level comment fallback support"
       validation: "go build ./..."
   test_tools:
     - name: "Go test runner"
-      requirement: "go test with testify assertions"
-      validation: "go test -v ./internal/cli/ -run TestFindingsToReviewComments"
+      requirement: "go test with Ginkgo/gomega framework"
+      validation: "go test -v ./internal/cli/"
   source_files:
     - path: "internal/cli/postreview.go"
       description: "Contains findingsToReviewComments function — primary target"
@@ -67,7 +61,7 @@ common_preconditions:
 scenarios:
   - scenario_id: "1"
     test_id: "TS-GH-41-001"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-41"
@@ -119,7 +113,7 @@ scenarios:
     classification:
       test_type: "Unit"
       scope: "Single-function"
-      automation_approach: "Go test with testify"
+      automation_approach: "Go/Ginkgo with gomega"
     specific_preconditions: []
     test_data:
       resource_definitions:
@@ -155,19 +149,19 @@ scenarios:
           validation: "Function returns without error"
         - step_id: "TEST-02"
           action: "Assert result contains one ReviewComment with Line=0"
-          command: "assert.Equal(t, 0, result[0].Line)"
+          command: "Expect(result[0].Line).To(Equal(0))"
           validation: "Line is 0 (file-level)"
       cleanup: []
     assertions:
       - assertion_id: "ASSERT-01"
         priority: "P0"
         description: "Finding is not dropped"
-        condition: "len(result) == 1"
+        condition: "Expect(result).To(HaveLen(1))"
         failure_impact: "Out-of-hunk findings would be silently lost"
       - assertion_id: "ASSERT-02"
         priority: "P0"
         description: "Comment is file-level (Line=0)"
-        condition: "result[0].Line == 0"
+        condition: "Expect(result[0].Line).To(Equal(0))"
         failure_impact: "Comment would be posted at wrong line or rejected by API"
     dependencies:
       external_tools: []
@@ -175,7 +169,7 @@ scenarios:
 
   - scenario_id: "2"
     test_id: "TS-GH-41-002"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-41"
@@ -220,7 +214,7 @@ scenarios:
     classification:
       test_type: "Unit"
       scope: "Single-function"
-      automation_approach: "Go test with testify"
+      automation_approach: "Go/Ginkgo with gomega"
     specific_preconditions: []
     test_data:
       resource_definitions:
@@ -247,7 +241,7 @@ scenarios:
       - assertion_id: "ASSERT-01"
         priority: "P0"
         description: "Path-less finding produces no comment"
-        condition: "len(result) == 0"
+        condition: "Expect(result).To(BeEmpty())"
         failure_impact: "API call would fail with invalid path"
     dependencies:
       external_tools: []
@@ -255,7 +249,7 @@ scenarios:
 
   - scenario_id: "3"
     test_id: "TS-GH-41-003"
-    tier: "End-to-End"
+    tier: "Tier 2"
     priority: "P0"
     mvp: true
     requirement_id: "GH-41"
@@ -351,7 +345,7 @@ scenarios:
 
   - scenario_id: "4"
     test_id: "TS-GH-41-004"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-41"
@@ -392,7 +386,7 @@ scenarios:
     classification:
       test_type: "Unit"
       scope: "Single-function"
-      automation_approach: "Go test with testify"
+      automation_approach: "Go/Ginkgo with gomega"
     specific_preconditions: []
     test_data:
       resource_definitions:
@@ -419,7 +413,7 @@ scenarios:
       - assertion_id: "ASSERT-01"
         priority: "P0"
         description: "Body contains original line number"
-        condition: "strings.Contains(result[0].Body, \"150\")"
+        condition: "Expect(result[0].Body).To(ContainSubstring(\"150\"))"
         failure_impact: "Reviewers lose location context in file-level comments"
     dependencies:
       external_tools: []
@@ -427,7 +421,7 @@ scenarios:
 
   - scenario_id: "5"
     test_id: "TS-GH-41-005"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-41"
@@ -467,7 +461,7 @@ scenarios:
     classification:
       test_type: "Unit"
       scope: "Single-function"
-      automation_approach: "Go test with testify"
+      automation_approach: "Go/Ginkgo with gomega"
     specific_preconditions: []
     test_data:
       resource_definitions:
@@ -487,14 +481,14 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Call findingsToReviewComments and verify body format"
-          command: "assert body matches pattern"
+          command: "Expect(result[0].Body).To(Equal(\"_Line 42_ · Unused variable detected\"))"
           validation: "Body is '_Line 42_ · Unused variable detected'"
       cleanup: []
     assertions:
       - assertion_id: "ASSERT-01"
         priority: "P0"
         description: "Body matches expected format"
-        condition: "result[0].Body matches '_Line \\d+_ · .+' pattern"
+        condition: "Expect(result[0].Body).To(MatchRegexp(`_Line \\d+_ · .+`))"
         failure_impact: "Inconsistent formatting confuses reviewers"
     dependencies:
       external_tools: []
@@ -502,7 +496,7 @@ scenarios:
 
   - scenario_id: "6"
     test_id: "TS-GH-41-006"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-41"
@@ -542,7 +536,7 @@ scenarios:
     classification:
       test_type: "Unit"
       scope: "Single-function"
-      automation_approach: "Go test with testify"
+      automation_approach: "Go/Ginkgo with gomega"
     specific_preconditions: []
     test_data:
       resource_definitions:
@@ -562,14 +556,14 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Call findingsToReviewComments and verify Line is preserved"
-          command: "assert.Equal(t, 25, result[0].Line)"
+          command: "Expect(result[0].Line).To(Equal(25))"
           validation: "Line equals 25"
       cleanup: []
     assertions:
       - assertion_id: "ASSERT-01"
         priority: "P0"
         description: "In-hunk line number preserved"
-        condition: "result[0].Line == 25"
+        condition: "Expect(result[0].Line).To(Equal(25))"
         failure_impact: "In-hunk comments would be posted at wrong location"
     dependencies:
       external_tools: []
@@ -577,7 +571,7 @@ scenarios:
 
   - scenario_id: "7"
     test_id: "TS-GH-41-007"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-41"
@@ -616,7 +610,7 @@ scenarios:
     classification:
       test_type: "Unit"
       scope: "Single-function"
-      automation_approach: "Go test with testify"
+      automation_approach: "Go/Ginkgo with gomega"
     specific_preconditions: []
     test_data:
       resource_definitions:
@@ -636,14 +630,14 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Call findingsToReviewComments and check body format"
-          command: "assert.NotContains(t, result[0].Body, \"_Line\")"
+          command: "Expect(result[0].Body).NotTo(ContainSubstring(\"_Line\"))"
           validation: "Body has no Line prefix"
       cleanup: []
     assertions:
       - assertion_id: "ASSERT-01"
         priority: "P0"
         description: "In-hunk body has no Line prefix"
-        condition: "!strings.Contains(result[0].Body, \"_Line\")"
+        condition: "Expect(result[0].Body).NotTo(ContainSubstring(\"_Line\"))"
         failure_impact: "In-hunk comments would have redundant line prefix"
     dependencies:
       external_tools: []
@@ -651,7 +645,7 @@ scenarios:
 
   - scenario_id: "8"
     test_id: "TS-GH-41-008"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-41"
@@ -691,7 +685,7 @@ scenarios:
     classification:
       test_type: "Unit"
       scope: "Single-function"
-      automation_approach: "Go test with testify"
+      automation_approach: "Go/Ginkgo with gomega"
     specific_preconditions: []
     test_data:
       resource_definitions:
@@ -711,14 +705,14 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Call findingsToReviewComments and verify omission"
-          command: "assert.Empty(t, result)"
+          command: "Expect(result).To(BeEmpty())"
           validation: "No comments produced"
       cleanup: []
     assertions:
       - assertion_id: "ASSERT-01"
         priority: "P1"
         description: "File-not-in-diff finding is filtered"
-        condition: "len(result) == 0"
+        condition: "Expect(result).To(BeEmpty())"
         failure_impact: "API would reject comments on files not in the diff"
     dependencies:
       external_tools: []
@@ -726,7 +720,7 @@ scenarios:
 
   - scenario_id: "9"
     test_id: "TS-GH-41-009"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-41"
@@ -764,7 +758,7 @@ scenarios:
     classification:
       test_type: "Unit"
       scope: "Single-function"
-      automation_approach: "Go test with testify"
+      automation_approach: "Go/Ginkgo with gomega"
     specific_preconditions: []
     test_data:
       resource_definitions: []
@@ -777,14 +771,14 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Call findingsToReviewComments and check filtered count"
-          command: "Verify fileFiltered == 2"
+          command: "Expect(fileFilteredCount).To(Equal(2))"
           validation: "Count matches expectations"
       cleanup: []
     assertions:
       - assertion_id: "ASSERT-01"
         priority: "P1"
         description: "File-filtered count is accurate"
-        condition: "fileFilteredCount == 2"
+        condition: "Expect(fileFilteredCount).To(Equal(2))"
         failure_impact: "Logging would report incorrect filter statistics"
     dependencies:
       external_tools: []
@@ -792,7 +786,7 @@ scenarios:
 
   - scenario_id: "10"
     test_id: "TS-GH-41-010"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-41"
@@ -832,7 +826,7 @@ scenarios:
     classification:
       test_type: "Unit"
       scope: "Single-function"
-      automation_approach: "Go test with testify (table-driven)"
+      automation_approach: "Go/Ginkgo with gomega (table-driven)"
     specific_preconditions: []
     test_data:
       resource_definitions:
@@ -852,14 +846,14 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Call findingsToReviewComments for each severity"
-          command: "For each severity, verify Line=0 in result"
+          command: "for _, sev := range severities { Expect(result.Line).To(Equal(0)) }"
           validation: "All severities produce file-level comments"
       cleanup: []
     assertions:
       - assertion_id: "ASSERT-01"
         priority: "P1"
         description: "All severities produce file-level comments"
-        condition: "Every severity results in ReviewComment with Line=0"
+        condition: "for _, r := range results { Expect(r.Line).To(Equal(0)) }"
         failure_impact: "Some severities might be silently dropped"
     dependencies:
       external_tools: []
@@ -867,7 +861,7 @@ scenarios:
 
   - scenario_id: "11"
     test_id: "TS-GH-41-011"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-41"
@@ -907,7 +901,7 @@ scenarios:
     classification:
       test_type: "Unit"
       scope: "Single-function"
-      automation_approach: "Go test with testify"
+      automation_approach: "Go/Ginkgo with gomega"
     specific_preconditions: []
     test_data:
       resource_definitions: []
@@ -920,14 +914,14 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Call findingsToReviewComments for each case variant"
-          command: "Verify all produce file-level comments"
+          command: "for _, f := range findings { Expect(result.Line).To(Equal(0)) }"
           validation: "All produce Line=0 comments"
       cleanup: []
     assertions:
       - assertion_id: "ASSERT-01"
         priority: "P1"
         description: "All case variants produce identical behavior"
-        condition: "All results have Line=0"
+        condition: "for _, r := range results { Expect(r.Line).To(Equal(0)) }"
         failure_impact: "Case-sensitive comparison could filter findings"
     dependencies:
       external_tools: []
@@ -935,7 +929,7 @@ scenarios:
 
   - scenario_id: "12"
     test_id: "TS-GH-41-012"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-41"
@@ -976,7 +970,7 @@ scenarios:
     classification:
       test_type: "Unit"
       scope: "Single-function"
-      automation_approach: "Go test with testify"
+      automation_approach: "Go/Ginkgo with gomega"
     specific_preconditions: []
     test_data:
       resource_definitions:
@@ -995,14 +989,14 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Build API payload from ReviewComment"
-          command: "Verify payload contains subject_type: file"
+          command: "Expect(payload).To(HaveKeyWithValue(\"subject_type\", \"file\"))"
           validation: "subject_type field is present and equals 'file'"
       cleanup: []
     assertions:
       - assertion_id: "ASSERT-01"
         priority: "P0"
         description: "subject_type is 'file' for Line=0"
-        condition: "payload['subject_type'] == 'file'"
+        condition: "Expect(payload).To(HaveKeyWithValue(\"subject_type\", \"file\"))"
         failure_impact: "GitHub API would reject or misplace the comment"
     dependencies:
       external_tools: []
@@ -1010,7 +1004,7 @@ scenarios:
 
   - scenario_id: "13"
     test_id: "TS-GH-41-013"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-41"
@@ -1051,7 +1045,7 @@ scenarios:
     classification:
       test_type: "Unit"
       scope: "Single-function"
-      automation_approach: "Go test with testify"
+      automation_approach: "Go/Ginkgo with gomega"
     specific_preconditions: []
     test_data:
       resource_definitions:
@@ -1070,14 +1064,14 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Build API payload from ReviewComment"
-          command: "Verify payload does NOT contain subject_type"
+          command: "Expect(payload).NotTo(HaveKey(\"subject_type\"))"
           validation: "subject_type field is absent"
       cleanup: []
     assertions:
       - assertion_id: "ASSERT-01"
         priority: "P0"
         description: "No subject_type for Line>0"
-        condition: "payload does not contain 'subject_type' key"
+        condition: "Expect(payload).NotTo(HaveKey(\"subject_type\"))"
         failure_impact: "Line-level comments could be misinterpreted as file-level"
     dependencies:
       external_tools: []
@@ -1085,7 +1079,7 @@ scenarios:
 
   - scenario_id: "14"
     test_id: "TS-GH-41-014"
-    tier: "End-to-End"
+    tier: "Tier 2"
     priority: "P0"
     mvp: true
     requirement_id: "GH-41"
@@ -1170,7 +1164,7 @@ scenarios:
 
   - scenario_id: "15"
     test_id: "TS-GH-41-015"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-41"
@@ -1210,7 +1204,7 @@ scenarios:
     classification:
       test_type: "Unit"
       scope: "Single-function"
-      automation_approach: "Go test with testify"
+      automation_approach: "Go/Ginkgo with gomega"
     specific_preconditions: []
     test_data:
       resource_definitions: []
@@ -1223,14 +1217,14 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Call findingsToReviewComments and verify not filtered"
-          command: "Verify result is not empty"
+          command: "Expect(result).NotTo(BeEmpty())"
           validation: "Finding produces a comment"
       cleanup: []
     assertions:
       - assertion_id: "ASSERT-01"
         priority: "P1"
         description: "Binary file finding is not dropped"
-        condition: "len(result) > 0"
+        condition: "Expect(result).NotTo(BeEmpty())"
         failure_impact: "Findings for binary files would be silently lost"
     dependencies:
       external_tools: []
@@ -1238,7 +1232,7 @@ scenarios:
 
   - scenario_id: "16"
     test_id: "TS-GH-41-016"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-41"
@@ -1278,7 +1272,7 @@ scenarios:
     classification:
       test_type: "Unit"
       scope: "Single-function"
-      automation_approach: "Go test with testify"
+      automation_approach: "Go/Ginkgo with gomega"
     specific_preconditions: []
     test_data:
       resource_definitions: []
@@ -1291,14 +1285,14 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Call findingsToReviewComments and verify not filtered"
-          command: "Verify result is not empty"
+          command: "Expect(result).NotTo(BeEmpty())"
           validation: "Finding produces a comment"
       cleanup: []
     assertions:
       - assertion_id: "ASSERT-01"
         priority: "P1"
         description: "Truncated-patch finding not dropped"
-        condition: "len(result) > 0"
+        condition: "Expect(result).NotTo(BeEmpty())"
         failure_impact: "Findings for large diffs would be silently lost"
     dependencies:
       external_tools: []
@@ -1306,7 +1300,7 @@ scenarios:
 
   - scenario_id: "17"
     test_id: "TS-GH-41-017"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P2"
     mvp: false
     requirement_id: "GH-41"
@@ -1346,7 +1340,7 @@ scenarios:
     classification:
       test_type: "Unit"
       scope: "Single-function"
-      automation_approach: "Go test with testify"
+      automation_approach: "Go/Ginkgo with gomega"
     specific_preconditions: []
     test_data:
       resource_definitions: []
@@ -1374,7 +1368,7 @@ scenarios:
 
   - scenario_id: "18"
     test_id: "TS-GH-41-018"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P2"
     mvp: false
     requirement_id: "GH-41"
@@ -1412,7 +1406,7 @@ scenarios:
     classification:
       test_type: "Unit"
       scope: "Single-function"
-      automation_approach: "Go test with testify"
+      automation_approach: "Go/Ginkgo with gomega"
     specific_preconditions: []
     test_data:
       resource_definitions: []
@@ -1437,4 +1431,3 @@ scenarios:
     dependencies:
       external_tools: []
       scenario_specific_rbac: []
----

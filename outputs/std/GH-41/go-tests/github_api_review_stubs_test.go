@@ -1,4 +1,4 @@
-package tests
+package postreview_test
 
 import (
 	. "github.com/onsi/ginkgo/v2"
@@ -18,7 +18,7 @@ var _ = Describe("[GH-41] CreatePullRequestReview API payload", func() {
 
 		Preconditions:
 			- Go toolchain 1.22+
-			- fullsend source code with PR #41 changes applied
+			- fullsend source code with file-level comment fallback support
 			- Source file: internal/forge/github/github.go
 	*/
 
@@ -66,7 +66,7 @@ var _ = Describe("[GH-41] submitFormalReview fallback logging", func() {
 
 		Preconditions:
 			- Go toolchain 1.22+
-			- fullsend source code with PR #41 changes applied
+			- fullsend source code with file-level comment fallback support
 			- Source file: internal/cli/postreview.go
 	*/
 

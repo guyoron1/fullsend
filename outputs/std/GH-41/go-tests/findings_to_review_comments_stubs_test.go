@@ -1,4 +1,4 @@
-package tests
+package postreview_test
 
 import (
 	. "github.com/onsi/ginkgo/v2"
@@ -18,7 +18,7 @@ var _ = Describe("[GH-41] findingsToReviewComments file-level fallback", func() 
 
 		Preconditions:
 			- Go toolchain 1.22+
-			- fullsend source code with PR #41 changes applied
+			- fullsend source code with file-level comment fallback support
 			- Source file: internal/cli/postreview.go
 	*/
 
@@ -27,6 +27,18 @@ var _ = Describe("[GH-41] findingsToReviewComments file-level fallback", func() 
 			Preconditions:
 				- diffHunks map contains main.go with hunks [10-30, 50-70]
 				- Finding references main.go at line 150 (outside all hunks)
+		*/
+		/*
+			Steps:
+				1. Create a Finding referencing line 150 in main.go
+				2. Create diffHunks map with main.go having hunks [10-30, 50-70]
+				3. Call findingsToReviewComments with the finding and diffHunks
+				4. Assert result contains one ReviewComment with Line=0
+
+			Expected:
+				- ReviewComment is created (not filtered out)
+				- ReviewComment.Line equals 0 (file-level)
+				- ReviewComment.Path matches the finding's file path
 		*/
 		PendingIt("[test_id:TS-GH-41-001] should post out-of-hunk finding as file-level comment with Line=0", func() {
 			Skip("Phase 1: Design only - awaiting implementation")

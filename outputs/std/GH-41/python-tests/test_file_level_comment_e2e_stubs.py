@@ -13,14 +13,14 @@ class TestFileLevelCommentGitHubAPI:
     Preconditions:
         - GitHub test repository with an open PR containing files with out-of-hunk changes
         - GitHub token with pull request review permissions
-        - fullsend binary built from PR #41 branch
+        - fullsend binary with file-level comment support
     """
 
     __test__ = False
 
-    def test_file_level_comments_survive_review_resubmission(self):
+    def test_ts_gh_41_003_file_level_comments_survive_review_resubmission(self):
         """
-        Test that file-level comments survive review re-submission.
+        [test_id:TS-GH-41-003] Test that file-level comments survive review re-submission.
 
         Preconditions:
             - Open PR with at least one file whose findings fall outside diff hunks
@@ -35,9 +35,9 @@ class TestFileLevelCommentGitHubAPI:
         """
         pass
 
-    def test_github_api_accepts_file_level_comment_payload(self):
+    def test_ts_gh_41_014_github_api_accepts_file_level_comment_payload(self):
         """
-        Test that GitHub API accepts file-level comment payload with subject_type 'file'.
+        [test_id:TS-GH-41-014] Test that GitHub API accepts file-level comment payload with subject_type 'file'.
 
         Preconditions:
             - Review payload constructed with subject_type: "file" for Line=0 comments
