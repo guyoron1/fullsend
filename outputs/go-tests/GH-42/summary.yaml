@@ -1,0 +1,23 @@
+status: success
+jira_id: GH-42
+std_source: outputs/std/GH-42/GH-42_test_description.yaml
+languages:
+  - language: go
+    framework: testing
+    assertion_library: testify
+    package: harness_test
+    files:
+      - discover_remote_agents_test.go
+    test_count: 23
+    tests_by_priority:
+      P0: 9
+      P1: 11
+      P2: 3
+total_test_count: 23
+lsp_patterns_used: false
+notes: |
+  STD specifies framework "testing" with testify assertions (overrides project
+  default ginkgo-v2). No tier2 (Python) scenarios in this STD — tier2_count is 0.
+  All 23 scenarios are Tier 1 Go unit tests covering remote harness agent discovery
+  via the forge API, including identity extraction, sort order, filtering, partial
+  failure handling, backward compatibility, and concurrency safety.
