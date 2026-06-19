@@ -1,0 +1,11 @@
+status: success
+jira_id: GH-41
+std_source: outputs/std/GH-41/GH-41_test_description.yaml
+languages:
+  - language: go
+    framework: testing
+    files:
+      - findings_to_review_comments_test.go
+    test_count: 16
+total_test_count: 16
+lsp_patterns_used: false
