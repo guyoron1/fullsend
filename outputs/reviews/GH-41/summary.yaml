@@ -1,0 +1,24 @@
+status: success
+jira_id: GH-41
+verdict: NEEDS_REVISION
+confidence: MEDIUM
+weighted_score: 65
+findings:
+  critical: 2
+  major: 8
+  minor: 5
+  actionable: 14
+  total: 15
+artifacts_reviewed:
+  std_yaml: true
+  go_stubs: true
+  python_stubs: true
+  stp_available: true
+dimension_scores:
+  traceability: 65
+  yaml_structure: 50
+  pattern_matching: 82
+  step_quality: 78
+  content_policy: 40
+  pse_quality: 80
+  codegen_readiness: 75
