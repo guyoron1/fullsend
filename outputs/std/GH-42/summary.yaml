@@ -1,0 +1,29 @@
+status: success
+jira_id: GH-42
+stp_source: outputs/stp/GH-42/GH-42_test_plan.md
+std_yaml: outputs/std/GH-42/GH-42_test_description.yaml
+test_counts:
+  total: 23
+  tier1: 23
+  tier2: 0
+stubs:
+  go: 23
+  python: 0
+go_stub_files:
+  - remote_discovery_stubs_test.go
+  - file_filtering_stubs_test.go
+  - partial_failure_stubs_test.go
+  - identity_extraction_stubs_test.go
+  - loadraw_compat_stubs_test.go
+  - integration_stubs_test.go
+priority_breakdown:
+  p0: 9
+  p1: 11
+  p2: 3
+generated_date: "2026-06-19"
+phase: phase1
+notes:
+  - "All 23 STP scenarios covered with Go test stubs"
+  - "No Python stubs generated (tier2_tests disabled, 0 End-to-End scenarios)"
+  - "STD version: 2.1-enhanced"
+  - "Framework: Go testing + testify (standard Go, not Ginkgo)"
