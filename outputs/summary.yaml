@@ -1,0 +1,30 @@
+status: success
+jira_id: GH-40
+file_path: /sandbox/workspace/output/GH-40_test_plan.md
+issue_source: github
+repository: guyoron1/fullsend
+pr_number: 40
+pr_title: "fix(#2432): retry enrollment PR merge on 409 with branch update"
+files_changed:
+  - e2e/admin/admin_test.go
+  - internal/forge/fake.go
+  - internal/forge/forge.go
+  - internal/forge/github/github.go
+lsp_analysis: true
+lsp_calls:
+  - documentSymbol on internal/forge/forge.go
+  - documentSymbol on internal/forge/github/github.go
+  - findReferences on MergeChangeProposal (forge.go:293)
+  - findReferences on UpdatePullRequestBranch (forge.go:299)
+  - incomingCalls on MergeChangeProposal (github.go:1846)
+  - incomingCalls on UpdatePullRequestBranch (github.go:1858)
+  - findReferences on APIError (github.go:50)
+test_counts:
+  unit_tests: 3
+  functional: 5
+  total: 8
+validation:
+  passed: 18
+  failed: 0
+  warnings: 0
+generated_at: "2026-06-19"
