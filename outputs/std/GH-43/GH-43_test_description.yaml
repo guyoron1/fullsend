@@ -1,0 +1,1247 @@
+---
+# Software Test Description (STD) — GH-43
+# Generated: 2026-06-19
+# Source: outputs/stp/GH-43/GH-43_test_plan.md
+
+document_metadata:
+  std_version: "2.1-enhanced"
+  generated_date: "2026-06-19"
+  jira_issue: "GH-43"
+  jira_summary: "Migrate Uninstall Flows to Harness-First Agent Discovery"
+  source_bugs: []
+  stp_reference:
+    file: "outputs/stp/GH-43/GH-43_test_plan.md"
+    version: "v1"
+    sections_covered: "Section III - Requirements-to-Tests Mapping"
+  related_prs:
+    - repo: "guyoron1/fullsend"
+      pr_number: 43
+      url: "https://github.com/guyoron1/fullsend/pull/43"
+      title: "Migrate Uninstall Flows to Harness-First Agent Discovery"
+      merged: false
+  total_scenarios: 9
+  functional_count: 9
+  e2e_count: 0
+  p0_count: 4
+  p1_count: 3
+  p2_count: 2
+
+code_generation_config:
+  std_version: "2.1-enhanced"
+  framework: "ginkgo-v2"
+  assertion_library: "gomega"
+  language: "go"
+  package_name: "tests"
+  context_init: "context.Background()"
+  imports:
+    dot_imports:
+      - "github.com/onsi/ginkgo/v2"
+      - "github.com/onsi/gomega"
+    standard:
+      - "context"
+      - "time"
+  timeout_constants: {}
+  helper_library_imports: {}
+
+common_preconditions:
+  infrastructure:
+    - name: "Go toolchain"
+      requirement: "Go 1.26+ (per go.mod)"
+      validation: "go version"
+    - name: "Forge fake client"
+      requirement: "forge.NewFakeClient() with DirContents, FileContentsRef, FileContents, and Installations maps"
+      validation: "go test ./internal/cli/... -run TestCompile -count=1"
+    - name: "CI runner"
+      requirement: "Standard CI runner (GitHub Actions, Linux/macOS)"
+      validation: "uname -a"
+  operators: []
+  cluster_configuration:
+    topology: "N/A — CLI unit tests, no cluster required"
+    cpu_features: "N/A"
+    storage: "N/A"
+    network: "N/A — forge client is mocked"
+  rbac_requirements: []
+  test_framework:
+    language: "go"
+    framework: "testing + testify"
+    mock_library: "forge.NewFakeClient()"
+    notes: "All tests are automated Go unit tests. No real cluster or GitHub API access needed."
+
+scenarios:
+  - scenario_id: "001"
+    test_id: "TS-GH-43-001"
+    tier: "Functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-43"
+
+    variables:
+      closure_scope:
+        - name: "ctx"
+          type: "context.Context"
+          initialized_in: "BeforeAll"
+          used_in: ["BeforeAll", "It"]
+          comment: "Test context"
+        - name: "fakeClient"
+          type: "*forge.FakeClient"
+          initialized_in: "BeforeAll"
+          used_in: ["BeforeAll", "It"]
+          comment: "Forge fake client with harness wrapper files configured"
+        - name: "slugs"
+          type: "[]string"
+          initialized_in: "It"
+          used_in: ["It"]
+          comment: "Discovered agent slugs"
+        - name: "err"
+          type: "error"
+          initialized_in: "It"
+          used_in: ["It"]
+          comment: "Error from discovery call"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "discoverAgentSlugs"
+        decorators: []
+      context:
+        description: "when harness wrapper files exist"
+        decorators: ["Ordered"]
+      it:
+        description: "should prefer harness slugs over config agents block"
+        test_id_format: "[test_id:TS-GH-43-001]"
+
+    code_structure: |
+      Context("when harness wrapper files exist", Ordered, func() {
+        BeforeAll(func() {
+          // Setup fake client with harness wrapper files and config agents block
+        })
+        It("[test_id:TS-GH-43-001] should prefer harness slugs over config agents block", func() {
+          // Call discoverAgentSlugs
+          // Verify harness slugs returned, not config agents block slugs
+        })
+      })
+
+    test_objective:
+      title: "Harness-first agent slug discovery resolves slugs correctly"
+      what: |
+        Validates that the discoverAgentSlugs function prefers harness wrapper files
+        as the primary source of agent slugs over the config.yaml agents block.
+        When harness files are present and contain valid agent definitions, their slugs
+        are returned and the config agents block is not consulted.
+      why: |
+        Harness wrapper files are the modern source of truth for agent configuration.
+        Preferring them ensures correct app cleanup during uninstall, preventing orphaned
+        GitHub Apps. This is the primary behavior change in this refactoring.
+      acceptance_criteria:
+        - "discoverAgentSlugs returns slugs from harness wrapper files when present"
+        - "Config agents block is not consulted when harness files provide slugs"
+        - "Slugs extracted correctly from harness agent role and slug fields"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with forge.FakeClient"
+
+    specific_preconditions:
+      - name: "Harness wrapper files"
+        requirement: "FakeClient configured with DirContents containing harness YAML files"
+        validation: "FakeClient.DirContents has .fullsend/harness/ entries"
+      - name: "Config agents block"
+        requirement: "Config YAML with agents block also populated (to verify it is skipped)"
+        validation: "Config struct has Agents field with entries"
+
+    test_data:
+      resource_definitions:
+        - name: "harness_wrapper_yaml"
+          type: "HarnessFile"
+          yaml: |
+            role: agent-one
+            slug: my-app-agent-one
+        - name: "config_agents_block"
+          type: "ConfigAgents"
+          yaml: |
+            agents:
+              - role: agent-legacy
+                slug: my-app-agent-legacy
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create fake client with harness wrapper files in DirContents"
+          command: "forge.NewFakeClient() with DirContents map"
+          validation: "FakeClient initialized without error"
+        - step_id: "SETUP-02"
+          action: "Configure config.yaml with agents block entries"
+          command: "Create config struct with Agents field populated"
+          validation: "Config struct has agents entries"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call discoverAgentSlugs with fake client and config"
+          command: "discoverAgentSlugs(ctx, client, owner, configRepo, ref, appSet, cfg, printer)"
+          validation: "Function returns without error"
+        - step_id: "TEST-02"
+          action: "Verify returned slugs match harness file slugs"
+          command: "Assert slugs contain harness-derived values"
+          validation: "Slugs list contains 'my-app-agent-one'"
+        - step_id: "TEST-03"
+          action: "Verify config agents block slugs are NOT in result"
+          command: "Assert slugs do not contain config-only values"
+          validation: "Slugs list does not contain 'my-app-agent-legacy'"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "No cleanup needed for unit tests"
+          command: "N/A"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Harness-derived slugs are returned"
+        condition: "slugs contains 'my-app-agent-one'"
+        failure_impact: "Harness-first discovery is broken; orphaned apps possible"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "Config agents block is not used when harness succeeds"
+        condition: "slugs does not contain 'my-app-agent-legacy'"
+        failure_impact: "Fallback logic is incorrect; both sources mixed"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.26+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "002"
+    test_id: "TS-GH-43-002"
+    tier: "Functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-43"
+
+    variables:
+      closure_scope:
+        - name: "ctx"
+          type: "context.Context"
+          initialized_in: "BeforeAll"
+          used_in: ["BeforeAll", "It"]
+          comment: "Test context"
+        - name: "fakeClient"
+          type: "*forge.FakeClient"
+          initialized_in: "BeforeAll"
+          used_in: ["BeforeAll", "It"]
+          comment: "Forge fake client with no harness files"
+        - name: "cfg"
+          type: "*config.OrgConfig"
+          initialized_in: "BeforeAll"
+          used_in: ["It"]
+          comment: "Config with agents block populated"
+        - name: "slugs"
+          type: "[]string"
+          initialized_in: "It"
+          used_in: ["It"]
+          comment: "Discovered agent slugs"
+        - name: "output"
+          type: "string"
+          initialized_in: "It"
+          used_in: ["It"]
+          comment: "Captured printer output for deprecation warning"
+        - name: "err"
+          type: "error"
+          initialized_in: "It"
+          used_in: ["It"]
+          comment: "Error from discovery call"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "discoverAgentSlugs"
+        decorators: []
+      context:
+        description: "when no harness files exist and config agents block is populated"
+        decorators: ["Ordered"]
+      it:
+        description: "should fall back to config agents block with deprecation warning"
+        test_id_format: "[test_id:TS-GH-43-002]"
+
+    code_structure: |
+      Context("when no harness files exist and config agents block is populated", Ordered, func() {
+        BeforeAll(func() {
+          // Setup fake client with empty DirContents, config with agents block
+        })
+        It("[test_id:TS-GH-43-002] should fall back to config agents block with deprecation warning", func() {
+          // Call discoverAgentSlugs
+          // Verify config agents block slugs returned
+          // Verify deprecation warning emitted
+        })
+      })
+
+    test_objective:
+      title: "Fallback to config.yaml agents block with deprecation warning"
+      what: |
+        Validates that when no harness wrapper files exist, discoverAgentSlugs falls
+        back to the config.yaml agents block and extracts slugs from it. Additionally
+        verifies that a deprecation warning is emitted to inform users that the agents
+        block is deprecated in favor of harness files.
+      why: |
+        Backward compatibility is critical during migration. Users with existing config.yaml
+        agents blocks must continue to have working uninstall flows while being notified
+        to migrate to harness files.
+      acceptance_criteria:
+        - "Config agents block slugs are returned when no harness files exist"
+        - "Deprecation warning is emitted to printer output"
+        - "Agents block entries with empty slug field use role-based derivation"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with forge.FakeClient"
+
+    specific_preconditions:
+      - name: "No harness files"
+        requirement: "FakeClient DirContents empty or missing harness directory"
+        validation: "FakeClient.DirContents has no .fullsend/harness/ entries"
+      - name: "Config agents block"
+        requirement: "Config YAML with agents block populated with valid entries"
+        validation: "Config struct Agents field has entries"
+
+    test_data:
+      resource_definitions:
+        - name: "config_agents_block"
+          type: "ConfigAgents"
+          yaml: |
+            agents:
+              - role: agent-one
+                slug: my-app-agent-one
+              - role: agent-two
+                slug: my-app-agent-two
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create fake client with empty DirContents (no harness files)"
+          command: "forge.NewFakeClient() with empty DirContents"
+          validation: "FakeClient initialized"
+        - step_id: "SETUP-02"
+          action: "Create config with agents block entries"
+          command: "Build config struct with Agents slice"
+          validation: "Config has 2 agent entries"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call discoverAgentSlugs"
+          command: "discoverAgentSlugs(ctx, client, owner, configRepo, ref, appSet, cfg, printer)"
+          validation: "Function returns slugs"
+        - step_id: "TEST-02"
+          action: "Verify config agents block slugs are returned"
+          command: "Assert slugs match expected config-derived values"
+          validation: "Slugs contain 'my-app-agent-one' and 'my-app-agent-two'"
+        - step_id: "TEST-03"
+          action: "Verify deprecation warning emitted"
+          command: "Assert printer output contains deprecation warning text"
+          validation: "Output contains deprecation warning string"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "No cleanup needed"
+          command: "N/A"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Config agents block slugs are returned"
+        condition: "slugs contains config-derived agent slugs"
+        failure_impact: "Backward compatibility broken; users lose app cleanup on uninstall"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "Deprecation warning is emitted"
+        condition: "printer output contains deprecation warning text"
+        failure_impact: "Users not informed about migration to harness files"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.26+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "003"
+    test_id: "TS-GH-43-003"
+    tier: "Functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-43"
+
+    variables:
+      closure_scope:
+        - name: "ctx"
+          type: "context.Context"
+          initialized_in: "BeforeAll"
+          used_in: ["BeforeAll", "It"]
+          comment: "Test context"
+        - name: "fakeClient"
+          type: "*forge.FakeClient"
+          initialized_in: "BeforeAll"
+          used_in: ["It"]
+          comment: "Forge fake client with no harness files"
+        - name: "cfg"
+          type: "*config.OrgConfig"
+          initialized_in: "BeforeAll"
+          used_in: ["It"]
+          comment: "Config with empty agents block"
+        - name: "slugs"
+          type: "[]string"
+          initialized_in: "It"
+          used_in: ["It"]
+          comment: "Discovered agent slugs (expected nil)"
+        - name: "err"
+          type: "error"
+          initialized_in: "It"
+          used_in: ["It"]
+          comment: "Error from discovery call"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "discoverAgentSlugs"
+        decorators: []
+      context:
+        description: "when neither harness files nor config agents exist"
+        decorators: ["Ordered"]
+      it:
+        description: "should return nil for caller-managed defaults"
+        test_id_format: "[test_id:TS-GH-43-003]"
+
+    code_structure: |
+      Context("when neither harness files nor config agents exist", Ordered, func() {
+        BeforeAll(func() {
+          // Setup fake client with no harness files and config with empty agents
+        })
+        It("[test_id:TS-GH-43-003] should return nil for caller-managed defaults", func() {
+          // Call discoverAgentSlugs
+          // Verify nil returned
+        })
+      })
+
+    test_objective:
+      title: "Default naming fallback when neither source provides slugs"
+      what: |
+        Validates that discoverAgentSlugs returns nil when no harness wrapper files
+        exist and the config.yaml agents block is empty or absent. This signals
+        the caller to apply its own default role-based naming convention.
+      why: |
+        The three-tier fallback must gracefully handle the case where no agent
+        configuration exists. Returning nil allows callers to apply default naming
+        conventions, preserving existing behavior for fresh installations.
+      acceptance_criteria:
+        - "discoverAgentSlugs returns nil when no sources provide slugs"
+        - "No deprecation warning emitted (agents block not used)"
+        - "Caller can apply default role-based naming convention"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with forge.FakeClient"
+
+    specific_preconditions:
+      - name: "No harness files"
+        requirement: "FakeClient DirContents empty"
+        validation: "No .fullsend/harness/ entries"
+      - name: "Empty config agents"
+        requirement: "Config Agents field is nil or empty slice"
+        validation: "len(cfg.Agents) == 0"
+
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create fake client with no harness files"
+          command: "forge.NewFakeClient() with empty maps"
+          validation: "FakeClient initialized"
+        - step_id: "SETUP-02"
+          action: "Create config with no agents block"
+          command: "Build config struct with nil Agents"
+          validation: "Config has no agents"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call discoverAgentSlugs"
+          command: "discoverAgentSlugs(ctx, client, owner, configRepo, ref, appSet, cfg, printer)"
+          validation: "Function returns"
+        - step_id: "TEST-02"
+          action: "Verify nil returned"
+          command: "Assert slugs is nil"
+          validation: "slugs == nil"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "No cleanup needed"
+          command: "N/A"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Nil returned when no sources provide slugs"
+        condition: "slugs == nil"
+        failure_impact: "Caller cannot distinguish empty discovery from failed discovery"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.26+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "004"
+    test_id: "TS-GH-43-004"
+    tier: "Functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-43"
+
+    variables:
+      closure_scope:
+        - name: "ctx"
+          type: "context.Context"
+          initialized_in: "BeforeAll"
+          used_in: ["BeforeAll", "It"]
+          comment: "Test context"
+        - name: "fakeClient"
+          type: "*forge.FakeClient"
+          initialized_in: "BeforeAll"
+          used_in: ["It"]
+          comment: "Forge fake client with harness files having empty slug fields"
+        - name: "slugs"
+          type: "[]string"
+          initialized_in: "It"
+          used_in: ["It"]
+          comment: "Discovered agent slugs with role-derived values"
+        - name: "err"
+          type: "error"
+          initialized_in: "It"
+          used_in: ["It"]
+          comment: "Error from discovery call"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "discoverAgentSlugs"
+        decorators: []
+      context:
+        description: "when harness agent has empty slug field"
+        decorators: ["Ordered"]
+      it:
+        description: "should derive slug from appSet and role via AppSlug convention"
+        test_id_format: "[test_id:TS-GH-43-004]"
+
+    code_structure: |
+      Context("when harness agent has empty slug field", Ordered, func() {
+        BeforeAll(func() {
+          // Setup fake client with harness file having role but no slug
+        })
+        It("[test_id:TS-GH-43-004] should derive slug from appSet and role via AppSlug convention", func() {
+          // Call discoverAgentSlugs
+          // Verify slug derived from appSet + role
+        })
+      })
+
+    test_objective:
+      title: "Slug derivation from role when slug field is empty"
+      what: |
+        Validates that when a harness wrapper file or config agents block entry has
+        an empty slug field, discoverAgentSlugs derives the slug using the AppSlug
+        convention based on the appSet name and the agent role.
+      why: |
+        Not all agent configurations explicitly specify slugs. The AppSlug derivation
+        convention ensures consistent slug naming and prevents uninstall failures when
+        slug fields are omitted.
+      acceptance_criteria:
+        - "Slug derived from appSet and role via AppSlug() when slug field is empty"
+        - "Derivation works for harness agent entries"
+        - "Derivation works for config agents block entries"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with forge.FakeClient"
+
+    specific_preconditions:
+      - name: "Harness file with empty slug"
+        requirement: "Harness YAML with role set but slug empty"
+        validation: "Agent entry has Role='my-role', Slug=''"
+
+    test_data:
+      resource_definitions:
+        - name: "harness_wrapper_no_slug"
+          type: "HarnessFile"
+          yaml: |
+            role: my-role
+            slug: ""
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create fake client with harness file having empty slug"
+          command: "forge.NewFakeClient() with DirContents and FileContentsRef"
+          validation: "FakeClient initialized with harness file"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call discoverAgentSlugs with appSet name"
+          command: "discoverAgentSlugs(ctx, client, owner, configRepo, ref, appSet, cfg, printer)"
+          validation: "Function returns slugs"
+        - step_id: "TEST-02"
+          action: "Verify slug derived from appSet and role"
+          command: "Assert slugs contain AppSlug(appSet, 'my-role') result"
+          validation: "Slug matches expected AppSlug convention output"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "No cleanup needed"
+          command: "N/A"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Slug derived correctly via AppSlug convention"
+        condition: "slugs contains AppSlug(appSet, 'my-role')"
+        failure_impact: "Apps with missing slug config not cleaned up on uninstall"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.26+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "005"
+    test_id: "TS-GH-43-005"
+    tier: "Functional"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-43"
+
+    variables:
+      closure_scope:
+        - name: "ctx"
+          type: "context.Context"
+          initialized_in: "BeforeAll"
+          used_in: ["BeforeAll", "It"]
+          comment: "Test context"
+        - name: "fakeClient"
+          type: "*forge.FakeClient"
+          initialized_in: "BeforeAll"
+          used_in: ["It"]
+          comment: "Forge fake client with duplicate harness entries"
+        - name: "slugs"
+          type: "[]string"
+          initialized_in: "It"
+          used_in: ["It"]
+          comment: "Discovered agent slugs after deduplication"
+        - name: "err"
+          type: "error"
+          initialized_in: "It"
+          used_in: ["It"]
+          comment: "Error from discovery call"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "discoverAgentSlugs"
+        decorators: []
+      context:
+        description: "when multiple harness files produce duplicate slugs"
+        decorators: ["Ordered"]
+      it:
+        description: "should deduplicate slugs preserving first occurrence"
+        test_id_format: "[test_id:TS-GH-43-005]"
+
+    code_structure: |
+      Context("when multiple harness files produce duplicate slugs", Ordered, func() {
+        BeforeAll(func() {
+          // Setup fake client with multiple harness files containing duplicate slugs
+        })
+        It("[test_id:TS-GH-43-005] should deduplicate slugs preserving first occurrence", func() {
+          // Call discoverAgentSlugs
+          // Verify no duplicate slugs in result
+        })
+      })
+
+    test_objective:
+      title: "Slug deduplication across discovery"
+      what: |
+        Validates that when multiple harness wrapper files produce the same slug,
+        discoverAgentSlugs deduplicates the results and returns each slug only once.
+        First occurrence order is preserved.
+      why: |
+        Duplicate slugs would cause duplicate app deletion API calls during uninstall,
+        potentially causing errors or confusing output. Deduplication ensures clean
+        app cleanup.
+      acceptance_criteria:
+        - "Duplicate slugs from multiple harness files are removed"
+        - "First occurrence order is preserved in the result"
+        - "Result contains each unique slug exactly once"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with forge.FakeClient"
+
+    specific_preconditions:
+      - name: "Multiple harness files with duplicate slugs"
+        requirement: "DirContents with 3+ harness files, some producing same slug"
+        validation: "At least 2 harness files resolve to same slug value"
+
+    test_data:
+      resource_definitions:
+        - name: "harness_file_1"
+          type: "HarnessFile"
+          yaml: |
+            role: agent-one
+            slug: my-app-agent-one
+        - name: "harness_file_2"
+          type: "HarnessFile"
+          yaml: |
+            role: agent-two
+            slug: my-app-agent-one
+        - name: "harness_file_3"
+          type: "HarnessFile"
+          yaml: |
+            role: agent-three
+            slug: my-app-agent-three
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create fake client with 3 harness files, 2 having same slug"
+          command: "forge.NewFakeClient() with DirContents and FileContentsRef"
+          validation: "FakeClient initialized with 3 harness files"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call discoverAgentSlugs"
+          command: "discoverAgentSlugs(ctx, client, owner, configRepo, ref, appSet, cfg, printer)"
+          validation: "Function returns slugs"
+        - step_id: "TEST-02"
+          action: "Verify deduplicated result"
+          command: "Assert len(slugs) == 2 and no duplicate values"
+          validation: "Slugs are ['my-app-agent-one', 'my-app-agent-three']"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "No cleanup needed"
+          command: "N/A"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Duplicate slugs are removed"
+        condition: "len(slugs) == 2 (not 3)"
+        failure_impact: "Duplicate app deletion calls on uninstall"
+      - assertion_id: "ASSERT-02"
+        priority: "P2"
+        description: "First occurrence order preserved"
+        condition: "slugs[0] == 'my-app-agent-one' and slugs[1] == 'my-app-agent-three'"
+        failure_impact: "Unpredictable slug ordering"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.26+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "006"
+    test_id: "TS-GH-43-006"
+    tier: "Functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-43"
+
+    variables:
+      closure_scope:
+        - name: "ctx"
+          type: "context.Context"
+          initialized_in: "BeforeAll"
+          used_in: ["BeforeAll", "It"]
+          comment: "Test context"
+        - name: "fakeClient"
+          type: "*forge.FakeClient"
+          initialized_in: "BeforeAll"
+          used_in: ["It"]
+          comment: "Forge fake client with mix of valid and malformed harness files"
+        - name: "slugs"
+          type: "[]string"
+          initialized_in: "It"
+          used_in: ["It"]
+          comment: "Discovered agent slugs from valid files only"
+        - name: "err"
+          type: "error"
+          initialized_in: "It"
+          used_in: ["It"]
+          comment: "Error from discovery call"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "discoverAgentSlugs"
+        decorators: []
+      context:
+        description: "when some harness files are malformed"
+        decorators: ["Ordered"]
+      it:
+        description: "should return valid agents and skip malformed files"
+        test_id_format: "[test_id:TS-GH-43-006]"
+
+    code_structure: |
+      Context("when some harness files are malformed", Ordered, func() {
+        BeforeAll(func() {
+          // Setup fake client with mix of valid and malformed harness YAML
+        })
+        It("[test_id:TS-GH-43-006] should return valid agents and skip malformed files", func() {
+          // Call discoverAgentSlugs
+          // Verify valid agents returned, malformed skipped
+          // Verify fallback to agents block NOT triggered (valid slugs exist)
+        })
+      })
+
+    test_objective:
+      title: "Partial error resilience for malformed harness files"
+      what: |
+        Validates that discoverAgentSlugs exhibits partial error resilience by returning
+        valid agent slugs from parseable harness files while skipping malformed ones.
+        When valid harness slugs exist despite parse errors, the config agents block
+        fallback is NOT triggered.
+      why: |
+        In production, harness directories may contain partially broken files due to
+        in-progress edits or corruption. The discovery function must be resilient to
+        partial failures to prevent uninstall from failing entirely.
+      acceptance_criteria:
+        - "Valid agents returned from parseable harness files"
+        - "Malformed harness files are skipped without failing the entire discovery"
+        - "Config agents block fallback not triggered when valid harness slugs exist"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with forge.FakeClient"
+
+    specific_preconditions:
+      - name: "Mixed harness files"
+        requirement: "DirContents with both valid YAML and malformed content"
+        validation: "At least 1 valid and 1 malformed harness file"
+
+    test_data:
+      resource_definitions:
+        - name: "valid_harness_file"
+          type: "HarnessFile"
+          yaml: |
+            role: agent-valid
+            slug: my-app-agent-valid
+        - name: "malformed_harness_file"
+          type: "HarnessFile"
+          yaml: |
+            {invalid yaml content: [broken
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create fake client with valid and malformed harness files"
+          command: "forge.NewFakeClient() with mixed DirContents"
+          validation: "FakeClient has both valid and malformed harness files"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call discoverAgentSlugs"
+          command: "discoverAgentSlugs(ctx, client, owner, configRepo, ref, appSet, cfg, printer)"
+          validation: "Function returns without fatal error"
+        - step_id: "TEST-02"
+          action: "Verify valid harness slugs returned"
+          command: "Assert slugs contain valid agent slug"
+          validation: "Slugs contain 'my-app-agent-valid'"
+        - step_id: "TEST-03"
+          action: "Verify fallback to agents block NOT triggered"
+          command: "Assert no deprecation warning emitted"
+          validation: "Printer output does not contain deprecation warning"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "No cleanup needed"
+          command: "N/A"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Valid agent slugs returned despite malformed files"
+        condition: "slugs contains 'my-app-agent-valid'"
+        failure_impact: "Partial harness corruption causes complete discovery failure"
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "Agents block fallback not triggered"
+        condition: "No deprecation warning in output"
+        failure_impact: "Mixed sources produce incorrect slug list"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.26+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "007"
+    test_id: "TS-GH-43-007"
+    tier: "Functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-43"
+
+    variables:
+      closure_scope:
+        - name: "ctx"
+          type: "context.Context"
+          initialized_in: "BeforeAll"
+          used_in: ["BeforeAll", "It"]
+          comment: "Test context"
+        - name: "fakeClient"
+          type: "*forge.FakeClient"
+          initialized_in: "BeforeAll"
+          used_in: ["It"]
+          comment: "Forge fake client for org-level uninstall"
+        - name: "err"
+          type: "error"
+          initialized_in: "It"
+          used_in: ["It"]
+          comment: "Error from runUninstall"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "runUninstall"
+        decorators: []
+      context:
+        description: "org-level uninstall with harness-discovered agents"
+        decorators: ["Ordered"]
+      it:
+        description: "should use harness-discovered slugs for app deletion"
+        test_id_format: "[test_id:TS-GH-43-007]"
+
+    code_structure: |
+      Context("org-level uninstall with harness-discovered agents", Ordered, func() {
+        BeforeAll(func() {
+          // Setup fake client with harness files and app installations
+        })
+        It("[test_id:TS-GH-43-007] should use harness-discovered slugs for app deletion", func() {
+          // Call runUninstall
+          // Verify apps matching harness slugs are deleted
+        })
+      })
+
+    test_objective:
+      title: "Org-level uninstall uses harness-discovered agents for app cleanup"
+      what: |
+        Validates that the org-level runUninstall function correctly uses
+        harness-discovered agent slugs to identify and delete GitHub Apps.
+        This is the primary integration point between discoverAgentSlugs
+        and the org-level uninstall flow.
+      why: |
+        The org-level uninstall is the most common uninstall path. Ensuring it
+        correctly uses harness-discovered slugs prevents orphaned GitHub Apps
+        and ensures clean org-level cleanup.
+      acceptance_criteria:
+        - "runUninstall calls discoverAgentSlugs and uses returned slugs"
+        - "Apps matching harness-discovered slugs are targeted for deletion"
+        - "Uninstall completes without error when harness files are present"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with forge.FakeClient"
+
+    specific_preconditions:
+      - name: "Harness files with agent slugs"
+        requirement: "FakeClient with harness files and matching Installations"
+        validation: "DirContents and Installations maps populated"
+
+    test_data:
+      resource_definitions:
+        - name: "harness_agents"
+          type: "HarnessFile"
+          yaml: |
+            role: agent-one
+            slug: my-app-agent-one
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create fake client with harness files and app installations"
+          command: "forge.NewFakeClient() with DirContents, FileContentsRef, Installations"
+          validation: "FakeClient has harness files and matching installations"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call runUninstall with fake client"
+          command: "runUninstall(ctx, client, owner, configRepo, ...)"
+          validation: "Function completes without error"
+        - step_id: "TEST-02"
+          action: "Verify harness-discovered apps targeted for deletion"
+          command: "Assert app deletion calls match harness slugs"
+          validation: "Installations matching harness slugs were processed"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "No cleanup needed"
+          command: "N/A"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Org-level uninstall uses harness slugs"
+        condition: "runUninstall processes apps matching harness-discovered slugs"
+        failure_impact: "Org uninstall misses harness-configured apps; orphaned GitHub Apps"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "Uninstall completes without error"
+        condition: "err == nil"
+        failure_impact: "Org uninstall fails entirely"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.26+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "008"
+    test_id: "TS-GH-43-008"
+    tier: "Functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-43"
+
+    variables:
+      closure_scope:
+        - name: "ctx"
+          type: "context.Context"
+          initialized_in: "BeforeAll"
+          used_in: ["BeforeAll", "It"]
+          comment: "Test context"
+        - name: "fakeClient"
+          type: "*forge.FakeClient"
+          initialized_in: "BeforeAll"
+          used_in: ["It"]
+          comment: "Forge fake client for GitHub-specific uninstall"
+        - name: "err"
+          type: "error"
+          initialized_in: "It"
+          used_in: ["It"]
+          comment: "Error from runGitHubUninstall"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "runGitHubUninstall"
+        decorators: []
+      context:
+        description: "GitHub-specific uninstall with harness-discovered agents"
+        decorators: ["Ordered"]
+      it:
+        description: "should use harness-discovered slugs for app deletion"
+        test_id_format: "[test_id:TS-GH-43-008]"
+
+    code_structure: |
+      Context("GitHub-specific uninstall with harness-discovered agents", Ordered, func() {
+        BeforeAll(func() {
+          // Setup fake client with harness files and GitHub app installations
+        })
+        It("[test_id:TS-GH-43-008] should use harness-discovered slugs for app deletion", func() {
+          // Call runGitHubUninstall
+          // Verify apps matching harness slugs are deleted
+        })
+      })
+
+    test_objective:
+      title: "GitHub-specific uninstall uses harness-discovered agents for app cleanup"
+      what: |
+        Validates that the GitHub-specific runGitHubUninstall function correctly uses
+        harness-discovered agent slugs to identify and delete GitHub Apps. This is
+        the second integration point, ensuring both uninstall paths use the shared
+        discoverAgentSlugs function.
+      why: |
+        The GitHub-specific uninstall path must produce the same app cleanup behavior
+        as the org-level path. Both paths now share discoverAgentSlugs, ensuring
+        consistency and reducing code duplication.
+      acceptance_criteria:
+        - "runGitHubUninstall calls discoverAgentSlugs and uses returned slugs"
+        - "Apps matching harness-discovered slugs are targeted for deletion"
+        - "GitHub-specific uninstall completes without error"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with forge.FakeClient"
+
+    specific_preconditions:
+      - name: "Harness files with agent slugs"
+        requirement: "FakeClient with harness files and matching GitHub Installations"
+        validation: "DirContents and Installations maps populated"
+
+    test_data:
+      resource_definitions:
+        - name: "harness_agents"
+          type: "HarnessFile"
+          yaml: |
+            role: agent-one
+            slug: my-app-agent-one
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create fake client with harness files and GitHub app installations"
+          command: "forge.NewFakeClient() with DirContents, FileContentsRef, Installations"
+          validation: "FakeClient initialized"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call runGitHubUninstall with fake client"
+          command: "runGitHubUninstall(ctx, client, owner, configRepo, ...)"
+          validation: "Function completes without error"
+        - step_id: "TEST-02"
+          action: "Verify harness-discovered apps targeted for deletion"
+          command: "Assert app deletion calls match harness slugs"
+          validation: "Installations matching harness slugs were processed"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "No cleanup needed"
+          command: "N/A"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "GitHub-specific uninstall uses harness slugs"
+        condition: "runGitHubUninstall processes apps matching harness-discovered slugs"
+        failure_impact: "GitHub uninstall misses harness-configured apps"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "GitHub-specific uninstall completes without error"
+        condition: "err == nil"
+        failure_impact: "GitHub uninstall fails entirely"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.26+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "009"
+    test_id: "TS-GH-43-009"
+    tier: "Functional"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-43"
+
+    variables:
+      closure_scope:
+        - name: "ctx"
+          type: "context.Context"
+          initialized_in: "BeforeAll"
+          used_in: ["BeforeAll", "It"]
+          comment: "Test context"
+        - name: "fakeClient"
+          type: "*forge.FakeClient"
+          initialized_in: "BeforeAll"
+          used_in: ["It"]
+          comment: "Forge fake client for backward compatibility test"
+        - name: "cfg"
+          type: "*config.OrgConfig"
+          initialized_in: "BeforeAll"
+          used_in: ["It"]
+          comment: "Legacy config with agents block"
+        - name: "err"
+          type: "error"
+          initialized_in: "It"
+          used_in: ["It"]
+          comment: "Error from uninstall call"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "discoverAgentSlugs backward compatibility"
+        decorators: []
+      context:
+        description: "with legacy config-only setup (no harness files)"
+        decorators: ["Ordered"]
+      it:
+        description: "should produce identical results to pre-refactoring behavior"
+        test_id_format: "[test_id:TS-GH-43-009]"
+
+    code_structure: |
+      Context("with legacy config-only setup (no harness files)", Ordered, func() {
+        BeforeAll(func() {
+          // Setup fake client mimicking pre-refactoring state
+        })
+        It("[test_id:TS-GH-43-009] should produce identical results to pre-refactoring behavior", func() {
+          // Call uninstall with legacy config
+          // Verify behavior matches pre-refactoring expectations
+        })
+      })
+
+    test_objective:
+      title: "Backward compatibility with existing uninstall behavior"
+      what: |
+        Validates that the refactored uninstall flow produces identical results to
+        the pre-refactoring behavior when using legacy config-only setups. Existing
+        tests should pass without modification, and the legacy slug-from-config path
+        should produce the same slug list as before.
+      why: |
+        Backward compatibility is essential during migration. Users who have not yet
+        adopted harness files must experience no change in uninstall behavior. This
+        ensures the refactoring is safe to deploy.
+      acceptance_criteria:
+        - "Existing uninstall tests pass without modification"
+        - "Legacy config-only path produces identical slug list"
+        - "Error handling for missing config repo preserved"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with forge.FakeClient"
+
+    specific_preconditions:
+      - name: "Legacy config-only setup"
+        requirement: "No harness files, config.yaml with agents block"
+        validation: "DirContents empty, config Agents populated"
+
+    test_data:
+      resource_definitions:
+        - name: "legacy_config"
+          type: "ConfigAgents"
+          yaml: |
+            agents:
+              - role: agent-one
+                slug: my-app-agent-one
+              - role: agent-two
+                slug: my-app-agent-two
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create fake client mimicking pre-refactoring state"
+          command: "forge.NewFakeClient() with no harness files, legacy config"
+          validation: "FakeClient initialized with legacy config"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call discoverAgentSlugs with legacy config"
+          command: "discoverAgentSlugs(ctx, client, owner, configRepo, ref, appSet, cfg, printer)"
+          validation: "Function returns"
+        - step_id: "TEST-02"
+          action: "Verify identical slug list to pre-refactoring behavior"
+          command: "Assert slugs match expected legacy values"
+          validation: "Slugs are ['my-app-agent-one', 'my-app-agent-two']"
+        - step_id: "TEST-03"
+          action: "Verify error handling for missing config repo"
+          command: "Call with non-existent config repo"
+          validation: "Error handled gracefully, no panic"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "No cleanup needed"
+          command: "N/A"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Legacy config path produces identical results"
+        condition: "slugs match pre-refactoring expected values"
+        failure_impact: "Backward compatibility broken; existing users affected"
+      - assertion_id: "ASSERT-02"
+        priority: "P2"
+        description: "Error handling preserved"
+        condition: "Missing config repo handled gracefully"
+        failure_impact: "Regression in error handling"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.26+"
+      scenario_specific_rbac: []
+---
