@@ -13,17 +13,11 @@ document_metadata:
     file: "outputs/stp/GH-42/GH-42_test_plan.md"
     version: "v1"
     sections_covered: "Section III - Requirements-to-Tests Mapping"
-  related_prs:
-    - repo: "fullsend-ai/fullsend"
-      pr_number: 42
-      url: "https://github.com/fullsend-ai/fullsend/pull/42"
-      title: "feat(harness): add remote harness agent discovery via forge API"
-      merged: false
   owning_sig: null
   participating_sigs: []
   total_scenarios: 23
-  functional_count: 23
-  e2e_count: 0
+  tier1_count: 23
+  tier2_count: 0
   p0_count: 9
   p1_count: 11
   p2_count: 3
@@ -55,7 +49,7 @@ code_generation_config:
 common_preconditions:
   infrastructure:
     - name: "Go toolchain"
-      requirement: "Go 1.23+"
+      requirement: "Go 1.22+"
       validation: "go version"
     - name: "Test dependencies"
       requirement: "testify assertion library"
@@ -81,7 +75,7 @@ scenarios:
 
   - scenario_id: "001"
     test_id: "TS-GH-42-001"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-42-01"
@@ -135,6 +129,13 @@ scenarios:
       test_type: "Functional"
       scope: "Single-component"
       automation_approach: "Go test with testify assertions and fake forge client"
+
+    patterns:
+      primary: "unit-positive-table-driven"
+      description: "Table-driven identity verification"
+      helpers_required: []
+
+    code_structure: "func TestXxx(t *testing.T) { tests := []struct{...}; for _, tt := range tests { t.Run(tt.name, func(t *testing.T) { setup; act; assert }) } }"
 
     specific_preconditions:
       - name: "Fake forge client with valid harness files"
@@ -195,12 +196,12 @@ scenarios:
     dependencies:
       kubernetes_resources: []
       external_tools:
-        - "Go 1.23+"
+        - "Go 1.22+"
       scenario_specific_rbac: []
 
   - scenario_id: "002"
     test_id: "TS-GH-42-002"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-42-01"
@@ -248,6 +249,13 @@ scenarios:
       test_type: "Functional"
       scope: "Single-component"
       automation_approach: "Go test with testify assertions"
+
+    patterns:
+      primary: "unit-positive-ordering"
+      description: "Sort order verification"
+      helpers_required: []
+
+    code_structure: "func TestXxx(t *testing.T) { setup; act; assert }"
 
     specific_preconditions:
       - name: "Multiple agents with varying roles"
@@ -307,12 +315,12 @@ scenarios:
     dependencies:
       kubernetes_resources: []
       external_tools:
-        - "Go 1.23+"
+        - "Go 1.22+"
       scenario_specific_rbac: []
 
   - scenario_id: "003"
     test_id: "TS-GH-42-003"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-42-01"
@@ -361,6 +369,13 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Go test with testify assertions"
 
+    patterns:
+      primary: "unit-negative-parse-error"
+      description: "Invalid input error handling"
+      helpers_required: []
+
+    code_structure: "func TestXxx(t *testing.T) { setup; act; assert }"
+
     specific_preconditions:
       - name: "Fake forge client with invalid YAML content"
         requirement: "FakeClient returns non-parseable content for a harness file"
@@ -406,7 +421,7 @@ scenarios:
     dependencies:
       kubernetes_resources: []
       external_tools:
-        - "Go 1.23+"
+        - "Go 1.22+"
       scenario_specific_rbac: []
 
   # ===========================================================================
@@ -415,7 +430,7 @@ scenarios:
 
   - scenario_id: "004"
     test_id: "TS-GH-42-004"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-42-02"
@@ -464,6 +479,13 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Go test with testify assertions"
 
+    patterns:
+      primary: "unit-boundary-empty-input"
+      description: "Missing resource graceful handling"
+      helpers_required: []
+
+    code_structure: "func TestXxx(t *testing.T) { setup; act; assert }"
+
     specific_preconditions:
       - name: "Fake forge client returning directory-not-found"
         requirement: "FakeClient ListDirectory returns not-found indicator"
@@ -508,12 +530,12 @@ scenarios:
     dependencies:
       kubernetes_resources: []
       external_tools:
-        - "Go 1.23+"
+        - "Go 1.22+"
       scenario_specific_rbac: []
 
   - scenario_id: "005"
     test_id: "TS-GH-42-005"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-42-02"
@@ -557,6 +579,13 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Go test with testify assertions"
 
+    patterns:
+      primary: "unit-negative-error-propagation"
+      description: "Error wrapping and propagation"
+      helpers_required: []
+
+    code_structure: "func TestXxx(t *testing.T) { setup; act; assert }"
+
     specific_preconditions:
       - name: "Fake forge client returning API error for directory listing"
         requirement: "FakeClient ListDirectory returns an error"
@@ -597,7 +626,7 @@ scenarios:
     dependencies:
       kubernetes_resources: []
       external_tools:
-        - "Go 1.23+"
+        - "Go 1.22+"
       scenario_specific_rbac: []
 
   # ===========================================================================
@@ -606,7 +635,7 @@ scenarios:
 
   - scenario_id: "006"
     test_id: "TS-GH-42-006"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-42-03"
@@ -653,6 +682,13 @@ scenarios:
       test_type: "Functional"
       scope: "Single-component"
       automation_approach: "Go test with testify assertions"
+
+    patterns:
+      primary: "unit-positive-table-driven"
+      description: "Extension filter table-driven test"
+      helpers_required: []
+
+    code_structure: "func TestXxx(t *testing.T) { tests := []struct{...}; for _, tt := range tests { t.Run(tt.name, func(t *testing.T) { setup; act; assert }) } }"
 
     specific_preconditions:
       - name: "Mixed file types in directory listing"
@@ -702,12 +738,12 @@ scenarios:
     dependencies:
       kubernetes_resources: []
       external_tools:
-        - "Go 1.23+"
+        - "Go 1.22+"
       scenario_specific_rbac: []
 
   - scenario_id: "007"
     test_id: "TS-GH-42-007"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-42-03"
@@ -756,6 +792,13 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Go test with testify assertions"
 
+    patterns:
+      primary: "unit-positive-filter"
+      description: "Entry type filter verification"
+      helpers_required: []
+
+    code_structure: "func TestXxx(t *testing.T) { setup; act; assert }"
+
     specific_preconditions:
       - name: "Directory listing with subdirectory entries"
         requirement: "FakeClient directory contains both file and directory entries"
@@ -798,12 +841,12 @@ scenarios:
     dependencies:
       kubernetes_resources: []
       external_tools:
-        - "Go 1.23+"
+        - "Go 1.22+"
       scenario_specific_rbac: []
 
   - scenario_id: "008"
     test_id: "TS-GH-42-008"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-42-03"
@@ -850,6 +893,13 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Go test with testify assertions"
 
+    patterns:
+      primary: "unit-positive-filter"
+      description: "Non-target file exclusion"
+      helpers_required: []
+
+    code_structure: "func TestXxx(t *testing.T) { setup; act; assert }"
+
     specific_preconditions:
       - name: "Directory with non-YAML files only"
         requirement: "FakeClient directory contains only .json and .txt files"
@@ -885,12 +935,12 @@ scenarios:
     dependencies:
       kubernetes_resources: []
       external_tools:
-        - "Go 1.23+"
+        - "Go 1.22+"
       scenario_specific_rbac: []
 
   - scenario_id: "009"
     test_id: "TS-GH-42-009"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-42-03"
@@ -938,6 +988,13 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Go test with testify assertions"
 
+    patterns:
+      primary: "unit-positive-filter"
+      description: "Empty identity exclusion filter"
+      helpers_required: []
+
+    code_structure: "func TestXxx(t *testing.T) { setup; act; assert }"
+
     specific_preconditions:
       - name: "Harness files with empty identity fields"
         requirement: "FakeClient returns YAML with empty/missing role and slug"
@@ -964,9 +1021,9 @@ scenarios:
           command: "harness.DiscoverRemoteAgents(ctx, fakeClient, repo, dir)"
           validation: "Empty identity files excluded"
         - step_id: "TEST-02"
-          action: "Verify agents with empty role+slug are not in results"
-          command: "assert.Empty(t, agents) or reduced count"
-          validation: "Only agents with at least one identity field returned"
+          action: "Verify agents with empty role+slug are excluded from results"
+          command: "assert.Empty(t, agents)"
+          validation: "No agents returned when all files have empty role and slug"
       cleanup: []
 
     assertions:
@@ -979,7 +1036,7 @@ scenarios:
     dependencies:
       kubernetes_resources: []
       external_tools:
-        - "Go 1.23+"
+        - "Go 1.22+"
       scenario_specific_rbac: []
 
   # ===========================================================================
@@ -988,7 +1045,7 @@ scenarios:
 
   - scenario_id: "010"
     test_id: "TS-GH-42-010"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-42-04"
@@ -1036,6 +1093,13 @@ scenarios:
       test_type: "Functional"
       scope: "Single-component"
       automation_approach: "Go test with testify assertions"
+
+    patterns:
+      primary: "unit-partial-failure"
+      description: "Partial failure with valid results"
+      helpers_required: []
+
+    code_structure: "func TestXxx(t *testing.T) { setup; act; assert }"
 
     specific_preconditions:
       - name: "Mix of valid and invalid harness files"
@@ -1094,12 +1158,12 @@ scenarios:
     dependencies:
       kubernetes_resources: []
       external_tools:
-        - "Go 1.23+"
+        - "Go 1.22+"
       scenario_specific_rbac: []
 
   - scenario_id: "011"
     test_id: "TS-GH-42-011"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-42-04"
@@ -1147,6 +1211,13 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Go test with testify assertions"
 
+    patterns:
+      primary: "unit-partial-failure"
+      description: "Single file fetch failure isolation"
+      helpers_required: []
+
+    code_structure: "func TestXxx(t *testing.T) { setup; act; assert }"
+
     specific_preconditions:
       - name: "FakeClient with one file returning fetch error"
         requirement: "FakeClient returns error for one file, success for others"
@@ -1186,12 +1257,12 @@ scenarios:
     dependencies:
       kubernetes_resources: []
       external_tools:
-        - "Go 1.23+"
+        - "Go 1.22+"
       scenario_specific_rbac: []
 
   - scenario_id: "012"
     test_id: "TS-GH-42-012"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-42-04"
@@ -1234,6 +1305,13 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Go test with testify assertions"
 
+    patterns:
+      primary: "unit-negative-error-attribution"
+      description: "Error message filename attribution"
+      helpers_required: []
+
+    code_structure: "func TestXxx(t *testing.T) { setup; act; assert }"
+
     specific_preconditions:
       - name: "Fake forge client with known failing file"
         requirement: "FakeClient configured to fail for a specific named file"
@@ -1269,7 +1347,7 @@ scenarios:
     dependencies:
       kubernetes_resources: []
       external_tools:
-        - "Go 1.23+"
+        - "Go 1.22+"
       scenario_specific_rbac: []
 
   # ===========================================================================
@@ -1278,7 +1356,7 @@ scenarios:
 
   - scenario_id: "013"
     test_id: "TS-GH-42-013"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-42-05"
@@ -1325,6 +1403,13 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Go test with testify assertions"
 
+    patterns:
+      primary: "unit-positive-field-extraction"
+      description: "Role-only agent identity extraction"
+      helpers_required: []
+
+    code_structure: "func TestXxx(t *testing.T) { setup; act; assert }"
+
     specific_preconditions:
       - name: "Harness file with role only"
         requirement: "FakeClient returns YAML with role but no slug field"
@@ -1369,12 +1454,12 @@ scenarios:
     dependencies:
       kubernetes_resources: []
       external_tools:
-        - "Go 1.23+"
+        - "Go 1.22+"
       scenario_specific_rbac: []
 
   - scenario_id: "014"
     test_id: "TS-GH-42-014"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-42-05"
@@ -1421,6 +1506,13 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Go test with testify assertions"
 
+    patterns:
+      primary: "unit-positive-field-extraction"
+      description: "Slug-only agent identity extraction"
+      helpers_required: []
+
+    code_structure: "func TestXxx(t *testing.T) { setup; act; assert }"
+
     specific_preconditions:
       - name: "Harness file with slug only"
         requirement: "FakeClient returns YAML with slug but no role field"
@@ -1465,12 +1557,12 @@ scenarios:
     dependencies:
       kubernetes_resources: []
       external_tools:
-        - "Go 1.23+"
+        - "Go 1.22+"
       scenario_specific_rbac: []
 
   - scenario_id: "015"
     test_id: "TS-GH-42-015"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-42-05"
@@ -1517,6 +1609,13 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Go test with testify assertions"
 
+    patterns:
+      primary: "unit-positive-field-extraction"
+      description: "Remote agent path field verification"
+      helpers_required: []
+
+    code_structure: "func TestXxx(t *testing.T) { setup; act; assert }"
+
     specific_preconditions:
       - name: "Fake forge client with valid harness files"
         requirement: "FakeClient returns valid YAML"
@@ -1552,12 +1651,12 @@ scenarios:
     dependencies:
       kubernetes_resources: []
       external_tools:
-        - "Go 1.23+"
+        - "Go 1.22+"
       scenario_specific_rbac: []
 
   - scenario_id: "016"
     test_id: "TS-GH-42-016"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-42-05"
@@ -1605,6 +1704,13 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Go test with testify assertions"
 
+    patterns:
+      primary: "unit-positive-field-extraction"
+      description: "Path prefix stripping verification"
+      helpers_required: []
+
+    code_structure: "func TestXxx(t *testing.T) { setup; act; assert }"
+
     specific_preconditions:
       - name: "Directory entries with path prefixes"
         requirement: "FakeClient returns entries with path-prefixed names"
@@ -1645,7 +1751,7 @@ scenarios:
     dependencies:
       kubernetes_resources: []
       external_tools:
-        - "Go 1.23+"
+        - "Go 1.22+"
       scenario_specific_rbac: []
 
   # ===========================================================================
@@ -1654,7 +1760,7 @@ scenarios:
 
   - scenario_id: "017"
     test_id: "TS-GH-42-017"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-42-06"
@@ -1696,6 +1802,13 @@ scenarios:
       test_type: "Functional"
       scope: "Single-component"
       automation_approach: "Go test with testify assertions"
+
+    patterns:
+      primary: "unit-regression-backward-compat"
+      description: "LoadRaw return structure regression test"
+      helpers_required: []
+
+    code_structure: "func TestXxx(t *testing.T) { setup; act; assert }"
 
     specific_preconditions:
       - name: "Valid harness YAML file on disk"
@@ -1743,12 +1856,12 @@ scenarios:
     dependencies:
       kubernetes_resources: []
       external_tools:
-        - "Go 1.23+"
+        - "Go 1.22+"
       scenario_specific_rbac: []
 
   - scenario_id: "018"
     test_id: "TS-GH-42-018"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-42-06"
@@ -1790,6 +1903,13 @@ scenarios:
       test_type: "Functional"
       scope: "Single-component"
       automation_approach: "Go test with testify assertions"
+
+    patterns:
+      primary: "unit-regression-backward-compat"
+      description: "LoadRaw config mapping regression test"
+      helpers_required: []
+
+    code_structure: "func TestXxx(t *testing.T) { setup; act; assert }"
 
     specific_preconditions:
       - name: "Harness file with nested configuration"
@@ -1840,12 +1960,12 @@ scenarios:
     dependencies:
       kubernetes_resources: []
       external_tools:
-        - "Go 1.23+"
+        - "Go 1.22+"
       scenario_specific_rbac: []
 
   - scenario_id: "019"
     test_id: "TS-GH-42-019"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-42-06"
@@ -1883,6 +2003,13 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Go test with testify assertions"
 
+    patterns:
+      primary: "unit-negative-error-handling"
+      description: "LoadRaw invalid path error behavior"
+      helpers_required: []
+
+    code_structure: "func TestXxx(t *testing.T) { setup; act; assert }"
+
     specific_preconditions: []
 
     test_data:
@@ -1911,12 +2038,12 @@ scenarios:
     dependencies:
       kubernetes_resources: []
       external_tools:
-        - "Go 1.23+"
+        - "Go 1.22+"
       scenario_specific_rbac: []
 
   - scenario_id: "020"
     test_id: "TS-GH-42-020"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-42-06"
@@ -1955,20 +2082,31 @@ scenarios:
         - "All packages importing harness compile successfully"
 
     classification:
-      test_type: "Functional"
+      test_type: "Build Verification"
       scope: "Multi-component"
       automation_approach: "Go build verification"
 
+    patterns:
+      primary: "unit-regression-build-verification"
+      description: "Build verification for all consumers"
+      helpers_required: []
+
+    code_structure: "func TestXxx(t *testing.T) { setup; act; assert }"
+
     specific_preconditions:
       - name: "Full source tree available"
-        requirement: "Complete repository checkout"
+        requirement: "Complete repository checkout with all Go modules resolved"
         validation: "go build ./... runs from repo root"
 
     test_data:
       resource_definitions: []
 
     test_steps:
-      setup: []
+      setup:
+        - step_id: "SETUP-01"
+          action: "Ensure complete repository checkout with all dependencies"
+          command: "go mod download"
+          validation: "All modules available locally"
       test_execution:
         - step_id: "TEST-01"
           action: "Run go build on all packages"
@@ -1990,7 +2128,7 @@ scenarios:
     dependencies:
       kubernetes_resources: []
       external_tools:
-        - "Go 1.23+"
+        - "Go 1.22+"
       scenario_specific_rbac: []
 
   # ===========================================================================
@@ -1999,7 +2137,7 @@ scenarios:
 
   - scenario_id: "021"
     test_id: "TS-GH-42-021"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P2"
     mvp: false
     requirement_id: "GH-42-07"
@@ -2047,6 +2185,13 @@ scenarios:
       test_type: "Functional"
       scope: "Single-component"
       automation_approach: "Go test with testify assertions"
+
+    patterns:
+      primary: "unit-integration-e2e"
+      description: "End-to-end flow with fake client"
+      helpers_required: []
+
+    code_structure: "func TestXxx(t *testing.T) { setup; act; assert }"
 
     specific_preconditions:
       - name: "Fully configured fake forge client"
@@ -2107,12 +2252,12 @@ scenarios:
     dependencies:
       kubernetes_resources: []
       external_tools:
-        - "Go 1.23+"
+        - "Go 1.22+"
       scenario_specific_rbac: []
 
   - scenario_id: "022"
     test_id: "TS-GH-42-022"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P2"
     mvp: false
     requirement_id: "GH-42-07"
@@ -2158,6 +2303,13 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Go test with testify assertions"
 
+    patterns:
+      primary: "unit-boundary-empty-input"
+      description: "Empty directory graceful handling"
+      helpers_required: []
+
+    code_structure: "func TestXxx(t *testing.T) { setup; act; assert }"
+
     specific_preconditions:
       - name: "Fake forge client with empty directory"
         requirement: "FakeClient returns empty listing for directory"
@@ -2193,12 +2345,12 @@ scenarios:
     dependencies:
       kubernetes_resources: []
       external_tools:
-        - "Go 1.23+"
+        - "Go 1.22+"
       scenario_specific_rbac: []
 
   - scenario_id: "023"
     test_id: "TS-GH-42-023"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P2"
     mvp: false
     requirement_id: "GH-42-07"
@@ -2247,6 +2399,13 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Go test with -race flag"
 
+    patterns:
+      primary: "unit-concurrency-safety"
+      description: "Concurrent call safety verification"
+      helpers_required: []
+
+    code_structure: "func TestXxx(t *testing.T) { setup; act; assert }"
+
     specific_preconditions:
       - name: "Multiple independent fake forge clients"
         requirement: "Separate FakeClient instances for each concurrent call"
@@ -2291,6 +2450,6 @@ scenarios:
     dependencies:
       kubernetes_resources: []
       external_tools:
-        - "Go 1.23+"
+        - "Go 1.22+"
       scenario_specific_rbac: []
 ---

@@ -12,7 +12,7 @@
 
 ---
 
-## Verdict: APPROVED_WITH_FINDINGS
+## Verdict: APPROVED
 
 ## Summary
 
@@ -20,11 +20,11 @@
 |:-------|:------|
 | Dimensions reviewed | 7/7 |
 | Critical findings | 0 |
-| Major findings | 5 |
-| Minor findings | 6 |
-| Actionable findings | 9 |
+| Major findings | 0 |
+| Minor findings | 4 |
+| Actionable findings | 2 |
 | Confidence | MEDIUM |
-| Weighted score | 88 |
+| Weighted score | 95 |
 
 ## Traceability Summary
 
@@ -42,7 +42,7 @@
 
 ## Findings by Dimension
 
-### Dimension 1: STP-STD Traceability (Weight: 30%) -- Score: 95/100
+### Dimension 1: STP-STD Traceability (Weight: 30%) -- Score: 98/100
 
 **Forward Traceability (STP -> STD):**
 
@@ -70,35 +70,40 @@ All 23 STD scenarios have valid `requirement_id` references that exist in STP Se
 | P1 | 11 | 11 | PASS |
 | P2 | 3 | 3 | PASS |
 
-**Findings:**
+**Count Consistency:**
 
-```
-- finding_id: "D1-1d-001"
-  severity: "MINOR"
-  dimension: "STP-STD Traceability"
-  description: "STP environment section states Go 1.22+ but STD infrastructure precondition states Go 1.23+"
-  evidence: |
-    STP II.3: "Platform Version: Go 1.22+ (per go.mod)"
-    STD common_preconditions.infrastructure[0]: "Go 1.23+"
-  remediation: "Align Go version requirement. Check go.mod to determine the correct minimum version and update the inconsistent artifact."
-  actionable: true
-```
+| Metric | Metadata | Actual | Status |
+|:-------|:---------|:-------|:-------|
+| total_scenarios | 23 | 23 | PASS |
+| tier1_count | 23 | 23 | PASS |
+| tier2_count | 0 | 0 | PASS |
+| p0_count | 9 | 9 | PASS |
+| p1_count | 11 | 11 | PASS |
+| p2_count | 3 | 3 | PASS |
+
+**STP Reference:** `outputs/stp/GH-42/GH-42_test_plan.md` — PASS (file exists and matches expected path)
+
+**Go Version Alignment:** STP II.3 states "Go 1.22+ (per go.mod)" and STD `common_preconditions.infrastructure[0]` states "Go 1.22+". PASS — versions now aligned.
+
+**Tier Label Consistency:** STP Section III uses "Functional" as tier label. STD uses "Tier 1" which is the canonical v2.1-enhanced vocabulary. The mapping is consistent: all STP "Functional" scenarios are Go unit tests and correctly map to "Tier 1" in the STD.
+
+**Findings:**
 
 ```
 - finding_id: "D1-1a-001"
   severity: "MINOR"
   dimension: "STP-STD Traceability"
-  description: "STD uses tier value 'Functional' for all scenarios instead of 'Tier 1'. STP Section III uses 'Functional' as well, so they are consistent, but 'Functional' is non-standard per v2.1-enhanced schema which expects 'Tier 1' or 'Tier 2'."
+  description: "STP Section III uses tier label 'Functional' while STD uses 'Tier 1'. The mapping is correct for v2.1-enhanced schema but creates a minor vocabulary gap between the two documents."
   evidence: |
-    STD scenario 001: tier: "Functional"
-    v2.1-enhanced spec expects: tier: "Tier 1" or tier: "Tier 2"
-  remediation: "Map 'Functional' to 'Tier 1' for Go/testify scenarios to align with v2.1-enhanced tier vocabulary. Alternatively, if 'Functional' is an intentional tier label for unit tests outside the Tier 1/Tier 2 classification, document this in project config."
-  actionable: true
+    STP: "Tier: Functional" for all requirements
+    STD: tier: "Tier 1" for all scenarios
+  remediation: "No STD change needed. Optionally update STP to use 'Tier 1' vocabulary for consistency."
+  actionable: false
 ```
 
 ---
 
-### Dimension 2: STD YAML Structure (Weight: 20%) -- Score: 85/100
+### Dimension 2: STD YAML Structure (Weight: 20%) -- Score: 98/100
 
 **Document-Level Structure:**
 
@@ -113,106 +118,107 @@ All 23 STD scenarios have valid `requirement_id` references that exist in STP Se
 
 **Per-Scenario Required Fields:**
 
-All 23 scenarios have: `scenario_id`, `test_id`, `tier`, `priority`, `requirement_id`, `variables`, `test_structure`, `test_objective`, `test_data`, `test_steps`, `assertions`. No missing required fields.
+All 23 scenarios have: `scenario_id`, `test_id`, `tier`, `priority`, `requirement_id`, `variables`, `test_structure`, `test_objective`, `test_data`, `test_steps`, `assertions`, `patterns`, `code_structure`. No missing required fields.
+
+**v2.1-Enhanced Checks:**
+
+| Check | Status |
+|:------|:-------|
+| `patterns` field present on all scenarios | PASS (23/23) |
+| `code_structure` field present on all scenarios | PASS (23/23) |
+| Table-driven scenarios use table-driven code_structure | PASS (001, 006) |
+| Test IDs sequential and non-duplicated | PASS (TS-GH-42-001 through TS-GH-42-023) |
+| Test ID format matches `TS-{JIRA_ID}-{NUM:03d}` | PASS |
+| Tier values valid ("Tier 1" or "Tier 2") | PASS (all "Tier 1") |
+| No `related_prs` in document_metadata | PASS |
+
+**Findings:** None.
+
+---
+
+### Dimension 3: Pattern Matching Correctness (Weight: 10%) -- Score: 90/100
+
+No pattern library is available (`patterns/tier1_patterns.yaml` not found). Pattern matching review uses general heuristics.
+
+| Scenario | Primary Pattern | Matches Objective | Status |
+|:---------|:----------------|:------------------|:-------|
+| 001 | unit-positive-table-driven | Identity verification, table-driven | PASS |
+| 002 | unit-positive-ordering | Sort order verification | PASS |
+| 003 | unit-negative-parse-error | Invalid YAML error handling | PASS |
+| 004 | unit-boundary-empty-input | Missing directory graceful handling | PASS |
+| 005 | unit-negative-error-propagation | Error wrapping | PASS |
+| 006 | unit-positive-table-driven | Extension filtering, table-driven | PASS |
+| 007 | unit-positive-filter | Subdirectory skip | PASS |
+| 008 | unit-positive-filter | Non-YAML skip | PASS |
+| 009 | unit-positive-filter | Empty identity exclusion | PASS |
+| 010 | unit-partial-failure | Partial failure resilience | PASS |
+| 011 | unit-partial-failure | Single file failure isolation | PASS |
+| 012 | unit-negative-error-attribution | Error message attribution | PASS |
+| 013 | unit-positive-field-extraction | Role-only extraction | PASS |
+| 014 | unit-positive-field-extraction | Slug-only extraction | PASS |
+| 015 | unit-positive-field-extraction | Path field verification | PASS |
+| 016 | unit-positive-field-extraction | Path prefix stripping | PASS |
+| 017 | unit-regression-backward-compat | LoadRaw struct regression | PASS |
+| 018 | unit-regression-backward-compat | Config mapping regression | PASS |
+| 019 | unit-negative-error-handling | Invalid path error | PASS |
+| 020 | unit-regression-build-verification | Build verification | PASS |
+| 021 | unit-integration-e2e | End-to-end flow | PASS |
+| 022 | unit-boundary-empty-input | Empty directory handling | PASS |
+| 023 | unit-concurrency-safety | Concurrent call safety | PASS |
+
+All pattern assignments are consistent with the test objectives and scenarios described. Descriptive pattern IDs are used since no pattern library is available.
 
 **Findings:**
 
 ```
-- finding_id: "D2-2b-001"
-  severity: "MAJOR"
-  dimension: "STD YAML Structure"
-  description: "All 23 scenarios are missing the 'patterns' field (primary pattern + helpers) required by v2.1-enhanced schema."
-  evidence: |
-    Scenario 001 has no 'patterns' key.
-    v2.1-enhanced requires: patterns with primary pattern and helpers_required.
-  remediation: "Add a 'patterns' section to each scenario with at minimum a primary pattern identifier. Since this project has no pattern library (tier1_patterns.yaml not found), use descriptive pattern IDs like 'unit-test-positive', 'unit-test-negative', 'unit-test-regression'."
-  actionable: true
-```
-
-```
-- finding_id: "D2-2b-002"
-  severity: "MAJOR"
-  dimension: "STD YAML Structure"
-  description: "All 23 scenarios are missing the 'code_structure' field required by v2.1-enhanced schema."
-  evidence: |
-    Scenario 001 has no 'code_structure' key.
-    v2.1-enhanced requires: code_structure with framework structure hint.
-  remediation: "Add 'code_structure' to each scenario. For Go testing framework, use a structure like: 'func TestXxx(t *testing.T) { setup; act; assert }'. For table-driven tests, include the table iteration pattern."
-  actionable: true
-```
-
-```
-- finding_id: "D2-2b-003"
+- finding_id: "D3-3b-001"
   severity: "MINOR"
-  dimension: "STD YAML Structure"
-  description: "test_id format uses 'TS-GH-42-NNN' which matches the project default format 'TS-{JIRA_ID}-{NUM:03d}'. All 23 test IDs are sequential and non-duplicated."
-  evidence: "TS-GH-42-001 through TS-GH-42-023, no gaps, no duplicates."
-  remediation: "No action needed. Informational finding."
+  dimension: "Pattern Matching Correctness"
+  description: "All 23 scenarios have empty helpers_required arrays. Since no pattern library or helper mapping is configured, this is expected. When a pattern library is added, helper mappings should be populated."
+  evidence: "All scenarios: patterns.helpers_required: []"
+  remediation: "No action needed until a pattern library is configured for this project."
   actionable: false
 ```
 
 ---
 
-### Dimension 3: Pattern Matching Correctness (Weight: 10%) -- Score: 75/100
-
-No pattern library is available (`patterns/tier1_patterns.yaml` not found). No `patterns` field exists on any scenario (see D2-2b-001). Pattern matching review is limited to general heuristics.
-
-| Scenario | Test Type (Inferred) | Status |
-|:---------|:---------------------|:-------|
-| 001 | Positive / table-driven | N/A (no pattern field) |
-| 002 | Positive / sort verification | N/A |
-| 003 | Negative / error handling | N/A |
-| 004 | Positive / boundary | N/A |
-| 005 | Negative / error propagation | N/A |
-| 006-009 | Positive / filtering | N/A |
-| 010-012 | Positive+Negative / partial failure | N/A |
-| 013-016 | Positive / field extraction | N/A |
-| 017-020 | Regression / backward compat | N/A |
-| 021-023 | Integration / E2E + concurrency | N/A |
-
-**Findings:**
-
-```
-- finding_id: "D3-3a-001"
-  severity: "MAJOR"
-  dimension: "Pattern Matching Correctness"
-  description: "No patterns field on any scenario. Pattern assignment cannot be validated. This impacts code generation since pattern-based template selection cannot occur."
-  evidence: "All 23 scenarios lack a 'patterns' key."
-  remediation: "Add pattern metadata to each scenario. Suggested mappings: scenarios 001-002 -> 'unit-positive', 003/005/012 -> 'unit-negative', 004/022 -> 'unit-boundary', 010-011 -> 'unit-partial-failure', 017-020 -> 'unit-regression', 023 -> 'unit-concurrency'."
-  actionable: true
-```
-
----
-
-### Dimension 4: Test Step Quality (Weight: 15%) -- Score: 88/100
+### Dimension 4: Test Step Quality (Weight: 15%) -- Score: 95/100
 
 **Step Coverage Summary:**
 
 | Scenario | Setup | Execution | Cleanup | Assertions | Status |
 |:---------|:------|:----------|:--------|:-----------|:-------|
-| 001 | 1 | 4 | 0 | 3 | WARN |
-| 002 | 1 | 3 | 0 | 2 | WARN |
-| 003 | 1 | 2 | 0 | 2 | WARN |
-| 004 | 1 | 3 | 0 | 2 | WARN |
-| 005 | 1 | 2 | 0 | 2 | WARN |
-| 006 | 1 | 2 | 0 | 1 | WARN |
-| 007 | 1 | 2 | 0 | 1 | WARN |
-| 008 | 1 | 2 | 0 | 1 | WARN |
-| 009 | 1 | 2 | 0 | 1 | WARN |
-| 010 | 1 | 3 | 0 | 2 | WARN |
-| 011 | 1 | 3 | 0 | 1 | WARN |
-| 012 | 1 | 2 | 0 | 1 | WARN |
-| 013 | 1 | 3 | 0 | 1 | WARN |
-| 014 | 1 | 3 | 0 | 1 | WARN |
-| 015 | 1 | 2 | 0 | 1 | WARN |
-| 016 | 1 | 2 | 0 | 1 | WARN |
+| 001 | 1 | 4 | 0 | 3 | PASS |
+| 002 | 1 | 3 | 0 | 2 | PASS |
+| 003 | 1 | 2 | 0 | 2 | PASS |
+| 004 | 1 | 3 | 0 | 2 | PASS |
+| 005 | 1 | 2 | 0 | 2 | PASS |
+| 006 | 1 | 2 | 0 | 1 | PASS |
+| 007 | 1 | 2 | 0 | 1 | PASS |
+| 008 | 1 | 2 | 0 | 1 | PASS |
+| 009 | 1 | 2 | 0 | 1 | PASS |
+| 010 | 1 | 3 | 0 | 2 | PASS |
+| 011 | 1 | 3 | 0 | 1 | PASS |
+| 012 | 1 | 2 | 0 | 1 | PASS |
+| 013 | 1 | 3 | 0 | 1 | PASS |
+| 014 | 1 | 3 | 0 | 1 | PASS |
+| 015 | 1 | 2 | 0 | 1 | PASS |
+| 016 | 1 | 2 | 0 | 1 | PASS |
 | 017 | 1 | 2 | 1 | 1 | PASS |
 | 018 | 1 | 2 | 1 | 1 | PASS |
-| 019 | 0 | 2 | 0 | 1 | WARN |
-| 020 | 0 | 2 | 0 | 1 | WARN |
-| 021 | 1 | 3 | 0 | 2 | WARN |
-| 022 | 1 | 2 | 0 | 1 | WARN |
-| 023 | 1 | 3 | 0 | 2 | WARN |
+| 019 | 0 | 2 | 0 | 1 | PASS |
+| 020 | 1 | 2 | 0 | 1 | PASS |
+| 021 | 1 | 3 | 0 | 2 | PASS |
+| 022 | 1 | 2 | 0 | 1 | PASS |
+| 023 | 1 | 3 | 0 | 2 | PASS |
+
+**Step Quality Assessment:**
+
+- All test_execution steps have specific actions with command references and validations
+- Scenario 009 TEST-02 now uses definitive assertion `assert.Empty(t, agents)` (previously ambiguous)
+- Scenario 020 now has a setup step for dependency download (previously missing)
+- Scenario 019 has no setup steps, which is intentional — it tests error handling for a non-existent path, requiring no prior setup
+- Cleanup is present on scenarios 017 and 018 (temp file tests) and correctly absent for pure in-memory unit tests
 
 **Findings:**
 
@@ -224,56 +230,22 @@ No pattern library is available (`patterns/tier1_patterns.yaml` not found). No `
   evidence: |
     Scenarios 001-016, 019-023: cleanup: []
     Scenarios 017, 018: cleanup includes os.Remove(tmpFile)
-  remediation: "No action required for unit tests with no filesystem or external state. The existing cleanup on 017/018 is correct."
+  remediation: "No action required for unit tests with no filesystem or external state."
   actionable: false
-```
-
-```
-- finding_id: "D4-4b-001"
-  severity: "MAJOR"
-  dimension: "Test Step Quality"
-  description: "Scenario 009 (TS-GH-42-009) TEST-02 uses imprecise command text with alternatives."
-  evidence: |
-    step_id: "TEST-02"
-    command: "assert.Empty(t, agents) or reduced count"
-    -- The 'or reduced count' makes the step ambiguous. A test step must have a single, deterministic verification.
-  remediation: "Change command to a definitive assertion. If the expectation is empty results: use 'assert.Empty(t, agents)'. If the expectation is a reduced count: use 'assert.Less(t, len(agents), totalFiles)' with the specific expected count."
-  actionable: true
-```
-
-```
-- finding_id: "D4-4b-002"
-  severity: "MINOR"
-  dimension: "Test Step Quality"
-  description: "Scenario 020 (TS-GH-42-020) test steps describe running 'go build ./...' and 'go vet'. This is a build verification test rather than a typical unit test. While valid as a regression check, it has no setup steps and relies on the full source tree."
-  evidence: |
-    TEST-01 command: "go build ./..."
-    TEST-02 command: "go vet ./internal/harness/..."
-  remediation: "Consider adding a setup step noting the precondition of a complete repository checkout. Alternatively, mark this scenario as a CI-level check rather than a unit test scenario."
-  actionable: true
 ```
 
 ---
 
-### Dimension 4.5: STD Content Policy (Weight: 10%) -- Score: 82/100
+### Dimension 4.5: STD Content Policy (Weight: 10%) -- Score: 100/100
 
-**Findings:**
+**STD YAML Content:**
 
-```
-- finding_id: "D4.5-4.5a-001"
-  severity: "MAJOR"
-  dimension: "STD Content Policy"
-  description: "STD YAML document_metadata contains 'related_prs' section with PR URL. PR URLs are implementation artifacts that belong in the STP, not in the STD. The STD describes what to test, not what code changed."
-  evidence: |
-    document_metadata.related_prs:
-      - repo: "fullsend-ai/fullsend"
-        pr_number: 42
-        url: "https://github.com/fullsend-ai/fullsend/pull/42"
-        title: "feat(harness): add remote harness agent discovery via forge API"
-        merged: false
-  remediation: "Remove the 'related_prs' section from the STD YAML document_metadata. The STP already contains the PR reference in its Metadata & Tracking section."
-  actionable: true
-```
+| Check | Status |
+|:------|:-------|
+| No `related_prs` in document_metadata | PASS |
+| No PR URLs in metadata | PASS |
+| No branch names or commit SHAs | PASS |
+| No developer names | PASS |
 
 **Stub Content Policy:**
 
@@ -287,9 +259,11 @@ No pattern library is available (`patterns/tier1_patterns.yaml` not found). No `
 | No environment setup code | PASS |
 | Pending markers only in bodies | PASS (t.Skip used correctly) |
 
+**Findings:** None.
+
 ---
 
-### Dimension 5: PSE Docstring Quality (Weight: 10%) -- Score: 93/100
+### Dimension 5: PSE Docstring Quality (Weight: 10%) -- Score: 95/100
 
 **Go Stubs (6 files reviewed):**
 
@@ -306,7 +280,9 @@ No pattern library is available (`patterns/tier1_patterns.yaml` not found). No `
 
 Preconditions are specific and concrete (e.g., "Fake forge client configured with valid harness YAML files"). Steps are actionable (e.g., "Call DiscoverRemoteAgents with fake client and harness directory"). Expected results are measurable (e.g., "Each agent's Role matches the 'role' field in the source YAML").
 
-Negative test cases are annotated with `[NEGATIVE]` in the PSE comment block (scenarios 003, 005, 012). Module-level comments reference the STP file path. All files use the correct package `harness_test`.
+Negative test cases are annotated with `[NEGATIVE]` in the PSE comment block (scenarios 003, 005, 012, 019). Module-level comments reference the STP file path. All files use the correct package `harness_test`.
+
+**Python Stubs:** N/A (tier2_tests enabled in project config but no Python stubs generated). This is consistent with the STD which specifies Go-only test generation.
 
 **Findings:**
 
@@ -314,34 +290,16 @@ Negative test cases are annotated with `[NEGATIVE]` in the PSE comment block (sc
 - finding_id: "D5-5a-001"
   severity: "MINOR"
   dimension: "PSE Docstring Quality"
-  description: "PSE sections use non-standard header names. The PSE blocks use 'Preconditions:', 'Steps:', 'Expected:' which is correct per std_format conventions. However, the format is slightly informal -- using plain text indentation rather than numbered lists for all steps."
+  description: "PSE sections use consistent format across all 23 stubs. Preconditions use dash indentation, Steps use numbered lists, Expected uses dash indentation. Format is readable and consistent."
   evidence: |
-    TestDiscoverRemoteAgents_CorrectIdentity:
-    Steps:
-        1. Call DiscoverRemoteAgents with fake client and harness directory
-        2. Iterate over returned agents
-    -- Steps are numbered, which is correct. Preconditions use bullet-style (dash indentation).
-  remediation: "No action strictly required. Current format is readable and consistent across all 23 stubs."
+    All 6 stub files follow: Preconditions (dash), Steps (numbered), Expected (dash)
+  remediation: "No action needed. Informational finding."
   actionable: false
 ```
-
-```
-- finding_id: "D5-5a-002"
-  severity: "MINOR"
-  dimension: "PSE Docstring Quality"
-  description: "Stub file header comments use 'Covers:' annotation listing requirement IDs, which provides good traceability. All 6 files correctly group scenarios by requirement domain."
-  evidence: |
-    remote_discovery_stubs_test.go: "Covers: GH-42-01 (correct identity fields), GH-42-02 (missing directory handling)"
-    file_filtering_stubs_test.go: "Covers: GH-42-03 (file filtering logic)"
-  remediation: "No action needed. Informational positive finding."
-  actionable: false
-```
-
-**Python Stubs:** N/A (tier2_tests enabled in project config but no Python stubs generated). This is consistent with the STD which specifies Go-only test generation.
 
 ---
 
-### Dimension 6: Code Generation Readiness (Weight: 5%) -- Score: 85/100
+### Dimension 6: Code Generation Readiness (Weight: 5%) -- Score: 90/100
 
 **Variable Declarations:**
 
@@ -356,60 +314,24 @@ All scenarios define `variables.closure_scope` with valid Go types (`context.Con
 
 These imports cover the types and assertions used across all 23 scenarios.
 
-**Findings:**
+**Code Structure Validity:**
 
-```
-- finding_id: "D6-6a-001"
-  severity: "MINOR"
-  dimension: "Code Generation Readiness"
-  description: "Several scenarios reference types from the 'forge' package (e.g., '*forge.FakeClient') in variable declarations but the import 'github.com/fullsend-ai/fullsend/internal/forge' is already present in code_generation_config. No issue, but the FakeClient type must exist in the forge package for compilation."
-  evidence: |
-    Scenario 001 variable: fakeClient type: "*forge.FakeClient"
-    Import: "github.com/fullsend-ai/fullsend/internal/forge"
-  remediation: "No action needed. Verify during code generation that forge.FakeClient type exists."
-  actionable: false
-```
+All 23 scenarios have valid `code_structure` fields:
+- 2 table-driven scenarios (001, 006) use the table-driven pattern with `range` iteration
+- 21 single scenarios use the standard `func TestXxx` pattern
 
-```
-- finding_id: "D6-6c-001"
-  severity: "MINOR"
-  dimension: "Code Generation Readiness"
-  description: "code_generation_config specifies framework: 'testing' and assertion_library: 'testify' while project tier1.yaml specifies framework: 'ginkgo-v2'. This is acceptable because the STP explicitly characterizes these as unit tests, not e2e functional tests. The STD correctly uses Go standard testing for this use case."
-  evidence: |
-    STD code_generation_config.framework: "testing"
-    Project tier1.yaml framework: "ginkgo-v2"
-    STP: "All tests are automated Go unit tests using standard assertion libraries"
-  remediation: "No action required. The framework choice is intentional and documented. For future clarity, consider noting the framework rationale in the STD code_generation_config section."
-  actionable: false
-```
+**Findings:** None.
 
 ---
 
 ## Recommendations
 
-Ordered by severity:
+No critical or major findings remain. Minor informational items:
 
-1. **[MAJOR / D4.5-4.5a-001]** Remove `related_prs` from STD document_metadata -- PR URLs are implementation artifacts belonging in the STP, not in the STD. -- **Remediation:** Delete the `related_prs` section from `document_metadata`. -- **Actionable:** yes
-
-2. **[MAJOR / D2-2b-001]** Add `patterns` field to all 23 scenarios -- Required by v2.1-enhanced schema for pattern-based template selection. -- **Remediation:** Add `patterns: { primary: "<pattern-id>", helpers_required: [] }` to each scenario. Use descriptive pattern IDs. -- **Actionable:** yes
-
-3. **[MAJOR / D2-2b-002]** Add `code_structure` field to all 23 scenarios -- Required by v2.1-enhanced schema for code generation hints. -- **Remediation:** Add `code_structure` with Go testing framework structure hint to each scenario. -- **Actionable:** yes
-
-4. **[MAJOR / D3-3a-001]** Pattern metadata absent from all scenarios -- Prevents pattern-based validation and template selection. -- **Remediation:** Assign pattern IDs based on test type classification (positive, negative, boundary, regression, concurrency). -- **Actionable:** yes
-
-5. **[MAJOR / D4-4b-001]** Scenario 009 has ambiguous test step command -- Step TEST-02 uses "or" between two different assertions. -- **Remediation:** Pick a single, definitive assertion command. -- **Actionable:** yes
-
-6. **[MINOR / D1-1d-001]** Go version inconsistency between STP (1.22+) and STD (1.23+). -- **Remediation:** Align versions by checking go.mod. -- **Actionable:** yes
-
-7. **[MINOR / D1-1a-001]** Tier label uses 'Functional' instead of v2.1 vocabulary 'Tier 1'. -- **Remediation:** Map to 'Tier 1' or document as intentional unit test tier. -- **Actionable:** yes
-
-8. **[MINOR / D4-4a-001]** 21 scenarios have empty cleanup -- acceptable for unit tests. -- **Actionable:** no
-
-9. **[MINOR / D4-4b-002]** Scenario 020 is a build verification step, not a typical unit test. -- **Remediation:** Add setup precondition noting full repo checkout requirement. -- **Actionable:** yes
-
-10. **[MINOR / D5-5a-001]** PSE format uses mixed bullet/numbered style -- readable and consistent. -- **Actionable:** no
-
-11. **[MINOR / D6-6c-001]** Framework mismatch between project config and STD is intentional. -- **Actionable:** no
+1. **[MINOR / D1-1a-001]** STP uses 'Functional' tier label while STD uses 'Tier 1'. No STD change needed. -- **Actionable:** no
+2. **[MINOR / D3-3b-001]** Empty helpers_required arrays — expected without pattern library. -- **Actionable:** no
+3. **[MINOR / D4-4a-001]** Empty cleanup arrays on 21/23 scenarios — acceptable for unit tests. -- **Actionable:** no
+4. **[MINOR / D5-5a-001]** PSE format is consistent and readable. -- **Actionable:** no
 
 ---
 
@@ -417,14 +339,14 @@ Ordered by severity:
 
 | Dimension | Weight | Score | Weighted |
 |:----------|:-------|:------|:---------|
-| 1. STP-STD Traceability | 30% | 95 | 28.5 |
-| 2. STD YAML Structure | 20% | 85 | 17.0 |
-| 3. Pattern Matching | 10% | 75 | 7.5 |
-| 4. Test Step Quality | 15% | 88 | 13.2 |
-| 4.5. Content Policy | 10% | 82 | 8.2 |
-| 5. PSE Docstring Quality | 10% | 93 | 9.3 |
-| 6. Code Generation Readiness | 5% | 85 | 4.3 |
-| **Total** | **100%** | | **88.0** |
+| 1. STP-STD Traceability | 30% | 98 | 29.4 |
+| 2. STD YAML Structure | 20% | 98 | 19.6 |
+| 3. Pattern Matching | 10% | 90 | 9.0 |
+| 4. Test Step Quality | 15% | 95 | 14.3 |
+| 4.5. Content Policy | 10% | 100 | 10.0 |
+| 5. PSE Docstring Quality | 10% | 95 | 9.5 |
+| 6. Code Generation Readiness | 5% | 90 | 4.5 |
+| **Total** | **100%** | | **96.3** |
 
 ---
 
@@ -440,4 +362,4 @@ Ordered by severity:
 | All scenarios reviewed | YES (23/23) |
 | Project review rules loaded | NO (no review_rules.yaml; dynamic extraction with >60% defaults) |
 
-**Confidence rationale:** MEDIUM -- STP and STD YAML are both available and fully parseable. Go stubs are present and comprehensive. However, no pattern library and no project-specific review rules reduce precision for Dimension 3 (pattern matching) and project-specific convention checks. Review rules are operating with >60% defaults (no go.yaml, no python.yaml, no review_rules.yaml, no pattern library). Project-specific review precision could be improved by adding these config files.
+**Confidence rationale:** MEDIUM — STP and STD YAML are both available and fully parseable. Go stubs are present and comprehensive. However, no pattern library and no project-specific review rules reduce precision for Dimension 3 (pattern matching) and project-specific convention checks. Review rules are operating with >60% defaults. Review precision reduced: project-specific review_rules.yaml would enable exact pattern matching, helper library validation, and project-specific convention checks.
