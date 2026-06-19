@@ -1,0 +1,25 @@
+status: success
+jira_id: GH-40
+std_source: outputs/std/GH-40/GH-40_test_description.yaml
+languages:
+  - language: go
+    framework: ginkgo-v2
+    files:
+      - merge_retry_test.go
+      - update_branch_api_test.go
+    test_count: 8
+total_test_count: 8
+lsp_patterns_used: false
+notes: |
+  All 8 scenarios from the STD have been implemented as full Ginkgo v2 tests:
+    - TS-GH-40-001: Merge succeeds on first attempt (happy path)
+    - TS-GH-40-002: Retry succeeds after 409 conflict with branch update
+    - TS-GH-40-003: Non-409 errors fail immediately without retry
+    - TS-GH-40-004: Merge fails after exhausting max retries (3 attempts)
+    - TS-GH-40-005: Branch update failure does not block merge retry
+    - TS-GH-40-006: UpdatePullRequestBranch API success (202 Accepted)
+    - TS-GH-40-007: UpdatePullRequestBranch error handling (422)
+    - TS-GH-40-008: FakeClient interface compliance check
+  No Python tests generated (all STD scenarios are Go/tier1).
+  Source repo was not available; tests were generated from STD specifications
+  and pattern analysis of the forge package in the target repo.
