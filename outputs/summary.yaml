@@ -1,0 +1,30 @@
+status: success
+jira_id: GH-42
+file_path: /sandbox/workspace/output/GH-42_test_plan.md
+test_counts:
+  tier1: 7
+  tier2: 0
+  total: 7
+requirements:
+  total: 7
+  validated: 7
+  rejected: 0
+scenarios:
+  total: 23
+  positive: 16
+  negative: 5
+  regression: 4
+  edge_case: 1
+lsp_analysis:
+  calls_made: 8
+  files_analyzed: 3
+  callers_traced:
+    parseRaw: 2
+    LoadRaw: 11
+    DiscoverRemoteAgents: 15
+    AgentInfo: 7
+pipeline:
+  project_id: example
+  issue_source: github
+  pr_number: 42
+  repo: guyoron1/fullsend
