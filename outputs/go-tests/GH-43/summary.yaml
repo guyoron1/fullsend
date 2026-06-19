@@ -1,0 +1,30 @@
+---
+status: success
+jira_id: "GH-43"
+std_source: "outputs/std/GH-43/GH-43_test_description.yaml"
+languages:
+  - language: go
+    framework: ginkgo-v2
+    files:
+      - suite_test.go
+      - discover_agent_slugs_test.go
+      - uninstall_integration_test.go
+    test_count: 9
+total_test_count: 9
+lsp_patterns_used: false
+generated_date: "2026-06-19"
+notes: |
+  Generated Ginkgo v2 test implementations from STD YAML for GH-43.
+  Tests cover the three-tier fallback strategy in discoverAgentSlugs:
+    1. Harness wrapper files (preferred) — scenarios 001, 004, 005, 006
+    2. Config.yaml agents block (legacy fallback) — scenarios 002, 009
+    3. Nil return (caller-managed defaults) — scenario 003
+  Integration tests cover org-level and GitHub-specific uninstall paths:
+    - scenarios 007, 008
+
+  Note: harness.DiscoverRemoteAgents is called but not yet implemented in
+  this repo (expected from upstream PR fullsend-ai/fullsend#2364). Tests
+  exercise the discovery contract and slug processing logic directly.
+
+  Python tests: not generated (no tier2 scenarios in this STD — all 9
+  scenarios are tier1/functional Go tests).
