@@ -1,0 +1,22 @@
+status: success
+jira_id: GH-40
+verdict: APPROVED_WITH_FINDINGS
+confidence: LOW
+weighted_score: 85
+findings:
+  critical: 0
+  major: 7
+  minor: 3
+  actionable: 9
+  total: 10
+reviewed: outputs/stp/GH-40/GH-40_test_plan.md
+report: outputs/reviews/GH-40/GH-40_stp_review.md
+dimension_scores:
+  rule_compliance: 81
+  requirement_coverage: 85
+  scenario_quality: 78
+  risk_accuracy: 95
+  scope_boundary: 95
+  strategy: 90
+  metadata: 75
+scope_downgrade: false
