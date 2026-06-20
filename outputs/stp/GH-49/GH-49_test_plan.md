@@ -1,12 +1,12 @@
 # My-Project Test Plan
 
-## **Migrate loadKnownSlugs to Harness-First Discovery - Quality Engineering Plan**
+## **Migrate Agent Slug Discovery to Harness-First Model - Quality Engineering Plan**
 
 ### Metadata & Tracking
 
-- **Enhancement:** [GH-49](https://github.com/guyoron1/fullsend/pull/49)
-- **Feature Tracking:** [GH-49](https://github.com/guyoron1/fullsend/pull/49)
-- **Epic Tracking:** [GH-49](https://github.com/guyoron1/fullsend/pull/49)
+- **Enhancement:** [fullsend-ai/fullsend#2361](https://github.com/fullsend-ai/fullsend/pull/2361)
+- **Feature Tracking:** N/A — no separate feature tracking issue exists for this refactoring
+- **Epic Tracking:** N/A — no separate epic tracking issue exists for this refactoring
 - **QE Owner:** Unassigned
 - **Owning SIG:** N/A
 - **Participating SIGs:** N/A
@@ -15,7 +15,7 @@
 
 ### Feature Overview
 
-This feature migrates the `loadKnownSlugs` function in the admin CLI from a legacy file-based lookup (reading agent slugs from `config.yaml` `agents:` block) to a harness-first agent discovery model using `harness.DiscoverRemoteAgents`. The new implementation scans harness wrapper files in the config repo for role/slug fields, preferring them over the legacy source. When harness discovery returns no valid agents, the function gracefully falls back to the legacy `config.yaml` path and logs a deprecation warning. This refactor affects the `runAppSetup` call chain, which is invoked from `newInstallCmd`, `runPerRepoInstall`, and `runGitHubSetupPerOrg`.
+This feature migrates agent slug discovery in the admin CLI from a legacy file-based lookup (reading agent slugs from `config.yaml` `agents:` block) to a harness-first agent discovery model. The new implementation scans harness wrapper files in the config repo for role/slug fields, preferring them over the legacy source. When harness discovery returns no valid agents, the system gracefully falls back to the legacy `config.yaml` path and logs a deprecation warning. This refactor affects the install setup flow, which is invoked from the install command, per-repo install, and GitHub org setup paths.
 
 ---
 
@@ -25,14 +25,14 @@ This feature migrates the `loadKnownSlugs` function in the admin CLI from a lega
 
 - [ ] **Reviewed the relevant requirements.**
   - PR mirrors upstream fullsend-ai/fullsend#2361; requirement is to prefer harness wrapper files over legacy config.yaml for agent slug discovery.
-  - `loadKnownSlugs` signature changed to accept `configRepo`, `ref`, and `printer` parameters.
+  - Agent slug discovery function signature updated to accept config repository, reference, and printer parameters.
 
 - [ ] **Confirmed clear user stories and understood. Understand the value and customer use cases.**
   - As a platform admin running `fullsend install`, agent slugs should be discovered from harness wrapper files automatically, without requiring manual config.yaml maintenance.
   - Deprecation path provides clear migration signal to teams still using legacy format.
 
 - [ ] **Confirmed requirements are **testable and unambiguous**.**
-  - All behaviors are testable via mock `forge.Client` — harness preference, fallback, warnings, duplicate handling, and error resilience are all deterministic.
+  - All behaviors are testable via mock forge client — harness preference, fallback, warnings, duplicate handling, and error resilience are all deterministic.
 
 - [ ] **Ensured acceptance criteria are **defined clearly**.**
   - Harness files with valid role+slug fields are used preferentially.
@@ -47,7 +47,7 @@ This feature migrates the `loadKnownSlugs` function in the admin CLI from a lega
 
 #### I.2 - Known Limitations
 
-- `harness.DiscoverRemoteAgents` is referenced in the PR diff but not yet defined in the harness package in this fork — it is part of the upstream PR being mirrored. Tests use `forge.FakeClient` to simulate the remote discovery behavior.
+- The harness agent discovery function is referenced in the PR diff but not yet defined in the harness package in this fork — it is part of the upstream PR being mirrored. Tests use a mock forge client to simulate the remote discovery behavior.
 - The function only reads top-level `role` and `slug` fields from harness files; base chain resolution is not performed.
 - No cluster interaction is required — all operations use the forge client API to read remote file contents.
 
@@ -55,18 +55,19 @@ This feature migrates the `loadKnownSlugs` function in the admin CLI from a lega
 
 - [ ] **Developer handoff completed; design and implementation reviewed.**
   - PR adds 41 lines to `internal/cli/admin.go` and 188 lines of tests to `internal/cli/admin_test.go`.
-  - New dependency on `internal/harness` package for `DiscoverRemoteAgents` and `AgentInfo` type.
+  - New dependency on `internal/harness` package for agent discovery and agent info types.
+  - QE kickoff aligned with upstream PR review cycle for fullsend-ai/fullsend#2361.
 
 - [ ] **Identified technology challenges or new dependencies.**
-  - Depends on `harness.DiscoverRemoteAgents` which must be available in the harness package (upstream dependency).
-  - Uses `forge.FakeClient` with `DirContents` and `FileContentsRef` maps for test mocking.
+  - Depends on harness agent discovery being available in the harness package (upstream dependency from fullsend-ai/fullsend#2361).
+  - Tests use a mock forge client with configurable directory contents and file references for test mocking.
 
 - [ ] **Test environment needs assessed.**
   - No cluster required; all tests run with mock forge client.
 
 - [ ] **API extensions or changes reviewed.**
-  - `loadKnownSlugs` function signature changed: added `configRepo`, `ref`, and `printer` parameters.
-  - Original function renamed to `loadKnownSlugsLegacy` with original signature preserved.
+  - Agent slug discovery function signature changed: added config repository, reference, and printer parameters.
+  - Original function preserved as a legacy variant with the original signature for backward compatibility.
 
 - [ ] **Topology or special infrastructure needs identified.**
   - None; purely in-process function with mocked external dependencies.
@@ -77,14 +78,14 @@ This feature migrates the `loadKnownSlugs` function in the admin CLI from a lega
 
 #### II.1 - Scope of Testing
 
-This test plan covers the refactored `loadKnownSlugs` function and its integration with the `runAppSetup` call chain. Testing validates the harness-first discovery preference, legacy fallback behavior, warning/logging behavior, and error resilience.
+This test plan covers agent slug discovery during `fullsend install`, validating that harness wrapper files are preferred over legacy `config.yaml` for determining which agents to install. Testing validates the harness-first discovery preference, legacy fallback behavior, warning/logging behavior, and error resilience.
 
 **Testing Goals:**
 
-- **P0:** Verify harness-first discovery returns correct slugs when harness files contain valid role+slug fields.
-- **P0:** Verify graceful fallback to legacy config.yaml when harness discovery yields no agents.
-- **P1:** Verify deprecation warnings are logged when legacy path is used.
-- **P1:** Verify entries with incomplete role/slug fields are handled correctly with appropriate warnings.
+- **P0:** Verify agent slugs are discovered from harness wrapper files when valid role and slug fields are present.
+- **P0:** Verify graceful fallback to legacy `config.yaml` agents block when harness discovery yields no agents.
+- **P1:** Verify deprecation warnings are logged when the legacy discovery path is used.
+- **P1:** Verify entries with incomplete role or slug fields are handled correctly with appropriate warnings.
 - **P1:** Verify duplicate role handling (first occurrence wins).
 - **P2:** Verify resilience to partial read errors and malformed configuration.
 
@@ -99,9 +100,9 @@ This test plan covers the refactored `loadKnownSlugs` function and its integrati
 
 **Functional:**
 
-- [x] **Functional Testing** -- Verify loadKnownSlugs behavior across all discovery paths (harness-first, legacy fallback, error cases).
-- [x] **Automation Testing** -- All scenarios implemented as Go unit tests using forge.FakeClient mocks.
-- [x] **Regression Testing** -- Verify callers (runAppSetup from newInstallCmd, runPerRepoInstall, runGitHubSetupPerOrg) continue to work with updated function signature.
+- [x] **Functional Testing** -- Verify agent slug discovery behavior across all discovery paths (harness-first, legacy fallback, error cases).
+- [x] **Automation Testing** -- All scenarios implemented as Go unit tests using mock forge client.
+- [x] **Regression Testing** -- Verify install, per-repo install, and GitHub setup callers continue to work with updated slug discovery.
 - [ ] **Upgrade Testing** -- Not applicable; no persistent state migration.
 
 **Non-Functional:**
@@ -115,7 +116,7 @@ This test plan covers the refactored `loadKnownSlugs` function and its integrati
 **Integration & Compatibility:**
 
 - [x] **Compatibility Testing** -- Verify backward compatibility: legacy config.yaml format continues to work via fallback.
-- [x] **Dependencies** -- Verify integration with harness.DiscoverRemoteAgents and forge.Client interfaces.
+- [x] **Dependencies** -- Depends on upstream fullsend-ai/fullsend#2361 being merged to make harness agent discovery available in the harness package.
 - [ ] **Cross Integrations** -- Not applicable; changes are internal to admin CLI.
 
 **Infrastructure:**
@@ -126,14 +127,8 @@ This test plan covers the refactored `loadKnownSlugs` function and its integrati
 
 - **Cluster Topology:** Not required; unit test execution only
 - **Platform Version:** Go 1.22+ (per go.mod)
-- **CPU Virtualization:** Not applicable
-- **Compute:** Standard CI runner
-- **Special Hardware:** None
-- **Storage:** Not applicable
-- **Network:** Not applicable (mock forge client)
-- **Operators:** None
-- **Platform:** Linux/macOS CI environment
-- **Special Configs:** forge.FakeClient with DirContents and FileContentsRef maps configured per test case
+- **Compute:** Standard CI runner (Linux/macOS)
+- **Special Infrastructure:** No special infrastructure required. Tests execute in-process with a mock forge client configured per test case to simulate harness file contents and discovery responses.
 
 #### II.3.1 - Testing Tools & Frameworks
 
@@ -141,8 +136,8 @@ No new or special tools required. Standard Go testing with testify assertions.
 
 #### II.4 - Entry Criteria
 
-- [ ] `harness.DiscoverRemoteAgents` function is available in the harness package
-- [ ] `forge.FakeClient` supports `DirContents` and `FileContentsRef` maps for test mocking
+- [ ] Harness agent discovery function is available in the harness package (upstream PR merged)
+- [ ] Mock forge client supports configurable directory contents and file references for test mocking
 - [ ] PR branch compiles successfully with all dependencies resolved
 
 #### II.5 - Risks
@@ -164,7 +159,7 @@ No new or special tools required. Standard Go testing with testify assertions.
 
 - [ ] **Untestable**
   - Risk: Real network errors from forge client cannot be unit tested
-  - Mitigation: `forge.FakeClient.Errors` map simulates hard errors; partial errors tested via missing FileContentsRef entries
+  - Mitigation: Mock forge client error map simulates hard errors; partial errors tested via missing file reference entries
   - Status: [ ] Mitigated
 
 - [ ] **Resources**
@@ -189,37 +184,37 @@ No new or special tools required. Standard Go testing with testify assertions.
 #### III.1 - Requirements Mapping
 
 - **GH-49** | Harness-first agent discovery is preferred over legacy config.yaml
-  - TS-GH-49-001: Verify harness files with valid role+slug are used over config.yaml agents block | Functional | P0
-  - TS-GH-49-002: Verify config.yaml agents block is not consulted when harness discovery succeeds | Functional | P0
+  - TS-GH-49-001: Verify harness files with valid role+slug are used over config.yaml agents block | Functional | P0 | Unit
+  - TS-GH-49-002: Verify config.yaml agents block is not consulted when harness discovery succeeds | Functional | P0 | Unit
 
 - | Fallback to legacy config.yaml when harness discovery yields no agents
-  - TS-GH-49-003: Verify fallback to config.yaml when no harness directory exists | Functional | P0
-  - TS-GH-49-004: Verify fallback when harness files lack role/slug fields | Functional | P1
-  - TS-GH-49-005: Verify nil returned when neither harness nor config.yaml provides agents | Functional | P1
+  - TS-GH-49-003: Verify fallback to config.yaml when no harness directory exists | Functional | P0 | Unit
+  - TS-GH-49-004: Verify fallback to config.yaml agents block when harness files contain no role/slug fields | Functional | P1 | Unit
+  - TS-GH-49-005: Verify nil returned when neither harness nor config.yaml provides agents | Functional | P1 | Unit
 
 - | Deprecation warning emitted for legacy path usage
-  - TS-GH-49-006: Verify deprecation warning logged when config.yaml agents block is used | Functional | P1
-  - TS-GH-49-007: Verify no deprecation warning when harness discovery succeeds | Functional | P1
+  - TS-GH-49-006: Verify deprecation warning logged when config.yaml agents block is used | Functional | P1 | Unit
+  - TS-GH-49-007: Verify no deprecation warning when harness discovery succeeds | Functional | P1 | Unit
 
 - | Incomplete harness entries handled with appropriate warnings
-  - TS-GH-49-008: Verify entry with role but no slug is skipped with warning | Functional | P1
-  - TS-GH-49-009: Verify entry with empty role and empty slug is silently skipped | Functional | P2
+  - TS-GH-49-008: Verify entry with role but no slug is skipped and a warning is logged to the printer output | Functional | P1 | Unit
+  - TS-GH-49-009: Verify entry with empty role and empty slug is silently skipped (no output produced) | Functional | P2 | Unit
 
 - | Duplicate role handling preserves deterministic behavior
-  - TS-GH-49-010: Verify duplicate roles keep first occurrence (sorted by Role then Filename) | Functional | P1
-  - TS-GH-49-011: Verify info message logged for duplicate role detection | Functional | P2
+  - TS-GH-49-010: Verify duplicate roles keep first occurrence (sorted by Role then Filename) | Functional | P1 | Unit
+  - TS-GH-49-011: Verify info message logged for duplicate role detection | Functional | P2 | Unit
 
 - | Error resilience in harness discovery
-  - TS-GH-49-012: Verify partial read errors still return successfully parsed agents | Functional | P1
-  - TS-GH-49-013: Verify hard discovery error falls back to legacy | Functional | P1
-  - TS-GH-49-014: Verify warning logged when harness discovery encounters errors | Functional | P2
+  - TS-GH-49-012: Verify partial read errors still return successfully parsed agents | Functional | P1 | Unit
+  - TS-GH-49-013: Verify hard discovery error falls back to legacy config.yaml path | Functional | P1 | Unit
+  - TS-GH-49-014: Verify warning logged when harness discovery encounters errors | Functional | P2 | Unit
 
 - | Malformed configuration handling
-  - TS-GH-49-015: Verify malformed config.yaml returns nil without panic | Functional | P2
+  - TS-GH-49-015: Verify malformed config.yaml returns nil without panic | Functional | P2 | Unit
 
-- | Integration with runAppSetup call chain
-  - TS-GH-49-016: Verify runAppSetup passes correct parameters to loadKnownSlugs | Functional | P0
-  - TS-GH-49-017: Verify filterSlugsByAppSet correctly filters harness-discovered slugs | Functional | P1
+- | Integration with install setup call chain
+  - TS-GH-49-016: Verify install setup uses harness-discovered agent slugs when initiating app configuration | Functional | P0 | Unit
+  - TS-GH-49-017: Verify agent slug filtering by app-set works correctly with harness-discovered slugs | Functional | P1 | Unit
 
 ---
 
