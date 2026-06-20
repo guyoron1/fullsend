@@ -1,0 +1,12 @@
+status: success
+jira_id: GH-51
+file_path: /sandbox/workspace/output/GH-51_test_plan.md
+test_counts:
+  unit_tests: 9
+  functional: 10
+  end_to_end: 0
+  total: 19
+validation:
+  passed: 20
+  failed: 0
+  warnings: 2
