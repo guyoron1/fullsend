@@ -6,7 +6,7 @@
 
 - **Enhancement(s):** [GH-45](https://github.com/fullsend-ai/fullsend/issues/45)
 - **Feature Tracking:** [GH-45](https://github.com/fullsend-ai/fullsend/issues/45)
-- **Epic Tracking:** GH-45
+- **Epic Tracking:** N/A (standalone issue — no parent epic)
 - **QE Owner(s):** TBD
 - **Owning SIG:** N/A
 - **Participating SIGs:** None
@@ -37,7 +37,7 @@ technology, and testability before formal test planning.
   - This document provides architectural guidance for the FullSend team to make informed decisions about tool adoption and replacement, reducing the risk of costly rework when agent tooling shifts.
 - [ ] **Testability**
   - Confirmed requirements are **testable and unambiguous**.
-  - As a documentation-only change, testability focuses on document completeness, structural conventions, cross-reference validity, and content accuracy. All requirements are directly verifiable.
+  - All requirements are directly verifiable through document inspection. No external systems, runtime environments, or special access are needed for validation. The documentation-only nature of this change makes all acceptance criteria objectively testable.
 - [ ] **Acceptance Criteria**
   - Ensured acceptance criteria are **defined clearly** (clear user stories; product requirements clearly defined in Jira).
   - Acceptance criteria are implicit: the document must present approaches for surviving tool churn, identify stable vs swappable components, and cross-reference existing problem docs.
@@ -103,11 +103,11 @@ Testing validates the architecture flexibility problem document for content comp
 
 **Functional**
 
-- [ ] **Functional Testing** -- Validates that the feature works according to specified requirements and user stories
+- [x] **Functional Testing** -- Validates that the feature works according to specified requirements and user stories
   - *Details:* Verify document content completeness, structural conventions, and cross-reference integrity. All test scenarios are documentation validation checks.
-- [ ] **Automation Testing** -- Confirms test automation plan is in place for CI and regression coverage (all tests are expected to be automated)
+- [x] **Automation Testing** -- Confirms test automation plan is in place for CI and regression coverage (all tests are expected to be automated)
   - *Details:* Link validation can be automated via CI markdown link-checker. Content completeness checks are manual review items.
-- [ ] **Regression Testing** -- Verifies that new changes do not break existing functionality
+- [x] **Regression Testing** -- Verifies that new changes do not break existing functionality
   - *Details:* Verify README link additions do not break existing index structure. Verify no existing cross-references are disrupted.
 
 **Non-Functional**
@@ -130,7 +130,7 @@ Testing validates the architecture flexibility problem document for content comp
 - [ ] **Upgrade Testing** -- Validates upgrade paths from previous versions, data migration, and configuration preservation
   - *Details:* Not applicable. Documentation-only change.
 - [ ] **Dependencies** -- Blocked by deliverables from other components/products. Identify what we need from other teams before we can test.
-  - *Details:* Document cross-references 7 existing problem docs. Those docs must exist for cross-references to be valid.
+  - *Details:* Not applicable — no cross-team deliveries required for this documentation change.
 - [ ] **Cross Integrations** -- Does the feature affect other features or require testing by other teams? Identify the impact we cause.
   - *Details:* No cross-team impact. The document references but does not modify other problem docs.
 
@@ -165,6 +165,7 @@ The following conditions must be met before testing can begin:
 - [ ] Requirements and design documents are **approved and merged**
 - [ ] Test environment can be **set up and configured** (see Section II.3 - Test Environment)
 - [ ] PR branch is available for review with all document files committed
+- [ ] All 7 cross-referenced problem documents exist at their expected paths in the repository
 
 #### **5. Risks**
 
@@ -186,6 +187,9 @@ The following conditions must be met before testing can begin:
 - [ ] **Dependencies**
   - Risk: Cross-referenced problem docs (7 documents) must exist at their expected paths.
   - Mitigation: Verify all referenced documents exist in the repository before validating links.
+- [ ] **Issue Viability**
+  - Risk: This STP may be unnecessary — the issue is CLOSED and the author characterized it as exploratory thinking rather than a deliverable.
+  - Mitigation: Confirm with PM/lead whether this document will be reopened before investing testing effort. If confirmed abandoned, archive this STP.
 - [ ] **Other**
   - Risk: Issue author noted this document may not need to be merged — it captures ongoing thinking. Testing may be moot if the PR remains closed.
   - Mitigation: Validate document quality regardless of merge decision to ensure it meets standards if reopened.
@@ -228,6 +232,10 @@ This section links requirements to test coverage, enabling reviewers to verify a
 
 - **[GH-45]** -- Open questions section captures unresolved decisions
   - *Test Scenario:* Verify open questions section addresses key architectural decisions including interface formality, tool boundary blurring, and swap cost estimation
+  - *Priority:* P2
+
+- **[GH-45]** -- Document renders correctly as standalone markdown
+  - *Test Scenario:* Verify document renders correctly when viewed outside the repository context (e.g., raw markdown without GitHub rendering) and all relative links are identifiable
   - *Priority:* P2
 
 ---

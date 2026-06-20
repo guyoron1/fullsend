@@ -15,24 +15,24 @@
 |:-------|:------|
 | Dimensions reviewed | 7/7 |
 | Critical findings | 0 |
-| Major findings | 3 |
-| Minor findings | 4 |
-| Actionable findings | 6 |
+| Major findings | 1 |
+| Minor findings | 1 |
+| Actionable findings | 1 |
 | Confidence | MEDIUM |
-| Weighted score | 84 |
+| Weighted score | 96.1 |
 
 ## Dimension Scores
 
 | Dimension | Weight | Pass Rate | Weighted |
 |:----------|:-------|:----------|:---------|
-| 1. Rule Compliance | 25% | 82% | 20.5 |
-| 2. Requirement Coverage | 30% | 88% | 26.4 |
-| 3. Scenario Quality | 15% | 92% | 13.8 |
-| 4. Risk & Limitation Accuracy | 10% | 75% | 7.5 |
+| 1. Rule Compliance | 25% | 100% | 25.0 |
+| 2. Requirement Coverage | 30% | 95% | 28.5 |
+| 3. Scenario Quality | 15% | 95% | 14.3 |
+| 4. Risk & Limitation Accuracy | 10% | 90% | 9.0 |
 | 5. Scope Boundary Assessment | 10% | 95% | 9.5 |
-| 6. Test Strategy Appropriateness | 5% | 88% | 4.4 |
-| 7. Metadata Accuracy | 5% | 85% | 4.3 |
-| **Total** | **100%** | | **86.4** |
+| 6. Test Strategy Appropriateness | 5% | 95% | 4.8 |
+| 7. Metadata Accuracy | 5% | 100% | 5.0 |
+| **Total** | **100%** | | **96.1** |
 
 ---
 
@@ -46,7 +46,7 @@
 | A.2 — Language Precision | PASS | Language is professional, precise, and uses standard QE vocabulary ("verify", "validate"). No anthropomorphization, colloquial phrasing, or vague qualifiers found. |
 | B — Section I Meta-Checklist | WARN | Template structure is followed correctly (5 checkbox items in I.1, 5 in I.3, Known Limitations in I.2). Minor header mismatch — see finding D1-R-B-001. |
 | C — Prerequisites vs Scenarios | PASS | All Section III items describe testable behaviors (document content checks), not configuration prerequisites. Entry criteria appropriately capture prerequisites. |
-| D — Dependencies | FAIL | Pre-existing documents listed as dependencies instead of team deliveries. See finding D1-R-D-001. |
+| D — Dependencies | PASS | Dependencies correctly set to "Not applicable — no cross-team deliveries required." Document existence requirement moved to Entry Criteria. |
 | E — Upgrade Testing | PASS | Correctly unchecked. Documentation-only change creates no persistent state requiring upgrade testing. |
 | F — Version Derivation | PASS | "FullSend 0.x on GitHub Actions" — version is appropriately vague since no version field is set in the source issue. |
 | G — Testing Tools | PASS | All tools marked N/A. Appropriate for documentation-only review with no special tooling needed. |
@@ -54,34 +54,12 @@
 | H — Risk Deduplication | PASS | No risk entries duplicate information from Test Environment. Each risk describes a genuine uncertainty with a distinct mitigation. |
 | I — QE Kickoff Timing | PASS | Correctly notes "Not applicable for documentation. The document itself serves as the architectural walkthrough, authored by the project lead." No inappropriate post-implementation timing. |
 | J — One Tier Per Row | PASS | N/A — No test tier designations used. Appropriate for documentation validation where tier classification does not apply. |
-| K — Cross-Section Consistency | WARN | No scope/out-of-scope contradictions. No goals contradicting limitations. Minor consistency issue with checkbox states — see finding D1-R-K-001. |
-| L — Section Content Validation | FAIL | Testability sub-item contains test approach details that belong in Scope. See finding D1-R-L-001. |
+| K — Cross-Section Consistency | PASS | Functional, Automation, and Regression Testing checkboxes are now checked `[x]`, consistent with their sub-items describing active testing plans. No scope/out-of-scope contradictions. No goals contradicting limitations. |
+| L — Section Content Validation | PASS | Testability sub-item now correctly focuses on testability assessment ("All requirements are directly verifiable through document inspection") rather than describing the testing approach. Content is in the correct sections throughout. |
 | M — Deletion Test | PASS | Content is appropriately concise. Feature Overview provides necessary context without duplicating the issue description. No sections contain excessive background that fails the deletion test. |
 | N — Link/Reference Validation | PASS | Enhancement and Feature Tracking links point to `https://github.com/fullsend-ai/fullsend/issues/45` — correct repository and issue number. No stale references, personal fork URLs, or cross-domain errors detected. |
-| O — Untestable Aspects | PASS | Risk about subjective quality assessment is properly documented with reason ("difficult to validate objectively") and mitigation ("Focus on structural completeness and cross-reference validity"). No P0 items marked as untestable. |
+| O — Untestable Aspects | PASS | Risk about subjective quality assessment is properly documented with reason ("difficult to validate objectively") and mitigation ("Focus on structural completeness and cross-reference validity"). Issue viability risk properly documented with explicit PM/lead confirmation mitigation. No P0 items marked as untestable. |
 | P — Testing Pyramid Efficiency | PASS | N/A — Not a bug ticket and no PR fix-scope data. Rule does not apply. |
-
-#### Finding D1-R-D-001
-
-- **finding_id:** D1-R-D-001
-- **severity:** MAJOR
-- **dimension:** Rule Compliance
-- **rule:** D — Dependencies = Team Delivery
-- **description:** The Dependencies checkbox in Test Strategy (II.2) lists "Document cross-references 7 existing problem docs. Those docs must exist for cross-references to be valid." These are pre-existing repository documents, not deliveries from another team. Dependencies should describe cross-team delivery blockers (e.g., "Team X must merge PR Y before testing can begin").
-- **evidence:** STP Section II.2 Dependencies: "Document cross-references 7 existing problem docs. Those docs must exist for cross-references to be valid."
-- **remediation:** Move the document existence requirement to Entry Criteria (II.4) as: "- [ ] All 7 cross-referenced problem documents exist at their expected paths in the repository." Change Dependencies sub-item to "Not applicable — no cross-team deliveries required for this documentation change."
-- **actionable:** true
-
-#### Finding D1-R-L-001
-
-- **finding_id:** D1-R-L-001
-- **severity:** MAJOR
-- **dimension:** Rule Compliance
-- **rule:** L — Section Content Validation (Misplaced Content)
-- **description:** The Testability sub-item in Section I.1 describes *what* to test ("testability focuses on document completeness, structural conventions, cross-reference validity, and content accuracy") rather than *whether* requirements are testable. These are scope items describing the testing approach, not a testability assessment. Testability should answer: "Can we objectively verify these requirements?"
-- **evidence:** STP Section I.1 Testability: "As a documentation-only change, testability focuses on document completeness, structural conventions, cross-reference validity, and content accuracy. All requirements are directly verifiable."
-- **remediation:** Rewrite Testability sub-item to focus on testability assessment: "All requirements are directly verifiable through document inspection. No external systems, runtime environments, or special access are needed for validation. The documentation-only nature of this change makes all acceptance criteria objectively testable." The specific testing categories (completeness, conventions, cross-references) should remain only in Scope (II.1).
-- **actionable:** true
 
 #### Finding D1-R-B-001
 
@@ -94,17 +72,6 @@
 - **remediation:** Update `project.yaml` `stp_document.header` to `"FullSend Test Plan"` to align the configuration with the actual project name used in generated STPs.
 - **actionable:** true
 
-#### Finding D1-R-K-001
-
-- **finding_id:** D1-R-K-001
-- **severity:** MINOR
-- **dimension:** Rule Compliance
-- **rule:** K — Cross-Section Consistency
-- **description:** All checkbox items in Section II.2 (Test Strategy) use the unchecked `- [ ]` format, including Functional Testing, Automation Testing, and Regression Testing which are explicitly planned per their sub-item descriptions. Checkboxes for planned/applicable items should be checked `- [x]` to distinguish them from unchecked/not-applicable items.
-- **evidence:** STP lines 106-108: Functional, Automation, and Regression Testing all have `- [ ]` but their sub-items describe active testing plans.
-- **remediation:** Change Functional Testing, Automation Testing, and Regression Testing checkboxes to `- [x]` to indicate these are planned activities. Leave non-applicable items (Performance, Scale, Security, Cloud, Upgrade, Compatibility) as `- [ ]` with their N/A sub-items.
-- **actionable:** true
-
 ---
 
 ### Dimension 2: Requirement Coverage
@@ -114,7 +81,7 @@
 | Acceptance criteria covered | N/A (no formal AC in issue) |
 | Issue description requirements covered | 4/4 |
 | Linked issues reflected | 0/0 (no linked issues) |
-| Negative scenarios present | YES (1/8 = 12.5%) |
+| Negative scenarios present | YES (2/9 = 22.2%) |
 | Coverage gaps found | 0 |
 
 **Source requirement mapping:**
@@ -133,19 +100,9 @@
 | Interface contract table (scenario 5) | Derived from PR content | Appropriate — validates document completeness |
 | Document structure conventions (scenario 7) | Derived from project standards | Appropriate — validates conformance |
 | Open questions section (scenario 8) | Derived from document structure | Appropriate — validates completeness |
+| Standalone markdown rendering (scenario 9) | Derived from edge case analysis | Appropriate — validates documentation robustness |
 
-**Coverage assessment:** All requirements derivable from the issue description are covered. The STP appropriately derives additional scenarios from the document's content structure. No formal acceptance criteria exist in the source issue, so coverage is evaluated against the issue description and comment thread.
-
-#### Finding D2-COV-001
-
-- **finding_id:** D2-COV-001
-- **severity:** MINOR
-- **dimension:** Requirement Coverage
-- **rule:** Proactive Scope Completeness — Negative/Edge Case Challenge
-- **description:** Only 1 negative scenario ("Verify broken or missing cross-reference links are identifiable and do not cause rendering failures") out of 8 total scenarios (12.5%). For documentation validation, negative scenarios are inherently limited, but additional edge cases could strengthen coverage.
-- **evidence:** Section III: 7 positive validation scenarios, 1 negative scenario (broken cross-references).
-- **remediation:** Consider adding 1-2 additional edge case scenarios such as: "Verify document renders correctly when viewed outside the repository context (e.g., raw markdown)" or "Verify document maintains structural integrity if any one section is removed." These would test documentation robustness beyond content completeness.
-- **actionable:** true
+**Coverage assessment:** All requirements derivable from the issue description are covered. The STP appropriately derives additional scenarios from the document's content structure. Negative scenario coverage improved to 22.2% (2/9) with the addition of a standalone rendering edge case. No formal acceptance criteria exist in the source issue, so coverage is evaluated against the issue description and comment thread.
 
 ---
 
@@ -153,16 +110,16 @@
 
 | Metric | Value |
 |:-------|:------|
-| Total scenarios | 8 |
+| Total scenarios | 9 |
 | Tier 1 | N/A (documentation) |
 | Tier 2 | N/A (documentation) |
-| P0 | 1 (12.5%) |
-| P1 | 5 (62.5%) |
-| P2 | 2 (25.0%) |
+| P0 | 1 (11.1%) |
+| P1 | 5 (55.6%) |
+| P2 | 3 (33.3%) |
 | Positive scenarios | 7 |
-| Negative scenarios | 1 |
+| Negative scenarios | 2 |
 
-**Priority distribution assessment:** Appropriate. P0 assigned only to the README index link (most objectively verifiable and highest impact if broken). P1 for core content validation. P2 for supplementary quality checks. No priority inflation detected.
+**Priority distribution assessment:** Appropriate. P0 assigned only to the README index link (most objectively verifiable and highest impact if broken). P1 for core content validation. P2 for supplementary quality checks and edge cases. No priority inflation detected.
 
 **Scenario-level findings:** No findings. All scenarios are:
 - Specific (describe exactly what to verify)
@@ -181,20 +138,21 @@
 - **severity:** MAJOR
 - **dimension:** Risk & Limitation Accuracy
 - **rule:** Risk mitigation adequacy
-- **description:** The issue is in CLOSED state and the author (ralphbean) commented: "I dunno if we actually need to get this cleaned up and merged.. it was just something I was thinking about." The STP correctly captures the CLOSED state as a Known Limitation and includes a Risk entry ("Issue author noted this document may not need to be merged"). However, the mitigation ("Validate document quality regardless of merge decision to ensure it meets standards if reopened") does not adequately address the fundamental question: should testing resources be spent on a potentially abandoned document? This requires human judgment on whether to proceed with the STP at all.
-- **evidence:** GitHub Issue #45 state: CLOSED. Comment from ralphbean: "I dunno if we actually need to get this cleaned up and merged.. it was just something I was thinking about. The fast-moving nature of the agent tool space is a genuine problem for us, but it's not a problem-to-solve like the other problems."
-- **remediation:** Add an explicit risk entry: "Risk: This STP may be unnecessary — the issue is CLOSED and the author characterized it as exploratory thinking rather than a deliverable. Mitigation: Confirm with PM/lead whether this document will be reopened before investing testing effort. If confirmed abandoned, archive this STP." This finding requires human judgment and cannot be resolved automatically.
+- **description:** The issue is in CLOSED state and the author (ralphbean) commented: "I dunno if we actually need to get this cleaned up and merged.. it was just something I was thinking about." The STP now includes an "Issue Viability" risk entry with a clear mitigation ("Confirm with PM/lead whether this document will be reopened before investing testing effort. If confirmed abandoned, archive this STP."). This is a well-documented risk, but the fundamental question of whether testing resources should be spent on a potentially abandoned document requires human judgment and cannot be resolved through automated refinement.
+- **evidence:** GitHub Issue #45 state: CLOSED. Comment from ralphbean: "I dunno if we actually need to get this cleaned up and merged.. it was just something I was thinking about."
+- **remediation:** Confirm with PM/lead whether this document will be reopened before investing testing effort. If confirmed abandoned, archive this STP.
 - **actionable:** false
 
 **Other risk/limitation checks:**
 
 | Check | Result |
 |:------|:-------|
-| Risks are genuine uncertainties (not env requirements) | PASS — all 7 risks describe uncertainties |
-| Mitigations are actionable | PASS (6/7) — one mitigation is vague (see D4-RLA-001) |
+| Risks are genuine uncertainties (not env requirements) | PASS — all 8 risks describe uncertainties |
+| Mitigations are actionable | PASS — all mitigations are specific and actionable |
 | Limitations match source data | PASS — CLOSED state and missing AC correctly noted |
 | Jira-mentioned limitations reflected | PASS — author's comment about non-necessity captured |
 | No contradictions between risks and scope | PASS |
+| Issue viability risk documented | PASS — explicit "Issue Viability" risk with PM/lead confirmation mitigation |
 
 ---
 
@@ -226,19 +184,21 @@ All out-of-scope items include rationale. No scope overclaiming or underclaiming
 
 | Strategy Item | State | Assessment |
 |:-------------|:------|:-----------|
-| Functional Testing | Unchecked (should be checked) | Sub-items describe active testing — see D1-R-K-001 |
-| Automation Testing | Unchecked (should be checked) | Link validation automation planned — see D1-R-K-001 |
-| Regression Testing | Unchecked (should be checked) | README structure regression noted — see D1-R-K-001 |
+| Functional Testing | Checked | Correct — sub-items describe active documentation validation testing |
+| Automation Testing | Checked | Correct — link validation automation planned via CI markdown link-checker |
+| Regression Testing | Checked | Correct — README structure regression verification planned |
 | Performance Testing | Unchecked | Correct — N/A for documentation |
 | Scale Testing | Unchecked | Correct — N/A for documentation |
 | Security Testing | Unchecked | Correct — N/A for documentation |
-| Usability Testing | Unchecked | Sub-item mentions readability — borderline but acceptable as unchecked |
+| Usability Testing | Unchecked | Borderline but acceptable — readability check is minor |
 | Monitoring | Unchecked | Correct — N/A for documentation |
 | Compatibility Testing | Unchecked | Correct — markdown renders consistently |
 | Upgrade Testing | Unchecked | Correct — per Rule E |
-| Dependencies | Checked | Incorrectly classified content — see D1-R-D-001 |
+| Dependencies | Unchecked | Correct — "Not applicable — no cross-team deliveries" with clear rationale |
 | Cross Integrations | Unchecked | Correct — no cross-team impact |
 | Cloud Testing | Unchecked | Correct — N/A for documentation |
+
+All strategy checkboxes are now consistent with their sub-item descriptions.
 
 ---
 
@@ -248,34 +208,18 @@ All out-of-scope items include rationale. No scope overclaiming or underclaiming
 |:------|:----------|:-------------|:-----------|
 | Enhancement(s) | GH-45 (link to GitHub issue) | GitHub Issue #45 | PASS — correct link |
 | Feature Tracking | GH-45 (link to GitHub issue) | Same issue | PASS — self-referencing is acceptable for standalone issues |
-| Epic Tracking | GH-45 | No parent epic | WARN — see D7-META-001 |
+| Epic Tracking | N/A (standalone issue — no parent epic) | No parent epic | PASS — correctly indicates no parent epic |
 | QE Owner(s) | TBD | No assignees | PASS — TBD acceptable for draft |
 | Owning SIG | N/A | No labels/components | PASS — correct |
 | Participating SIGs | None | No cross-team labels | PASS — correct |
 | Document title | "Architecture Flexibility Problem Document" | Issue: "Add architecture flexibility problem document" | PASS — consistent naming |
 
-#### Finding D7-META-001
-
-- **finding_id:** D7-META-001
-- **severity:** MINOR
-- **dimension:** Metadata Accuracy
-- **rule:** Metadata — Epic Tracking
-- **description:** Epic Tracking is set to "GH-45" which is the issue itself, not a parent epic. For GitHub issues without an epic hierarchy, this field should either reference a parent tracking issue or indicate "N/A (standalone issue)."
-- **evidence:** STP Metadata: "Epic Tracking: GH-45" — same as the issue being tested.
-- **remediation:** Change Epic Tracking to "N/A (standalone issue — no parent epic)" or, if a parent tracking issue exists, reference that instead.
-- **actionable:** true
-
 ---
 
 ## Recommendations
 
-1. **[MAJOR]** Dependencies lists pre-existing documents instead of team deliveries. — **Remediation:** Move document existence checks to Entry Criteria; set Dependencies to N/A. — **Actionable:** yes
-2. **[MAJOR]** Testability sub-item describes testing approach instead of testability assessment. — **Remediation:** Rewrite to focus on whether requirements can be objectively verified, not what to verify. — **Actionable:** yes
-3. **[MAJOR]** CLOSED issue with author suggesting it may not need to be merged — testing investment may be moot. — **Remediation:** Confirm with PM/lead whether to proceed before investing testing effort. — **Actionable:** no (requires human judgment)
-4. **[MINOR]** STP header does not match project.yaml configured header. — **Remediation:** Update project.yaml header to "FullSend Test Plan". — **Actionable:** yes
-5. **[MINOR]** Planned testing activities (Functional, Automation, Regression) have unchecked checkboxes. — **Remediation:** Check `[x]` for planned items to distinguish from N/A items. — **Actionable:** yes
-6. **[MINOR]** Low negative scenario ratio (1/8). — **Remediation:** Consider adding 1-2 documentation edge case scenarios. — **Actionable:** yes
-7. **[MINOR]** Epic Tracking self-references the issue instead of a parent epic. — **Remediation:** Set to "N/A (standalone issue)" or reference actual parent. — **Actionable:** yes
+1. **[MAJOR]** CLOSED issue with author suggesting it may not need to be merged — testing investment may be moot. STP now properly documents this risk with "Issue Viability" entry and PM/lead confirmation mitigation. — **Remediation:** Confirm with PM/lead whether to proceed before investing testing effort. — **Actionable:** no (requires human judgment)
+2. **[MINOR]** STP header does not match project.yaml configured header (config uses example default "My-Project Test Plan"). — **Remediation:** Update project.yaml header to "FullSend Test Plan". — **Actionable:** yes (config change, not STP change)
 
 ---
 
