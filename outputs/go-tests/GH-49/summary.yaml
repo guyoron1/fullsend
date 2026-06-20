@@ -1,0 +1,28 @@
+status: success
+jira_id: GH-49
+std_source: outputs/std/GH-49/GH-49_test_description.yaml
+languages:
+  - language: go
+    framework: ginkgo-v2
+    files:
+      - suite_test.go
+      - helpers_test.go
+      - agent_slug_discovery_test.go
+      - agent_slug_warnings_test.go
+      - agent_slug_dedup_test.go
+      - agent_slug_resilience_test.go
+      - agent_slug_integration_test.go
+    test_count: 17
+total_test_count: 17
+lsp_patterns_used: false
+scenario_coverage:
+  total_std_scenarios: 17
+  generated_tests: 17
+  missing_scenarios: []
+  coverage: "100%"
+notes:
+  - "All 17 STD scenarios covered (TS-GH-49-001 through TS-GH-49-017)"
+  - "No Python tests generated (0 Tier 2/E2E scenarios in STD)"
+  - "No source repo available — LSP analysis skipped"
+  - "Mock forge client and helper types included in helpers_test.go"
+  - "Polarion markers omitted (feature_toggles.polarion: false)"
