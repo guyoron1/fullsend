@@ -10,6 +10,14 @@ languages:
       - claude_md_git_exclude_test.go
       - claude_md_error_handling_test.go
       - claude_md_flag_propagation_test.go
+    test_count: 10
+  - language: python
+    framework: pytest
+    files:
+      - conftest.py
+      - test_claude_md_content.py
+      - test_has_claude_md.py
+      - test_claude_md_error_handling.py
     test_count: 9
-total_test_count: 9
+total_test_count: 19
 lsp_patterns_used: false
