@@ -1,0 +1,24 @@
+status: success
+jira_id: GH-45
+verdict: APPROVED_WITH_FINDINGS
+confidence: MEDIUM
+weighted_score: 88
+findings:
+  critical: 0
+  major: 2
+  minor: 4
+  actionable: 6
+  total: 6
+artifacts_reviewed:
+  std_yaml: true
+  go_stubs: true
+  python_stubs: false
+  stp_available: true
+dimension_scores:
+  traceability: 95
+  yaml_structure: 75
+  pattern_matching: 95
+  step_quality: 90
+  content_policy: 80
+  pse_quality: 88
+  codegen_readiness: 90
