@@ -287,11 +287,25 @@ if [ "${NO_PUSH}" = "false" ]; then
   git remote set-url origin \
     "https://x-access-token:${PUSH_TOKEN}@github.com/${REPO_FULL_NAME}.git"
 
-  # Plain push (no --force-with-lease). Agents always create new
-  # commits (amend is in disallowedTools), so force-push is unnecessary
-  # and plain push is safer (refuses diverged branches).
+  # Plain push first. Agents normally create new commits (amend is in
+  # disallowedTools), so plain push is the common case. However, when the
+  # fix agent rebases a branch, history is rewritten and plain push fails
+  # with non-fast-forward. In that case, fall back to --force-with-lease
+  # (which still rejects if someone else pushed concurrently).
+  # This mirrors the push logic in post-code.sh section 7b.
   echo "Pushing branch ${BRANCH}..."
-  git push -u origin -- "${BRANCH}" 2>&1
+  PUSH_OUTPUT="$(git push -u origin -- "${BRANCH}" 2>&1)" && PUSH_RC=0 || PUSH_RC=$?
+  echo "${PUSH_OUTPUT}"
+
+  if [ "${PUSH_RC}" -ne 0 ]; then
+    if echo "${PUSH_OUTPUT}" | grep -qi "non-fast-forward\|rejected\|fetch first"; then
+      echo "::warning::Plain push failed (non-fast-forward) — retrying with --force-with-lease"
+      git push --force-with-lease -u origin -- "${BRANCH}" 2>&1
+    else
+      echo "::error::Push failed with unexpected error"
+      exit 1
+    fi
+  fi
   echo "Branch ${BRANCH} pushed successfully"
 fi
 
