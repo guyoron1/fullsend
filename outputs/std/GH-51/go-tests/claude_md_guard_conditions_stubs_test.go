@@ -21,18 +21,38 @@ var _ = Describe("[GH-51] CLAUDE.md injection guard conditions", func() {
 	       - Temporary directory available via t.TempDir()
 	*/
 
-	Context("when runtime is non-Claude agent", func() {
+	Context("when runtime is not Claude", func() {
+		/*
+		   Preconditions:
+		       - AGENTS.md exists in target directory
+		       - Runtime is set to a non-Claude value (e.g., codex)
+
+		   Steps:
+		       1. Create temp directory with AGENTS.md
+		       2. Set runtime to non-Claude value
+		       3. Execute runAgent guard condition path
+		       4. Check for CLAUDE.md file in target directory
+
+		   Expected:
+		       - Guard condition prevents injection call
+		       - No CLAUDE.md file created when runtime is not Claude
+		*/
+		PendingIt("[test_id:TS-GH-51-003] should not inject CLAUDE.md when runtime is not Claude", func() {
+			Skip("Phase 1: Design only - awaiting implementation")
+		})
+
 		/*
 		   Preconditions:
 		       - AGENTS.md exists in target directory
 		       - Runtime set to a non-Claude value (e.g., codex, copilot)
 
 		   Steps:
-		       1. Execute injection guard check with non-Claude runtime
-		       2. Check for CLAUDE.md file
+		       1. Test guard with multiple non-Claude runtime values (codex, copilot)
+		       2. For each, verify the injection guard rejects the runtime
+		       3. Check for CLAUDE.md file
 
 		   Expected:
-		       - No CLAUDE.md file created for non-Claude runtime
+		       - No CLAUDE.md file created for any non-Claude runtime
 		*/
 		PendingIt("[test_id:TS-GH-51-010] should skip injection for non-Claude agent runtime", func() {
 			Skip("Phase 1: Design only - awaiting implementation")
@@ -46,11 +66,13 @@ var _ = Describe("[GH-51] CLAUDE.md injection guard conditions", func() {
 		       - CLAUDE.md already exists with custom content
 
 		   Steps:
-		       1. Check hasClaudeMD returns true
-		       2. Verify original CLAUDE.md content is preserved
+		       1. Create temp dir with both AGENTS.md and CLAUDE.md (custom content)
+		       2. Call hasClaudeMD on the directory
+		       3. Read CLAUDE.md content after guard check
 
 		   Expected:
-		       - Existing CLAUDE.md content preserved unchanged
+		       - hasClaudeMD returns true, preventing injection
+		       - Original CLAUDE.md content preserved unchanged
 		       - No injection attempted
 		*/
 		PendingIt("[test_id:TS-GH-51-011] should skip injection when CLAUDE.md already exists", func() {

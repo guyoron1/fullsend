@@ -26,14 +26,18 @@ var _ = Describe("[GH-51] agentsMDAvailable flag propagation", func() {
 		   Preconditions:
 		       - Org AGENTS.md injection completed successfully
 		       - agentsMDAvailable flag set to true
+		       - No existing CLAUDE.md in target directory
 
 		   Steps:
-		       1. Verify agentsMDAvailable is true after org injection
-		       2. Check that CLAUDE.md injection code path is entered
+		       1. Create temp directory with AGENTS.md (simulating org injection success)
+		       2. Set agentsMDAvailable=true, runtime=claude
+		       3. Invoke injection guard with agentsMDAvailable=true and !hasClaudeMD
+		       4. Call doInjectClaudeMDPointer with mock exec
 
 		   Expected:
 		       - agentsMDAvailable=true triggers CLAUDE.md injection
-		       - CLAUDE.md created when flag is true and no existing CLAUDE.md
+		       - CLAUDE.md file is created in the directory
+		       - File content references AGENTS.md
 		*/
 		PendingIt("[test_id:TS-GH-51-018] should trigger CLAUDE.md injection after org AGENTS.md injection", func() {
 			Skip("Phase 1: Design only - awaiting implementation")
@@ -47,12 +51,14 @@ var _ = Describe("[GH-51] agentsMDAvailable flag propagation", func() {
 		       - agentsMDAvailable flag remains false
 
 		   Steps:
-		       1. Verify agentsMDAvailable is false after failed org injection
-		       2. Check that CLAUDE.md injection is skipped
+		       1. Create temp directory with no AGENTS.md (injection failed)
+		       2. Set agentsMDAvailable=false, runtime=claude
+		       3. Evaluate guard condition: agentsMDAvailable && !hasClaudeMD
 
 		   Expected:
-		       - agentsMDAvailable=false prevents CLAUDE.md injection
-		       - No CLAUDE.md created when flag is false
+		       - Guard condition evaluates to false (agentsMDAvailable is false)
+		       - CLAUDE.md injection is skipped entirely
+		       - No CLAUDE.md file exists in the directory
 		*/
 		PendingIt("[test_id:TS-GH-51-019] should skip CLAUDE.md injection when org AGENTS.md injection fails", func() {
 			Skip("Phase 1: Design only - awaiting implementation")

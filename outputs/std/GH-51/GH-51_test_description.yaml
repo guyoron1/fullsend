@@ -30,7 +30,6 @@ code_generation_config:
   imports:
     standard:
       - "context"
-      - "testing"
       - "os"
       - "fmt"
       - "path/filepath"
@@ -285,8 +284,8 @@ scenarios:
     mvp: true
     requirement_id: "GH-51"
     patterns:
-      primary_pattern: "file-injection"
-      helpers_required: ["filesystem-setup", "mock-exec"]
+      primary_pattern: "guard-condition"
+      helpers_required: ["filesystem-setup"]
 
     variables:
       closure_scope:
@@ -1395,16 +1394,16 @@ scenarios:
     mvp: false
     requirement_id: "GH-51"
     patterns:
-      primary_pattern: "file-injection"
+      primary_pattern: "error-handling"
       helpers_required: ["filesystem-setup", "mock-exec"]
 
     variables:
       closure_scope:
-        - name: "agentRunCompleted"
-          type: "bool"
-          initialized_in: "Test"
-          used_in: ["Test"]
-          comment: "Tracks whether agent run continued past injection failure"
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "Test"]
+          comment: "Temporary directory with AGENTS.md and read-only permissions"
 
     test_structure:
       type: "single"
@@ -1441,12 +1440,12 @@ scenarios:
     test_steps:
       setup:
         - step_id: "SETUP-01"
-          action: "Create temp dir with AGENTS.md and configure failing injection mock"
-          command: "t.TempDir() + AGENTS.md + failing doInjectClaudeMDPointer"
-          validation: "Setup ready with injection configured to fail"
+          action: "Create temp dir with AGENTS.md and make directory read-only to trigger injection failure"
+          command: "t.TempDir() + AGENTS.md + chmod 0555"
+          validation: "Setup ready with directory read-only so injection write will fail"
           code_template: |
             // Create temp directory with AGENTS.md
-            // Configure doInjectClaudeMDPointer to return an error
+            // Make directory read-only (chmod 0555) so file write fails
             // Set up agentsMDAvailable=true and runtime=claude
       test_execution:
         - step_id: "TEST-01"

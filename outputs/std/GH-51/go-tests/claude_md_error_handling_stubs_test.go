@@ -40,6 +40,28 @@ var _ = Describe("[GH-51] CLAUDE.md injection error handling", func() {
 		})
 	})
 
+	Context("when injection fails during agent run", func() {
+		/*
+		   [NEGATIVE]
+		   Preconditions:
+		       - AGENTS.md exists in target directory
+		       - Target directory is read-only (chmod 0555) to trigger write failure
+		       - agentsMDAvailable=true, runtime=claude
+
+		   Steps:
+		       1. Create temp dir with AGENTS.md and make directory read-only
+		       2. Execute runAgent flow where injection will fail due to permissions
+
+		   Expected:
+		       - runAgent completes without returning injection error
+		       - printer.StepWarn called with injection failure message
+		       - No fatal error propagated from injection
+		*/
+		PendingIt("[test_id:TS-GH-51-015] should continue agent run after injection failure", func() {
+			Skip("Phase 1: Design only - awaiting implementation")
+		})
+	})
+
 	Context("when git exclude command fails after successful write", func() {
 		/*
 		   [NEGATIVE]
