@@ -1,0 +1,30 @@
+status: success
+jira_id: GH-44
+verdict: APPROVED_WITH_FINDINGS
+confidence: MEDIUM
+weighted_score: 74
+findings:
+  critical: 0
+  major: 8
+  minor: 5
+  actionable: 13
+  total: 13
+artifacts_reviewed:
+  std_yaml: true
+  go_stubs: true
+  python_stubs: false
+  stp_available: true
+dimension_scores:
+  traceability: null  # not reviewed per request
+  yaml_structure: null  # partial finding noted
+  pattern_matching: null  # not reviewed per request
+  step_quality: 68
+  content_policy: null  # partial finding noted
+  pse_quality: 72
+  codegen_readiness: null  # not reviewed per request
+dimensions_reviewed:
+  - 4  # Test Step Quality
+  - 5  # PSE Docstring Quality
+partial_findings_noted:
+  - dimension: 4.5  # Content Policy - related_prs in metadata
+  - dimension: 2    # YAML Structure - tier value normalization
