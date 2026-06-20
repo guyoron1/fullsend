@@ -1,0 +1,11 @@
+status: success
+jira_id: GH-49
+stp_source: outputs/stp/GH-49/GH-49_test_plan.md
+std_yaml: outputs/std/GH-49/GH-49_test_description.yaml
+test_counts:
+  total: 17
+  tier1: 17
+  tier2: 0
+stubs:
+  go: 17
+  python: 0
