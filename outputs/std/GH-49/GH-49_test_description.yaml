@@ -12,12 +12,6 @@ document_metadata:
     file: "outputs/stp/GH-49/GH-49_test_plan.md"
     version: "v1"
     sections_covered: "Section III - Requirements-to-Tests Mapping"
-  related_prs:
-    - repo: "fullsend-ai/fullsend"
-      pr_number: 2361
-      url: "https://github.com/fullsend-ai/fullsend/pull/2361"
-      title: "Migrate agent slug discovery to harness-first model"
-      merged: false
   total_scenarios: 17
   functional_count: 17
   e2e_count: 0
@@ -65,7 +59,7 @@ common_preconditions:
 scenarios:
   - scenario_id: "001"
     test_id: "TS-GH-49-001"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-49"
@@ -138,6 +132,10 @@ scenarios:
       test_type: "Functional"
       scope: "Single-component"
       automation_approach: "Go unit test with mock forge client"
+
+    patterns:
+      primary: "unit-test-mock"
+      helpers_required: []
 
     specific_preconditions:
       - name: "Mock forge client"
@@ -213,7 +211,7 @@ scenarios:
 
   - scenario_id: "002"
     test_id: "TS-GH-49-002"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-49"
@@ -285,6 +283,10 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Go unit test with mock forge client"
 
+    patterns:
+      primary: "unit-test-mock"
+      helpers_required: []
+
     specific_preconditions:
       - name: "Mock forge client with access tracking"
         requirement: "Mock tracks whether config.yaml agents block was read"
@@ -331,7 +333,7 @@ scenarios:
 
   - scenario_id: "003"
     test_id: "TS-GH-49-003"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-49"
@@ -402,6 +404,10 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Go unit test with mock forge client"
 
+    patterns:
+      primary: "unit-test-mock"
+      helpers_required: []
+
     specific_preconditions:
       - name: "Mock forge client without harness directory"
         requirement: "No harness directory present; config.yaml agents block available"
@@ -454,7 +460,7 @@ scenarios:
 
   - scenario_id: "004"
     test_id: "TS-GH-49-004"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-49"
@@ -526,6 +532,10 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Go unit test with mock forge client"
 
+    patterns:
+      primary: "unit-test-mock"
+      helpers_required: []
+
     specific_preconditions:
       - name: "Harness files without role/slug"
         requirement: "Harness directory exists but files have no role or slug fields"
@@ -568,7 +578,7 @@ scenarios:
 
   - scenario_id: "005"
     test_id: "TS-GH-49-005"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-49"
@@ -637,6 +647,10 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Go unit test with mock forge client"
 
+    patterns:
+      primary: "unit-test-mock"
+      helpers_required: []
+
     specific_preconditions:
       - name: "Empty forge client"
         requirement: "No harness directory; config.yaml has no agents block"
@@ -679,7 +693,7 @@ scenarios:
 
   - scenario_id: "006"
     test_id: "TS-GH-49-006"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-49"
@@ -750,6 +764,10 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Go unit test with mock forge client"
 
+    patterns:
+      primary: "unit-test-mock"
+      helpers_required: []
+
     specific_preconditions:
       - name: "Printer output capture"
         requirement: "Printer output captured to verify deprecation warning"
@@ -791,7 +809,7 @@ scenarios:
 
   - scenario_id: "007"
     test_id: "TS-GH-49-007"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-49"
@@ -859,6 +877,10 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Go unit test with mock forge client"
 
+    patterns:
+      primary: "unit-test-mock"
+      helpers_required: []
+
     specific_preconditions: []
 
     test_data:
@@ -897,7 +919,7 @@ scenarios:
 
   - scenario_id: "008"
     test_id: "TS-GH-49-008"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-49"
@@ -973,6 +995,10 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Go unit test with mock forge client"
 
+    patterns:
+      primary: "unit-test-mock"
+      helpers_required: []
+
     specific_preconditions: []
 
     test_data:
@@ -1024,7 +1050,7 @@ scenarios:
 
   - scenario_id: "009"
     test_id: "TS-GH-49-009"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P2"
     mvp: false
     requirement_id: "GH-49"
@@ -1095,6 +1121,10 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Go unit test with mock forge client"
 
+    patterns:
+      primary: "unit-test-mock"
+      helpers_required: []
+
     specific_preconditions: []
 
     test_data:
@@ -1138,7 +1168,7 @@ scenarios:
 
   - scenario_id: "010"
     test_id: "TS-GH-49-010"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-49"
@@ -1208,6 +1238,10 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Go unit test with mock forge client"
 
+    patterns:
+      primary: "unit-test-mock"
+      helpers_required: []
+
     specific_preconditions: []
 
     test_data:
@@ -1261,7 +1295,7 @@ scenarios:
 
   - scenario_id: "011"
     test_id: "TS-GH-49-011"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P2"
     mvp: false
     requirement_id: "GH-49"
@@ -1331,6 +1365,10 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Go unit test with mock forge client"
 
+    patterns:
+      primary: "unit-test-mock"
+      helpers_required: []
+
     specific_preconditions: []
 
     test_data:
@@ -1369,7 +1407,7 @@ scenarios:
 
   - scenario_id: "012"
     test_id: "TS-GH-49-012"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-49"
@@ -1440,6 +1478,10 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Go unit test with mock forge client"
 
+    patterns:
+      primary: "unit-test-mock"
+      helpers_required: []
+
     specific_preconditions:
       - name: "Mock forge with error map"
         requirement: "Some files configured to return errors on read"
@@ -1494,7 +1536,7 @@ scenarios:
 
   - scenario_id: "013"
     test_id: "TS-GH-49-013"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-49"
@@ -1565,6 +1607,10 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Go unit test with mock forge client"
 
+    patterns:
+      primary: "unit-test-mock"
+      helpers_required: []
+
     specific_preconditions:
       - name: "Hard error on harness discovery"
         requirement: "Mock forge returns error for harness directory listing"
@@ -1602,7 +1648,7 @@ scenarios:
 
   - scenario_id: "014"
     test_id: "TS-GH-49-014"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P2"
     mvp: false
     requirement_id: "GH-49"
@@ -1670,6 +1716,10 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Go unit test with mock forge client"
 
+    patterns:
+      primary: "unit-test-mock"
+      helpers_required: []
+
     specific_preconditions: []
 
     test_data:
@@ -1708,7 +1758,7 @@ scenarios:
 
   - scenario_id: "015"
     test_id: "TS-GH-49-015"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P2"
     mvp: false
     requirement_id: "GH-49"
@@ -1779,6 +1829,10 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Go unit test with mock forge client"
 
+    patterns:
+      primary: "unit-test-mock"
+      helpers_required: []
+
     specific_preconditions: []
 
     test_data:
@@ -1826,7 +1880,7 @@ scenarios:
 
   - scenario_id: "016"
     test_id: "TS-GH-49-016"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-49"
@@ -1898,6 +1952,10 @@ scenarios:
       scope: "Multi-component"
       automation_approach: "Go unit test with mock forge client"
 
+    patterns:
+      primary: "unit-test-mock"
+      helpers_required: []
+
     specific_preconditions:
       - name: "Install setup context"
         requirement: "Install setup function callable with mock dependencies"
@@ -1944,7 +2002,7 @@ scenarios:
 
   - scenario_id: "017"
     test_id: "TS-GH-49-017"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-49"
@@ -2014,6 +2072,10 @@ scenarios:
       test_type: "Functional"
       scope: "Multi-component"
       automation_approach: "Go unit test with mock forge client"
+
+    patterns:
+      primary: "unit-test-mock"
+      helpers_required: []
 
     specific_preconditions:
       - name: "Multiple agents in different app-sets"

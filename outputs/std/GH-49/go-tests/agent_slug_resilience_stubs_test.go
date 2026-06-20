@@ -49,8 +49,8 @@ var _ = Describe("[GH-49] Agent Slug Discovery Resilience", func() {
 		    1. Call agent slug discovery function
 
 		Expected:
-		    - Agents returned from config.yaml despite harness error
-		    - No fatal error propagated to caller
+		    - Agents returned from config.yaml despite harness error (Assert agents match config.yaml entries)
+		    - No fatal error propagated to caller (Assert err == nil)
 		*/
 		PendingIt("[test_id:TS-GH-49-013] should fall back to legacy config.yaml on hard discovery error", func() {
 			Skip("Phase 1: Design only - awaiting implementation")

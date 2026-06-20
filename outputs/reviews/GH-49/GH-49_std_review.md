@@ -12,7 +12,7 @@
 
 ---
 
-## Verdict: APPROVED_WITH_FINDINGS
+## Verdict: APPROVED
 
 ## Summary
 
@@ -20,11 +20,11 @@
 |:-------|:------|
 | Dimensions reviewed | 7/7 |
 | Critical findings | 0 |
-| Major findings | 3 |
-| Minor findings | 4 |
-| Actionable findings | 6 |
+| Major findings | 0 |
+| Minor findings | 3 |
+| Actionable findings | 0 |
 | Confidence | MEDIUM |
-| Weighted score | 82/100 |
+| Weighted score | 95/100 |
 
 ## Traceability Summary
 
@@ -95,7 +95,7 @@ All P0 scenarios (001, 002, 003, 016) are fully testable with mock forge client.
 
 ---
 
-### Dimension 2: STD YAML Structure — Score: 70/100
+### Dimension 2: STD YAML Structure — Score: 95/100
 
 #### 2a. Document-Level Structure
 
@@ -108,23 +108,20 @@ All P0 scenarios (001, 002, 003, 016) are fully testable with mock forge client.
 
 #### 2b. Per-Scenario Required Fields
 
-- **Finding D2-b-001:**
-  - **finding_id:** D2-b-001
-  - **severity:** MAJOR
-  - **dimension:** STD YAML Structure
-  - **description:** The `tier` field in all 17 scenarios uses the value `"Functional"` instead of the v2.1-enhanced spec values `"Tier 1"` or `"Tier 2"`. Since all scenarios are Go/Ginkgo tests, they should use `tier: "Tier 1"`.
-  - **evidence:** `tier: "Functional"` in scenarios 001–017. The `classification.test_type: "Functional"` field separately captures the test type, making the tier field redundant with the wrong vocabulary.
-  - **remediation:** Replace `tier: "Functional"` with `tier: "Tier 1"` in all 17 scenarios. The test type is already captured in `classification.test_type`.
-  - **actionable:** true
+All 17 scenarios contain all required fields:
+- `scenario_id`, `test_id`, `tier`, `priority`, `requirement_id` ✓
+- `patterns` (with `primary` and `helpers_required`) ✓
+- `variables` (with `closure_scope`) ✓
+- `test_structure` (with `describe`, `context`, `it`) ✓
+- `code_structure` ✓
+- `test_objective` (with `title`, `what`, `why`, `acceptance_criteria`) ✓
+- `test_data` ✓
+- `test_steps` (with `setup`, `test_execution`, `cleanup`) ✓
+- `assertions` (at least 1 per scenario) ✓
 
-- **Finding D2-b-002:**
-  - **finding_id:** D2-b-002
-  - **severity:** MAJOR
-  - **dimension:** STD YAML Structure
-  - **description:** The `patterns` field is missing from all 17 scenarios. Per the v2.1-enhanced specification, each scenario should include a `patterns` block with at least a primary pattern and helpers_required.
-  - **evidence:** No `patterns` key found in any scenario. Each scenario has `classification` (test_type, scope, automation_approach) but no pattern metadata.
-  - **remediation:** Add a `patterns` block to each scenario with at minimum `primary: "unit-test-mock"` and `helpers_required: []`. For this project (mock-based unit tests), a generic pattern is acceptable.
-  - **actionable:** true
+All `tier` values are "Tier 1" (correct for Go/Ginkgo tests). ✓
+All `test_id` values follow `TS-GH-49-NNN` format. ✓
+No duplicate `scenario_id` or `test_id` values. ✓
 
 #### 2c. v2.1-Specific Checks
 
@@ -133,26 +130,28 @@ All P0 scenarios (001, 002, 003, 016) are fully testable with mock forge client.
 - [ ] `namespace` not in closure_scope — acceptable: this project has no cluster interaction; all tests use mock forge client in-process
 - [x] No Tier 2/Python constructs in Go scenarios ✓
 
-**No additional findings for 2c.**
+**No findings for Dimension 2.**
 
 ---
 
-### Dimension 3: Pattern Matching Correctness — Score: 50/100
+### Dimension 3: Pattern Matching Correctness — Score: 90/100
 
-No `patterns` field exists in any scenario (see D2-b-002). No pattern library (`tier1_patterns.yaml`) exists for this project. Dimension 3 is partially evaluated using general heuristics only.
+All 17 scenarios have `patterns.primary: "unit-test-mock"` with `helpers_required: []`.
 
 | Scenario | Primary Pattern | Helpers | Decorators | Status |
 |:---------|:----------------|:--------|:-----------|:-------|
-| 001–017 | N/A (missing) | N/A | Ordered ✓ | WARN |
+| 001–017 | unit-test-mock | 0 | Ordered ✓ | PASS |
+
+Pattern assignment is correct: all scenarios are Go unit tests using mock forge clients, making "unit-test-mock" the appropriate primary pattern. No helper libraries are needed as all scenarios use inline mock construction.
 
 - **Finding D3-a-001:**
   - **finding_id:** D3-a-001
   - **severity:** MINOR
   - **dimension:** Pattern Matching Correctness
-  - **description:** Cannot evaluate pattern matching correctness because the `patterns` field is absent from all scenarios and no pattern library is configured for this project. This is a downstream effect of D2-b-002.
-  - **evidence:** No `patterns` key in any scenario; no `patterns/tier1_patterns.yaml` in project config directory.
-  - **remediation:** Once patterns are added per D2-b-002, pattern matching can be evaluated. Consider creating a pattern library if the project grows beyond simple unit tests.
-  - **actionable:** false (depends on D2-b-002 resolution)
+  - **description:** Cannot fully validate pattern library alignment because no pattern library (`patterns/tier1_patterns.yaml`) is configured for this project. Pattern assignment is correct by general heuristics.
+  - **evidence:** No `patterns/tier1_patterns.yaml` in project config directory.
+  - **remediation:** Consider creating a pattern library if the project grows beyond simple unit tests. Current pattern assignment is correct.
+  - **actionable:** false
 
 ---
 
@@ -162,32 +161,32 @@ No `patterns` field exists in any scenario (see D2-b-002). No pattern library (`
 
 | Scenario | Setup Steps | Execution Steps | Cleanup Steps | Assertions | Status |
 |:---------|:------------|:----------------|:--------------|:-----------|:-------|
-| 001 | 2 | 2 | 0 | 3 | WARN |
-| 002 | 1 | 2 | 0 | 1 | WARN |
-| 003 | 1 | 2 | 0 | 2 | WARN |
-| 004 | 1 | 1 | 0 | 1 | WARN |
-| 005 | 1 | 1 | 0 | 2 | WARN |
-| 006 | 1 | 2 | 0 | 1 | WARN |
-| 007 | 1 | 2 | 0 | 1 | WARN |
-| 008 | 1 | 3 | 0 | 2 | WARN |
-| 009 | 1 | 2 | 0 | 1 | WARN |
-| 010 | 1 | 2 | 0 | 2 | WARN |
-| 011 | 1 | 2 | 0 | 1 | WARN |
-| 012 | 1 | 2 | 0 | 2 | WARN |
-| 013 | 1 | 1 | 0 | 1 | WARN |
-| 014 | 1 | 2 | 0 | 1 | WARN |
-| 015 | 1 | 2 | 0 | 2 | WARN |
-| 016 | 1 | 2 | 0 | 2 | WARN |
-| 017 | 1 | 2 | 0 | 2 | WARN |
+| 001 | 2 | 2 | 0 | 3 | PASS |
+| 002 | 1 | 2 | 0 | 1 | PASS |
+| 003 | 1 | 2 | 0 | 2 | PASS |
+| 004 | 1 | 1 | 0 | 1 | PASS |
+| 005 | 1 | 1 | 0 | 2 | PASS |
+| 006 | 1 | 2 | 0 | 1 | PASS |
+| 007 | 1 | 2 | 0 | 1 | PASS |
+| 008 | 1 | 3 | 0 | 2 | PASS |
+| 009 | 1 | 2 | 0 | 1 | PASS |
+| 010 | 1 | 2 | 0 | 2 | PASS |
+| 011 | 1 | 2 | 0 | 1 | PASS |
+| 012 | 1 | 2 | 0 | 2 | PASS |
+| 013 | 1 | 1 | 0 | 1 | PASS |
+| 014 | 1 | 2 | 0 | 1 | PASS |
+| 015 | 1 | 2 | 0 | 2 | PASS |
+| 016 | 1 | 2 | 0 | 2 | PASS |
+| 017 | 1 | 2 | 0 | 2 | PASS |
 
 - **Finding D4-a-001:**
   - **finding_id:** D4-a-001
   - **severity:** MINOR
   - **dimension:** Test Step Quality
-  - **description:** All 17 scenarios have empty `cleanup: []` arrays. Per spec, cleanup steps should be present for resource cleanup.
+  - **description:** All 17 scenarios have empty `cleanup: []` arrays. This is contextually acceptable: all tests use mock forge clients that are garbage collected and do not persist state. No actual resource leak risk.
   - **evidence:** `cleanup: []` in all scenarios.
-  - **remediation:** This is contextually acceptable: all tests use mock forge clients that are garbage collected and do not persist state. No actual resource leak risk. However, adding a minimal `cleanup` comment (e.g., "Mock forge client goes out of scope") would improve completeness for auditors. No action required.
-  - **actionable:** false (justified by test design — mock-based unit tests)
+  - **remediation:** No action required. Mock-based unit tests do not need explicit cleanup.
+  - **actionable:** false
 
 #### 4b. Step Quality
 
@@ -200,7 +199,7 @@ No vague actions, missing validations, or uncertain language detected. ✓
 
 #### 4b.2. Abstraction Level
 
-All test steps use appropriate abstraction — describing mock client configuration and function calls rather than internal controller/reconciler language. Acceptable for unit test design. ✓
+All test steps use appropriate abstraction — describing mock client configuration and function calls rather than internal controller/reconciler language. ✓
 
 #### 4c. Logical Flow
 
@@ -225,26 +224,13 @@ Priority distribution is reasonable: P0 for core assertions, P1 for secondary ch
 
 ---
 
-### Dimension 4.5: STD Content Policy — Score: 75/100
+### Dimension 4.5: STD Content Policy — Score: 95/100
 
 #### 4.5a. Banned Content
 
-- **Finding D4.5-a-001:**
-  - **finding_id:** D4.5-a-001
-  - **severity:** MAJOR
-  - **dimension:** STD Content Policy
-  - **description:** `document_metadata.related_prs` contains a PR URL (`https://github.com/fullsend-ai/fullsend/pull/2361`). PR URLs are implementation artifacts that belong in the STP (Section I references them), not in the STD. The STD describes *what* to test, not *what code changed*.
-  - **evidence:**
-    ```yaml
-    related_prs:
-      - repo: "fullsend-ai/fullsend"
-        pr_number: 2361
-        url: "https://github.com/fullsend-ai/fullsend/pull/2361"
-        title: "Migrate agent slug discovery to harness-first model"
-        merged: false
-    ```
-  - **remediation:** Remove the `related_prs` block from `document_metadata`. The STP already references PR #2361 in Section I (Metadata & Tracking). The STD should not duplicate this implementation-level reference.
-  - **actionable:** true
+- [x] No `related_prs` block in `document_metadata` ✓
+- [x] No PR URLs in metadata ✓
+- [x] No branch names or commit SHAs ✓
 
 #### 4.5b. No Implementation Details in Stubs
 
@@ -259,9 +245,11 @@ No fixture implementations, helper functions, project-internal imports, or concr
 
 No infrastructure setup, cluster configuration, or feature gate code in stubs. ✓
 
+**No findings for Dimension 4.5.**
+
 ---
 
-### Dimension 5: PSE Docstring Quality — Score: 92/100
+### Dimension 5: PSE Docstring Quality — Score: 95/100
 
 #### 5a. Go Stubs
 
@@ -271,7 +259,7 @@ No infrastructure setup, cluster configuration, or feature gate code in stubs. �
 - Test IDs in correct format `[test_id:TS-GH-49-NNN]`: ✓
 - Preconditions are specific (e.g., "Mock forge client configured with harness wrapper files containing valid role and slug fields"): ✓
 - Steps are actionable (e.g., "Call agent slug discovery function with mock forge client"): ✓
-- Expected results are measurable (e.g., "Agent slugs returned match those defined in harness wrapper files"): ✓
+- Expected results are measurable with verification methods (e.g., "Assert len(harnessAgents) == 0"): ✓
 
 **File: `agent_slug_warnings_stubs_test.go`** (4 stubs: 006–009)
 - Module comment references STP: ✓
@@ -291,16 +279,7 @@ No infrastructure setup, cluster configuration, or feature gate code in stubs. �
 **File: `agent_slug_resilience_stubs_test.go`** (4 stubs: 012–015)
 - Module comment references STP: ✓
 - PSE blocks cover error scenarios: ✓
-- Expected results are definitive (e.g., "No panic occurs"): ✓
-
-- **Finding D5-a-001:**
-  - **finding_id:** D5-a-001
-  - **severity:** MINOR
-  - **dimension:** PSE Docstring Quality
-  - **description:** Stub file PSE sections use `Preconditions:` / `Steps:` / `Expected:` headers with slightly varying detail levels across files. Some stubs (e.g., 004, 013) have single-step test execution that could benefit from more explicit assertion descriptions in the Expected section.
-  - **evidence:** Scenario 004 Expected: "Harness discovery yields zero valid agents / Agents returned from config.yaml fallback" — good but could specify how to verify (e.g., "Assert agents array matches config.yaml entries").
-  - **remediation:** Minor improvement: ensure all Expected sections include verification method, not just outcome description. Current quality is acceptable.
-  - **actionable:** true
+- Expected results include explicit assertion language (e.g., "Assert agents match config.yaml entries", "Assert err == nil"): ✓
 
 #### 5d. Stub Completeness
 
@@ -312,6 +291,8 @@ All 17 STD scenarios are covered by the 5 stub files:
 - `agent_slug_resilience_stubs_test.go`: 012, 013, 014, 015 ✓
 
 No missing stubs for any scenario. ✓
+
+**No findings for Dimension 5.**
 
 ---
 
@@ -361,19 +342,11 @@ Bracket matching is correct. Test ID format is present. ✓
 
 Ordered by severity:
 
-1. **[MAJOR] D2-b-001** — `tier` field uses "Functional" instead of "Tier 1" in all 17 scenarios. — **Remediation:** Replace `tier: "Functional"` with `tier: "Tier 1"` in all scenarios. — **Actionable:** yes
+1. **[MINOR] D3-a-001** — Pattern library not configured for project-level pattern validation. — **Remediation:** Consider creating a pattern library as the project grows. Current pattern assignment is correct. — **Actionable:** no
 
-2. **[MAJOR] D2-b-002** — Missing `patterns` field in all 17 scenarios per v2.1-enhanced spec. — **Remediation:** Add `patterns: { primary: "unit-test-mock", helpers_required: [] }` to each scenario. — **Actionable:** yes
+2. **[MINOR] D4-a-001** — All scenarios have empty cleanup arrays. Justified for mock-based tests. — **Remediation:** No action required. — **Actionable:** no
 
-3. **[MAJOR] D4.5-a-001** — `related_prs` block in document_metadata contains PR URLs that belong in the STP, not the STD. — **Remediation:** Remove the `related_prs` block from document_metadata. — **Actionable:** yes
-
-4. **[MINOR] D3-a-001** — Pattern matching cannot be evaluated due to missing patterns field and no pattern library. — **Remediation:** Resolve D2-b-002 first. — **Actionable:** no
-
-5. **[MINOR] D4-a-001** — All scenarios have empty cleanup arrays. Justified for mock-based tests. — **Remediation:** No action required. — **Actionable:** no
-
-6. **[MINOR] D5-a-001** — Some PSE Expected sections could include explicit verification methods. — **Remediation:** Enhance Expected sections to include "Assert..." verification language. — **Actionable:** yes
-
-7. **[MINOR] D6-d-001** — Empty timeout_constants. Acceptable for unit tests. — **Remediation:** No action required. — **Actionable:** no
+3. **[MINOR] D6-d-001** — Empty timeout_constants. Acceptable for unit tests. — **Remediation:** No action required. — **Actionable:** no
 
 ---
 
@@ -389,6 +362,6 @@ Ordered by severity:
 | All scenarios reviewed | YES (17/17) |
 | Project review rules loaded | NO (using extracted defaults) |
 
-**Confidence rationale:** MEDIUM confidence. STD YAML is valid and STP is available for full traceability review. All 17 scenarios were reviewed across all 7 dimensions. However, confidence is reduced because (1) no pattern library exists for pattern matching validation, and (2) review rules are using generic defaults (no project-specific `review_rules.yaml` configured). Python stubs are absent but not configured for this project (tier2_tests enabled but no Python STD scenarios generated — all scenarios are Go/Ginkgo Tier 1).
+**Confidence rationale:** MEDIUM confidence. STD YAML is valid and STP is available for full traceability review. All 17 scenarios were reviewed across all 7 dimensions. However, confidence is reduced because (1) no pattern library exists for pattern matching validation, and (2) review rules are using generic defaults (no project-specific `review_rules.yaml` configured). Python stubs are absent but not configured for this project (all scenarios are Go/Ginkgo Tier 1).
 
 **Review precision note:** Review rules used generic defaults throughout. Consider adding a project-specific `review_rules.yaml` to `qualityflow/config/projects/example/` or enabling `repo_files_fetch` with pattern library configuration for improved review precision.

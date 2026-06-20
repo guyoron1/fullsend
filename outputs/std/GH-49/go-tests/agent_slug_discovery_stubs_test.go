@@ -84,8 +84,8 @@ var _ = Describe("[GH-49] Agent Slug Discovery", func() {
 		    1. Call agent slug discovery function
 
 		Expected:
-		    - Harness discovery yields zero valid agents
-		    - Agents returned from config.yaml fallback
+		    - Harness discovery yields zero valid agents (Assert len(harnessAgents) == 0)
+		    - Agents returned from config.yaml fallback (Assert agents match config.yaml entries)
 		*/
 		PendingIt("[test_id:TS-GH-49-004] should fall back to config.yaml when harness files contain no role/slug fields", func() {
 			Skip("Phase 1: Design only - awaiting implementation")
