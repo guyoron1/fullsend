@@ -1,0 +1,9 @@
+status: success
+jira_id: GH-49
+file_path: /sandbox/workspace/output/GH-49_test_plan.md
+test_counts:
+  functional: 17
+  end_to_end: 0
+  tier1: 17
+  tier2: 0
+  total: 17
