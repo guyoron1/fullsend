@@ -13,15 +13,9 @@ document_metadata:
     file: "outputs/stp/GH-44/GH-44_test_plan.md"
     version: "v1"
     sections_covered: "Section III - Requirements-to-Tests Mapping"
-  related_prs:
-    - repo: "guyoron1/fullsend"
-      pr_number: 52
-      url: "https://github.com/guyoron1/fullsend/pull/52"
-      title: "Add post-reset spread to CSMA rate-limit backoff"
-      merged: false
   total_scenarios: 13
-  functional_count: 13
-  e2e_count: 0
+  tier_1_count: 13
+  tier_2_count: 0
   p0_count: 6
   p1_count: 5
   p2_count: 2
@@ -69,7 +63,7 @@ common_preconditions:
 scenarios:
   - scenario_id: "001"
     test_id: "TS-GH-44-001"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-44"
@@ -134,6 +128,11 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Shell-based mock tests"
 
+    patterns:
+      primary_pattern: "mock-and-verify"
+      helpers_required:
+        - "shell-mock-harness"
+
     specific_preconditions:
       - name: "GITHUB_CSMA_SPREAD_MAX_SEC set"
         requirement: "Set to a small value (e.g., 10) for deterministic bounded testing"
@@ -191,7 +190,7 @@ scenarios:
 
   - scenario_id: "002"
     test_id: "TS-GH-44-002"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-44"
@@ -248,6 +247,11 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Shell-based mock tests"
 
+    patterns:
+      primary_pattern: "mock-and-verify"
+      helpers_required:
+        - "shell-mock-harness"
+
     specific_preconditions:
       - name: "GITHUB_CSMA_SPREAD_MAX_SEC=0"
         requirement: "Explicitly set to 0 to disable spread"
@@ -301,7 +305,7 @@ scenarios:
 
   - scenario_id: "003"
     test_id: "TS-GH-44-003"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-44"
@@ -363,6 +367,11 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Shell-based mock tests"
 
+    patterns:
+      primary_pattern: "boundary-validation"
+      helpers_required:
+        - "shell-mock-harness"
+
     specific_preconditions:
       - name: "GITHUB_CSMA_SPREAD_MAX_SEC set to custom value"
         requirement: "Set to 5 for bounded testing"
@@ -384,8 +393,8 @@ scenarios:
           command: "for i in $(seq 1 20); do _github_csma_post_reset_spread; done"
           validation: "20 spread values collected"
         - step_id: "TEST-02"
-          action: "Verify all collected spread values are within [0, 5]"
-          command: "Check each value against bounds"
+          action: "Compare each collected spread value against configured bounds [0, 5]"
+          command: "Assert each value >= 0 and <= GITHUB_CSMA_SPREAD_MAX_SEC"
           validation: "All values satisfy 0 <= value <= 5"
       cleanup:
         - step_id: "CLEANUP-01"
@@ -412,7 +421,7 @@ scenarios:
 
   - scenario_id: "004"
     test_id: "TS-GH-44-004"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P2"
     mvp: false
     requirement_id: "GH-44"
@@ -468,6 +477,11 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Shell-based mock tests"
 
+    patterns:
+      primary_pattern: "edge-case-validation"
+      helpers_required:
+        - "shell-mock-harness"
+
     specific_preconditions:
       - name: "RANDOM override"
         requirement: "Mock or override $RANDOM to return 0"
@@ -512,7 +526,7 @@ scenarios:
 
   - scenario_id: "005"
     test_id: "TS-GH-44-005"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-44"
@@ -571,6 +585,11 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Shell-based mock tests"
 
+    patterns:
+      primary_pattern: "integration-verification"
+      helpers_required:
+        - "shell-mock-harness"
+
     specific_preconditions:
       - name: "Rate limit condition"
         requirement: "gh api rate_limit returns remaining=0 with near-future reset"
@@ -600,7 +619,7 @@ scenarios:
           command: "github_csma_sense 2>stderr.log"
           validation: "Function completes"
         - step_id: "TEST-02"
-          action: "Verify stderr contains spread sleep message"
+          action: "Search stderr output for spread sleep log message pattern"
           command: "grep 'Post-reset spread' stderr.log"
           validation: "Spread message found in stderr"
       cleanup:
@@ -623,7 +642,7 @@ scenarios:
 
   - scenario_id: "006"
     test_id: "TS-GH-44-006"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-44"
@@ -682,6 +701,11 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Shell-based mock tests"
 
+    patterns:
+      primary_pattern: "integration-verification"
+      helpers_required:
+        - "shell-mock-harness"
+
     specific_preconditions:
       - name: "Rate limit 429 response"
         requirement: "gh api returns 429 with x-ratelimit-reset header"
@@ -711,7 +735,7 @@ scenarios:
           command: "_github_csma_sleep_after_rate_limit 2>stderr.log"
           validation: "Function completes"
         - step_id: "TEST-02"
-          action: "Verify stderr contains spread sleep message"
+          action: "Search stderr output for spread sleep log message pattern"
           command: "grep 'Post-reset spread' stderr.log"
           validation: "Spread message found"
       cleanup:
@@ -734,7 +758,7 @@ scenarios:
 
   - scenario_id: "007"
     test_id: "TS-GH-44-007"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-44"
@@ -794,6 +818,11 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Shell-based mock tests"
 
+    patterns:
+      primary_pattern: "boundary-validation"
+      helpers_required:
+        - "shell-mock-harness"
+
     specific_preconditions:
       - name: "Custom SPREAD_MAX_SEC"
         requirement: "Set to non-default value (e.g., 3)"
@@ -815,8 +844,8 @@ scenarios:
           command: "for i in $(seq 1 20); do _github_csma_post_reset_spread; done"
           validation: "20 values collected"
         - step_id: "TEST-02"
-          action: "Verify all values are within [0, 3]"
-          command: "Assert max(values) <= 3"
+          action: "Compare each collected value against configured bounds [0, 3]"
+          command: "Assert each value >= 0 and <= GITHUB_CSMA_SPREAD_MAX_SEC"
           validation: "All values bounded"
       cleanup:
         - step_id: "CLEANUP-01"
@@ -838,7 +867,7 @@ scenarios:
 
   - scenario_id: "008"
     test_id: "TS-GH-44-008"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-44"
@@ -891,6 +920,11 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Shell-based mock tests"
 
+    patterns:
+      primary_pattern: "regression-validation"
+      helpers_required:
+        - "post-prioritize-test-harness"
+
     specific_preconditions: []
 
     test_data:
@@ -908,7 +942,10 @@ scenarios:
           action: "Run happy-path test scenario from post-prioritize-test.sh"
           command: "bash post-prioritize-test.sh happy-path"
           validation: "Test exits with code 0"
-      cleanup: []
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Ensure mock gh is removed and original PATH restored"
+          command: "rm -f /tmp/mock_gh; export PATH=\"$ORIGINAL_PATH\""
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -925,7 +962,7 @@ scenarios:
 
   - scenario_id: "009"
     test_id: "TS-GH-44-009"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-44"
@@ -977,6 +1014,11 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Shell-based mock tests"
 
+    patterns:
+      primary_pattern: "regression-validation"
+      helpers_required:
+        - "post-prioritize-test-harness"
+
     specific_preconditions: []
 
     test_data:
@@ -998,7 +1040,10 @@ scenarios:
           action: "Run rate-limit-retry test scenario"
           command: "bash post-prioritize-test.sh rate-limit-retry"
           validation: "Test exits with code 0"
-      cleanup: []
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Ensure mock gh is removed and original PATH restored"
+          command: "rm -f /tmp/mock_gh; export PATH=\"$ORIGINAL_PATH\""
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -1015,7 +1060,7 @@ scenarios:
 
   - scenario_id: "010"
     test_id: "TS-GH-44-010"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-44"
@@ -1073,6 +1118,11 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Shell-based mock tests"
 
+    patterns:
+      primary_pattern: "regression-validation"
+      helpers_required:
+        - "post-prioritize-test-harness"
+
     specific_preconditions: []
 
     test_data:
@@ -1091,10 +1141,13 @@ scenarios:
           command: "bash post-prioritize-test.sh exhausted-retries"
           validation: "Test exits with non-zero code"
         - step_id: "TEST-02"
-          action: "Verify error message present in stderr"
-          command: "Capture and check stderr output"
+          action: "Search stderr output for exhausted-retries error message"
+          command: "grep 'retries exhausted' stderr.log"
           validation: "Error message present"
-      cleanup: []
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Ensure mock gh is removed and original PATH restored"
+          command: "rm -f /tmp/mock_gh; export PATH=\"$ORIGINAL_PATH\""
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -1116,7 +1169,7 @@ scenarios:
 
   - scenario_id: "011"
     test_id: "TS-GH-44-011"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-44"
@@ -1170,6 +1223,11 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Shell-based mock tests"
 
+    patterns:
+      primary_pattern: "regression-validation"
+      helpers_required:
+        - "post-prioritize-test-harness"
+
     specific_preconditions: []
 
     test_data:
@@ -1187,7 +1245,10 @@ scenarios:
           action: "Run exit-0-rate-limit test scenario"
           command: "bash post-prioritize-test.sh exit0-rate-limit"
           validation: "Test exits with code 0 after retry"
-      cleanup: []
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Ensure mock gh is removed and original PATH restored"
+          command: "rm -f /tmp/mock_gh; export PATH=\"$ORIGINAL_PATH\""
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -1204,7 +1265,7 @@ scenarios:
 
   - scenario_id: "012"
     test_id: "TS-GH-44-012"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-44"
@@ -1268,6 +1329,12 @@ scenarios:
       scope: "Single-component"
       automation_approach: "Shell-based mock tests"
 
+    patterns:
+      primary_pattern: "concurrency-validation"
+      helpers_required:
+        - "shell-mock-harness"
+        - "parallel-subshell-harness"
+
     specific_preconditions:
       - name: "GITHUB_CSMA_SPREAD_MAX_SEC set"
         requirement: "Set to 10 for reasonable spread range"
@@ -1321,7 +1388,7 @@ scenarios:
 
   - scenario_id: "013"
     test_id: "TS-GH-44-013"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P2"
     mvp: false
     requirement_id: "GH-44"
@@ -1377,6 +1444,12 @@ scenarios:
       test_type: "Functional"
       scope: "Single-component"
       automation_approach: "Shell-based mock tests"
+
+    patterns:
+      primary_pattern: "concurrency-validation"
+      helpers_required:
+        - "shell-mock-harness"
+        - "parallel-subshell-harness"
 
     specific_preconditions:
       - name: "GITHUB_CSMA_SPREAD_MAX_SEC=0"

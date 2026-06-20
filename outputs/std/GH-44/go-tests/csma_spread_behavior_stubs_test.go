@@ -2,6 +2,7 @@ package tests
 
 import (
 	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
 /*
@@ -68,7 +69,7 @@ var _ = Describe("[GH-44] CSMA post-reset spread", func() {
 
 		Steps:
 		    1. Run _github_csma_post_reset_spread 20 times and collect spread values
-		    2. Verify all collected spread values are within [0, 5]
+		    2. Compare each collected spread value against configured bounds [0, 5]
 
 		Expected:
 		    - All generated spread values are >= 0
@@ -90,7 +91,7 @@ var _ = Describe("[GH-44] CSMA post-reset spread", func() {
 
 		Expected:
 		    - Spread delay is 0 when RANDOM is 0
-		    - No sleep command issued for 0-second spread
+		    - No sleep command issued for 0-second spread, confirmed by mock sleep call count being zero
 		*/
 		PendingIt("[test_id:TS-GH-44-004] should not add extra sleep time", func() {
 			Skip("Phase 1: Design only - awaiting implementation")

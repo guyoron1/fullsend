@@ -2,6 +2,7 @@ package tests
 
 import (
 	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
 /*
@@ -30,7 +31,7 @@ var _ = Describe("[GH-44] CSMA shared spread helper", func() {
 
 		Steps:
 		    1. Call github_csma_sense and capture stderr
-		    2. Check stderr for spread sleep message
+		    2. Search stderr output for spread sleep log message pattern
 
 		Expected:
 		    - github_csma_sense applies spread delay when rate limit detected
@@ -50,7 +51,7 @@ var _ = Describe("[GH-44] CSMA shared spread helper", func() {
 
 		Steps:
 		    1. Call _github_csma_sleep_after_rate_limit and capture stderr
-		    2. Check stderr for spread sleep message
+		    2. Search stderr output for spread sleep log message pattern
 
 		Expected:
 		    - _github_csma_sleep_after_rate_limit applies spread delay
@@ -69,7 +70,7 @@ var _ = Describe("[GH-44] CSMA shared spread helper", func() {
 
 		Steps:
 		    1. Run _github_csma_post_reset_spread 20 times and collect values
-		    2. Verify all values are within [0, 3]
+		    2. Compare each collected value against configured bounds [0, 3]
 
 		Expected:
 		    - Spread delay does not exceed custom SPREAD_MAX_SEC value
