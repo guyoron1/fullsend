@@ -1,14 +1,14 @@
-# STD Review Report: GH-44 (Dimensions 4 & 5 Focus)
+# STD Review Report: GH-44
 
 **Reviewed:**
-- STD YAML: outputs/std/GH-44/GH-44_test_description.yaml
-- STP Source: outputs/stp/GH-44/GH-44_test_plan.md
-- Go Stubs: outputs/std/GH-44/go-tests/ (4 files)
+- STD YAML: `outputs/std/GH-44/GH-44_test_description.yaml`
+- STP Source: `outputs/stp/GH-44/GH-44_test_plan.md`
+- Go Stubs: `outputs/std/GH-44/go-tests/` (4 files)
 - Python Stubs: N/A
 
 **Date:** 2026-06-20
 **Reviewer:** QualityFlow Automated Review (v1.1.0)
-**Review Rules Schema:** N/A (default project, no custom review_rules.yaml)
+**Review Rules Schema:** N/A (defaults-only extraction)
 
 ---
 
@@ -18,21 +18,100 @@
 
 | Metric | Value |
 |:-------|:------|
-| Dimensions reviewed | 2/7 (Dimensions 4 and 5 per request) |
+| Dimensions reviewed | 7/7 |
 | Critical findings | 0 |
-| Major findings | 8 |
-| Minor findings | 5 |
-| Actionable findings | 13 |
+| Major findings | 7 |
+| Minor findings | 3 |
+| Actionable findings | 10 |
 | Confidence | MEDIUM |
-| Weighted score | 74 |
+| Weighted score | 78/100 |
+
+## Traceability Summary
+
+| Metric | Value |
+|:-------|:------|
+| STP scenarios | 13 |
+| STD scenarios | 13 |
+| Forward coverage (STP→STD) | 13/13 (100%) |
+| Reverse coverage (STD→STP) | 13/13 (100%) |
+| Orphan STD scenarios | 0 |
+| Missing STD scenarios | 0 |
 
 ---
 
 ## Findings by Dimension
 
-### Dimension 4: Test Step Quality (Weight: 15%)
+### Dimension 1: STP-STD Traceability (Weight: 30%) — Score: 100/100
 
-**Scenario Step Summary**
+Full bidirectional traceability confirmed. All 13 STP scenarios map to STD scenarios with matching requirement IDs and consistent requirement summaries.
+
+**Forward Traceability Matrix:**
+
+| STP Requirement Group | STP Scenarios | STD Match | Status |
+|:----------------------|:--------------|:----------|:-------|
+| Post-reset spread desynchronizes runners | TS-001, 002, 003, 004 | 001, 002, 003, 004 | PASS |
+| Shared helper consolidates spread logic | TS-005, 006, 007 | 005, 006, 007 | PASS |
+| Existing CSMA retry preserved | TS-008, 009, 010, 011 | 008, 009, 010, 011 | PASS |
+| Concurrent runners staggered wake | TS-012, 013 | 012, 013 | PASS |
+
+**Metadata Count Verification (Zero-Trust):**
+
+| Field | Claimed | Actual | Match |
+|:------|:--------|:-------|:------|
+| total_scenarios | 13 | 13 | PASS |
+| functional_count | 13 | 13 | PASS |
+| e2e_count | 0 | 0 | PASS |
+| p0_count | 6 | 6 | PASS |
+| p1_count | 5 | 5 | PASS |
+| p2_count | 2 | 2 | PASS |
+
+No findings in this dimension.
+
+---
+
+### Dimension 2: STD YAML Structure (Weight: 20%) — Score: 70/100
+
+#### Finding D2-2b-001: Incorrect Tier Values
+
+| Field | Value |
+|:------|:------|
+| **Finding ID** | D2-2b-001 |
+| **Severity** | MAJOR |
+| **Dimension** | STD YAML Structure |
+| **Description** | All 13 scenarios use `tier: "Functional"` instead of the v2.1-enhanced expected values `"Tier 1"` or `"Tier 2"`. The metadata also uses `functional_count`/`e2e_count` instead of `tier_1_count`/`tier_2_count`. |
+| **Evidence** | `tier: "Functional"` across all 13 scenarios; `document_metadata.functional_count: 13` |
+| **Remediation** | Change `tier: "Functional"` to `tier: "Tier 1"` across all scenarios. Update metadata field names to `tier_1_count`/`tier_2_count`. |
+| **Actionable** | Yes |
+
+#### Finding D2-2b-002: Missing `patterns` Field
+
+| Field | Value |
+|:------|:------|
+| **Finding ID** | D2-2b-002 |
+| **Severity** | MAJOR |
+| **Dimension** | STD YAML Structure |
+| **Description** | All scenarios use a `classification` field with `test_type`, `scope`, and `automation_approach` sub-fields instead of the required `patterns` field with `primary_pattern` and `helpers_required` sub-fields per v2.1-enhanced spec. |
+| **Evidence** | `classification: { test_type: "Functional", scope: "Single-component", automation_approach: "Shell-based mock tests" }` present; `patterns` field absent |
+| **Remediation** | Add a `patterns` section to each scenario with `primary_pattern` and `helpers_required` sub-fields. The `classification` field may be retained as supplementary metadata if desired. |
+| **Actionable** | Yes |
+
+---
+
+### Dimension 3: Pattern Matching Correctness (Weight: 10%) — Score: 50/100
+
+Pattern matching cannot be fully assessed because the `patterns` field is absent from all scenarios (see D2-2b-002). The `classification` field provides some metadata (`test_type`, `scope`, `automation_approach`) but does not include primary pattern IDs or helper library mappings.
+
+No pattern library exists at `qualityflow/config/projects/example/patterns/tier1_patterns.yaml`.
+
+| Scenario | Primary Pattern | Helpers | Decorators | Status |
+|:---------|:----------------|:--------|:-----------|:-------|
+| 001-013 | N/A (field missing) | N/A | Ordered | WARN |
+
+No additional findings beyond D2-2b-002 which covers the structural gap.
+
+---
+
+### Dimension 4: Test Step Quality (Weight: 15%) — Score: 68/100
 
 | Scenario | Setup | Execution | Cleanup | Assertions | Status |
 |:---------|:------|:----------|:--------|:-----------|:-------|
@@ -50,189 +129,160 @@
 | 012 | 2 | 2 | 1 | 2 | PASS |
 | 013 | 2 | 2 | 1 | 1 | PASS |
 
-#### Finding D4-4a-001
+#### Finding D4-4a-001: Missing Cleanup Steps in Regression Scenarios
 
-- **finding_id:** D4-4a-001
-- **severity:** MAJOR
-- **dimension:** Test Step Quality
-- **description:** Scenarios 008, 009, 010, and 011 have empty cleanup arrays (`cleanup: []`). These regression scenarios set environment state in setup (unsetting `GITHUB_CSMA_SPREAD_MAX_SEC`) but do not clean up any mock harness state or verify the environment is restored.
-- **evidence:** Scenario 008 `cleanup: []`, Scenario 009 `cleanup: []`, Scenario 010 `cleanup: []`, Scenario 011 `cleanup: []`. All four regression test scenarios delegate execution to `post-prioritize-test.sh` which may leave mock state behind.
-- **remediation:** Add cleanup steps to each regression scenario that restore the environment to a known-clean state. At minimum: `CLEANUP-01: Reset mock framework state` and `CLEANUP-02: Verify no leftover temp files from test harness`. Even if the harness cleans up internally, the STD should document the cleanup expectation.
-- **actionable:** true
+| Field | Value |
+|:------|:------|
+| **Finding ID** | D4-4a-001 |
+| **Severity** | MAJOR |
+| **Dimension** | Test Step Quality |
+| **Description** | Scenarios 008, 009, 010, and 011 (CSMA regression tests) have empty cleanup arrays (`cleanup: []`). Even though they delegate execution to `post-prioritize-test.sh`, the STD should document cleanup expectations for mock harness state, environment variables, and temporary files. |
+| **Evidence** | `cleanup: []` in scenarios 008, 009, 010, 011 |
+| **Remediation** | Add cleanup steps to reset mock harness state and clean up any temporary files created by the test harness. At minimum: `"Ensure mock gh is removed and original PATH restored"`. |
+| **Actionable** | Yes |
 
-#### Finding D4-4b-002
+#### Finding D4-4b-001: "Verify" Used as Test Execution Action
 
-- **finding_id:** D4-4b-002
-- **severity:** MAJOR
-- **dimension:** Test Step Quality
-- **description:** Scenario 003 test_execution step TEST-02 uses "Verify" as the action verb: `"Verify all collected spread values are within [0, 5]"`. Verification belongs in assertions, not in test_execution steps. Test execution steps should describe actions the test performs, not verification logic.
-- **evidence:** Scenario 003, `test_steps.test_execution[1].action: "Verify all collected spread values are within [0, 5]"`, step_id TEST-02.
-- **remediation:** Reclassify this step. The action should be an assertion check, not a test execution step. Either: (a) move the verification logic into an assertion entry, or (b) rephrase the step as an action: `"Compare each collected spread value against configured bounds [0, 5]"` and keep the verification semantics in the assertion ASSERT-01/ASSERT-02.
-- **actionable:** true
-
-#### Finding D4-4b-003
-
-- **finding_id:** D4-4b-003
-- **severity:** MAJOR
-- **dimension:** Test Step Quality
-- **description:** Scenario 007 test_execution step TEST-02 uses "Verify" as the action verb: `"Verify all values are within [0, 3]"`. Same classification issue as D4-4b-002.
-- **evidence:** Scenario 007, `test_steps.test_execution[1].action: "Verify all values are within [0, 3]"`, step_id TEST-02.
-- **remediation:** Rephrase to an action: `"Compare each collected spread value against configured bounds [0, 3]"` or move to assertions.
-- **actionable:** true
-
-#### Finding D4-4b-004
-
-- **finding_id:** D4-4b-004
-- **severity:** MAJOR
-- **dimension:** Test Step Quality
-- **description:** Scenario 005 test_execution step TEST-02 uses "Verify" as the action verb: `"Verify stderr contains spread sleep message"`. Checking stderr content is a verification/assertion activity, not a test execution action.
-- **evidence:** Scenario 005, `test_steps.test_execution[1].action: "Verify stderr contains spread sleep message"`, step_id TEST-02.
-- **remediation:** Rephrase to: `"Search stderr output for spread sleep log message"` or `"Grep stderr.log for 'Post-reset spread' pattern"` (keeping it as an action), with verification semantics in assertion ASSERT-01.
-- **actionable:** true
-
-#### Finding D4-4b-005
-
-- **finding_id:** D4-4b-005
-- **severity:** MAJOR
-- **dimension:** Test Step Quality
-- **description:** Scenario 006 test_execution step TEST-02 uses "Verify" as the action verb: `"Verify stderr contains spread sleep message"`. Same issue as D4-4b-004.
-- **evidence:** Scenario 006, `test_steps.test_execution[1].action: "Verify stderr contains spread sleep message"`, step_id TEST-02.
-- **remediation:** Rephrase to: `"Search stderr output for spread sleep log message"` or `"Grep stderr.log for 'Post-reset spread' pattern"`.
-- **actionable:** true
-
-#### Finding D4-4b-006
-
-- **finding_id:** D4-4b-006
-- **severity:** MINOR
-- **dimension:** Test Step Quality
-- **description:** Scenario 010 test_execution step TEST-02 `"Verify error message present in stderr"` uses "Verify" language. While the command field says `"Capture and check stderr output"`, the action should describe the capture action, not the verification.
-- **evidence:** Scenario 010, `test_steps.test_execution[1].action: "Verify error message present in stderr"`, step_id TEST-02.
-- **remediation:** Rephrase to: `"Capture stderr output and search for error message about exhausted retries"`.
-- **actionable:** true
-
-#### Finding D4-4b-007
-
-- **finding_id:** D4-4b-007
-- **severity:** MINOR
-- **dimension:** Test Step Quality
-- **description:** Multiple cleanup steps across scenarios 001-007 contain only a single "Unset" operation (e.g., `"Unset GITHUB_CSMA_SPREAD_MAX_SEC"`). While functionally correct, this is minimally adequate. Scenarios 005 and 006 have slightly better cleanup (removing temp files AND unsetting variables), which is the expected pattern.
-- **evidence:** Scenario 001 cleanup: `"Unset GITHUB_CSMA_SPREAD_MAX_SEC"`. Scenario 003 cleanup: `"Unset GITHUB_CSMA_SPREAD_MAX_SEC"`. Scenario 004 cleanup: `"Unset overrides"`. Compare with Scenario 005 cleanup: `"Remove temp files and unset variables"` which is more thorough.
-- **remediation:** No action required if the mock harness does not create temp files. If scenarios 001-004 create any temporary state (mock configurations), add cleanup for those. The current cleanup is acceptable for environment variable-only state.
-- **actionable:** true
-
-#### Dimension 4 Score: 68/100
-
-Rationale: Four scenarios have empty cleanup arrays (MAJOR), and four test_execution steps misuse "Verify" as an action verb (MAJOR). Steps are otherwise specific, actionable, and well-structured with proper IDs.
+| Field | Value |
+|:------|:------|
+| **Finding ID** | D4-4b-001 |
+| **Severity** | MAJOR |
+| **Dimension** | Test Step Quality |
+| **Description** | Four test_execution steps use "Verify" as the action verb, which is verification language that belongs in assertions, not test_execution steps. Test execution steps should describe actions the test performs. |
+| **Evidence** | Scenario 003 TEST-02: "Verify all collected spread values are within [0, 5]"; Scenario 005 TEST-02: "Verify stderr contains spread sleep message"; Scenario 006 TEST-02: "Verify stderr contains spread sleep message"; Scenario 007 TEST-02: "Verify all values are within [0, 3]" |
+| **Remediation** | Rephrase to action-oriented language: "Compare each collected value against bounds" (003/007), "Search stderr output for spread sleep message pattern" (005/006). The verification outcome should be covered by assertions. |
+| **Actionable** | Yes |
 
 ---
 
-### Dimension 5: PSE Docstring Quality (Weight: 10%)
+### Dimension 4.5: STD Content Policy (Weight: 10%) — Score: 80/100
 
-**Go Stub Files Summary**
+#### Finding D4.5-a-001: PR References in STD Metadata
 
-| Stub File | Tests | PSE Present | test_id Present | STP Reference | Status |
-|:----------|:------|:------------|:----------------|:--------------|:-------|
-| csma_spread_behavior_stubs_test.go | 4 | 4/4 | 4/4 | Yes | WARN |
-| csma_shared_helper_stubs_test.go | 3 | 3/3 | 3/3 | Yes | WARN |
-| csma_regression_stubs_test.go | 4 | 4/4 | 4/4 | Yes | WARN |
-| csma_concurrent_spread_stubs_test.go | 2 | 2/2 | 2/2 | Yes | PASS |
+| Field | Value |
+|:------|:------|
+| **Finding ID** | D4.5-a-001 |
+| **Severity** | MAJOR |
+| **Dimension** | STD Content Policy |
+| **Description** | `document_metadata` contains a `related_prs` field with PR #52 URL (`https://github.com/guyoron1/fullsend/pull/52`). PR references are implementation artifacts that belong in the STP (Section I), not in the STD. The STD describes *what* to test, not *what code changed*. |
+| **Evidence** | `related_prs: [{ repo: "guyoron1/fullsend", pr_number: 52, url: "https://github.com/guyoron1/fullsend/pull/52", ... }]` |
+| **Remediation** | Remove the `related_prs` field from `document_metadata` entirely. PR references should only appear in the STP. |
+| **Actionable** | Yes |
 
-#### Finding D5-5a-001
-
-- **finding_id:** D5-5a-001
-- **severity:** MINOR
-- **dimension:** PSE Docstring Quality
-- **description:** None of the four Go stub files import `gomega`. The import section includes only `ginkgo/v2`. While stubs are design-only (Phase 1) and do not contain assertions, a complete stub should import the assertion library since every test will eventually need it.
-- **evidence:** All four files: `import ( . "github.com/onsi/ginkgo/v2" )` -- missing `"github.com/onsi/gomega"`.
-- **remediation:** Add `gomega` to the dot-import list in all four stub files: `import ( . "github.com/onsi/ginkgo/v2"; . "github.com/onsi/gomega" )`.
-- **actionable:** true
-
-#### Finding D5-5c-002
-
-- **finding_id:** D5-5c-002
-- **severity:** MAJOR
-- **dimension:** PSE Docstring Quality
-- **description:** Stub TS-GH-44-003 (csma_spread_behavior_stubs_test.go) has a PSE classification error. Step 2 reads: `"2. Verify all collected spread values are within [0, 5]"`. "Verify" belongs in Expected, not Steps. Steps should describe actions; verification is an outcome check.
-- **evidence:** Context "when custom SPREAD_MAX_SEC is configured", Steps section: `"2. Verify all collected spread values are within [0, 5]"`.
-- **remediation:** Move this to Expected: `Expected: - All collected spread values are >= 0 and <= GITHUB_CSMA_SPREAD_MAX_SEC (5)`. Rephrase Step 2 as: `"2. Compare each collected spread value against configured bounds"`.
-- **actionable:** true
-
-#### Finding D5-5c-003
-
-- **finding_id:** D5-5c-003
-- **severity:** MAJOR
-- **dimension:** PSE Docstring Quality
-- **description:** Stub TS-GH-44-007 (csma_shared_helper_stubs_test.go) has the same PSE classification error. Step 2 reads: `"2. Verify all values are within [0, 3]"`. Verification belongs in Expected.
-- **evidence:** Context "with custom SPREAD_MAX_SEC", Steps section: `"2. Verify all values are within [0, 3]"`.
-- **remediation:** Move to Expected. Rephrase Step 2 as: `"2. Compare each collected value against configured bounds"`.
-- **actionable:** true
-
-#### Finding D5-5c-004
-
-- **finding_id:** D5-5c-004
-- **severity:** MINOR
-- **dimension:** PSE Docstring Quality
-- **description:** Stub TS-GH-44-005 (csma_shared_helper_stubs_test.go) Step 2 reads: `"2. Check stderr for spread sleep message"`. While "Check" is less definitively a verification verb than "Verify", this is borderline -- it describes observation of an outcome rather than an action the test performs. Similarly, Stub TS-GH-44-006 has the same phrasing.
-- **evidence:** Context "carrier-sense path", Steps: `"2. Check stderr for spread sleep message"`. Context "backoff sleep path", Steps: `"2. Check stderr for spread sleep message"`.
-- **remediation:** Rephrase to action-oriented language: `"2. Search stderr output for spread sleep log message"` or `"2. Grep stderr for 'Post-reset spread' pattern"`. Move the pass/fail determination to Expected.
-- **actionable:** true
-
-#### Finding D5-5c-005
-
-- **finding_id:** D5-5c-005
-- **severity:** MAJOR
-- **dimension:** PSE Docstring Quality
-- **description:** Stub TS-GH-44-004 Expected section states `"No sleep command issued for 0-second spread"` but does not specify HOW to verify this. The Expected outcome lacks a verification method.
-- **evidence:** Context "when RANDOM produces 0", Expected: `"- No sleep command issued for 0-second spread"`. How is "no sleep command issued" observed? Via function tracing? Via elapsed time measurement? Via mock call count?
-- **remediation:** Add verification method: `"No sleep command issued for 0-second spread, verified by checking that no 'sleep 0' call appears in function trace output"` or `"Elapsed time shows no additional delay beyond function execution overhead"`.
-- **actionable:** true
-
-#### Dimension 5 Score: 72/100
-
-Rationale: All stubs have PSE sections present, all have test_ids, and all module-level comments reference the STP file (not PR URLs). However, three "Verify" misclassifications in Steps (MAJOR) and one Expected outcome missing verification method (MAJOR) reduce the score. Missing gomega import is a completeness gap (MINOR).
+**Stub content policy checks:** All 4 Go stub files reference the STP file path (not PR URLs) in their module-level comments. No PR references, branch names, commit SHAs, or implementation details found in stub docstrings. Stub bodies contain only `PendingIt` with `Skip("Phase 1: Design only - awaiting implementation")` which is appropriate.
 
 ---
 
-## Additional Cross-Dimension Observations
+### Dimension 5: PSE Docstring Quality (Weight: 10%) — Score: 72/100
 
-### Dimension 4.5: STD Content Policy (partial, noted during analysis)
+**Go Stubs:** 4 files, 13 test stubs reviewed.
 
-#### Finding D45-4a-001
+All 13 stubs have PSE docstrings with Preconditions/Steps/Expected sections. All use correct `[test_id:TS-GH-44-NNN]` format. Module-level comments correctly reference STP file path.
 
-- **finding_id:** D45-4a-001
-- **severity:** MAJOR
-- **dimension:** STD Content Policy
-- **description:** The STD YAML `document_metadata` contains a `related_prs` section with a PR URL (`https://github.com/guyoron1/fullsend/pull/52`). PR URLs are implementation artifacts that belong in the STP, not in the STD. The STD describes what to test, not what code changed.
-- **evidence:** Lines 16-21 of STD YAML: `related_prs: - repo: "guyoron1/fullsend", pr_number: 52, url: "https://github.com/guyoron1/fullsend/pull/52"`.
-- **remediation:** Remove the `related_prs` section from `document_metadata`. The STP already references PR #52 in the Feature Overview and Section I.3.
-- **actionable:** true
+#### Finding D5-5c-001: "Verify" Misclassified in Steps Section
 
-### Dimension 2: STD YAML Structure (partial, noted during analysis)
+| Field | Value |
+|:------|:------|
+| **Finding ID** | D5-5c-001 |
+| **Severity** | MAJOR |
+| **Dimension** | PSE Docstring Quality |
+| **Description** | Stubs for TS-GH-44-003 and TS-GH-44-007 have "Verify..." actions in their Steps section. Per PSE classification rules, verification belongs in Expected, not Steps. Steps describe actions the test performs. |
+| **Evidence** | TS-003 Steps: "2. Verify all collected spread values are within [0, 5]"; TS-007 Steps: "2. Verify all values are within [0, 3]" |
+| **Remediation** | Move verification language to Expected. Steps should read: "2. Compare each collected value against configured bounds". Expected already covers the outcome but should add verification method. |
+| **Actionable** | Yes |
 
-#### Finding D2-2b-001
+#### Finding D5-5c-002: Missing Verification Method in Expected
 
-- **finding_id:** D2-2b-001
-- **severity:** MAJOR
-- **dimension:** STD YAML Structure
-- **description:** All 13 scenarios use `tier: "Functional"` instead of the expected value `"Tier 1"`. The STD v2.1-enhanced specification requires tier values of `"Tier 1"` or `"Tier 2"`. The STP uses `Functional` as the tier label in Section III, but the STD YAML schema expects normalized tier values.
-- **evidence:** Every scenario: `tier: "Functional"`. Expected: `tier: "Tier 1"` (since all tests are Go/Ginkgo functional tests mapped to Tier 1 in this project).
-- **remediation:** Change all `tier: "Functional"` to `tier: "Tier 1"` across all 13 scenarios. Update `document_metadata` to include `tier_1_count: 13` and `tier_2_count: 0` (currently these fields are missing, replaced by `functional_count` and `e2e_count`).
-- **actionable:** true
+| Field | Value |
+|:------|:------|
+| **Finding ID** | D5-5c-002 |
+| **Severity** | MAJOR |
+| **Dimension** | PSE Docstring Quality |
+| **Description** | TS-GH-44-004 Expected says "No sleep command issued for 0-second spread" but does not specify how this is observed (elapsed time measurement? function tracing? mock sleep call count?). Expected results must include HOW to verify, not just WHAT to verify. |
+| **Evidence** | TS-004 Expected: "No sleep command issued for 0-second spread" |
+| **Remediation** | Add verification method: "No sleep command issued for 0-second spread, confirmed by mock sleep call count being zero" or "confirmed by elapsed time equaling zero within tolerance". |
+| **Actionable** | Yes |
+
+#### Finding D5-5a-001: Missing gomega Import in Stubs
+
+| Field | Value |
+|:------|:------|
+| **Finding ID** | D5-5a-001 |
+| **Severity** | MINOR |
+| **Dimension** | PSE Docstring Quality |
+| **Description** | All 4 stub files import only `ginkgo/v2` but not `gomega`. While stubs are Phase 1 design-only with pending bodies, the assertion library should be imported for completeness and code generation readiness. |
+| **Evidence** | All 4 files: `import ( . "github.com/onsi/ginkgo/v2" )` — missing `gomega` |
+| **Remediation** | Add `gomega` dot import: `. "github.com/onsi/gomega"` to all stub files. |
+| **Actionable** | Yes |
+
+#### Finding D5-5c-003: Borderline "Check" Action in Steps
+
+| Field | Value |
+|:------|:------|
+| **Finding ID** | D5-5c-003 |
+| **Severity** | MINOR |
+| **Dimension** | PSE Docstring Quality |
+| **Description** | Stubs for TS-GH-44-005 and TS-GH-44-006 use "Check stderr for spread sleep message" in Steps, which is borderline between action and verification. |
+| **Evidence** | TS-005 Steps: "2. Check stderr for spread sleep message"; TS-006 Steps: "2. Check stderr for spread sleep message" |
+| **Remediation** | Rephrase to unambiguous action language: "2. Search stderr output for spread sleep log message pattern" |
+| **Actionable** | Yes |
+
+**Python Stubs:** Not applicable (no Python stubs generated).
+
+---
+
+### Dimension 6: Code Generation Readiness (Weight: 5%) — Score: 75/100
+
+**Variable Declarations:** All scenarios have valid `variables.closure_scope` entries with Go-compatible types (`int`, `string`, `[]int`). Variable lifecycle hooks are correctly ordered (`initialized_in` before `used_in`).
+
+**Import Completeness:** `code_generation_config.imports` includes `ginkgo/v2`, `gomega`, `context`, and `time`. However, stub files only import `ginkgo/v2` (see D5-5a-001). The code_generation_config is correct for the generator.
+
+**Code Structure Validity:** All 13 `code_structure` blocks have valid Ginkgo structure with proper `Context`/`BeforeAll`/`It` nesting and bracket matching. Test IDs use correct `[test_id:TS-GH-44-NNN]` format.
+
+**Timeout Appropriateness:** No timeout constants are defined in the project config (`timeout_constants: {}`). The STD does not reference timeouts in test steps. For shell-based tests, timeouts would be handled by the test harness rather than Ginkgo timeout decorators. This is acceptable.
+
+No additional findings beyond D5-5a-001 (gomega import) which is already captured.
+
+---
+
+## Dimension Score Summary
+
+| Dimension | Weight | Score | Weighted |
+|:----------|:-------|:------|:---------|
+| 1. STP-STD Traceability | 30% | 100 | 30.0 |
+| 2. STD YAML Structure | 20% | 70 | 14.0 |
+| 3. Pattern Matching | 10% | 50 | 5.0 |
+| 4. Test Step Quality | 15% | 68 | 10.2 |
+| 4.5. Content Policy | 10% | 80 | 8.0 |
+| 5. PSE Docstring Quality | 10% | 72 | 7.2 |
+| 6. Code Generation Readiness | 5% | 75 | 3.75 |
+| **Total** | **100%** | | **78.2** |
 
 ---
 
 ## Recommendations
 
-1. **[MAJOR]** D4-4a-001: Add cleanup steps to regression scenarios 008-011 -- **Remediation:** Add at minimum `CLEANUP-01: Reset mock framework state` to each. -- **Actionable:** yes
-2. **[MAJOR]** D4-4b-002, D4-4b-003, D4-4b-004, D4-4b-005: Rephrase "Verify" actions in test_execution steps to action-oriented language across scenarios 003, 005, 006, 007 -- **Remediation:** Replace "Verify X" with "Compare/Search/Grep for X" and keep verification semantics in assertions. -- **Actionable:** yes
-3. **[MAJOR]** D5-5c-002, D5-5c-003: Fix PSE classification in Go stubs for TS-GH-44-003 and TS-GH-44-007 -- **Remediation:** Move "Verify" steps to Expected section, rephrase Steps as actions. -- **Actionable:** yes
-4. **[MAJOR]** D5-5c-005: Add verification method to TS-GH-44-004 Expected section -- **Remediation:** Specify how "no sleep command issued" is verified (trace, timing, mock call count). -- **Actionable:** yes
-5. **[MAJOR]** D45-4a-001: Remove `related_prs` from STD YAML metadata -- **Remediation:** Delete the `related_prs` block from `document_metadata`. -- **Actionable:** yes
-6. **[MAJOR]** D2-2b-001: Normalize tier values from "Functional" to "Tier 1" -- **Remediation:** Replace `tier: "Functional"` with `tier: "Tier 1"` in all 13 scenarios. -- **Actionable:** yes
-7. **[MINOR]** D5-5a-001: Add gomega import to all four Go stub files -- **Remediation:** Add `. "github.com/onsi/gomega"` to import blocks. -- **Actionable:** yes
-8. **[MINOR]** D5-5c-004: Rephrase borderline "Check" steps in stubs 005 and 006 -- **Remediation:** Use `"Search stderr output for..."` instead of `"Check stderr for..."`. -- **Actionable:** yes
-9. **[MINOR]** D4-4b-006: Rephrase "Verify" in scenario 010 TEST-02 -- **Remediation:** Use `"Capture stderr and search for error message"`. -- **Actionable:** yes
-10. **[MINOR]** D4-4b-007: Cleanup adequacy in scenarios 001-004 -- **Remediation:** Review whether mock configurations need cleanup beyond env var unset. -- **Actionable:** yes
+Ordered by severity and impact:
+
+1. **[MAJOR]** Add `patterns` field to all scenarios with `primary_pattern` and `helpers_required` sub-fields per v2.1-enhanced spec. — **Remediation:** Analyze each scenario's test_objective and classify into appropriate pattern IDs. — **Actionable:** Yes
+
+2. **[MAJOR]** Change `tier: "Functional"` to `tier: "Tier 1"` across all 13 scenarios and update metadata field names. — **Remediation:** Find-and-replace `tier: "Functional"` with `tier: "Tier 1"`, rename `functional_count` to `tier_1_count`, `e2e_count` to `tier_2_count`. — **Actionable:** Yes
+
+3. **[MAJOR]** Remove `related_prs` from `document_metadata`. — **Remediation:** Delete the `related_prs` section entirely. — **Actionable:** Yes
+
+4. **[MAJOR]** Add cleanup steps to regression scenarios 008-011. — **Remediation:** Add at minimum a cleanup step to restore mock harness state. — **Actionable:** Yes
+
+5. **[MAJOR]** Rephrase "Verify" test_execution steps to action-oriented language (scenarios 003, 005, 006, 007). — **Remediation:** Replace "Verify X" with action verbs like "Compare", "Search", "Collect". — **Actionable:** Yes
+
+6. **[MAJOR]** Fix PSE classification errors in stubs TS-003 and TS-007 (move "Verify" from Steps to Expected). — **Remediation:** Move verification language to Expected section. — **Actionable:** Yes
+
+7. **[MAJOR]** Add verification method to TS-004 Expected result. — **Remediation:** Specify observable method (mock call count, elapsed time measurement). — **Actionable:** Yes
+
+8. **[MINOR]** Add gomega dot import to all 4 stub files. — **Remediation:** Add `. "github.com/onsi/gomega"` to imports. — **Actionable:** Yes
+
+9. **[MINOR]** Rephrase "Check stderr" in TS-005/006 stubs to unambiguous action language. — **Remediation:** Use "Search stderr output for..." instead of "Check stderr for...". — **Actionable:** Yes
+
+10. **[MINOR]** Consider adding cleanup documentation to scenarios 001-004 for mock state beyond env var unset. — **Remediation:** Review if mock `gh` binary needs cleanup after each test. — **Actionable:** Yes
 
 ---
 
@@ -242,10 +292,10 @@ Rationale: All stubs have PSE sections present, all have test_ids, and all modul
 |:-------|:-------|
 | STD YAML parseable | YES |
 | STP file available | YES |
-| Go stubs present | YES |
+| Go stubs present | YES (4 files, 13 tests) |
 | Python stubs present | NO |
 | Pattern library available | NO |
-| All scenarios reviewed | YES (13/13) |
-| Project review rules loaded | NO (using defaults) |
+| All scenarios reviewed | YES |
+| Project review rules loaded | NO (defaults only) |
 
-**Confidence rationale:** Confidence is MEDIUM. STD YAML is valid and STP is available for cross-reference. Go stubs are present for all scenarios. However, no project-specific review_rules.yaml or pattern library exists, so pattern matching and project-specific convention checks rely on general rules. Python stubs are not present (project uses Go/Ginkgo only for this ticket). Review precision is reduced due to 100% of review rules using generic defaults.
+**Confidence rationale:** MEDIUM confidence. STD YAML is valid and STP is available enabling full traceability review. Go stubs are present for PSE quality assessment. However, no pattern library exists (reducing Dimension 3 precision), no project-specific review rules are configured (all rules use generic defaults), and Python stubs are absent. Review precision is reduced due to 100% of review rules using generic defaults. Consider adding project-specific `review_rules.yaml` to `qualityflow/config/projects/example/` or enabling `repo_files_fetch` with actual repository references.
