@@ -15,6 +15,7 @@
 #   GITHUB_CSMA_SLOT_MIN_MS           — default 250
 #   GITHUB_CSMA_SLOT_MAX_MS           — default 750 (0 disables jitter)
 #   GITHUB_CSMA_BACKOFF_CAP_SEC       — default 120
+#   GITHUB_CSMA_SPREAD_MAX_SEC        — default 60 (0 disables post-reset spread)
 
 # shellcheck shell=bash
 
@@ -43,6 +44,26 @@ _github_csma_slot_max_ms() {
 
 _github_csma_backoff_cap_sec() {
   echo "${GITHUB_CSMA_BACKOFF_CAP_SEC:-120}"
+}
+
+_github_csma_spread_max_sec() {
+  echo "${GITHUB_CSMA_SPREAD_MAX_SEC:-60}"
+}
+
+# Random post-reset spread to desynchronize runners waking after a
+# rate-limit reset or backoff sleep.  Called from both github_csma_sense
+# and _github_csma_sleep_after_rate_limit to prevent thundering herd.
+_github_csma_post_reset_spread() {
+  local spread_max
+  spread_max=$(_github_csma_spread_max_sec)
+  if (( spread_max <= 0 )); then
+    return 0
+  fi
+  local spread=$(( RANDOM % (spread_max + 1) ))
+  if (( spread > 0 )); then
+    echo "Post-reset spread: sleeping ${spread}s to desynchronize runners..." >&2
+    sleep "${spread}"
+  fi
 }
 
 _github_csma_emit_failure() {
@@ -85,6 +106,7 @@ github_csma_sense() {
 
   echo "Rate limit sense: ${resource} remaining=${remaining} (min=${min_remaining}); waiting ${wait_secs}s until reset..." >&2
   sleep "${wait_secs}"
+  _github_csma_post_reset_spread
 }
 
 # Random inter-call delay (slot time) to reduce synchronized collisions.
@@ -161,6 +183,7 @@ _github_csma_sleep_after_rate_limit() {
   fi
   echo "GitHub API rate limit (attempt $(( attempt + 1 ))); backing off ${delay}s..." >&2
   sleep "${delay}"
+  _github_csma_post_reset_spread
 }
 
 # Run gh with CSMA/CD. First argument: rate_limit resource (core|graphql).
