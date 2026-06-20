@@ -295,7 +295,8 @@ if [ "${NO_PUSH}" = "false" ]; then
   # This mirrors the push logic in post-code.sh section 7b.
   echo "Pushing branch ${BRANCH}..."
   PUSH_OUTPUT="$(git push -u origin -- "${BRANCH}" 2>&1)" && PUSH_RC=0 || PUSH_RC=$?
-  echo "${PUSH_OUTPUT}"
+  # Sanitize for GHA: replace :: to prevent workflow command injection.
+  echo "${PUSH_OUTPUT//::/ :}"
 
   if [ "${PUSH_RC}" -ne 0 ]; then
     if echo "${PUSH_OUTPUT}" | grep -qi "non-fast-forward\|rejected\|fetch first"; then
