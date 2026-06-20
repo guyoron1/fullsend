@@ -13,23 +13,17 @@ document_metadata:
     file: "outputs/stp/GH-51/GH-51_test_plan.md"
     version: "v1"
     sections_covered: "Section III - Requirements-to-Tests Mapping"
-  related_prs:
-    - repo: "fullsend-ai/fullsend"
-      pr_number: 51
-      url: "https://github.com/guyoron1/fullsend/pull/51"
-      title: "Inject CLAUDE.md Pointer for Repos with AGENTS.md"
-      merged: true
   total_scenarios: 19
-  functional_count: 10
-  unit_count: 9
+  tier_1_count: 10
+  tier_2_count: 9
   p0_count: 3
   p1_count: 14
   p2_count: 2
 
 code_generation_config:
   std_version: "2.1-enhanced"
-  framework: "testing"
-  assertion_library: "testify"
+  framework: "ginkgo-v2"
+  assertion_library: "gomega"
   language: "go"
   package_name: "tests"
   context_init: "context.Background()"
@@ -42,10 +36,9 @@ code_generation_config:
       - "path/filepath"
       - "strings"
     test_framework:
-      - path: "github.com/stretchr/testify/assert"
-      - path: "github.com/stretchr/testify/require"
-    project:
-      - "github.com/fullsend-ai/fullsend/internal/sandbox"
+      - path: "github.com/onsi/ginkgo/v2"
+      - path: "github.com/onsi/gomega"
+    project: []
   timeout_constants: {}
   helper_library_imports: []
 
@@ -77,10 +70,13 @@ scenarios:
 
   - scenario_id: "001"
     test_id: "TS-GH-51-001"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-51"
+    patterns:
+      primary_pattern: "file-injection"
+      helpers_required: ["filesystem-setup", "mock-exec"]
 
     variables:
       closure_scope:
@@ -104,6 +100,11 @@ scenarios:
       it:
         description: "should inject CLAUDE.md pointer file"
         test_id_format: "[test_id:TS-GH-51-001]"
+      code_structure:
+        describe: "CLAUDE.md pointer injection"
+        context: "when Claude runtime with AGENTS.md and no CLAUDE.md"
+        it: "should inject CLAUDE.md pointer file"
+        style: "ginkgo-v2"
 
     test_objective:
       title: "Verify CLAUDE.md pointer injected for Claude runtime with AGENTS.md only"
@@ -144,25 +145,24 @@ scenarios:
           command: "t.TempDir() + write AGENTS.md"
           validation: "Directory exists with AGENTS.md"
           code_template: |
-            tmpDir = t.TempDir()
-            err = os.WriteFile(filepath.Join(tmpDir, "AGENTS.md"), []byte("# Rules"), 0644)
-            require.NoError(t, err)
+            // Create temp directory via t.TempDir()
+            // Write AGENTS.md file with agent rules content
       test_execution:
         - step_id: "TEST-01"
           action: "Call doInjectClaudeMDPointer with mock exec func"
           command: "doInjectClaudeMDPointer(tmpDir, mockExecFunc)"
           validation: "No error returned"
           code_template: |
-            mockExec := func(ctx context.Context, cmd string) error { return nil }
-            err = doInjectClaudeMDPointer(tmpDir, mockExec)
-            require.NoError(t, err)
+            // Create mock exec function that succeeds
+            // Call doInjectClaudeMDPointer(tmpDir, mockExec)
+            // Assert no error returned
         - step_id: "TEST-02"
           action: "Verify CLAUDE.md file was created"
           command: "os.Stat(filepath.Join(tmpDir, 'CLAUDE.md'))"
           validation: "File exists"
           code_template: |
-            _, err = os.Stat(filepath.Join(tmpDir, "CLAUDE.md"))
-            require.NoError(t, err)
+            // Stat CLAUDE.md in tmpDir
+            // Assert file exists (no error from os.Stat)
       cleanup:
         - step_id: "CLEANUP-01"
           action: "Temporary directory cleaned up by t.TempDir()"
@@ -188,10 +188,13 @@ scenarios:
 
   - scenario_id: "002"
     test_id: "TS-GH-51-002"
-    tier: "Unit Tests"
+    tier: "Tier 2"
     priority: "P0"
     mvp: true
     requirement_id: "GH-51"
+    patterns:
+      primary_pattern: "file-injection"
+      helpers_required: ["filesystem-setup", "mock-exec"]
 
     variables:
       closure_scope:
@@ -215,6 +218,11 @@ scenarios:
       it:
         description: "should contain reference to AGENTS.md"
         test_id_format: "[test_id:TS-GH-51-002]"
+      code_structure:
+        describe: "CLAUDE.md pointer content"
+        context: "after successful injection"
+        it: "should contain reference to AGENTS.md"
+        style: "ginkgo-v2"
 
     test_objective:
       title: "Verify injected CLAUDE.md content references AGENTS.md"
@@ -241,21 +249,17 @@ scenarios:
           command: "t.TempDir() + write AGENTS.md + doInjectClaudeMDPointer()"
           validation: "Injection completes without error"
           code_template: |
-            tmpDir = t.TempDir()
-            err := os.WriteFile(filepath.Join(tmpDir, "AGENTS.md"), []byte("# Rules"), 0644)
-            require.NoError(t, err)
-            mockExec := func(ctx context.Context, cmd string) error { return nil }
-            err = doInjectClaudeMDPointer(tmpDir, mockExec)
-            require.NoError(t, err)
+            // Create temp directory, write AGENTS.md
+            // Call doInjectClaudeMDPointer with mock exec
+            // Assert injection succeeds
       test_execution:
         - step_id: "TEST-01"
           action: "Read the injected CLAUDE.md file contents"
           command: "os.ReadFile(filepath.Join(tmpDir, 'CLAUDE.md'))"
           validation: "Content references AGENTS.md"
           code_template: |
-            content, err = os.ReadFile(filepath.Join(tmpDir, "CLAUDE.md"))
-            require.NoError(t, err)
-            assert.Contains(t, string(content), "AGENTS.md")
+            // Read CLAUDE.md content via os.ReadFile
+            // Assert content contains reference to AGENTS.md
       cleanup:
         - step_id: "CLEANUP-01"
           action: "Automatic cleanup via t.TempDir()"
@@ -276,10 +280,13 @@ scenarios:
 
   - scenario_id: "003"
     test_id: "TS-GH-51-003"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-51"
+    patterns:
+      primary_pattern: "file-injection"
+      helpers_required: ["filesystem-setup", "mock-exec"]
 
     variables:
       closure_scope:
@@ -298,6 +305,11 @@ scenarios:
       it:
         description: "should not inject CLAUDE.md"
         test_id_format: "[test_id:TS-GH-51-003]"
+      code_structure:
+        describe: "CLAUDE.md injection guard conditions"
+        context: "when runtime is not Claude"
+        it: "should not inject CLAUDE.md"
+        style: "ginkgo-v2"
 
     test_objective:
       title: "Verify no injection when runtime is not Claude"
@@ -328,18 +340,17 @@ scenarios:
           command: "t.TempDir() + write AGENTS.md"
           validation: "Directory exists"
           code_template: |
-            tmpDir = t.TempDir()
-            err := os.WriteFile(filepath.Join(tmpDir, "AGENTS.md"), []byte("# Rules"), 0644)
-            require.NoError(t, err)
+            // Create temp directory via t.TempDir()
+            // Write AGENTS.md file
       test_execution:
         - step_id: "TEST-01"
-          action: "Execute runAgent flow with non-Claude runtime"
-          command: "Simulate runAgent with runtime != claude"
+          action: "Execute guard condition check with non-Claude runtime and verify no injection"
+          command: "Set runtime to non-Claude, invoke injection guard logic, verify CLAUDE.md not created"
           validation: "CLAUDE.md is not created"
           code_template: |
-            // injectClaudeMDPointer should not be called when runtime != claude
-            _, statErr := os.Stat(filepath.Join(tmpDir, "CLAUDE.md"))
-            assert.True(t, os.IsNotExist(statErr))
+            // Set runtime to non-Claude value, invoke the runAgent guard condition path
+            // Verify doInjectClaudeMDPointer is never called
+            // Assert CLAUDE.md does not exist after guard check
       cleanup:
         - step_id: "CLEANUP-01"
           action: "Automatic cleanup via t.TempDir()"
@@ -364,10 +375,13 @@ scenarios:
 
   - scenario_id: "004"
     test_id: "TS-GH-51-004"
-    tier: "Unit Tests"
+    tier: "Tier 2"
     priority: "P1"
     mvp: false
     requirement_id: "GH-51"
+    patterns:
+      primary_pattern: "casing-detection"
+      helpers_required: ["filesystem-setup"]
 
     variables:
       closure_scope:
@@ -383,7 +397,7 @@ scenarios:
           comment: "Return value from hasClaudeMD"
 
     test_structure:
-      type: "table-driven"
+      type: "single"
       describe:
         description: "hasClaudeMD casing detection"
       context:
@@ -391,6 +405,11 @@ scenarios:
       it:
         description: "should return true"
         test_id_format: "[test_id:TS-GH-51-004]"
+      code_structure:
+        describe: "hasClaudeMD casing detection"
+        context: "when CLAUDE.md uppercase variant exists"
+        it: "should return true"
+        style: "ginkgo-v2"
 
     test_objective:
       title: "Verify detection of CLAUDE.md uppercase"
@@ -419,17 +438,16 @@ scenarios:
           command: "t.TempDir() + write CLAUDE.md"
           validation: "File exists"
           code_template: |
-            tmpDir = t.TempDir()
-            err := os.WriteFile(filepath.Join(tmpDir, "CLAUDE.md"), []byte("# content"), 0644)
-            require.NoError(t, err)
+            // Create temp directory via t.TempDir()
+            // Write CLAUDE.md file with content
       test_execution:
         - step_id: "TEST-01"
           action: "Call hasClaudeMD"
           command: "hasClaudeMD(tmpDir)"
           validation: "Returns true"
           code_template: |
-            result = hasClaudeMD(tmpDir)
-            assert.True(t, result)
+            // Call hasClaudeMD(tmpDir)
+            // Assert result is true
       cleanup:
         - step_id: "CLEANUP-01"
           action: "Automatic via t.TempDir()"
@@ -449,10 +467,13 @@ scenarios:
 
   - scenario_id: "005"
     test_id: "TS-GH-51-005"
-    tier: "Unit Tests"
+    tier: "Tier 2"
     priority: "P1"
     mvp: false
     requirement_id: "GH-51"
+    patterns:
+      primary_pattern: "casing-detection"
+      helpers_required: ["filesystem-setup"]
 
     variables:
       closure_scope:
@@ -476,6 +497,11 @@ scenarios:
       it:
         description: "should return true"
         test_id_format: "[test_id:TS-GH-51-005]"
+      code_structure:
+        describe: "hasClaudeMD casing detection"
+        context: "when claude.md lowercase variant exists"
+        it: "should return true"
+        style: "ginkgo-v2"
 
     test_objective:
       title: "Verify detection of claude.md lowercase"
@@ -504,17 +530,16 @@ scenarios:
           command: "t.TempDir() + write claude.md"
           validation: "File exists"
           code_template: |
-            tmpDir = t.TempDir()
-            err := os.WriteFile(filepath.Join(tmpDir, "claude.md"), []byte("# content"), 0644)
-            require.NoError(t, err)
+            // Create temp directory via t.TempDir()
+            // Write claude.md file with content
       test_execution:
         - step_id: "TEST-01"
           action: "Call hasClaudeMD"
           command: "hasClaudeMD(tmpDir)"
           validation: "Returns true"
           code_template: |
-            result = hasClaudeMD(tmpDir)
-            assert.True(t, result)
+            // Call hasClaudeMD(tmpDir)
+            // Assert result is true
       cleanup:
         - step_id: "CLEANUP-01"
           action: "Automatic via t.TempDir()"
@@ -534,10 +559,13 @@ scenarios:
 
   - scenario_id: "006"
     test_id: "TS-GH-51-006"
-    tier: "Unit Tests"
+    tier: "Tier 2"
     priority: "P1"
     mvp: false
     requirement_id: "GH-51"
+    patterns:
+      primary_pattern: "casing-detection"
+      helpers_required: ["filesystem-setup"]
 
     variables:
       closure_scope:
@@ -561,6 +589,11 @@ scenarios:
       it:
         description: "should return true"
         test_id_format: "[test_id:TS-GH-51-006]"
+      code_structure:
+        describe: "hasClaudeMD casing detection"
+        context: "when .claude.md dot-prefixed variant exists"
+        it: "should return true"
+        style: "ginkgo-v2"
 
     test_objective:
       title: "Verify detection of .claude.md dot-prefixed"
@@ -589,17 +622,16 @@ scenarios:
           command: "t.TempDir() + write .claude.md"
           validation: "File exists"
           code_template: |
-            tmpDir = t.TempDir()
-            err := os.WriteFile(filepath.Join(tmpDir, ".claude.md"), []byte("# content"), 0644)
-            require.NoError(t, err)
+            // Create temp directory via t.TempDir()
+            // Write .claude.md file with content
       test_execution:
         - step_id: "TEST-01"
           action: "Call hasClaudeMD"
           command: "hasClaudeMD(tmpDir)"
           validation: "Returns true"
           code_template: |
-            result = hasClaudeMD(tmpDir)
-            assert.True(t, result)
+            // Call hasClaudeMD(tmpDir)
+            // Assert result is true
       cleanup:
         - step_id: "CLEANUP-01"
           action: "Automatic via t.TempDir()"
@@ -619,10 +651,13 @@ scenarios:
 
   - scenario_id: "007"
     test_id: "TS-GH-51-007"
-    tier: "Unit Tests"
+    tier: "Tier 2"
     priority: "P1"
     mvp: false
     requirement_id: "GH-51"
+    patterns:
+      primary_pattern: "casing-detection"
+      helpers_required: ["filesystem-setup"]
 
     variables:
       closure_scope:
@@ -646,6 +681,11 @@ scenarios:
       it:
         description: "should return false"
         test_id_format: "[test_id:TS-GH-51-007]"
+      code_structure:
+        describe: "hasClaudeMD casing detection"
+        context: "when no CLAUDE.md variants exist"
+        it: "should return false"
+        style: "ginkgo-v2"
 
     test_objective:
       title: "Verify false when no CLAUDE.md variants exist"
@@ -674,15 +714,15 @@ scenarios:
           command: "t.TempDir()"
           validation: "Empty directory exists"
           code_template: |
-            tmpDir = t.TempDir()
+            // Create temp directory via t.TempDir()
       test_execution:
         - step_id: "TEST-01"
           action: "Call hasClaudeMD on directory without variants"
           command: "hasClaudeMD(tmpDir)"
           validation: "Returns false"
           code_template: |
-            result = hasClaudeMD(tmpDir)
-            assert.False(t, result)
+            // Call hasClaudeMD(tmpDir)
+            // Assert result is false
       cleanup:
         - step_id: "CLEANUP-01"
           action: "Automatic via t.TempDir()"
@@ -706,10 +746,13 @@ scenarios:
 
   - scenario_id: "008"
     test_id: "TS-GH-51-008"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-51"
+    patterns:
+      primary_pattern: "git-exclude"
+      helpers_required: ["filesystem-setup", "mock-exec"]
 
     variables:
       closure_scope:
@@ -733,6 +776,11 @@ scenarios:
       it:
         description: "should add CLAUDE.md to git exclude"
         test_id_format: "[test_id:TS-GH-51-008]"
+      code_structure:
+        describe: "CLAUDE.md git exclude behavior"
+        context: "after successful injection"
+        it: "should add CLAUDE.md to git exclude"
+        style: "ginkgo-v2"
 
     test_objective:
       title: "Verify CLAUDE.md added to git exclude after injection"
@@ -758,29 +806,24 @@ scenarios:
           command: "t.TempDir() + capturing mockExecFunc"
           validation: "Mock ready to capture commands"
           code_template: |
-            tmpDir = t.TempDir()
-            err := os.WriteFile(filepath.Join(tmpDir, "AGENTS.md"), []byte("# Rules"), 0644)
-            require.NoError(t, err)
-            var execCmds []string
-            mockExec := func(ctx context.Context, cmd string) error {
-                execCmds = append(execCmds, cmd)
-                return nil
-            }
+            // Create temp directory via t.TempDir()
+            // Write AGENTS.md file
+            // Create capturing mock exec that appends commands to execCmds slice
       test_execution:
         - step_id: "TEST-01"
           action: "Call doInjectClaudeMDPointer"
           command: "doInjectClaudeMDPointer(tmpDir, mockExec)"
           validation: "No error"
           code_template: |
-            err = doInjectClaudeMDPointer(tmpDir, mockExec)
-            require.NoError(t, err)
+            // Call doInjectClaudeMDPointer(tmpDir, mockExec)
+            // Assert no error returned
         - step_id: "TEST-02"
           action: "Verify exec command contains git exclude"
           command: "Check execCmds for git exclude command"
           validation: "Command references .git/info/exclude"
           code_template: |
-            require.NotEmpty(t, execCmds)
-            assert.Contains(t, execCmds[0], "exclude")
+            // Assert execCmds is not empty
+            // Assert first exec command contains "exclude"
       cleanup:
         - step_id: "CLEANUP-01"
           action: "Automatic via t.TempDir()"
@@ -800,10 +843,13 @@ scenarios:
 
   - scenario_id: "009"
     test_id: "TS-GH-51-009"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-51"
+    patterns:
+      primary_pattern: "git-exclude"
+      helpers_required: ["filesystem-setup", "mock-exec"]
 
     variables:
       closure_scope:
@@ -822,6 +868,11 @@ scenarios:
       it:
         description: "should hide injected file from git status"
         test_id_format: "[test_id:TS-GH-51-009]"
+      code_structure:
+        describe: "CLAUDE.md git exclude behavior"
+        context: "in a git repository after injection"
+        it: "should hide injected file from git status"
+        style: "ginkgo-v2"
 
     test_objective:
       title: "Verify injected file hidden from git status"
@@ -849,23 +900,24 @@ scenarios:
           command: "t.TempDir() + git init + write AGENTS.md"
           validation: "Git repo with AGENTS.md"
           code_template: |
-            tmpDir = t.TempDir()
-            exec.Command("git", "init", tmpDir).Run()
-            os.WriteFile(filepath.Join(tmpDir, "AGENTS.md"), []byte("# Rules"), 0644)
+            // Create temp directory via t.TempDir()
+            // Run git init in the directory
+            // Write AGENTS.md file
       test_execution:
         - step_id: "TEST-01"
           action: "Inject CLAUDE.md with real git exclude"
           command: "doInjectClaudeMDPointer with real exec"
           validation: "Injection succeeds"
+          code_template: |
+            // Call doInjectClaudeMDPointer with real exec function
+            // Assert no error returned
         - step_id: "TEST-02"
           action: "Run git status and check output"
           command: "git status in tmpDir"
           validation: "Output does not contain CLAUDE.md"
           code_template: |
-            cmd := exec.Command("git", "-C", tmpDir, "status")
-            output, err := cmd.Output()
-            require.NoError(t, err)
-            assert.NotContains(t, string(output), "CLAUDE.md")
+            // Run git -C tmpDir status
+            // Assert output does not contain "CLAUDE.md"
       cleanup:
         - step_id: "CLEANUP-01"
           action: "Automatic via t.TempDir()"
@@ -889,10 +941,13 @@ scenarios:
 
   - scenario_id: "010"
     test_id: "TS-GH-51-010"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-51"
+    patterns:
+      primary_pattern: "guard-condition"
+      helpers_required: ["filesystem-setup"]
 
     variables:
       closure_scope:
@@ -911,9 +966,14 @@ scenarios:
       it:
         description: "should skip injection"
         test_id_format: "[test_id:TS-GH-51-010]"
+      code_structure:
+        describe: "CLAUDE.md injection guard conditions"
+        context: "when runtime is non-Claude agent"
+        it: "should skip injection"
+        style: "ginkgo-v2"
 
     test_objective:
-      title: "Verify no injection for non-Claude agent runtime"
+      title: "Verify injectClaudeMDPointer is not called for non-Claude agent runtime"
       what: |
         Tests that injectClaudeMDPointer is not invoked when the agent
         runtime is set to a non-Claude value (e.g., codex, copilot).
@@ -934,16 +994,17 @@ scenarios:
           command: "t.TempDir() + AGENTS.md + runtime=codex"
           validation: "Setup complete"
           code_template: |
-            tmpDir = t.TempDir()
-            os.WriteFile(filepath.Join(tmpDir, "AGENTS.md"), []byte("# Rules"), 0644)
+            // Create temp directory via t.TempDir()
+            // Write AGENTS.md file
       test_execution:
         - step_id: "TEST-01"
-          action: "Verify CLAUDE.md not created"
-          command: "os.Stat(filepath.Join(tmpDir, 'CLAUDE.md'))"
-          validation: "File does not exist"
+          action: "Verify guard condition prevents injection call for specific non-Claude runtimes"
+          command: "Test guard with runtime values: codex, copilot, custom"
+          validation: "CLAUDE.md not created for any non-Claude runtime"
           code_template: |
-            _, err := os.Stat(filepath.Join(tmpDir, "CLAUDE.md"))
-            assert.True(t, os.IsNotExist(err))
+            // Test multiple non-Claude runtime values (codex, copilot)
+            // For each, verify the injection guard rejects the runtime
+            // Assert no CLAUDE.md file created
       cleanup:
         - step_id: "CLEANUP-01"
           action: "Automatic via t.TempDir()"
@@ -963,10 +1024,13 @@ scenarios:
 
   - scenario_id: "011"
     test_id: "TS-GH-51-011"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-51"
+    patterns:
+      primary_pattern: "guard-condition"
+      helpers_required: ["filesystem-setup"]
 
     variables:
       closure_scope:
@@ -985,6 +1049,11 @@ scenarios:
       it:
         description: "should skip injection"
         test_id_format: "[test_id:TS-GH-51-011]"
+      code_structure:
+        describe: "CLAUDE.md injection guard conditions"
+        context: "when CLAUDE.md already exists"
+        it: "should skip injection"
+        style: "ginkgo-v2"
 
     test_objective:
       title: "Verify no injection when CLAUDE.md already exists"
@@ -1015,24 +1084,23 @@ scenarios:
           command: "t.TempDir() + write both files"
           validation: "Both files exist"
           code_template: |
-            tmpDir = t.TempDir()
-            os.WriteFile(filepath.Join(tmpDir, "AGENTS.md"), []byte("# Rules"), 0644)
-            os.WriteFile(filepath.Join(tmpDir, "CLAUDE.md"), []byte("# Custom"), 0644)
+            // Create temp directory via t.TempDir()
+            // Write AGENTS.md and CLAUDE.md with custom content
       test_execution:
         - step_id: "TEST-01"
           action: "Verify hasClaudeMD returns true"
           command: "hasClaudeMD(tmpDir)"
           validation: "Returns true, skipping injection"
           code_template: |
-            assert.True(t, hasClaudeMD(tmpDir))
+            // Call hasClaudeMD(tmpDir)
+            // Assert result is true
         - step_id: "TEST-02"
           action: "Verify original content preserved"
           command: "os.ReadFile CLAUDE.md"
           validation: "Content unchanged"
           code_template: |
-            content, err := os.ReadFile(filepath.Join(tmpDir, "CLAUDE.md"))
-            require.NoError(t, err)
-            assert.Equal(t, "# Custom", string(content))
+            // Read CLAUDE.md via os.ReadFile
+            // Assert content equals original "# Custom" value
       cleanup:
         - step_id: "CLEANUP-01"
           action: "Automatic via t.TempDir()"
@@ -1052,10 +1120,13 @@ scenarios:
 
   - scenario_id: "012"
     test_id: "TS-GH-51-012"
-    tier: "Unit Tests"
+    tier: "Tier 2"
     priority: "P1"
     mvp: false
     requirement_id: "GH-51"
+    patterns:
+      primary_pattern: "casing-detection"
+      helpers_required: ["filesystem-setup"]
 
     variables:
       closure_scope:
@@ -1074,6 +1145,11 @@ scenarios:
       it:
         description: "should return true for all supported casings"
         test_id_format: "[test_id:TS-GH-51-012]"
+      code_structure:
+        describe: "hasClaudeMD skip for all variants"
+        context: "when any casing variant exists"
+        it: "should return true for all supported casings"
+        style: "ginkgo-v2"
 
     test_objective:
       title: "Verify skip applies to all casing variants"
@@ -1092,7 +1168,15 @@ scenarios:
 
     specific_preconditions: []
     test_data:
-      resource_definitions: []
+      resource_definitions:
+        - name: "casing variants table"
+          type: "test-table"
+          yaml: |
+            cases:
+              - {name: "uppercase", filename: "CLAUDE.md"}
+              - {name: "lowercase", filename: "claude.md"}
+              - {name: "titlecase", filename: "Claude.md"}
+              - {name: "dot-prefixed", filename: ".claude.md"}
 
     test_steps:
       setup:
@@ -1101,28 +1185,16 @@ scenarios:
           command: "Test table with 4 casing variants"
           validation: "Table defined"
           code_template: |
-            cases := []struct {
-                name     string
-                filename string
-            }{
-                {"uppercase", "CLAUDE.md"},
-                {"lowercase", "claude.md"},
-                {"titlecase", "Claude.md"},
-                {"dot-prefixed", ".claude.md"},
-            }
+            // Define test cases: uppercase, lowercase, titlecase, dot-prefixed
       test_execution:
         - step_id: "TEST-01"
           action: "For each variant, create file and check hasClaudeMD"
           command: "t.Run loop over cases"
           validation: "All return true"
           code_template: |
-            for _, tc := range cases {
-                t.Run(tc.name, func(t *testing.T) {
-                    tmpDir = t.TempDir()
-                    os.WriteFile(filepath.Join(tmpDir, tc.filename), []byte("# content"), 0644)
-                    assert.True(t, hasClaudeMD(tmpDir))
-                })
-            }
+            // Loop over each test case
+            // For each: create temp dir, write the variant filename
+            // Call hasClaudeMD(tmpDir), assert result is true
       cleanup:
         - step_id: "CLEANUP-01"
           action: "Automatic via t.TempDir()"
@@ -1142,10 +1214,13 @@ scenarios:
 
   - scenario_id: "013"
     test_id: "TS-GH-51-013"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-51"
+    patterns:
+      primary_pattern: "guard-condition"
+      helpers_required: ["filesystem-setup"]
 
     variables:
       closure_scope:
@@ -1164,6 +1239,11 @@ scenarios:
       it:
         description: "should skip injection"
         test_id_format: "[test_id:TS-GH-51-013]"
+      code_structure:
+        describe: "CLAUDE.md injection guard conditions"
+        context: "when no AGENTS.md is available"
+        it: "should skip injection"
+        style: "ginkgo-v2"
 
     test_objective:
       title: "Verify no injection without AGENTS.md"
@@ -1187,15 +1267,15 @@ scenarios:
           command: "t.TempDir()"
           validation: "Empty directory"
           code_template: |
-            tmpDir = t.TempDir()
+            // Create temp directory via t.TempDir()
       test_execution:
         - step_id: "TEST-01"
           action: "Simulate runAgent with agentsMDAvailable=false"
           command: "Check that injectClaudeMDPointer not called"
           validation: "CLAUDE.md not created"
           code_template: |
-            _, err := os.Stat(filepath.Join(tmpDir, "CLAUDE.md"))
-            assert.True(t, os.IsNotExist(err))
+            // Stat CLAUDE.md in tmpDir
+            // Assert file does not exist (os.IsNotExist)
       cleanup:
         - step_id: "CLEANUP-01"
           action: "Automatic via t.TempDir()"
@@ -1219,10 +1299,13 @@ scenarios:
 
   - scenario_id: "014"
     test_id: "TS-GH-51-014"
-    tier: "Unit Tests"
+    tier: "Tier 2"
     priority: "P1"
     mvp: false
     requirement_id: "GH-51"
+    patterns:
+      primary_pattern: "error-handling"
+      helpers_required: ["filesystem-setup", "mock-exec"]
 
     variables:
       closure_scope:
@@ -1246,6 +1329,11 @@ scenarios:
       it:
         description: "should log warning and return error"
         test_id_format: "[test_id:TS-GH-51-014]"
+      code_structure:
+        describe: "CLAUDE.md injection error handling"
+        context: "[NEGATIVE] when CLAUDE.md write fails"
+        it: "should log warning and return error"
+        style: "ginkgo-v2"
 
     test_objective:
       title: "Verify warning logged on CLAUDE.md write failure"
@@ -1271,18 +1359,18 @@ scenarios:
           command: "t.TempDir() + chmod 0555"
           validation: "Directory is read-only"
           code_template: |
-            tmpDir = t.TempDir()
-            os.Chmod(tmpDir, 0555)
-            t.Cleanup(func() { os.Chmod(tmpDir, 0755) })
+            // Create temp directory via t.TempDir()
+            // chmod 0555 to make it read-only
+            // Register cleanup to restore permissions
       test_execution:
         - step_id: "TEST-01"
           action: "Attempt injection into read-only directory"
           command: "doInjectClaudeMDPointer(tmpDir, mockExec)"
           validation: "Error returned"
           code_template: |
-            mockExec := func(ctx context.Context, cmd string) error { return nil }
-            err = doInjectClaudeMDPointer(tmpDir, mockExec)
-            assert.Error(t, err)
+            // Create mock exec function
+            // Call doInjectClaudeMDPointer(tmpDir, mockExec)
+            // Assert error is returned
       cleanup:
         - step_id: "CLEANUP-01"
           action: "Restore permissions and cleanup"
@@ -1302,10 +1390,13 @@ scenarios:
 
   - scenario_id: "015"
     test_id: "TS-GH-51-015"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-51"
+    patterns:
+      primary_pattern: "file-injection"
+      helpers_required: ["filesystem-setup", "mock-exec"]
 
     variables:
       closure_scope:
@@ -1324,6 +1415,11 @@ scenarios:
       it:
         description: "should continue agent run"
         test_id_format: "[test_id:TS-GH-51-015]"
+      code_structure:
+        describe: "CLAUDE.md injection error handling"
+        context: "[NEGATIVE] when injection fails"
+        it: "should continue agent run"
+        style: "ginkgo-v2"
 
     test_objective:
       title: "Verify agent run continues after injection failure"
@@ -1345,20 +1441,22 @@ scenarios:
     test_steps:
       setup:
         - step_id: "SETUP-01"
-          action: "Configure mock to trigger injection failure"
-          command: "Setup failing injection scenario"
-          validation: "Injection will fail"
+          action: "Create temp dir with AGENTS.md and configure failing injection mock"
+          command: "t.TempDir() + AGENTS.md + failing doInjectClaudeMDPointer"
+          validation: "Setup ready with injection configured to fail"
+          code_template: |
+            // Create temp directory with AGENTS.md
+            // Configure doInjectClaudeMDPointer to return an error
+            // Set up agentsMDAvailable=true and runtime=claude
       test_execution:
         - step_id: "TEST-01"
-          action: "Execute runAgent flow with failing injection"
-          command: "runAgent with injection failure"
-          validation: "Agent run completes successfully"
+          action: "Execute runAgent flow and verify it completes despite injection failure"
+          command: "Call runAgent, verify it does not return error from injection"
+          validation: "Agent run completes, injection error logged as warning"
           code_template: |
-            // The calling code in runAgent wraps injection in:
-            // if err := injectClaudeMDPointer(...); err != nil {
-            //     printer.StepWarn("...")
-            // }
-            // Verify the agent continues past this point
+            // Execute the runAgent flow with failing injection
+            // Verify runAgent completes without returning an error
+            // Verify printer.StepWarn was called with injection failure message
       cleanup:
         - step_id: "CLEANUP-01"
           action: "Cleanup test resources"
@@ -1382,10 +1480,13 @@ scenarios:
 
   - scenario_id: "016"
     test_id: "TS-GH-51-016"
-    tier: "Unit Tests"
+    tier: "Tier 2"
     priority: "P2"
     mvp: false
     requirement_id: "GH-51"
+    patterns:
+      primary_pattern: "error-handling"
+      helpers_required: ["filesystem-setup", "mock-exec"]
 
     variables:
       closure_scope:
@@ -1409,6 +1510,11 @@ scenarios:
       it:
         description: "should log warning but not fail injection"
         test_id_format: "[test_id:TS-GH-51-016]"
+      code_structure:
+        describe: "CLAUDE.md git exclude error handling"
+        context: "[NEGATIVE] when git exclude command fails"
+        it: "should log warning but not fail injection"
+        style: "ginkgo-v2"
 
     test_objective:
       title: "Verify warning on exclude failure after successful write"
@@ -1435,21 +1541,17 @@ scenarios:
           command: "t.TempDir() + failing mockExecFunc"
           validation: "Mock will fail on exec"
           code_template: |
-            tmpDir = t.TempDir()
-            os.WriteFile(filepath.Join(tmpDir, "AGENTS.md"), []byte("# Rules"), 0644)
-            mockExec := func(ctx context.Context, cmd string) error {
-                return fmt.Errorf("exec failed: git exclude not available")
-            }
+            // Create temp directory via t.TempDir()
+            // Write AGENTS.md file
+            // Create mock exec that returns error on invocation
       test_execution:
         - step_id: "TEST-01"
           action: "Call doInjectClaudeMDPointer with failing exec"
           command: "doInjectClaudeMDPointer(tmpDir, mockExec)"
           validation: "Function handles exec failure gracefully"
           code_template: |
-            err = doInjectClaudeMDPointer(tmpDir, mockExec)
-            // Behavior depends on implementation:
-            // Either returns nil (write succeeded, exclude is best-effort)
-            // Or returns error (caller handles gracefully)
+            // Call doInjectClaudeMDPointer(tmpDir, mockExec)
+            // Check behavior: write succeeded, exclude is best-effort
       cleanup:
         - step_id: "CLEANUP-01"
           action: "Automatic via t.TempDir()"
@@ -1469,10 +1571,13 @@ scenarios:
 
   - scenario_id: "017"
     test_id: "TS-GH-51-017"
-    tier: "Unit Tests"
+    tier: "Tier 2"
     priority: "P2"
     mvp: false
     requirement_id: "GH-51"
+    patterns:
+      primary_pattern: "error-handling"
+      helpers_required: ["filesystem-setup", "mock-exec"]
 
     variables:
       closure_scope:
@@ -1496,6 +1601,11 @@ scenarios:
       it:
         description: "should preserve CLAUDE.md content"
         test_id_format: "[test_id:TS-GH-51-017]"
+      code_structure:
+        describe: "CLAUDE.md git exclude error handling"
+        context: "[NEGATIVE] when exclude fails after write"
+        it: "should preserve CLAUDE.md content"
+        style: "ginkgo-v2"
 
     test_objective:
       title: "Verify CLAUDE.md preserved despite exclude failure"
@@ -1520,21 +1630,18 @@ scenarios:
           command: "t.TempDir() + inject with failing exec"
           validation: "CLAUDE.md written, exclude failed"
           code_template: |
-            tmpDir = t.TempDir()
-            os.WriteFile(filepath.Join(tmpDir, "AGENTS.md"), []byte("# Rules"), 0644)
-            mockExec := func(ctx context.Context, cmd string) error {
-                return fmt.Errorf("exec failed")
-            }
-            doInjectClaudeMDPointer(tmpDir, mockExec)
+            // Create temp directory via t.TempDir()
+            // Write AGENTS.md file
+            // Create failing mock exec
+            // Call doInjectClaudeMDPointer (write succeeds, exclude fails)
       test_execution:
         - step_id: "TEST-01"
           action: "Read CLAUDE.md and verify content"
           command: "os.ReadFile CLAUDE.md"
           validation: "Content references AGENTS.md"
           code_template: |
-            content, err := os.ReadFile(filepath.Join(tmpDir, "CLAUDE.md"))
-            require.NoError(t, err)
-            assert.Contains(t, string(content), "AGENTS.md")
+            // Read CLAUDE.md content via os.ReadFile
+            // Assert content contains reference to AGENTS.md
       cleanup:
         - step_id: "CLEANUP-01"
           action: "Automatic via t.TempDir()"
@@ -1558,13 +1665,21 @@ scenarios:
 
   - scenario_id: "018"
     test_id: "TS-GH-51-018"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-51"
+    patterns:
+      primary_pattern: "flag-propagation"
+      helpers_required: ["filesystem-setup", "mock-exec"]
 
     variables:
       closure_scope:
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "Test"]
+          comment: "Temporary directory simulating repo root"
         - name: "agentsMDAvailable"
           type: "bool"
           initialized_in: "TestSetup"
@@ -1580,6 +1695,11 @@ scenarios:
       it:
         description: "should trigger CLAUDE.md injection"
         test_id_format: "[test_id:TS-GH-51-018]"
+      code_structure:
+        describe: "agentsMDAvailable flag propagation"
+        context: "after org AGENTS.md injection succeeds"
+        it: "should trigger CLAUDE.md injection"
+        style: "ginkgo-v2"
 
     test_objective:
       title: "Verify CLAUDE.md injected after org AGENTS.md injection"
@@ -1607,22 +1727,22 @@ scenarios:
     test_steps:
       setup:
         - step_id: "SETUP-01"
-          action: "Simulate org AGENTS.md injection setting flag to true"
-          command: "Set agentsMDAvailable = true"
-          validation: "Flag is true"
+          action: "Create temp dir simulating org AGENTS.md injection success"
+          command: "t.TempDir() + AGENTS.md (simulating org injection) + no CLAUDE.md"
+          validation: "Directory has AGENTS.md, no CLAUDE.md, agentsMDAvailable=true"
           code_template: |
-            agentsMDAvailable = true
+            // Create temp directory
+            // Write AGENTS.md to simulate org injection success
+            // Set agentsMDAvailable = true, runtime = claude
       test_execution:
         - step_id: "TEST-01"
-          action: "Verify CLAUDE.md injection proceeds when flag is true"
-          command: "Check injection logic with agentsMDAvailable=true"
-          validation: "Injection code path entered"
+          action: "Execute CLAUDE.md injection logic with agentsMDAvailable=true"
+          command: "Invoke injection guard with agentsMDAvailable=true and !hasClaudeMD"
+          validation: "CLAUDE.md file is created"
           code_template: |
-            // In runAgent, the guard is:
-            // if agentsMDAvailable && !hasClaudeMD(repoDir) {
-            //     injectClaudeMDPointer(...)
-            // }
-            assert.True(t, agentsMDAvailable)
+            // Invoke the injection path: agentsMDAvailable && !hasClaudeMD(dir)
+            // Call doInjectClaudeMDPointer with mock exec
+            // Verify CLAUDE.md file was created in the directory
       cleanup:
         - step_id: "CLEANUP-01"
           action: "Cleanup"
@@ -1642,13 +1762,21 @@ scenarios:
 
   - scenario_id: "019"
     test_id: "TS-GH-51-019"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-51"
+    patterns:
+      primary_pattern: "flag-propagation"
+      helpers_required: ["filesystem-setup", "mock-exec"]
 
     variables:
       closure_scope:
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "Test"]
+          comment: "Temporary directory"
         - name: "agentsMDAvailable"
           type: "bool"
           initialized_in: "TestSetup"
@@ -1664,6 +1792,11 @@ scenarios:
       it:
         description: "should skip CLAUDE.md injection"
         test_id_format: "[test_id:TS-GH-51-019]"
+      code_structure:
+        describe: "agentsMDAvailable flag propagation"
+        context: "when org AGENTS.md injection fails"
+        it: "should skip CLAUDE.md injection"
+        style: "ginkgo-v2"
 
     test_objective:
       title: "Verify no CLAUDE.md when org AGENTS.md injection fails"
@@ -1689,20 +1822,22 @@ scenarios:
     test_steps:
       setup:
         - step_id: "SETUP-01"
-          action: "Simulate org AGENTS.md injection failure"
-          command: "agentsMDAvailable = false"
-          validation: "Flag is false"
+          action: "Create temp dir simulating org AGENTS.md injection failure"
+          command: "t.TempDir() + no AGENTS.md (injection failed) + agentsMDAvailable=false"
+          validation: "Directory has no AGENTS.md, agentsMDAvailable=false"
           code_template: |
-            agentsMDAvailable = false
+            // Create temp directory with no AGENTS.md
+            // Set agentsMDAvailable = false (org injection failed)
+            // Set runtime = claude
       test_execution:
         - step_id: "TEST-01"
-          action: "Verify CLAUDE.md injection is skipped"
-          command: "Check guard condition with agentsMDAvailable=false"
-          validation: "Injection code path not entered"
+          action: "Verify CLAUDE.md injection guard skips when agentsMDAvailable is false"
+          command: "Check guard condition: agentsMDAvailable && !hasClaudeMD"
+          validation: "Guard evaluates to false, no CLAUDE.md created"
           code_template: |
-            // Guard: if agentsMDAvailable && !hasClaudeMD(repoDir)
-            // With agentsMDAvailable=false, this is always false
-            assert.False(t, agentsMDAvailable)
+            // Check that the guard condition (agentsMDAvailable && !hasClaudeMD)
+            // evaluates to false when agentsMDAvailable=false
+            // Verify no CLAUDE.md file exists in the directory
       cleanup:
         - step_id: "CLEANUP-01"
           action: "Cleanup"
