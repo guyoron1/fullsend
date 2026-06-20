@@ -1,0 +1,1255 @@
+---
+# Software Test Description (STD) — GH-45
+# Architecture Flexibility Problem Document
+# Generated: 2026-06-20
+# Single comprehensive file for ALL scenarios
+
+document_metadata:
+  std_version: "2.1-enhanced"
+  generated_date: "2026-06-20"
+  jira_issue: "GH-45"
+  jira_summary: "Architecture Flexibility Problem Document"
+  source_bugs: []
+  stp_reference:
+    file: "outputs/stp/GH-45/GH-45_test_plan.md"
+    version: "v1"
+    sections_covered: "Section III - Requirements-to-Tests Mapping"
+  related_prs:
+    - repo: "fullsend-ai/fullsend"
+      pr_number: 45
+      url: "https://github.com/fullsend-ai/fullsend/issues/45"
+      title: "Architecture Flexibility Problem Document"
+      merged: false
+  total_scenarios: 9
+  functional_count: 9
+  e2e_count: 0
+  p0_count: 1
+  p1_count: 5
+  p2_count: 3
+
+code_generation_config:
+  std_version: "2.1-enhanced"
+  framework: "ginkgo-v2"
+  assertion_library: "gomega"
+  language: "go"
+  package_name: "tests"
+  context_init: "context.Background()"
+  imports:
+    dot_imports:
+      - "github.com/onsi/ginkgo/v2"
+      - "github.com/onsi/gomega"
+    standard:
+      - "context"
+      - "time"
+  timeout_constants: {}
+  helper_library_imports: {}
+
+common_preconditions:
+  infrastructure:
+    - name: "Git repository"
+      requirement: "FullSend repository cloned with PR branch checked out"
+      validation: "git status"
+    - name: "Problem documents directory"
+      requirement: "docs/problems/ directory exists with existing problem documents"
+      validation: "ls docs/problems/"
+  operators: []
+  cluster_configuration:
+    topology: "N/A"
+    cpu_features: "N/A"
+    storage: "N/A"
+    network: "N/A"
+  rbac_requirements: []
+  notes: "This is a documentation-only change. No Kubernetes cluster, operators, or special infrastructure required. All validation is performed against markdown files in the repository."
+
+scenarios:
+  - scenario_id: "001"
+    test_id: "TS-GH-45-001"
+    tier: "Functional"
+    priority: "P1"
+    mvp: true
+    requirement_id: "GH-45"
+
+    patterns:
+      primary: "doc-content-validation"
+      secondary: []
+      helpers_required: []
+      decorators: []
+
+    variables:
+      closure_scope:
+        - name: "docContent"
+          type: "string"
+          initialized_in: "BeforeAll"
+          used_in: ["BeforeAll", "It"]
+          comment: "Raw content of architecture-flexibility.md"
+        - name: "err"
+          type: "error"
+          initialized_in: "BeforeAll"
+          used_in: ["BeforeAll", "It"]
+          comment: "Error from file read operations"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "Describe"
+        description: "Architecture Flexibility Problem Document"
+        decorators: []
+      context:
+        description: "Four architectural approaches coverage"
+        decorators: ["Ordered"]
+      it:
+        description: "should cover interface-first, thin integration, deferred decisions, and compositional approaches"
+        test_id_format: "[test_id:TS-GH-45-001]"
+
+    code_structure: |
+      Context("Four architectural approaches coverage", Ordered, func() {
+        BeforeAll(func() {
+          // Read architecture-flexibility.md content
+        })
+        It("[test_id:TS-GH-45-001]should cover interface-first, thin integration, deferred decisions, and compositional approaches", func() {
+          // Verify all four approaches are documented
+        })
+      })
+
+    test_objective:
+      title: "Verify document covers interface-first, thin integration, deferred decisions, and compositional approaches"
+      what: |
+        Validates that the architecture flexibility problem document comprehensively
+        covers all four architectural approaches for surviving rapid tool churn:
+        interface-first architecture, thin integration layers, deferred decisions
+        with disciplined experimentation, and compositional architecture. Each
+        approach should be described with its trade-offs.
+      why: |
+        The core purpose of this document is to present multiple architectural
+        strategies. Missing any of the four approaches would make the document
+        incomplete and reduce its value as a decision-making resource for the team.
+      acceptance_criteria:
+        - "Document contains a section or subsection for interface-first architecture"
+        - "Document contains a section or subsection for thin integration layers"
+        - "Document contains a section or subsection for deferred decisions with disciplined experimentation"
+        - "Document contains a section or subsection for compositional architecture"
+        - "Each approach includes trade-offs or analysis"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Content validation via file read and string matching"
+
+    specific_preconditions:
+      - name: "Architecture flexibility document exists"
+        requirement: "docs/problems/architecture-flexibility.md is present in the repository"
+        validation: "test -f docs/problems/architecture-flexibility.md"
+
+    test_data:
+      resource_definitions:
+        - name: "architecture-flexibility-doc"
+          type: "Markdown file"
+          yaml: |
+            path: docs/problems/architecture-flexibility.md
+            expected_keywords:
+              - "interface-first"
+              - "thin integration"
+              - "deferred decisions"
+              - "compositional"
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Read the architecture flexibility problem document"
+          command: "cat docs/problems/architecture-flexibility.md"
+          validation: "File content is non-empty"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify interface-first architecture approach is documented"
+          command: "Search document content for interface-first approach section"
+          validation: "Document contains discussion of interface-first architecture"
+        - step_id: "TEST-02"
+          action: "Verify thin integration layers approach is documented"
+          command: "Search document content for thin integration approach section"
+          validation: "Document contains discussion of thin integration layers"
+        - step_id: "TEST-03"
+          action: "Verify deferred decisions approach is documented"
+          command: "Search document content for deferred decisions approach section"
+          validation: "Document contains discussion of deferred decisions with disciplined experimentation"
+        - step_id: "TEST-04"
+          action: "Verify compositional architecture approach is documented"
+          command: "Search document content for compositional architecture section"
+          validation: "Document contains discussion of compositional architecture"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Interface-first approach is present"
+        condition: "Document content contains interface-first architecture discussion"
+        failure_impact: "Incomplete architectural analysis — missing key approach"
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "Thin integration approach is present"
+        condition: "Document content contains thin integration layers discussion"
+        failure_impact: "Incomplete architectural analysis — missing key approach"
+      - assertion_id: "ASSERT-03"
+        priority: "P1"
+        description: "Deferred decisions approach is present"
+        condition: "Document content contains deferred decisions discussion"
+        failure_impact: "Incomplete architectural analysis — missing key approach"
+      - assertion_id: "ASSERT-04"
+        priority: "P1"
+        description: "Compositional architecture approach is present"
+        condition: "Document content contains compositional architecture discussion"
+        failure_impact: "Incomplete architectural analysis — missing key approach"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: "002"
+    test_id: "TS-GH-45-002"
+    tier: "Functional"
+    priority: "P1"
+    mvp: true
+    requirement_id: "GH-45"
+
+    patterns:
+      primary: "doc-content-validation"
+      secondary: []
+      helpers_required: []
+      decorators: []
+
+    variables:
+      closure_scope:
+        - name: "docContent"
+          type: "string"
+          initialized_in: "BeforeAll"
+          used_in: ["BeforeAll", "It"]
+          comment: "Raw content of architecture-flexibility.md"
+        - name: "err"
+          type: "error"
+          initialized_in: "BeforeAll"
+          used_in: ["BeforeAll", "It"]
+          comment: "Error from file read operations"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "Describe"
+        description: "Architecture Flexibility Problem Document"
+        decorators: []
+      context:
+        description: "Stable vs swappable component categorization"
+        decorators: ["Ordered"]
+      it:
+        description: "should categorize stable and swappable components"
+        test_id_format: "[test_id:TS-GH-45-002]"
+
+    code_structure: |
+      Context("Stable vs swappable component categorization", Ordered, func() {
+        BeforeAll(func() {
+          // Read architecture-flexibility.md content
+        })
+        It("[test_id:TS-GH-45-002]should categorize stable and swappable components", func() {
+          // Verify stable and swappable components are identified
+        })
+      })
+
+    test_objective:
+      title: "Verify stable components and swappable components are categorized"
+      what: |
+        Validates that the document identifies and categorizes which system
+        components should remain stable (coordination model, trust model,
+        governance) and which should be swappable (agent CLIs, models,
+        frameworks, review tools).
+      why: |
+        The stable-vs-swappable distinction is the core thesis of the document.
+        Without clear categorization, the team cannot make informed decisions
+        about which components to invest in stabilizing versus which to keep
+        loosely coupled.
+      acceptance_criteria:
+        - "Document identifies stable components: coordination model, trust model, governance"
+        - "Document identifies swappable components: agent CLIs, models, frameworks, review tools"
+        - "Clear distinction is made between the two categories"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Content validation via file read and string matching"
+
+    specific_preconditions:
+      - name: "Architecture flexibility document exists"
+        requirement: "docs/problems/architecture-flexibility.md is present"
+        validation: "test -f docs/problems/architecture-flexibility.md"
+
+    test_data:
+      resource_definitions:
+        - name: "stable-components"
+          type: "Expected content keywords"
+          yaml: |
+            stable:
+              - "coordination"
+              - "trust"
+              - "governance"
+            swappable:
+              - "CLIs"
+              - "models"
+              - "frameworks"
+              - "review tools"
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Read the architecture flexibility problem document"
+          command: "cat docs/problems/architecture-flexibility.md"
+          validation: "File content is non-empty"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify stable components are identified"
+          command: "Search for coordination model, trust model, governance in document"
+          validation: "All three stable components are mentioned and categorized as stable"
+        - step_id: "TEST-02"
+          action: "Verify swappable components are identified"
+          command: "Search for agent CLIs, models, frameworks, review tools in document"
+          validation: "All swappable components are mentioned and categorized as swappable"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Stable components are identified"
+        condition: "Document mentions coordination, trust, and governance as stable"
+        failure_impact: "Core thesis incomplete — stable components not defined"
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "Swappable components are identified"
+        condition: "Document mentions CLIs, models, frameworks, review tools as swappable"
+        failure_impact: "Core thesis incomplete — swappable components not defined"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: "003"
+    test_id: "TS-GH-45-003"
+    tier: "Functional"
+    priority: "P1"
+    mvp: true
+    requirement_id: "GH-45"
+
+    patterns:
+      primary: "doc-cross-reference-validation"
+      secondary: []
+      helpers_required: []
+      decorators: []
+
+    variables:
+      closure_scope:
+        - name: "docContent"
+          type: "string"
+          initialized_in: "BeforeAll"
+          used_in: ["BeforeAll", "It"]
+          comment: "Raw content of architecture-flexibility.md"
+        - name: "err"
+          type: "error"
+          initialized_in: "BeforeAll"
+          used_in: ["BeforeAll", "It"]
+          comment: "Error from file read operations"
+        - name: "referencedDocs"
+          type: "[]string"
+          initialized_in: "BeforeAll"
+          used_in: ["It"]
+          comment: "List of cross-referenced problem document paths"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "Describe"
+        description: "Architecture Flexibility Problem Document"
+        decorators: []
+      context:
+        description: "Cross-reference integrity"
+        decorators: ["Ordered"]
+      it:
+        description: "should contain valid links to all 7 existing problem documents"
+        test_id_format: "[test_id:TS-GH-45-003]"
+
+    code_structure: |
+      Context("Cross-reference integrity", Ordered, func() {
+        BeforeAll(func() {
+          // Read architecture-flexibility.md and extract cross-references
+        })
+        It("[test_id:TS-GH-45-003]should contain valid links to all 7 existing problem documents", func() {
+          // Verify all 7 problem doc links are present and valid
+        })
+      })
+
+    test_objective:
+      title: "Verify links to all 7 existing problem documents are present and valid"
+      what: |
+        Validates that the architecture flexibility document cross-references
+        all 7 existing problem documents: agent-architecture, agent-infrastructure,
+        landscape, governance, codebase-context, security-threat-model, and
+        testing-agents. Each link should be a valid relative path.
+      why: |
+        Cross-references establish the document's relationship to the broader
+        problem space. Missing or broken links would isolate this document
+        from the existing problem documentation and reduce discoverability.
+      acceptance_criteria:
+        - "Document contains a reference to agent-architecture problem doc"
+        - "Document contains a reference to agent-infrastructure problem doc"
+        - "Document contains a reference to landscape problem doc"
+        - "Document contains a reference to governance problem doc"
+        - "Document contains a reference to codebase-context problem doc"
+        - "Document contains a reference to security-threat-model problem doc"
+        - "Document contains a reference to testing-agents problem doc"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Link extraction and file existence validation"
+
+    specific_preconditions:
+      - name: "All 7 cross-referenced problem documents exist"
+        requirement: "docs/problems/ contains all 7 referenced documents"
+        validation: "ls docs/problems/*.md | wc -l"
+
+    test_data:
+      resource_definitions:
+        - name: "expected-cross-references"
+          type: "Document reference list"
+          yaml: |
+            expected_references:
+              - "agent-architecture"
+              - "agent-infrastructure"
+              - "landscape"
+              - "governance"
+              - "codebase-context"
+              - "security-threat-model"
+              - "testing-agents"
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Read the architecture flexibility problem document"
+          command: "cat docs/problems/architecture-flexibility.md"
+          validation: "File content is non-empty"
+        - step_id: "SETUP-02"
+          action: "List existing problem documents in docs/problems/"
+          command: "ls docs/problems/"
+          validation: "Directory listing is non-empty"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Extract all markdown links from the document"
+          command: "Parse document for markdown link syntax [text](path)"
+          validation: "Links are extracted successfully"
+        - step_id: "TEST-02"
+          action: "Verify each of the 7 expected problem doc references is present"
+          command: "Check extracted links for agent-architecture, agent-infrastructure, landscape, governance, codebase-context, security-threat-model, testing-agents"
+          validation: "All 7 references found in the document"
+        - step_id: "TEST-03"
+          action: "Verify referenced document files exist"
+          command: "For each linked path, verify the target file exists"
+          validation: "All referenced files exist in the repository"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "All 7 cross-references are present"
+        condition: "Document contains references to all 7 existing problem documents"
+        failure_impact: "Document is disconnected from the broader problem documentation"
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "Cross-reference links resolve to existing files"
+        condition: "All linked file paths point to files that exist in the repository"
+        failure_impact: "Broken links degrade documentation quality and discoverability"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: "004"
+    test_id: "TS-GH-45-004"
+    tier: "Functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-45"
+
+    patterns:
+      primary: "doc-index-validation"
+      secondary: []
+      helpers_required: []
+      decorators: []
+
+    variables:
+      closure_scope:
+        - name: "readmeContent"
+          type: "string"
+          initialized_in: "BeforeAll"
+          used_in: ["BeforeAll", "It"]
+          comment: "Raw content of README.md"
+        - name: "err"
+          type: "error"
+          initialized_in: "BeforeAll"
+          used_in: ["BeforeAll", "It"]
+          comment: "Error from file read operations"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "Describe"
+        description: "Architecture Flexibility Problem Document"
+        decorators: []
+      context:
+        description: "README index link"
+        decorators: ["Ordered"]
+      it:
+        description: "should include Architecture Flexibility link in README with correct path"
+        test_id_format: "[test_id:TS-GH-45-004]"
+
+    code_structure: |
+      Context("README index link", Ordered, func() {
+        BeforeAll(func() {
+          // Read README.md content
+        })
+        It("[test_id:TS-GH-45-004]should include Architecture Flexibility link in README with correct path", func() {
+          // Verify README contains link to architecture-flexibility.md
+        })
+      })
+
+    test_objective:
+      title: "Verify README index includes Architecture Flexibility link with correct path and description"
+      what: |
+        Validates that the repository README.md has been updated to include
+        a link to the new architecture flexibility problem document with
+        the correct relative path and an appropriate description.
+      why: |
+        The README serves as the primary index for problem documents. If the
+        link is missing or incorrect, the new document will be undiscoverable
+        to team members browsing the repository. This is the highest priority
+        (P0) test because it validates the primary entry point.
+      acceptance_criteria:
+        - "README.md contains a link with text referencing 'Architecture Flexibility' or similar"
+        - "Link path correctly points to docs/problems/architecture-flexibility.md"
+        - "Link includes a brief description of the document's purpose"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Content validation via file read and string matching"
+
+    specific_preconditions:
+      - name: "README.md exists"
+        requirement: "Repository root contains README.md"
+        validation: "test -f README.md"
+
+    test_data:
+      resource_definitions:
+        - name: "readme-link"
+          type: "Expected content"
+          yaml: |
+            expected_link_target: "docs/problems/architecture-flexibility.md"
+            expected_link_text_keywords:
+              - "architecture"
+              - "flexibility"
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Read the README.md file"
+          command: "cat README.md"
+          validation: "File content is non-empty"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Search README for link to architecture-flexibility document"
+          command: "Search for markdown link containing 'architecture-flexibility'"
+          validation: "Link to architecture-flexibility.md is found"
+        - step_id: "TEST-02"
+          action: "Verify link path is correct"
+          command: "Extract link href and compare to expected path"
+          validation: "Link path matches docs/problems/architecture-flexibility.md"
+        - step_id: "TEST-03"
+          action: "Verify link has descriptive text"
+          command: "Extract link text and check for meaningful description"
+          validation: "Link text contains 'Architecture Flexibility' or equivalent"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "README contains architecture flexibility link"
+        condition: "README.md contains a markdown link referencing architecture-flexibility"
+        failure_impact: "New document is undiscoverable from the repository index"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "Link path is correct"
+        condition: "Link href resolves to docs/problems/architecture-flexibility.md"
+        failure_impact: "Broken link in README — users cannot navigate to the document"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: "005"
+    test_id: "TS-GH-45-005"
+    tier: "Functional"
+    priority: "P1"
+    mvp: true
+    requirement_id: "GH-45"
+
+    patterns:
+      primary: "doc-content-validation"
+      secondary: []
+      helpers_required: []
+      decorators: []
+
+    variables:
+      closure_scope:
+        - name: "docContent"
+          type: "string"
+          initialized_in: "BeforeAll"
+          used_in: ["BeforeAll", "It"]
+          comment: "Raw content of architecture-flexibility.md"
+        - name: "err"
+          type: "error"
+          initialized_in: "BeforeAll"
+          used_in: ["BeforeAll", "It"]
+          comment: "Error from file read operations"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "Describe"
+        description: "Architecture Flexibility Problem Document"
+        decorators: []
+      context:
+        description: "Interface contract table"
+        decorators: ["Ordered"]
+      it:
+        description: "should include interface contract table with agent roles"
+        test_id_format: "[test_id:TS-GH-45-005]"
+
+    code_structure: |
+      Context("Interface contract table", Ordered, func() {
+        BeforeAll(func() {
+          // Read architecture-flexibility.md content
+        })
+        It("[test_id:TS-GH-45-005]should include interface contract table with agent roles", func() {
+          // Verify interface contract table exists with correct columns and roles
+        })
+      })
+
+    test_objective:
+      title: "Verify interface contract table includes agent roles with input, output, and contract columns"
+      what: |
+        Validates that the document contains an interface contract table
+        that defines the implementation, review, and triage agent roles.
+        The table should include columns for input, output, and contract
+        for each role.
+      why: |
+        The interface contract table is a key deliverable of the document,
+        translating the abstract architectural approaches into concrete role
+        definitions. Without this table, the document lacks actionable
+        guidance for implementing the chosen architecture.
+      acceptance_criteria:
+        - "Document contains a table or structured section for interface contracts"
+        - "Implementation agent role is defined with input, output, and contract"
+        - "Review agent role is defined with input, output, and contract"
+        - "Triage agent role is defined with input, output, and contract"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Content validation via table structure parsing"
+
+    specific_preconditions:
+      - name: "Architecture flexibility document exists"
+        requirement: "docs/problems/architecture-flexibility.md is present"
+        validation: "test -f docs/problems/architecture-flexibility.md"
+
+    test_data:
+      resource_definitions:
+        - name: "expected-table-structure"
+          type: "Expected content keywords"
+          yaml: |
+            expected_roles:
+              - "implementation"
+              - "review"
+              - "triage"
+            expected_columns:
+              - "input"
+              - "output"
+              - "contract"
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Read the architecture flexibility problem document"
+          command: "cat docs/problems/architecture-flexibility.md"
+          validation: "File content is non-empty"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Locate the interface contract table in the document"
+          command: "Search for markdown table with agent role headers"
+          validation: "Table structure is found"
+        - step_id: "TEST-02"
+          action: "Verify implementation agent role is defined"
+          command: "Check table contains implementation role with input, output, contract"
+          validation: "Implementation role row is present and complete"
+        - step_id: "TEST-03"
+          action: "Verify review agent role is defined"
+          command: "Check table contains review role with input, output, contract"
+          validation: "Review role row is present and complete"
+        - step_id: "TEST-04"
+          action: "Verify triage agent role is defined"
+          command: "Check table contains triage role with input, output, contract"
+          validation: "Triage role row is present and complete"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Interface contract table exists"
+        condition: "Document contains a structured table for interface contracts"
+        failure_impact: "Missing actionable output — document lacks concrete role definitions"
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "All three agent roles are defined"
+        condition: "Table includes implementation, review, and triage roles with complete columns"
+        failure_impact: "Incomplete role definitions reduce document utility"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: "006"
+    test_id: "TS-GH-45-006"
+    tier: "Functional"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-45"
+
+    patterns:
+      primary: "doc-cross-reference-validation"
+      secondary: []
+      helpers_required: []
+      decorators: []
+
+    variables:
+      closure_scope:
+        - name: "docContent"
+          type: "string"
+          initialized_in: "BeforeAll"
+          used_in: ["BeforeAll", "It"]
+          comment: "Raw content of architecture-flexibility.md"
+        - name: "err"
+          type: "error"
+          initialized_in: "BeforeAll"
+          used_in: ["BeforeAll", "It"]
+          comment: "Error from file read operations"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "Describe"
+        description: "Architecture Flexibility Problem Document"
+        decorators: []
+      context:
+        description: "Broken cross-reference handling"
+        decorators: ["Ordered"]
+      it:
+        description: "should handle broken or missing cross-reference links gracefully"
+        test_id_format: "[test_id:TS-GH-45-006]"
+
+    code_structure: |
+      Context("Broken cross-reference handling", Ordered, func() {
+        BeforeAll(func() {
+          // Read architecture-flexibility.md and extract all links
+        })
+        It("[test_id:TS-GH-45-006]should handle broken or missing cross-reference links gracefully", func() {
+          // Verify broken links are identifiable and don't cause rendering failures
+        })
+      })
+
+    test_objective:
+      title: "Verify broken or missing cross-reference links are identifiable and do not cause rendering failures"
+      what: |
+        Validates that the document handles cross-reference links gracefully.
+        If any referenced problem documents are missing or renamed, the links
+        should be identifiable as broken and should not cause markdown rendering
+        failures.
+      why: |
+        As the repository evolves, problem documents may be renamed or removed.
+        The architecture flexibility document should degrade gracefully in such
+        cases, allowing readers to identify broken references rather than
+        encountering rendering errors.
+      acceptance_criteria:
+        - "All cross-reference links use standard markdown link syntax"
+        - "Broken links are visually identifiable when rendered"
+        - "Document renders without errors even if referenced files are missing"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Link syntax validation and rendering check"
+
+    specific_preconditions:
+      - name: "Architecture flexibility document exists"
+        requirement: "docs/problems/architecture-flexibility.md is present"
+        validation: "test -f docs/problems/architecture-flexibility.md"
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Read the architecture flexibility problem document"
+          command: "cat docs/problems/architecture-flexibility.md"
+          validation: "File content is non-empty"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Extract all cross-reference links from the document"
+          command: "Parse markdown for link syntax pointing to other problem docs"
+          validation: "Links extracted successfully"
+        - step_id: "TEST-02"
+          action: "Verify all links use standard markdown link syntax"
+          command: "Check each link follows [text](path) format"
+          validation: "All links use proper markdown syntax"
+        - step_id: "TEST-03"
+          action: "Verify document renders without errors"
+          command: "Render markdown and check for syntax errors"
+          validation: "No rendering errors occur"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Links use standard markdown syntax"
+        condition: "All cross-reference links follow [text](path) format"
+        failure_impact: "Non-standard link syntax may break in some renderers"
+      - assertion_id: "ASSERT-02"
+        priority: "P2"
+        description: "Document renders cleanly"
+        condition: "Markdown renders without errors regardless of link target existence"
+        failure_impact: "Rendering failures degrade readability"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: "007"
+    test_id: "TS-GH-45-007"
+    tier: "Functional"
+    priority: "P1"
+    mvp: true
+    requirement_id: "GH-45"
+
+    patterns:
+      primary: "doc-structure-validation"
+      secondary: []
+      helpers_required: []
+      decorators: []
+
+    variables:
+      closure_scope:
+        - name: "docContent"
+          type: "string"
+          initialized_in: "BeforeAll"
+          used_in: ["BeforeAll", "It"]
+          comment: "Raw content of architecture-flexibility.md"
+        - name: "err"
+          type: "error"
+          initialized_in: "BeforeAll"
+          used_in: ["BeforeAll", "It"]
+          comment: "Error from file read operations"
+        - name: "headings"
+          type: "[]string"
+          initialized_in: "It"
+          used_in: ["It"]
+          comment: "Extracted markdown headings from document"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "Describe"
+        description: "Architecture Flexibility Problem Document"
+        decorators: []
+      context:
+        description: "Problem document structure conventions"
+        decorators: ["Ordered"]
+      it:
+        description: "should follow established problem doc conventions with required sections"
+        test_id_format: "[test_id:TS-GH-45-007]"
+
+    code_structure: |
+      Context("Problem document structure conventions", Ordered, func() {
+        BeforeAll(func() {
+          // Read architecture-flexibility.md content
+        })
+        It("[test_id:TS-GH-45-007]should follow established problem doc conventions with required sections", func() {
+          // Verify required sections: problem statement, approaches, relationship, open questions
+        })
+      })
+
+    test_objective:
+      title: "Verify document contains required sections: problem statement, approaches with trade-offs, relationship to other areas, and open questions"
+      what: |
+        Validates that the architecture flexibility document follows the
+        established problem document conventions by including all required
+        sections: a problem statement, approaches with trade-offs analysis,
+        relationship to other areas, and open questions.
+      why: |
+        Consistent document structure across all problem docs improves
+        readability and ensures each document addresses the same fundamental
+        aspects. Deviating from conventions makes the document harder to
+        navigate and compare with other problem docs.
+      acceptance_criteria:
+        - "Document contains a problem statement section"
+        - "Document contains an approaches section with trade-offs for each approach"
+        - "Document contains a relationship to other areas section"
+        - "Document contains an open questions section"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Heading extraction and section validation"
+
+    specific_preconditions:
+      - name: "Architecture flexibility document exists"
+        requirement: "docs/problems/architecture-flexibility.md is present"
+        validation: "test -f docs/problems/architecture-flexibility.md"
+
+    test_data:
+      resource_definitions:
+        - name: "expected-sections"
+          type: "Required heading keywords"
+          yaml: |
+            required_sections:
+              - keyword: "problem"
+                description: "Problem statement section"
+              - keyword: "approach"
+                description: "Approaches with trade-offs"
+              - keyword: "relationship"
+                description: "Relationship to other areas"
+              - keyword: "open question"
+                description: "Open questions section"
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Read the architecture flexibility problem document"
+          command: "cat docs/problems/architecture-flexibility.md"
+          validation: "File content is non-empty"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Extract all headings from the document"
+          command: "Parse markdown for heading lines (## or ###)"
+          validation: "Headings are extracted"
+        - step_id: "TEST-02"
+          action: "Verify problem statement section exists"
+          command: "Search headings for problem statement"
+          validation: "Problem statement section found"
+        - step_id: "TEST-03"
+          action: "Verify approaches section with trade-offs exists"
+          command: "Search headings and content for approaches with trade-off analysis"
+          validation: "Approaches section found with trade-offs"
+        - step_id: "TEST-04"
+          action: "Verify relationship to other areas section exists"
+          command: "Search headings for relationship or cross-reference section"
+          validation: "Relationship section found"
+        - step_id: "TEST-05"
+          action: "Verify open questions section exists"
+          command: "Search headings for open questions"
+          validation: "Open questions section found"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Problem statement section present"
+        condition: "Document has a section describing the core problem"
+        failure_impact: "Document lacks context — reader cannot understand the motivation"
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "Approaches with trade-offs section present"
+        condition: "Document has a section analyzing approaches with trade-offs"
+        failure_impact: "Document lacks analytical content — core deliverable missing"
+      - assertion_id: "ASSERT-03"
+        priority: "P1"
+        description: "Relationship to other areas section present"
+        condition: "Document connects to broader problem documentation"
+        failure_impact: "Document is isolated from the problem doc ecosystem"
+      - assertion_id: "ASSERT-04"
+        priority: "P1"
+        description: "Open questions section present"
+        condition: "Document identifies unresolved decisions"
+        failure_impact: "Document appears falsely complete — open items not tracked"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: "008"
+    test_id: "TS-GH-45-008"
+    tier: "Functional"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-45"
+
+    patterns:
+      primary: "doc-content-validation"
+      secondary: []
+      helpers_required: []
+      decorators: []
+
+    variables:
+      closure_scope:
+        - name: "docContent"
+          type: "string"
+          initialized_in: "BeforeAll"
+          used_in: ["BeforeAll", "It"]
+          comment: "Raw content of architecture-flexibility.md"
+        - name: "err"
+          type: "error"
+          initialized_in: "BeforeAll"
+          used_in: ["BeforeAll", "It"]
+          comment: "Error from file read operations"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "Describe"
+        description: "Architecture Flexibility Problem Document"
+        decorators: []
+      context:
+        description: "Open questions content"
+        decorators: ["Ordered"]
+      it:
+        description: "should address key architectural decisions in open questions"
+        test_id_format: "[test_id:TS-GH-45-008]"
+
+    code_structure: |
+      Context("Open questions content", Ordered, func() {
+        BeforeAll(func() {
+          // Read architecture-flexibility.md content
+        })
+        It("[test_id:TS-GH-45-008]should address key architectural decisions in open questions", func() {
+          // Verify open questions cover interface formality, tool boundary blurring, swap cost
+        })
+      })
+
+    test_objective:
+      title: "Verify open questions section addresses key architectural decisions"
+      what: |
+        Validates that the open questions section captures the key unresolved
+        architectural decisions, including interface formality level, tool
+        boundary blurring concerns, and swap cost estimation approaches.
+      why: |
+        The open questions section provides transparency about what remains
+        undecided. Capturing the right questions ensures the team can
+        prioritize follow-up work and avoid making premature commitments
+        on unresolved architectural issues.
+      acceptance_criteria:
+        - "Open questions section addresses interface formality"
+        - "Open questions section addresses tool boundary blurring"
+        - "Open questions section addresses swap cost estimation"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Content validation via keyword matching"
+
+    specific_preconditions:
+      - name: "Architecture flexibility document exists"
+        requirement: "docs/problems/architecture-flexibility.md is present"
+        validation: "test -f docs/problems/architecture-flexibility.md"
+
+    test_data:
+      resource_definitions:
+        - name: "expected-open-questions"
+          type: "Expected content keywords"
+          yaml: |
+            expected_topics:
+              - "interface formality"
+              - "tool boundary"
+              - "swap cost"
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Read the architecture flexibility problem document"
+          command: "cat docs/problems/architecture-flexibility.md"
+          validation: "File content is non-empty"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Locate the open questions section"
+          command: "Search for open questions heading"
+          validation: "Open questions section found"
+        - step_id: "TEST-02"
+          action: "Verify interface formality is addressed"
+          command: "Search open questions section for interface formality topic"
+          validation: "Interface formality discussion found"
+        - step_id: "TEST-03"
+          action: "Verify tool boundary blurring is addressed"
+          command: "Search open questions section for tool boundary blurring topic"
+          validation: "Tool boundary blurring discussion found"
+        - step_id: "TEST-04"
+          action: "Verify swap cost estimation is addressed"
+          command: "Search open questions section for swap cost estimation topic"
+          validation: "Swap cost estimation discussion found"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Interface formality question present"
+        condition: "Open questions discusses interface formality level"
+        failure_impact: "Key architectural decision not tracked"
+      - assertion_id: "ASSERT-02"
+        priority: "P2"
+        description: "Tool boundary blurring question present"
+        condition: "Open questions discusses tool boundary blurring"
+        failure_impact: "Key architectural concern not tracked"
+      - assertion_id: "ASSERT-03"
+        priority: "P2"
+        description: "Swap cost estimation question present"
+        condition: "Open questions discusses swap cost estimation"
+        failure_impact: "Key practical concern not tracked"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: "009"
+    test_id: "TS-GH-45-009"
+    tier: "Functional"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-45"
+
+    patterns:
+      primary: "doc-rendering-validation"
+      secondary: []
+      helpers_required: []
+      decorators: []
+
+    variables:
+      closure_scope:
+        - name: "docContent"
+          type: "string"
+          initialized_in: "BeforeAll"
+          used_in: ["BeforeAll", "It"]
+          comment: "Raw content of architecture-flexibility.md"
+        - name: "err"
+          type: "error"
+          initialized_in: "BeforeAll"
+          used_in: ["BeforeAll", "It"]
+          comment: "Error from file read operations"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "Describe"
+        description: "Architecture Flexibility Problem Document"
+        decorators: []
+      context:
+        description: "Standalone rendering"
+        decorators: ["Ordered"]
+      it:
+        description: "should render correctly as standalone markdown"
+        test_id_format: "[test_id:TS-GH-45-009]"
+
+    code_structure: |
+      Context("Standalone rendering", Ordered, func() {
+        BeforeAll(func() {
+          // Read architecture-flexibility.md content
+        })
+        It("[test_id:TS-GH-45-009]should render correctly as standalone markdown", func() {
+          // Verify markdown syntax is valid and links are identifiable
+        })
+      })
+
+    test_objective:
+      title: "Verify document renders correctly when viewed outside the repository context"
+      what: |
+        Validates that the architecture flexibility document renders correctly
+        as standalone markdown, outside the GitHub repository context. All
+        relative links should be identifiable even when the document is viewed
+        in a non-GitHub markdown renderer.
+      why: |
+        Team members may read problem documents in local editors, documentation
+        tools, or exported formats. The document should be self-contained
+        enough to render correctly in these contexts, with relative links
+        clearly identifiable even if they cannot be resolved.
+      acceptance_criteria:
+        - "Document uses valid markdown syntax throughout"
+        - "All relative links use standard markdown link syntax and are identifiable"
+        - "No GitHub-specific rendering features that break in other viewers"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Markdown syntax validation"
+
+    specific_preconditions:
+      - name: "Architecture flexibility document exists"
+        requirement: "docs/problems/architecture-flexibility.md is present"
+        validation: "test -f docs/problems/architecture-flexibility.md"
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Read the architecture flexibility problem document"
+          command: "cat docs/problems/architecture-flexibility.md"
+          validation: "File content is non-empty"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Validate markdown syntax"
+          command: "Parse document for markdown syntax correctness"
+          validation: "No syntax errors found"
+        - step_id: "TEST-02"
+          action: "Verify all links use standard markdown syntax"
+          command: "Check all links follow [text](path) format"
+          validation: "All links use standard syntax"
+        - step_id: "TEST-03"
+          action: "Check for GitHub-specific rendering features"
+          command: "Search for GitHub-only markdown extensions"
+          validation: "No GitHub-specific features that break other renderers"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Valid markdown syntax"
+        condition: "Document parses as valid markdown"
+        failure_impact: "Document may render incorrectly in non-GitHub viewers"
+      - assertion_id: "ASSERT-02"
+        priority: "P2"
+        description: "Standard link syntax used"
+        condition: "All links use portable [text](path) format"
+        failure_impact: "Links may be broken in non-GitHub rendering contexts"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+---

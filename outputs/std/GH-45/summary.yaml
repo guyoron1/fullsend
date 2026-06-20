@@ -1,0 +1,11 @@
+status: success
+jira_id: GH-45
+stp_source: outputs/stp/GH-45/GH-45_test_plan.md
+std_yaml: outputs/std/GH-45/GH-45_test_description.yaml
+test_counts:
+  total: 9
+  tier1: 9
+  tier2: 0
+stubs:
+  go: 9
+  python: 0
