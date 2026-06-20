@@ -41,7 +41,7 @@ var _ = Describe("[GH-45] Architecture Flexibility Problem Document", func() {
 				- Document contains discussion of compositional architecture
 				- Each approach includes trade-offs or analysis
 		*/
-		PendingIt("[test_id:TS-GH-45-001] should cover interface-first, thin integration, deferred decisions, and compositional approaches", func() {
+		It("[test_id:TS-GH-45-001] should cover interface-first, thin integration, deferred decisions, and compositional approaches", func() {
 			Skip("Phase 1: Design only - awaiting implementation")
 		})
 	})
@@ -61,7 +61,7 @@ var _ = Describe("[GH-45] Architecture Flexibility Problem Document", func() {
 				- All swappable components (CLIs, models, frameworks, review tools) are mentioned and categorized as swappable
 				- Clear distinction is made between the two categories
 		*/
-		PendingIt("[test_id:TS-GH-45-002] should categorize stable and swappable components", func() {
+		It("[test_id:TS-GH-45-002] should categorize stable and swappable components", func() {
 			Skip("Phase 1: Design only - awaiting implementation")
 		})
 	})
@@ -82,7 +82,7 @@ var _ = Describe("[GH-45] Architecture Flexibility Problem Document", func() {
 				- Document contains references to all 7 existing problem documents (agent-architecture, agent-infrastructure, landscape, governance, codebase-context, security-threat-model, testing-agents)
 				- All linked file paths point to files that exist in the repository
 		*/
-		PendingIt("[test_id:TS-GH-45-003] should contain valid links to all 7 existing problem documents", func() {
+		It("[test_id:TS-GH-45-003] should contain valid links to all 7 existing problem documents", func() {
 			Skip("Phase 1: Design only - awaiting implementation")
 		})
 	})
@@ -103,7 +103,7 @@ var _ = Describe("[GH-45] Architecture Flexibility Problem Document", func() {
 				- Link href resolves to docs/problems/architecture-flexibility.md
 				- Link text contains Architecture Flexibility or equivalent description
 		*/
-		PendingIt("[test_id:TS-GH-45-004] should include Architecture Flexibility link in README with correct path", func() {
+		It("[test_id:TS-GH-45-004] should include Architecture Flexibility link in README with correct path", func() {
 			Skip("Phase 1: Design only - awaiting implementation")
 		})
 	})
@@ -124,7 +124,7 @@ var _ = Describe("[GH-45] Architecture Flexibility Problem Document", func() {
 				- Document contains a structured table for interface contracts
 				- Table includes implementation, review, and triage roles with complete columns (input, output, contract)
 		*/
-		PendingIt("[test_id:TS-GH-45-005] should include interface contract table with agent roles", func() {
+		It("[test_id:TS-GH-45-005] should include interface contract table with agent roles", func() {
 			Skip("Phase 1: Design only - awaiting implementation")
 		})
 	})
@@ -144,7 +144,7 @@ var _ = Describe("[GH-45] Architecture Flexibility Problem Document", func() {
 				- All cross-reference links follow [text](path) format
 				- Markdown renders without errors regardless of link target existence
 		*/
-		PendingIt("[test_id:TS-GH-45-006] should handle broken or missing cross-reference links gracefully", func() {
+		It("[test_id:TS-GH-45-006] should handle broken or missing cross-reference links gracefully", func() {
 			Skip("Phase 1: Design only - awaiting implementation")
 		})
 	})
@@ -168,7 +168,7 @@ var _ = Describe("[GH-45] Architecture Flexibility Problem Document", func() {
 				- Document connects to broader problem documentation
 				- Document identifies unresolved decisions in open questions
 		*/
-		PendingIt("[test_id:TS-GH-45-007] should follow established problem doc conventions with required sections", func() {
+		It("[test_id:TS-GH-45-007] should follow established problem doc conventions with required sections", func() {
 			Skip("Phase 1: Design only - awaiting implementation")
 		})
 	})
@@ -190,7 +190,7 @@ var _ = Describe("[GH-45] Architecture Flexibility Problem Document", func() {
 				- Open questions discusses tool boundary blurring
 				- Open questions discusses swap cost estimation
 		*/
-		PendingIt("[test_id:TS-GH-45-008] should address key architectural decisions in open questions", func() {
+		It("[test_id:TS-GH-45-008] should address key architectural decisions in open questions", func() {
 			Skip("Phase 1: Design only - awaiting implementation")
 		})
 	})
@@ -211,7 +211,7 @@ var _ = Describe("[GH-45] Architecture Flexibility Problem Document", func() {
 				- All links use portable [text](path) format
 				- No GitHub-specific features that break other renderers
 		*/
-		PendingIt("[test_id:TS-GH-45-009] should render correctly as standalone markdown", func() {
+		It("[test_id:TS-GH-45-009] should render correctly as standalone markdown", func() {
 			Skip("Phase 1: Design only - awaiting implementation")
 		})
 	})

@@ -14,15 +14,9 @@ document_metadata:
     file: "outputs/stp/GH-45/GH-45_test_plan.md"
     version: "v1"
     sections_covered: "Section III - Requirements-to-Tests Mapping"
-  related_prs:
-    - repo: "fullsend-ai/fullsend"
-      pr_number: 45
-      url: "https://github.com/fullsend-ai/fullsend/issues/45"
-      title: "Architecture Flexibility Problem Document"
-      merged: false
   total_scenarios: 9
-  functional_count: 9
-  e2e_count: 0
+  tier_1_count: 9
+  tier_2_count: 0
   p0_count: 1
   p1_count: 5
   p2_count: 3
@@ -39,8 +33,7 @@ code_generation_config:
       - "github.com/onsi/ginkgo/v2"
       - "github.com/onsi/gomega"
     standard:
-      - "context"
-      - "time"
+      - "os"
   timeout_constants: {}
   helper_library_imports: {}
 
@@ -64,7 +57,7 @@ common_preconditions:
 scenarios:
   - scenario_id: "001"
     test_id: "TS-GH-45-001"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: true
     requirement_id: "GH-45"
@@ -106,7 +99,7 @@ scenarios:
         BeforeAll(func() {
           // Read architecture-flexibility.md content
         })
-        It("[test_id:TS-GH-45-001]should cover interface-first, thin integration, deferred decisions, and compositional approaches", func() {
+        It("[test_id:TS-GH-45-001] should cover interface-first, thin integration, deferred decisions, and compositional approaches", func() {
           // Verify all four approaches are documented
         })
       })
@@ -131,7 +124,7 @@ scenarios:
         - "Each approach includes trade-offs or analysis"
 
     classification:
-      test_type: "Functional"
+      test_type: "Tier 1"
       scope: "Single-component"
       automation_approach: "Content validation via file read and string matching"
 
@@ -176,7 +169,7 @@ scenarios:
           action: "Verify compositional architecture approach is documented"
           command: "Search document content for compositional architecture section"
           validation: "Document contains discussion of compositional architecture"
-      cleanup: []
+      cleanup: []  # Read-only doc validation — no resources created, no cleanup needed
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -207,7 +200,7 @@ scenarios:
 
   - scenario_id: "002"
     test_id: "TS-GH-45-002"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: true
     requirement_id: "GH-45"
@@ -249,7 +242,7 @@ scenarios:
         BeforeAll(func() {
           // Read architecture-flexibility.md content
         })
-        It("[test_id:TS-GH-45-002]should categorize stable and swappable components", func() {
+        It("[test_id:TS-GH-45-002] should categorize stable and swappable components", func() {
           // Verify stable and swappable components are identified
         })
       })
@@ -272,7 +265,7 @@ scenarios:
         - "Clear distinction is made between the two categories"
 
     classification:
-      test_type: "Functional"
+      test_type: "Tier 1"
       scope: "Single-component"
       automation_approach: "Content validation via file read and string matching"
 
@@ -312,7 +305,7 @@ scenarios:
           action: "Verify swappable components are identified"
           command: "Search for agent CLIs, models, frameworks, review tools in document"
           validation: "All swappable components are mentioned and categorized as swappable"
-      cleanup: []
+      cleanup: []  # Read-only doc validation — no resources created, no cleanup needed
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -333,7 +326,7 @@ scenarios:
 
   - scenario_id: "003"
     test_id: "TS-GH-45-003"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: true
     requirement_id: "GH-45"
@@ -380,7 +373,7 @@ scenarios:
         BeforeAll(func() {
           // Read architecture-flexibility.md and extract cross-references
         })
-        It("[test_id:TS-GH-45-003]should contain valid links to all 7 existing problem documents", func() {
+        It("[test_id:TS-GH-45-003] should contain valid links to all 7 existing problem documents", func() {
           // Verify all 7 problem doc links are present and valid
         })
       })
@@ -406,7 +399,7 @@ scenarios:
         - "Document contains a reference to testing-agents problem doc"
 
     classification:
-      test_type: "Functional"
+      test_type: "Tier 1"
       scope: "Single-component"
       automation_approach: "Link extraction and file existence validation"
 
@@ -453,7 +446,7 @@ scenarios:
           action: "Verify referenced document files exist"
           command: "For each linked path, verify the target file exists"
           validation: "All referenced files exist in the repository"
-      cleanup: []
+      cleanup: []  # Read-only doc validation — no resources created, no cleanup needed
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -474,7 +467,7 @@ scenarios:
 
   - scenario_id: "004"
     test_id: "TS-GH-45-004"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-45"
@@ -516,7 +509,7 @@ scenarios:
         BeforeAll(func() {
           // Read README.md content
         })
-        It("[test_id:TS-GH-45-004]should include Architecture Flexibility link in README with correct path", func() {
+        It("[test_id:TS-GH-45-004] should include Architecture Flexibility link in README with correct path", func() {
           // Verify README contains link to architecture-flexibility.md
         })
       })
@@ -538,7 +531,7 @@ scenarios:
         - "Link includes a brief description of the document's purpose"
 
     classification:
-      test_type: "Functional"
+      test_type: "Tier 1"
       scope: "Single-component"
       automation_approach: "Content validation via file read and string matching"
 
@@ -577,7 +570,7 @@ scenarios:
           action: "Verify link has descriptive text"
           command: "Extract link text and check for meaningful description"
           validation: "Link text contains 'Architecture Flexibility' or equivalent"
-      cleanup: []
+      cleanup: []  # Read-only doc validation — no resources created, no cleanup needed
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -598,7 +591,7 @@ scenarios:
 
   - scenario_id: "005"
     test_id: "TS-GH-45-005"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: true
     requirement_id: "GH-45"
@@ -640,7 +633,7 @@ scenarios:
         BeforeAll(func() {
           // Read architecture-flexibility.md content
         })
-        It("[test_id:TS-GH-45-005]should include interface contract table with agent roles", func() {
+        It("[test_id:TS-GH-45-005] should include interface contract table with agent roles", func() {
           // Verify interface contract table exists with correct columns and roles
         })
       })
@@ -664,7 +657,7 @@ scenarios:
         - "Triage agent role is defined with input, output, and contract"
 
     classification:
-      test_type: "Functional"
+      test_type: "Tier 1"
       scope: "Single-component"
       automation_approach: "Content validation via table structure parsing"
 
@@ -711,7 +704,7 @@ scenarios:
           action: "Verify triage agent role is defined"
           command: "Check table contains triage role with input, output, contract"
           validation: "Triage role row is present and complete"
-      cleanup: []
+      cleanup: []  # Read-only doc validation — no resources created, no cleanup needed
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -732,7 +725,7 @@ scenarios:
 
   - scenario_id: "006"
     test_id: "TS-GH-45-006"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P2"
     mvp: false
     requirement_id: "GH-45"
@@ -774,7 +767,7 @@ scenarios:
         BeforeAll(func() {
           // Read architecture-flexibility.md and extract all links
         })
-        It("[test_id:TS-GH-45-006]should handle broken or missing cross-reference links gracefully", func() {
+        It("[test_id:TS-GH-45-006] should handle broken or missing cross-reference links gracefully", func() {
           // Verify broken links are identifiable and don't cause rendering failures
         })
       })
@@ -797,7 +790,7 @@ scenarios:
         - "Document renders without errors even if referenced files are missing"
 
     classification:
-      test_type: "Functional"
+      test_type: "Tier 1"
       scope: "Single-component"
       automation_approach: "Link syntax validation and rendering check"
 
@@ -829,7 +822,7 @@ scenarios:
           action: "Verify document renders without errors"
           command: "Render markdown and check for syntax errors"
           validation: "No rendering errors occur"
-      cleanup: []
+      cleanup: []  # Read-only doc validation — no resources created, no cleanup needed
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -850,7 +843,7 @@ scenarios:
 
   - scenario_id: "007"
     test_id: "TS-GH-45-007"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: true
     requirement_id: "GH-45"
@@ -897,7 +890,7 @@ scenarios:
         BeforeAll(func() {
           // Read architecture-flexibility.md content
         })
-        It("[test_id:TS-GH-45-007]should follow established problem doc conventions with required sections", func() {
+        It("[test_id:TS-GH-45-007] should follow established problem doc conventions with required sections", func() {
           // Verify required sections: problem statement, approaches, relationship, open questions
         })
       })
@@ -921,7 +914,7 @@ scenarios:
         - "Document contains an open questions section"
 
     classification:
-      test_type: "Functional"
+      test_type: "Tier 1"
       scope: "Single-component"
       automation_approach: "Heading extraction and section validation"
 
@@ -973,7 +966,7 @@ scenarios:
           action: "Verify open questions section exists"
           command: "Search headings for open questions"
           validation: "Open questions section found"
-      cleanup: []
+      cleanup: []  # Read-only doc validation — no resources created, no cleanup needed
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -1004,7 +997,7 @@ scenarios:
 
   - scenario_id: "008"
     test_id: "TS-GH-45-008"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P2"
     mvp: false
     requirement_id: "GH-45"
@@ -1046,7 +1039,7 @@ scenarios:
         BeforeAll(func() {
           // Read architecture-flexibility.md content
         })
-        It("[test_id:TS-GH-45-008]should address key architectural decisions in open questions", func() {
+        It("[test_id:TS-GH-45-008] should address key architectural decisions in open questions", func() {
           // Verify open questions cover interface formality, tool boundary blurring, swap cost
         })
       })
@@ -1068,7 +1061,7 @@ scenarios:
         - "Open questions section addresses swap cost estimation"
 
     classification:
-      test_type: "Functional"
+      test_type: "Tier 1"
       scope: "Single-component"
       automation_approach: "Content validation via keyword matching"
 
@@ -1111,7 +1104,7 @@ scenarios:
           action: "Verify swap cost estimation is addressed"
           command: "Search open questions section for swap cost estimation topic"
           validation: "Swap cost estimation discussion found"
-      cleanup: []
+      cleanup: []  # Read-only doc validation — no resources created, no cleanup needed
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -1137,7 +1130,7 @@ scenarios:
 
   - scenario_id: "009"
     test_id: "TS-GH-45-009"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P2"
     mvp: false
     requirement_id: "GH-45"
@@ -1179,7 +1172,7 @@ scenarios:
         BeforeAll(func() {
           // Read architecture-flexibility.md content
         })
-        It("[test_id:TS-GH-45-009]should render correctly as standalone markdown", func() {
+        It("[test_id:TS-GH-45-009] should render correctly as standalone markdown", func() {
           // Verify markdown syntax is valid and links are identifiable
         })
       })
@@ -1202,7 +1195,7 @@ scenarios:
         - "No GitHub-specific rendering features that break in other viewers"
 
     classification:
-      test_type: "Functional"
+      test_type: "Tier 1"
       scope: "Single-component"
       automation_approach: "Markdown syntax validation"
 
@@ -1234,7 +1227,7 @@ scenarios:
           action: "Check for GitHub-specific rendering features"
           command: "Search for GitHub-only markdown extensions"
           validation: "No GitHub-specific features that break other renderers"
-      cleanup: []
+      cleanup: []  # Read-only doc validation — no resources created, no cleanup needed
 
     assertions:
       - assertion_id: "ASSERT-01"
