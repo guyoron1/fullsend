@@ -1,0 +1,17 @@
+status: success
+jira_id: GH-2054
+file_path: /sandbox/workspace/output/GH-2054_test_plan.md
+test_counts:
+  unit_tests: 22
+  tier1: 0
+  tier2: 0
+  total: 22
+priority_breakdown:
+  P0: 8
+  P1: 12
+  P2: 2
+requirements_count: 8
+project_type: auto-detected
+source_repo: fullsend-ai/fullsend
+pr_analyzed: "#2189"
+lsp_calls_made: 7
