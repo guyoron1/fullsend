@@ -1,0 +1,7 @@
+status: success
+jira_id: GH-53
+file_path: /sandbox/workspace/output/GH-53_test_plan.md
+test_counts:
+  tier1: 17
+  tier2: 2
+  total: 19
