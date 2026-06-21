@@ -1,8 +1,8 @@
 ---
 name: std-reviewer
-description: Semantic QE review of STD YAML and test stubs against STP traceability, pattern correctness, and PSE quality
+description: Semantic QE review of STD YAML and test stubs against STP traceability, pattern correctness, PSE quality, test isolation, and error path coverage
 model: claude-opus-4-6
-version: 1.1.0
+version: 1.2.0
 ---
 
 # STD Reviewer Skill
@@ -14,7 +14,8 @@ version: 1.1.0
 
 Perform a comprehensive **semantic QE review** of a generated STD (YAML + test stubs).
 This skill evaluates **traceability to the source STP**, **pattern matching correctness**,
-**test step quality**, **PSE docstring quality**, and **code generation readiness**.
+**test step quality**, **test isolation**, **error path coverage**, **PSE docstring quality**,
+and **code generation readiness**.
 
 ## When to Use
 
@@ -512,6 +513,87 @@ For each assertion:
 - **MAJOR:** No assertions in a scenario
 - **MINOR:** All assertions are P0 (unrealistic — some should be P1)
 
+#### 4g. Test Isolation
+
+Verify that each scenario is self-contained and does not depend on external state,
+infrastructure side effects, or implicit ordering with tests outside the STD.
+
+**What to check:**
+
+For each scenario's `test_steps.setup`:
+- Every resource the test uses is explicitly created in setup or declared in
+  `common_preconditions`. If a step references a resource not created in the STD,
+  the test silently depends on external state.
+- No setup step assumes prior test execution ("use the instance created earlier"
+  without referencing a specific setup step or common precondition).
+- No reliance on mutable shared state — if multiple scenarios share a resource
+  (e.g., a namespace, a network), verify they do not mutate it in ways that
+  affect each other. Read-only sharing is acceptable; write-then-read across
+  scenarios without ordering is fragile.
+
+**External state patterns to flag:**
+- Database records assumed to exist without creation steps
+- Filesystem paths or config files assumed to be present
+- Network connectivity assumed without explicit setup
+- Cluster node labels, feature gates, or operator versions assumed without
+  precondition documentation
+- Environment variables referenced in test steps but not declared in
+  common_preconditions or scenario setup
+
+**Red flags (MAJOR):**
+- Scenario references a resource not created in its setup or common_preconditions —
+  hidden external dependency
+- Multiple scenarios mutate a shared resource without ordered execution or
+  isolation mechanisms
+- Test cleanup deletes resources that other scenarios depend on — ordering fragility
+
+**Red flags (MINOR):**
+- Scenario's preconditions list infrastructure state without specifying who
+  ensures it (acceptable if documented as a test environment requirement in the STP)
+
+#### 4h. Error Path and Edge Case Coverage
+
+Verify that the STD scenarios collectively cover failure modes, not just success paths.
+A test plan that only validates happy paths misses the highest-risk behaviors.
+
+**What to check:**
+
+For each requirement in the STD (grouped by `requirement_id`):
+
+1. **Positive/negative ratio:** Count scenarios that test success paths vs failure paths.
+   A requirement with only positive scenarios is incomplete unless the requirement
+   explicitly has no failure modes (e.g., a pure UI label change).
+   - Identify negative scenarios by: `[NEGATIVE]` tag in test_objective, error/failure
+     keywords in title ("fails", "rejects", "denied", "timeout", "invalid"), or
+     assertions that verify error conditions.
+
+2. **Error handling coverage:** If the requirement involves API calls, state transitions,
+   or resource lifecycle operations, check for scenarios covering:
+   - Invalid input / malformed request
+   - Permission denied / unauthorized access
+   - Resource not found / already exists (conflict)
+   - Timeout / network interruption (where applicable to the tier)
+   - Concurrent access / race conditions (for Tier 1 where applicable)
+
+3. **Boundary conditions:** If the requirement involves numeric limits, collections,
+   or ranges, check for scenarios at boundaries:
+   - Zero / empty input
+   - Maximum allowed value
+   - Just above / below limits
+
+**Red flags (MAJOR):**
+- Requirement has 3+ positive scenarios but zero negative scenarios — missing failure
+  path coverage for a non-trivial feature
+- Requirement involves authentication, authorization, or data validation but has
+  no scenario testing rejection or denial
+- Requirement involves resource limits but has no boundary condition scenario
+
+**Red flags (MINOR):**
+- Requirement has negative scenarios but they only cover one failure mode when
+  multiple are plausible
+- All scenarios for a requirement use the same test_data — no variation in inputs
+  to exercise different code paths
+
 ---
 
 ### Dimension 4.5: STD Content Policy
@@ -534,7 +616,7 @@ does not belong in the STD phase:
 - Branch names, commit SHAs, or code review links in metadata
 
 **Stub file red flags (MAJOR):**
-- PR URLs or references (e.g., `PR #1234`, `github.com/.../pull/...`) in docstrings —
+- PR URLs or references (e.g., `PR #16412`, `github.com/.../pull/...`) in docstrings —
   STD is a design document, not tied to specific PRs
 - Branch names or commit references
 - Developer names or assignees (except QE Owner which is acceptable as "TBD")
@@ -773,8 +855,8 @@ Generate the review report as markdown:
 | Major findings | {count} |
 | Minor findings | {count} |
 | Actionable findings | {count} |
-| Confidence | {HIGH / MEDIUM / LOW} |
 | Weighted score | {0-100} |
+| Confidence | {HIGH / MEDIUM / LOW} |
 
 ## Traceability Summary
 
@@ -809,11 +891,11 @@ Generate the review report as markdown:
 
 ### Dimension 4: Test Step Quality
 
-| Scenario | Setup | Execution | Cleanup | Assertions | Status |
-|:---------|:------|:----------|:--------|:-----------|:-------|
-| {scenario_id} | {count} | {count} | {count} | {count} | {PASS/WARN/FAIL} |
+| Scenario | Setup | Execution | Cleanup | Assertions | Isolation | Error Paths | Status |
+|:---------|:------|:----------|:--------|:-----------|:----------|:------------|:-------|
+| {scenario_id} | {count} | {count} | {count} | {count} | {PASS/WARN} | {PASS/WARN} | {PASS/WARN/FAIL} |
 
-{per-scenario findings}
+{per-scenario findings including 4g isolation and 4h error path coverage}
 
 ### Dimension 4.5: STD Content Policy
 
