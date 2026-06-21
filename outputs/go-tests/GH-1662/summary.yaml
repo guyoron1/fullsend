@@ -1,0 +1,19 @@
+status: error
+jira_id: GH-1662
+error: "STD YAML not found"
+detail: |
+  The Software Test Description (STD) YAML artifact does not exist at the
+  expected path: outputs/std/GH-1662/GH-1662_test_description.yaml
+
+  The STD must be generated before tests can be produced. Run the
+  std-builder command for GH-1662 to create the STD YAML and associated
+  test stubs, then re-run the test generator.
+
+  Available artifacts:
+    - STP: outputs/stp/GH-1662/GH-1662_test_plan.md (present)
+    - STP Review: outputs/reviews/GH-1662/GH-1662_stp_review.md (present)
+    - STD Review: outputs/reviews/GH-1662/GH-1662_std_review.md (present, also reports STD missing)
+    - STD YAML: outputs/std/GH-1662/GH-1662_test_description.yaml (MISSING)
+languages: []
+total_test_count: 0
+lsp_patterns_used: false
