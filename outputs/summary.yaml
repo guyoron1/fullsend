@@ -1,0 +1,12 @@
+status: success
+jira_id: GH-1662
+file_path: /sandbox/workspace/output/GH-1662_test_plan.md
+test_counts:
+  unit_tests: 6
+  functional: 14
+  end_to_end: 4
+  total: 24
+pr_analyzed: 1688
+repo: fullsend-ai/fullsend
+lsp_calls: 7
+validation: all_checks_passed
