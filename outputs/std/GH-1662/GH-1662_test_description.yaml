@@ -3,7 +3,7 @@
 # Auto-generated from STP: outputs/stp/GH-1662/GH-1662_test_plan.md
 
 document_metadata:
-  std_version: "2.1-enhanced"
+  std_version: "2.0"
   generated_date: "2026-06-21"
   jira_issue: "GH-1662"
   jira_summary: "Require Authorization on All Agent Dispatch Paths"
@@ -12,33 +12,27 @@ document_metadata:
     file: "outputs/stp/GH-1662/GH-1662_test_plan.md"
     version: "v1"
     sections_covered: "Section III - Test Scenarios & Traceability"
-  related_prs:
-    - repo: "fullsend-ai/fullsend"
-      pr_number: 1688
-      url: "https://github.com/fullsend-ai/fullsend/pull/1688"
-      title: "Require authorization on all agent dispatch paths"
-      merged: false
   owning_sig: "N/A"
   participating_sigs: []
-  total_scenarios: 27
+  total_scenarios: 26
   tier_1_count: 0
   tier_2_count: 0
   unit_count: 6
-  functional_count: 17
+  functional_count: 16
   e2e_count: 4
   p0_count: 10
-  p1_count: 15
+  p1_count: 14
   p2_count: 2
   existing_coverage_count: 0
-  new_count: 27
+  new_count: 26
   test_strategy_mode: "auto"
 
 code_generation_config:
-  std_version: "2.1-enhanced"
+  std_version: "2.0"
   framework: "testing"
   assertion_library: "testify"
   language: "go"
-  package_name: "dispatch"
+  package_name: "scaffold"
   imports:
     standard:
       - "testing"
@@ -1512,60 +1506,3 @@ scenarios:
         - "Go 1.26+"
       scenario_specific_rbac: []
 
-  # ============================================================
-  # Scenario 027: Duplicate check - was listed as scenario but is
-  # covered by 001-005, so we include it as a separate verification
-  # ============================================================
-  - scenario_id: "027"
-    test_id: "TS-GH-1662-027"
-    test_type: "functional"
-    priority: "P0"
-    mvp: true
-    requirement_id: "GH-1662"
-    coverage_status: "NEW"
-
-    test_objective:
-      title: "Verify CONTRIBUTOR association is rejected for slash commands"
-      what: |
-        Duplicate verification that CONTRIBUTOR (distinct from FIRST_TIME_CONTRIBUTOR)
-        is rejected across all slash command dispatch paths. This scenario tests the
-        specific case in the context of full dispatch routing, not just the shell function.
-      why: |
-        CONTRIBUTOR is a common association for open-source repos. This scenario
-        validates the end-to-end dispatch behavior, not just the is_authorized function.
-      acceptance_criteria:
-        - "All gated slash command paths reject CONTRIBUTOR association"
-        - "Dispatch routing does not set STAGE for CONTRIBUTOR on any gated command"
-
-    classification:
-      test_type: "Functional"
-      scope: "Single-component"
-      automation_approach: "Go unit test with testify assertions"
-
-    specific_preconditions: []
-
-    test_steps:
-      setup:
-        - step_id: "SETUP-01"
-          action: "Render dispatch workflow content"
-          command: "scaffold.RenderDispatchWorkflow()"
-          validation: "Workflow content rendered"
-      test_execution:
-        - step_id: "TEST-01"
-          action: "Verify CONTRIBUTOR is rejected across all dispatch paths"
-          command: "Assert is_authorized rejects CONTRIBUTOR for all gated commands"
-          validation: "CONTRIBUTOR rejected on all paths"
-      cleanup: []
-
-    assertions:
-      - assertion_id: "ASSERT-01"
-        priority: "P0"
-        description: "CONTRIBUTOR is blocked from all gated commands"
-        condition: "No gated dispatch path sets STAGE for CONTRIBUTOR association"
-        failure_impact: "Contributors can trigger expensive agent runs"
-
-    dependencies:
-      kubernetes_resources: []
-      external_tools:
-        - "Go 1.26+"
-      scenario_specific_rbac: []

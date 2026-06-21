@@ -1,4 +1,4 @@
-package dispatch
+package scaffold
 
 import (
 	"testing"
@@ -116,20 +116,4 @@ func TestSlashCommandAuthorization(t *testing.T) {
 		// [test_id:TS-GH-1662-005]
 	})
 
-	t.Run("CONTRIBUTOR association is rejected across all dispatch paths", func(t *testing.T) {
-		t.Skip("Phase 1: Design only - awaiting implementation")
-		/*
-		Preconditions:
-		    - Dispatch workflow content rendered from scaffold
-
-		Steps:
-		    1. Render dispatch workflow content
-		    2. Verify CONTRIBUTOR is rejected across all gated dispatch paths
-
-		Expected:
-		    - All gated slash command paths reject CONTRIBUTOR association
-		    - No gated dispatch path sets STAGE for CONTRIBUTOR association
-		*/
-		// [test_id:TS-GH-1662-027]
-	})
 }
