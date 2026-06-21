@@ -1,0 +1,23 @@
+status: success
+jira_id: GH-1835
+std_source: outputs/std/GH-1835/GH-1835_test_description.yaml
+languages:
+  - language: go
+    framework: testing
+    files:
+      - crossfile_verification_skill_test.go
+      - crossfile_verification_correctness_test.go
+      - crossfile_verification_scaffold_test.go
+      - crossfile_verification_consistency_test.go
+    test_count: 13
+total_test_count: 13
+lsp_patterns_used: false
+notes: |
+  Tests generated from 12 STD scenarios plus 1 structural validation test.
+  Key fixes from stubs:
+  - Removed scaffold import (same-package tests, no prefix needed)
+  - Fixed WalkFullsendRepo callback signature (path string, content []byte)
+  - Used WalkFullsendRepoAll for skills/ (layered dir, skipped by WalkFullsendRepo)
+  - Used WalkLayeredContent for deployment verification (skills/ not installed by CollectInstallFiles)
+  - Added normalizeWS helper to handle markdown line wrapping in content assertions
+  - All t.Skip() markers removed — tests are fully implemented
