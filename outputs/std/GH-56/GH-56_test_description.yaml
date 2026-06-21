@@ -13,15 +13,9 @@ document_metadata:
     file: "outputs/stp/GH-56/GH-56_test_plan.md"
     version: "v1"
     sections_covered: "Section III - Requirements-to-Tests Mapping"
-  related_prs:
-    - repo: "fullsend-ai/fullsend"
-      pr_number: 110
-      url: "https://github.com/fullsend-ai/fullsend/pull/110"
-      title: "Add ACP landscape entry with evaluation analysis"
-      merged: true
   total_scenarios: 8
-  functional_count: 8
-  e2e_count: 0
+  tier_1_count: 8
+  tier_2_count: 0
   p0_count: 0
   p1_count: 6
   p2_count: 2
@@ -45,16 +39,15 @@ code_generation_config:
     test_framework:
       - path: "github.com/stretchr/testify/assert"
       - path: "github.com/stretchr/testify/require"
-    project:
-      - "github.com/fullsend-ai/fullsend/internal/config"
+    project: []
   timeout_constants: {}
   helper_library_imports: []
 
 common_preconditions:
   infrastructure:
     - name: "Git repository clone"
-      requirement: "Local clone of fullsend-ai/fullsend repository with PR #110 merged"
-      validation: "git log --oneline | grep 'ACP landscape'"
+      requirement: "Local clone of fullsend-ai/fullsend repository containing ACP evaluation documentation in docs/problems/agent-infrastructure.md"
+      validation: "test -f docs/problems/agent-infrastructure.md"
     - name: "Go toolchain"
       requirement: "Go 1.23+"
       validation: "go version"
@@ -69,10 +62,14 @@ common_preconditions:
 scenarios:
   - scenario_id: "1"
     test_id: "TS-GH-56-001"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: true
     requirement_id: "GH-56"
+
+    patterns:
+      primary: "content-verification"
+      helpers_required: []
 
     variables:
       closure_scope:
@@ -129,7 +126,7 @@ scenarios:
         - "Documentation contains section on plain Pod execution limits"
 
     classification:
-      test_type: "Functional"
+      test_type: "Tier 1"
       scope: "Single-component"
       automation_approach: "go test with testify assertions"
 
@@ -151,32 +148,52 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Check for controller overhead evaluation point"
-          command: "strings.Contains(docContent, \"controller overhead\") or equivalent phrase"
+          command: "strings.Contains(docContent, \"controller overhead\") || strings.Contains(docContent, \"operator overhead\") || strings.Contains(docContent, \"Controller Overhead\")"
           validation: "Content contains controller overhead discussion"
         - step_id: "TEST-02"
           action: "Check for UI-centric design evaluation point"
-          command: "strings.Contains(docContent, \"UI-centric\") or equivalent phrase"
+          command: "strings.Contains(docContent, \"UI-centric\") || strings.Contains(docContent, \"UI-Centric\") || strings.Contains(docContent, \"user-interface-centric\")"
           validation: "Content contains UI-centric design discussion"
         - step_id: "TEST-03"
           action: "Check for CR surface friction evaluation point"
-          command: "strings.Contains(docContent, \"CR\") or equivalent custom-resource phrase"
+          command: "strings.Contains(docContent, \"CR surface\") || strings.Contains(docContent, \"custom resource\") || strings.Contains(docContent, \"Custom Resource\") || strings.Contains(docContent, \"CRD\")"
           validation: "Content contains CR surface friction discussion"
         - step_id: "TEST-04"
           action: "Check for shared workspace risk evaluation point"
-          command: "strings.Contains(docContent, \"shared workspace\") or equivalent phrase"
+          command: "strings.Contains(docContent, \"shared workspace\") || strings.Contains(docContent, \"Shared Workspace\") || strings.Contains(docContent, \"shared-workspace\")"
           validation: "Content contains shared workspace risk discussion"
         - step_id: "TEST-05"
           action: "Check for plain Pod execution limits evaluation point"
-          command: "strings.Contains(docContent, \"plain Pod\") or equivalent phrase"
+          command: "strings.Contains(docContent, \"plain Pod\") || strings.Contains(docContent, \"Plain Pod\") || strings.Contains(docContent, \"plain pod\")"
           validation: "Content contains plain Pod execution limits discussion"
       cleanup: []
 
     assertions:
       - assertion_id: "ASSERT-01"
         priority: "P1"
-        description: "All five ACP evaluation points are present in documentation"
-        condition: "Each evaluation keyword/phrase found in document content"
-        failure_impact: "Incomplete research documentation; team lacks full ACP assessment"
+        description: "Controller overhead evaluation point is present"
+        condition: "docContent contains 'controller overhead' or 'operator overhead'"
+        failure_impact: "Missing controller overhead evaluation leaves gap in ACP assessment"
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "UI-centric design evaluation point is present"
+        condition: "docContent contains 'UI-centric' or 'UI-Centric'"
+        failure_impact: "Missing UI-centric design evaluation leaves gap in ACP assessment"
+      - assertion_id: "ASSERT-03"
+        priority: "P1"
+        description: "CR surface friction evaluation point is present"
+        condition: "docContent contains 'CR surface' or 'custom resource' or 'CRD'"
+        failure_impact: "Missing CR surface friction evaluation leaves gap in ACP assessment"
+      - assertion_id: "ASSERT-04"
+        priority: "P1"
+        description: "Shared workspace risk evaluation point is present"
+        condition: "docContent contains 'shared workspace' or 'shared-workspace'"
+        failure_impact: "Missing shared workspace risk evaluation leaves gap in ACP assessment"
+      - assertion_id: "ASSERT-05"
+        priority: "P1"
+        description: "Plain Pod execution limits evaluation point is present"
+        condition: "docContent contains 'plain Pod' or 'Plain Pod'"
+        failure_impact: "Missing plain Pod execution limits evaluation leaves gap in ACP assessment"
 
     dependencies:
       kubernetes_resources: []
@@ -186,10 +203,14 @@ scenarios:
 
   - scenario_id: "2"
     test_id: "TS-GH-56-002"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: true
     requirement_id: "GH-56"
+
+    patterns:
+      primary: "content-verification"
+      helpers_required: []
 
     variables:
       closure_scope:
@@ -242,14 +263,14 @@ scenarios:
         - "No claims contradict issue discussion findings"
 
     classification:
-      test_type: "Functional"
+      test_type: "Tier 1"
       scope: "Single-component"
       automation_approach: "go test with testify assertions"
 
     specific_preconditions:
-      - name: "Issue discussion context"
-        requirement: "Understanding of GH-56 issue comment findings"
-        validation: "N/A — manual cross-reference"
+      - name: "ACP evaluation documentation exists"
+        requirement: "docs/problems/agent-infrastructure.md contains claims about operator overhead, UI-centric design, and shared-workspace risk"
+        validation: "test -f docs/problems/agent-infrastructure.md"
 
     test_data:
       resource_definitions: []
@@ -264,16 +285,16 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Verify operator overhead claim present and accurate"
-          command: "Check content for operator overhead discussion matching issue findings"
-          validation: "Claim aligns with issue discussion"
+          command: "strings.Contains(docContent, \"operator overhead\") || strings.Contains(docContent, \"controller overhead\")"
+          validation: "Content contains operator overhead discussion"
         - step_id: "TEST-02"
           action: "Verify UI-centric limitation claim present and accurate"
-          command: "Check content for UI-centric design discussion matching issue findings"
-          validation: "Claim aligns with issue discussion"
+          command: "strings.Contains(docContent, \"UI-centric\") || strings.Contains(docContent, \"UI-Centric\")"
+          validation: "Content contains UI-centric design discussion"
         - step_id: "TEST-03"
           action: "Verify shared-workspace risk claim present and accurate"
-          command: "Check content for workspace injection risk matching issue findings"
-          validation: "Claim aligns with issue discussion"
+          command: "strings.Contains(docContent, \"shared workspace\") || strings.Contains(docContent, \"shared-workspace\") || strings.Contains(docContent, \"workspace injection\")"
+          validation: "Content contains shared-workspace risk discussion"
       cleanup: []
 
     assertions:
@@ -291,10 +312,14 @@ scenarios:
 
   - scenario_id: "3"
     test_id: "TS-GH-56-003"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: true
     requirement_id: "GH-56"
+
+    patterns:
+      primary: "content-verification"
+      helpers_required: []
 
     variables:
       closure_scope:
@@ -346,14 +371,14 @@ scenarios:
         - "No factually incorrect statements about ACP architecture"
 
     classification:
-      test_type: "Functional"
+      test_type: "Tier 1"
       scope: "Single-component"
       automation_approach: "go test with testify assertions"
 
     specific_preconditions:
-      - name: "ACP documentation context"
-        requirement: "Understanding of current ACP platform state"
-        validation: "N/A — manual verification required"
+      - name: "ACP documentation file exists"
+        requirement: "docs/problems/agent-infrastructure.md exists with ACP evaluation section"
+        validation: "test -f docs/problems/agent-infrastructure.md"
 
     test_data:
       resource_definitions: []
@@ -368,19 +393,24 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Check for temporal framing of claims"
-          command: "Verify claims use point-in-time language where appropriate"
-          validation: "Claims are appropriately framed"
+          command: "strings.Contains(docContent, \"as of\") || strings.Contains(docContent, \"at the time of\") || strings.Contains(docContent, \"currently\") || strings.Contains(docContent, \"at evaluation time\")"
+          validation: "Document contains temporal phrases near platform-specific claims"
         - step_id: "TEST-02"
-          action: "Check for outdated version references"
-          command: "Scan for version numbers and validate currency"
-          validation: "No outdated version references found"
+          action: "Check for absence of known-discontinued ACP feature references"
+          command: "!strings.Contains(docContent, \"ACP v0.\") && !strings.Contains(docContent, \"deprecated ACP\")"
+          validation: "No references to discontinued ACP versions or features"
       cleanup: []
 
     assertions:
       - assertion_id: "ASSERT-01"
         priority: "P1"
-        description: "No stale or inaccurate claims in ACP evaluation"
-        condition: "All claims are current and accurately framed"
+        description: "Claims use temporal framing language"
+        condition: "docContent contains temporal phrases such as 'as of', 'at the time of', or 'currently'"
+        failure_impact: "Claims without temporal framing may be mistaken for permanent facts"
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "No references to discontinued ACP features"
+        condition: "docContent does not contain references to known-deprecated ACP versions"
         failure_impact: "Stale documentation could mislead architectural decisions"
 
     dependencies:
@@ -391,10 +421,14 @@ scenarios:
 
   - scenario_id: "4"
     test_id: "TS-GH-56-004"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: true
     requirement_id: "GH-56"
+
+    patterns:
+      primary: "link-integrity"
+      helpers_required: []
 
     variables:
       closure_scope:
@@ -451,7 +485,7 @@ scenarios:
         - "The link uses a valid relative path"
 
     classification:
-      test_type: "Functional"
+      test_type: "Tier 1"
       scope: "Single-component"
       automation_approach: "go test with testify assertions"
 
@@ -500,10 +534,14 @@ scenarios:
 
   - scenario_id: "5"
     test_id: "TS-GH-56-005"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: true
     requirement_id: "GH-56"
+
+    patterns:
+      primary: "link-integrity"
+      helpers_required: ["markdown-slug-converter"]
 
     variables:
       closure_scope:
@@ -559,7 +597,7 @@ scenarios:
         - "Heading text matches anchor after markdown slug transformation"
 
     classification:
-      test_type: "Functional"
+      test_type: "Tier 1"
       scope: "Single-component"
       automation_approach: "go test with testify assertions"
 
@@ -612,10 +650,14 @@ scenarios:
 
   - scenario_id: "6"
     test_id: "TS-GH-56-006"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-56"
+
+    patterns:
+      primary: "link-integrity"
+      helpers_required: ["anchor-validator"]
 
     variables:
       closure_scope:
@@ -666,14 +708,14 @@ scenarios:
         - "Error message suggests the expected heading or similar matches"
 
     classification:
-      test_type: "Functional"
+      test_type: "Tier 1"
       scope: "Single-component"
       automation_approach: "go test with testify assertions"
 
     specific_preconditions:
-      - name: "Link validation utility"
-        requirement: "Test helper function for markdown link validation"
-        validation: "Helper function available in test suite"
+      - name: "Anchor validation logic"
+        requirement: "Anchor validation logic available (to be implemented as helper function that accepts anchor string and heading list)"
+        validation: "Helper function compiles without error"
 
     test_data:
       resource_definitions: []
@@ -715,10 +757,14 @@ scenarios:
 
   - scenario_id: "7"
     test_id: "TS-GH-56-007"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P2"
     mvp: false
     requirement_id: "GH-56"
+
+    patterns:
+      primary: "document-structure"
+      helpers_required: []
 
     variables:
       closure_scope:
@@ -775,7 +821,7 @@ scenarios:
         - "New sections do not break document flow"
 
     classification:
-      test_type: "Functional"
+      test_type: "Tier 1"
       scope: "Single-component"
       automation_approach: "go test with testify assertions"
 
@@ -828,10 +874,14 @@ scenarios:
 
   - scenario_id: "8"
     test_id: "TS-GH-56-008"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P2"
     mvp: false
     requirement_id: "GH-56"
+
+    patterns:
+      primary: "document-structure"
+      helpers_required: []
 
     variables:
       closure_scope:
@@ -885,9 +935,9 @@ scenarios:
       title: "Verify existing content unmodified by insertion"
       what: |
         Validates that the existing content in both landscape.md and
-        agent-infrastructure.md was not modified by the PR #110 changes.
+        agent-infrastructure.md was not modified by the ACP documentation changes.
         Only new sections should be added; pre-existing sections, formatting,
-        and content must remain identical to the pre-PR state.
+        and content must remain identical to the pre-change state.
       why: |
         Documentation PRs that inadvertently modify existing content can
         introduce regressions or break existing cross-references. Verifying
@@ -898,14 +948,17 @@ scenarios:
         - "No unintended whitespace or formatting changes"
 
     classification:
-      test_type: "Functional"
+      test_type: "Tier 1"
       scope: "Single-component"
       automation_approach: "go test with testify assertions"
 
     specific_preconditions:
       - name: "Git history access"
-        requirement: "Ability to access pre-PR file state via git"
-        validation: "git show HEAD~1:docs/landscape.md"
+        requirement: "Ability to access pre-change file state via git (baseline content retrievable from parent commit)"
+        validation: "git show HEAD~1:docs/landscape.md exits successfully"
+      - name: "Baseline content available"
+        requirement: "Pre-change content of docs/landscape.md and docs/problems/agent-infrastructure.md retrievable via git show HEAD~1"
+        validation: "git show HEAD~1:docs/problems/agent-infrastructure.md exits successfully"
 
     test_data:
       resource_definitions: []
@@ -914,13 +967,13 @@ scenarios:
     test_steps:
       setup:
         - step_id: "SETUP-01"
-          action: "Get baseline content from git pre-PR state"
-          command: "git show HEAD~1:docs/landscape.md and git show HEAD~1:docs/problems/agent-infrastructure.md"
-          validation: "Baseline content retrieved"
+          action: "Retrieve baseline content from git parent commit"
+          command: "exec.Command(\"git\", \"show\", \"HEAD~1:docs/landscape.md\").Output() and exec.Command(\"git\", \"show\", \"HEAD~1:docs/problems/agent-infrastructure.md\").Output()"
+          validation: "Baseline content retrieved without error"
         - step_id: "SETUP-02"
           action: "Read current file content"
-          command: "os.ReadFile for both files"
-          validation: "Current content read"
+          command: "os.ReadFile(\"docs/landscape.md\") and os.ReadFile(\"docs/problems/agent-infrastructure.md\")"
+          validation: "Current content read without error"
       test_execution:
         - step_id: "TEST-01"
           action: "Extract non-ACP sections from current landscape.md"

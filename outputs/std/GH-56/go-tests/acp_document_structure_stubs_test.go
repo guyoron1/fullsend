@@ -25,7 +25,7 @@ Jira: GH-56
 //   - tier1
 //
 // Preconditions:
-//   - Local clone of fullsend-ai/fullsend repository with PR #110 merged
+//   - Local clone of fullsend-ai/fullsend repository containing ACP evaluation documentation
 //   - docs/landscape.md and docs/problems/agent-infrastructure.md both exist
 func TestACPDocumentStructure(t *testing.T) {
 	/*
@@ -68,14 +68,14 @@ func TestACPDocumentStructure(t *testing.T) {
 
 	/*
 	Preconditions:
-	    - Git history available for pre-PR file state comparison
-	    - docs/landscape.md and docs/problems/agent-infrastructure.md exist
+	    - Git history available for pre-change file state comparison
+	    - Baseline content of docs/landscape.md and docs/problems/agent-infrastructure.md retrievable via git show HEAD~1
+	    - docs/landscape.md and docs/problems/agent-infrastructure.md exist in current state
 
 	Steps:
-	    1. Get baseline content from git pre-PR state
-	    2. Read current file content
-	    3. Extract non-ACP sections from current landscape.md and compare with baseline
-	    4. Extract non-ACP sections from current agent-infrastructure.md and compare with baseline
+	    1. Retrieve baseline content from git parent commit and read current file content
+	    2. Extract non-ACP sections from current landscape.md and compare with baseline
+	    3. Extract non-ACP sections from current agent-infrastructure.md and compare with baseline
 
 	Expected:
 	    - Pre-existing sections in landscape.md are identical to pre-PR state

@@ -25,7 +25,7 @@ Jira: GH-56
 //   - tier1
 //
 // Preconditions:
-//   - Local clone of fullsend-ai/fullsend repository with PR #110 merged
+//   - Local clone of fullsend-ai/fullsend repository containing ACP evaluation documentation
 //   - docs/landscape.md and docs/problems/agent-infrastructure.md both exist
 func TestACPCrossLinkIntegrity(t *testing.T) {
 	/*
@@ -89,7 +89,7 @@ func TestACPCrossLinkIntegrity(t *testing.T) {
 
 	/*
 	Preconditions:
-	    - Test helper function for markdown link validation available
+	    - Anchor validation logic available (to be implemented as helper function that accepts anchor string and heading list)
 
 	Steps:
 	    1. Create test case with intentionally broken anchor

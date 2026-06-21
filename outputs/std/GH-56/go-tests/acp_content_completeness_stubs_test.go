@@ -24,13 +24,13 @@ Jira: GH-56
 //   - tier1
 //
 // Preconditions:
-//   - Local clone of fullsend-ai/fullsend repository with PR #110 merged
-//   - docs/problems/agent-infrastructure.md exists with ACP section
+//   - Local clone of fullsend-ai/fullsend repository containing ACP evaluation documentation
+//   - docs/problems/agent-infrastructure.md exists with ACP evaluation section
 func TestACPContentCompleteness(t *testing.T) {
 	/*
 	Preconditions:
 	    - docs/problems/agent-infrastructure.md exists with ACP evaluation section
-	    - PR #110 merged into repository
+	    - Repository contains ACP landscape entry in docs/landscape.md
 	*/
 
 	docContent, err := os.ReadFile("docs/problems/agent-infrastructure.md")
@@ -67,7 +67,7 @@ func TestACPContentCompleteness(t *testing.T) {
 	/*
 	Preconditions:
 	    - docs/problems/agent-infrastructure.md exists with ACP evaluation section
-	    - Understanding of GH-56 issue comment findings
+	    - Document contains claims about operator overhead, UI-centric design, and shared-workspace risk
 
 	Steps:
 	    1. Read docs/problems/agent-infrastructure.md
@@ -98,9 +98,9 @@ func TestACPContentCompleteness(t *testing.T) {
 	    3. Check for outdated version references
 
 	Expected:
-	    - No references to discontinued ACP features
-	    - Claims are framed as point-in-time observations where appropriate
-	    - No factually incorrect statements about ACP architecture
+	    - No references to discontinued ACP features or deprecated versions
+	    - Document contains temporal phrases such as 'as of', 'at the time of', or 'currently' near platform-specific claims
+	    - No references to known-discontinued ACP version strings
 	*/
 	t.Run("[test_id:TS-GH-56-003] should contain no stale or inaccurate platform claims", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
