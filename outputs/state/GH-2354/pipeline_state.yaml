@@ -1,0 +1,63 @@
+# Pipeline State v1
+version: 1
+ticket_id: "GH-2354"
+project_id: "auto-detected"
+display_name: "fullsend"
+created: "2026-06-21T00:00:00Z"
+updated: "2026-06-21T00:15:00Z"
+
+phases:
+  stp:
+    status: completed
+    started: "2026-06-21T00:00:00Z"
+    completed: "2026-06-21T00:00:00Z"
+    output: "outputs/stp/GH-2354/GH-2354_test_plan.md"
+    output_checksum: "sha256:d8e3b8dffc05988352ea5ca0843ad02a758aacfceb213325505409a15e29ae9d"
+    skills_used: []
+    error: null
+
+  stp_review:
+    status: pending
+    verdict: null
+    findings: null
+    error: null
+
+  stp_refine:
+    status: pending
+    error: null
+
+  std:
+    status: completed
+    started: "2026-06-21T00:00:00Z"
+    completed: "2026-06-21T00:15:00Z"
+    output: "outputs/std/GH-2354/GH-2354_test_description.yaml"
+    output_checksum: "sha256:87d48fbe119c94cd23adea37d5420cf1af25b753cb22b9dea8ffb936cc956bf5"
+    stp_checksum_at_generation: "sha256:d8e3b8dffc05988352ea5ca0843ad02a758aacfceb213325505409a15e29ae9d"
+    scenario_counts:
+      total: 19
+      unit: 10
+      functional: 9
+    stubs:
+      go: "outputs/std/GH-2354/go-tests/"
+    error: null
+
+  std_review:
+    status: pending
+    verdict: null
+    findings: null
+    error: null
+
+  go_codegen:
+    status: pending
+    output: null
+    error: null
+
+  python_codegen:
+    status: pending
+    output: null
+    error: null
+
+  cluster_tests:
+    status: pending
+    output: null
+    error: null
