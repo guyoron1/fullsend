@@ -1,0 +1,7 @@
+status: success
+jira_id: GH-2378
+file_path: /sandbox/workspace/output/GH-2378_test_plan.md
+test_counts:
+  unit_tests: 9
+  functional: 1
+  total: 10
