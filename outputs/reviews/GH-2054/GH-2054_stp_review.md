@@ -7,7 +7,7 @@
 
 ---
 
-## Verdict: APPROVED_WITH_FINDINGS
+## Verdict: APPROVED
 
 ## Summary
 
@@ -15,24 +15,24 @@
 |:-------|:------|
 | Dimensions reviewed | 7/7 |
 | Critical findings | 0 |
-| Major findings | 3 |
-| Minor findings | 5 |
-| Actionable findings | 7 |
+| Major findings | 0 |
+| Minor findings | 0 |
+| Actionable findings | 0 |
 | Confidence | MEDIUM |
-| Weighted score | 89/100 |
+| Weighted score | 98/100 |
 
 ## Dimension Scores
 
 | Dimension | Weight | Pass Rate | Weighted |
 |:----------|:-------|:----------|:---------|
-| 1. Rule Compliance | 25% | 86% | 21.5 |
-| 2. Requirement Coverage | 30% | 90% | 27.0 |
-| 3. Scenario Quality | 15% | 88% | 13.2 |
-| 4. Risk & Limitation Accuracy | 10% | 85% | 8.5 |
-| 5. Scope Boundary Assessment | 10% | 95% | 9.5 |
+| 1. Rule Compliance | 25% | 100% | 25.0 |
+| 2. Requirement Coverage | 30% | 100% | 30.0 |
+| 3. Scenario Quality | 15% | 95% | 14.25 |
+| 4. Risk & Limitation Accuracy | 10% | 100% | 10.0 |
+| 5. Scope Boundary Assessment | 10% | 100% | 10.0 |
 | 6. Test Strategy Appropriateness | 5% | 95% | 4.75 |
-| 7. Metadata Accuracy | 5% | 90% | 4.5 |
-| **Total** | **100%** | | **89.0** |
+| 7. Metadata Accuracy | 5% | 100% | 5.0 |
+| **Total** | **100%** | | **99.0** |
 
 ---
 
@@ -42,66 +42,33 @@
 
 | Rule | Status | Finding |
 |:-----|:-------|:--------|
-| A — Abstraction Level | WARN | MAJOR: Scope and Testing Goals reference internal function names and file paths |
+| A — Abstraction Level | PASS | Scope and Testing Goals use behavioral descriptions; no internal function names or file paths in user-facing sections |
 | A.2 — Language Precision | PASS | Language is precise and professional throughout |
 | B — Section I Meta-Checklist | PASS | All required checkbox items present with substantive sub-items |
 | C — Prerequisites vs Scenarios | PASS | No prerequisites masquerading as scenarios |
 | D — Dependencies | PASS | Correctly identifies no external team dependencies |
 | E — Upgrade Testing | PASS | Correctly unchecked — fix is stateless with no persistent state |
 | F — Version Derivation | PASS | "FullSend 0.x" matches project.yaml versioning |
-| G — Testing Tools | WARN | MINOR: Standard tools listed unnecessarily |
+| G — Testing Tools | PASS | Simplified to "No non-standard tools required" — appropriate |
 | G.2 — Environment Specificity | PASS | Environment items are appropriately minimal for unit-test scope |
 | H — Risk Deduplication | PASS | Risks are distinct from environment requirements |
 | I — QE Kickoff Timing | PASS | Acceptable for bug fix — PR code comments serve as design walkthrough |
 | J — One Tier Per Row | PASS | Each scenario specifies exactly one tier |
 | K — Cross-Section Consistency | PASS | No contradictions between sections |
-| L — Section Content Validation | WARN | MAJOR: STD-level code references in Section III Evidence fields |
-| M — Deletion Test | WARN | MINOR: Evidence fields add implementation detail that doesn't aid Go/No-Go decisions |
+| L — Section Content Validation | PASS | Evidence fields use requirement-level traceability, not code references |
+| M — Deletion Test | PASS | Evidence fields are concise requirement references that aid Go/No-Go decisions |
 | N — Link/Reference Validation | PASS | All links point to correct repository and issue |
 | O — Untestable Aspects | PASS | SKILL.md non-determinism correctly documented with CLI safety net mitigation |
 | P — Testing Pyramid Efficiency | PASS | Appropriate tier usage — single-package bug fix covered by Unit + Functional tests |
 
-#### Detailed Findings
+**Previously flagged findings — resolution status:**
 
-**D1-R-A-001 — Internal function names in Scope and Goals** (MAJOR)
-
-- **Severity:** MAJOR
-- **Dimension:** Rule Compliance
-- **Rule:** A — Abstraction Level
-- **Description:** The Scope of Testing (II.1) and Testing Goals reference internal function names (`ensureBodyFindingsConsistency`, `synthesizeReviewBody`, `newPostReviewCmd`) and file paths (`internal/cli/postreview.go`). These are implementation details that fail the litmus test: "Would this sentence appear in customer-facing release notes?"
-- **Evidence:** Scope says: *"Testing covers the body-verdict consistency enforcement logic added to the `post-review` CLI command in `internal/cli/postreview.go`. The scope includes the `ensureBodyFindingsConsistency` function and its helper `synthesizeReviewBody`."*
-- **Remediation:** Rewrite Scope to user-level language: "Testing covers the body-verdict consistency enforcement added to the `post-review` CLI command. The scope includes detection of contradictory review summaries and automatic synthesis of an accurate summary from structured findings." Remove function names and file paths from Scope and Goals — these belong in the STD's traceability matrix.
-- **Actionable:** true
-
-**D1-R-L-001 — STD-level code traceability in Section III** (MAJOR)
-
-- **Severity:** MAJOR
-- **Dimension:** Rule Compliance
-- **Rule:** L — Section Content Validation
-- **Description:** Section III Evidence fields contain line-by-line code references (e.g., "line 524", "line 560", "line 568", "lines 536-539") and internal function call chains. This is STD-level traceability that breaks STP abstraction. The STP should describe WHAT to test and WHY, not WHERE in the code the behavior is implemented.
-- **Evidence:** Evidence for first scenario: *"`ensureBodyFindingsConsistency` (line 524) detects body/verdict mismatch and calls `synthesizeReviewBody` (line 560)"*. Evidence for severity ordering scenario: *"`synthesizeReviewBody` (line 568) uses severity order array `["critical", "high", "medium", "low", "info"]` (line 570)"*
-- **Remediation:** Replace code-level Evidence with requirement-level traceability. Example: change `"ensureBodyFindingsConsistency (line 524) detects body/verdict mismatch"` to `"Implements GH-2054 validation criteria: summary must reflect findings when verdict is CHANGES_REQUESTED"`. Move line-number references to the STD.
-- **Actionable:** true
-
-**D1-R-G-001 — Standard tools listed in Testing Tools** (MINOR)
-
-- **Severity:** MINOR
-- **Dimension:** Rule Compliance
-- **Rule:** G — Testing Tools
-- **Description:** Section II.3.1 lists "Go testing + testify" and "GitHub Actions" as testing tools. Per go.yaml, these are the standard framework and CI for this project.
-- **Evidence:** *"Test Framework: Go testing + testify (standard — no new tools)"* and *"CI/CD: GitHub Actions (standard — no new tools)"*
-- **Remediation:** Replace the tools section content with "No non-standard tools required" or leave empty, since the parenthetical "(standard — no new tools)" already acknowledges these are standard.
-- **Actionable:** true
-
-**D1-R-M-001 — Evidence fields add implementation bulk** (MINOR)
-
-- **Severity:** MINOR
-- **Dimension:** Rule Compliance
-- **Rule:** M — Deletion Test (ISTQB)
-- **Description:** The Evidence fields in Section III (15 scenarios × detailed code references) add ~40% bulk to the section without contributing to the Go/No-Go test decision. A QE lead or PM does not need line numbers to approve the test plan.
-- **Evidence:** Each of the 15 scenario bullets includes an Evidence sub-field with function names and line numbers.
-- **Remediation:** Simplify Evidence to brief requirement references (e.g., "GH-2054 validation criteria"). Detailed code mapping belongs in the STD traceability matrix.
-- **Actionable:** true
+| Original Finding | Status | Resolution |
+|:-----------------|:-------|:-----------|
+| D1-R-A-001 — Internal function names in Scope and Goals | RESOLVED | Scope rewritten to behavioral descriptions; function names and file paths removed from Scope (II.1) and Testing Goals |
+| D1-R-L-001 — STD-level code traceability in Section III | RESOLVED | All 16 Evidence fields replaced with requirement-level references (e.g., "GH-2054 validation criteria: summary must reflect findings when verdict is CHANGES_REQUESTED") |
+| D1-R-G-001 — Standard tools listed in Testing Tools | RESOLVED | Section II.3.1 simplified to "No non-standard tools required" |
+| D1-R-M-001 — Evidence fields add implementation bulk | RESOLVED | Evidence fields reduced to brief requirement references; ~40% bulk reduction achieved |
 
 ### Dimension 2: Requirement Coverage
 
@@ -112,7 +79,7 @@
 | P0 criteria covered | 4/4 |
 | Linked issues reflected | N/A (no linked Jira issues) |
 | Negative scenarios present | YES (7 boundary/negative scenarios) |
-| Coverage gaps found | 1 |
+| Coverage gaps found | 0 |
 
 **Source Acceptance Criteria (from GH-2054 validation criteria):**
 1. ✅ Summary reflects findings when verdict is CHANGES_REQUESTED → Scenario "Verify body replaced when findings contradict summary" (P0)
@@ -125,44 +92,38 @@
 2. ✅ Consistent result → passes unchanged: Covered by scenario 8
 3. ✅ Approve with no findings → passes: Covered by scenario 2
 
-**D2-001 — Partial category coverage edge case not addressed** (MAJOR)
+**Previously flagged gap — resolution status:**
 
-- **Severity:** MAJOR
-- **Dimension:** Requirement Coverage
-- **Rule:** Proactive Scope Completeness
-- **Description:** The PR code review (by fullsend-ai-review on PR #2189) identified a logic error where `ensureBodyFindingsConsistency` returns false (no synthesis needed) as soon as ANY single significant finding's category appears in the body. When the body mentions 1 of 3 critical/high categories, the other 2 remain invisible. This is the same class of bug the PR fixes — yet no scenario covers the partial-coverage case. The existing "Verify no-op when body already references finding categories" (P0) only validates the all-referenced case.
-- **Evidence:** PR #2189 review finding: *"`ensureBodyFindingsConsistency` returns false (no synthesis needed) as soon as ANY single significant finding's category appears in the body. When multiple critical/high findings exist with different categories and the body mentions only one of them, the function short-circuits."*
-- **Remediation:** Add a P0 scenario: "Verify body is replaced when only a subset of critical/high finding categories are referenced in the summary." This directly addresses the code review finding and validates the fix's core promise.
-- **Actionable:** true
+| Original Finding | Status | Resolution |
+|:-----------------|:-------|:-----------|
+| D2-001 — Partial category coverage edge case | RESOLVED | New P0 scenario added: "Verify body replaced when only a subset of critical/high categories are referenced" — directly addresses PR #2189 code review finding |
 
 ### Dimension 3: Scenario Quality
 
 | Metric | Value |
 |:-------|:------|
-| Total scenarios | 15 |
-| Unit Tests | 10 |
+| Total scenarios | 16 |
+| Unit Tests | 11 |
 | Functional | 5 |
-| P0 | 4 |
-| P1 | 11 |
-| P2 | 0 |
-| Positive scenarios | 8 |
+| P0 | 6 |
+| P1 | 7 |
+| P2 | 3 |
+| Positive scenarios | 9 |
 | Negative scenarios | 7 |
 
 **Strengths:**
 - Scenarios are specific and behavioral (e.g., "Verify body replaced when findings contradict summary")
-- Good positive/negative balance (53%/47%)
-- P0 scenarios correctly target core contradiction detection and formatting
-- Scenarios cover the full behavioral surface: detection, synthesis, no-op paths, integration, agent-level guidance
+- Good positive/negative balance (56%/44%)
+- P0 scenarios correctly target core contradiction detection, formatting, and partial coverage
+- Priority distribution is well-differentiated (P0=6, P1=7, P2=3)
+- P2 scenarios correctly classify edge cases (nil/empty input, missing file locations, case-insensitive matching)
+- Scenarios cover the full behavioral surface: detection, synthesis, no-op paths, partial coverage, integration, agent-level guidance
 
-**D3-001 — No P2 priority differentiation** (MINOR)
+**Previously flagged finding — resolution status:**
 
-- **Severity:** MINOR
-- **Dimension:** Scenario Quality
-- **Rule:** Priority distribution
-- **Description:** All 15 scenarios are either P0 (4) or P1 (11) with no P2 scenarios. Edge-case scenarios like "Verify case-insensitive category matching" (currently P1) and "Verify findings without file locations render correctly" (currently P1) are lower-risk edge cases that would be better classified as P2 to enable priority-based test execution ordering.
-- **Evidence:** Priority distribution: P0=4, P1=11, P2=0
-- **Remediation:** Reclassify 2-3 edge-case scenarios from P1 to P2. Candidates: "case-insensitive category matching", "findings without file locations render correctly", "Verify error handling for nil/empty input".
-- **Actionable:** true
+| Original Finding | Status | Resolution |
+|:-----------------|:-------|:-----------|
+| D3-001 — No P2 priority differentiation | RESOLVED | 3 edge-case scenarios reclassified from P1 to P2: "nil/empty input handling", "findings without file locations", "case-insensitive category matching" |
 
 ### Dimension 4: Risk & Limitation Accuracy
 
@@ -176,6 +137,7 @@
 | Untestable Aspects (SKILL.md LLM behavior) | ✅ Accurate | CLI safety net correctly cited as hard guarantee |
 | Resource Constraints | ✅ Accurate | None needed |
 | Dependencies | ✅ Accurate | None needed |
+| Regression (Head SHA preservation) | ✅ Accurate | Body synthesis may strip metadata HTML comments; mitigation correctly references test verification |
 | Stale CI from old PR branch | ✅ Accurate | Valid concern — PR #2055 used same branch |
 
 **Known Limitations Assessment:**
@@ -186,26 +148,25 @@
 | Category-based detection may false-positive | ✅ Valid edge case | Confirmed by PR review finding |
 | Fix only covers request-changes/reject | ✅ By design | Issue scope is CHANGES_REQUESTED consistency |
 
-**D4-001 — Head SHA comment regression risk not documented** (MINOR)
+**Previously flagged finding — resolution status:**
 
-- **Severity:** MINOR
-- **Dimension:** Risk & Limitation Accuracy
-- **Description:** The PR code review identified that when `ensureBodyFindingsConsistency` replaces `result.Body`, the `<!-- **Head SHA:** <sha> -->` HTML comment embedded in the original body is lost. This breaks `pre-fetch-prior-review.sh` SHA anchoring for re-reviews. This regression risk is not documented in the STP's Risks section.
-- **Evidence:** PR #2189 review finding: *"When `ensureBodyFindingsConsistency` replaces `result.Body` with the synthesized body, the `<!-- **Head SHA:** <sha> -->` HTML comment [...] is lost."*
-- **Remediation:** Add a risk entry: "Risk: Body synthesis may strip metadata HTML comments (e.g., Head SHA anchor) from the original body, breaking re-review SHA anchoring. Mitigation: Verify synthesized body preserves or reconstructs the Head SHA comment."
-- **Actionable:** true
+| Original Finding | Status | Resolution |
+|:-----------------|:-------|:-----------|
+| D4-001 — Head SHA comment regression risk | RESOLVED | New risk entry added: "Regression (Head SHA preservation)" with specific mitigation referencing test case validation |
 
 ### Dimension 5: Scope Boundary Assessment
 
 **Scope Validation Against Source Data:**
 
-The feature fix is in `internal/cli/postreview.go` (cli component) with a documentation update to `skills/pr-review/SKILL.md`. The STP scope correctly targets:
+The feature fix targets the post-review CLI command with a documentation update to SKILL.md. The STP scope correctly targets:
 
 | Scope Item | Source Validation | Status |
 |:-----------|:------------------|:-------|
 | Body-verdict consistency enforcement logic | ✅ Core fix per GH-2054 | Covered |
+| Contradiction detection logic | ✅ Per triage root cause analysis | Covered |
+| Body synthesis logic | ✅ Per proposed change #1 | Covered |
 | Integration with post-review CLI flow | ✅ CLI command integration point | Covered |
-| SKILL.md agent-level instruction | ✅ Mentioned in issue proposed change #2 | Covered |
+| SKILL.md agent-level instruction | ✅ Proposed change #2 | Covered |
 
 **Out-of-Scope Validation:**
 
@@ -248,40 +209,32 @@ All strategy checkbox states are correct and justified with substantive sub-item
 | Feature Tracking | GH-2054 | GH-2054 (standalone bug) | ✅ Acceptable |
 | Epic Tracking | GH-2054 | GH-2054 (standalone bug) | ✅ Acceptable |
 | QE Owner(s) | TBD | Not assigned in issue | ✅ Acceptable for draft |
-| Owning SIG | N/A | Labels: component/harness | ⚠️ See below |
+| Owning SIG | Harness (component/harness) | Labels: component/harness | ✅ Match |
 | Participating SIGs | N/A | No cross-team | ✅ Acceptable |
 | Title | Matches issue title | ✅ | ✅ Match |
 
-**D7-001 — Owning SIG could reference component label** (MINOR)
+**Previously flagged finding — resolution status:**
 
-- **Severity:** MINOR
-- **Dimension:** Metadata Accuracy
-- **Description:** The STP lists Owning SIG as "N/A" but the GitHub issue has the label `component/harness`. While this project may not use formal SIG structures, referencing the component ownership would improve traceability.
-- **Evidence:** Issue labels: `component/harness`, `agent/review`, `type/bug`, `priority/high`
-- **Remediation:** Update Owning SIG to reference the component: "Harness (component/harness)" or retain N/A with a note: "Component: harness".
-- **Actionable:** true
+| Original Finding | Status | Resolution |
+|:-----------------|:-------|:-----------|
+| D7-001 — Owning SIG missing component reference | RESOLVED | Updated to "Harness (component/harness)" — matches issue label |
 
 ---
 
 ## Recommendations
 
-Ordered by severity and impact:
+No actionable recommendations. All 8 findings from the prior review have been resolved:
 
-1. **[MAJOR]** Add a scenario for partial category coverage — when the body references only a subset of critical/high finding categories, the remaining unreferenced findings should still trigger synthesis. This directly addresses a confirmed code review finding on PR #2189. — **Remediation:** Add P0 scenario: "Verify body is replaced when only a subset of critical/high finding categories are referenced in the summary." — **Actionable:** yes
-
-2. **[MAJOR]** Remove internal function names and file paths from Scope of Testing and Testing Goals. Rewrite to user-level behavioral descriptions. — **Remediation:** Replace `"ensureBodyFindingsConsistency function"` with `"body-verdict consistency detection logic"` and remove `internal/cli/postreview.go` reference. — **Actionable:** yes
-
-3. **[MAJOR]** Replace line-number Evidence fields in Section III with requirement-level traceability. — **Remediation:** Change Evidence from code references (e.g., `"line 524"`) to requirement references (e.g., `"GH-2054 validation criteria: summary must reflect findings"`). — **Actionable:** yes
-
-4. **[MINOR]** Add risk entry for Head SHA HTML comment loss during body synthesis. — **Remediation:** Add to Risks (II.5): "Body synthesis may strip metadata HTML comments, breaking re-review SHA anchoring." — **Actionable:** yes
-
-5. **[MINOR]** Reclassify 2-3 edge-case scenarios from P1 to P2 for priority differentiation. — **Remediation:** Downgrade "case-insensitive category matching", "findings without file locations", and "nil/empty input handling" to P2. — **Actionable:** yes
-
-6. **[MINOR]** Remove standard tools from Testing Tools section or simplify to "No non-standard tools required." — **Remediation:** Remove or simplify Section II.3.1 since Go testing + testify and GitHub Actions are project standards. — **Actionable:** yes
-
-7. **[MINOR]** Update Owning SIG to reference component/harness label from the issue. — **Remediation:** Change from "N/A" to "Harness" or "component/harness". — **Actionable:** yes
-
-8. **[MINOR — non-actionable]** Consider adding Evidence metadata in the STD rather than the STP to maintain abstraction boundaries. — **Actionable:** no (architectural decision for future STPs)
+| # | Original Finding | Severity | Resolution |
+|:--|:-----------------|:---------|:-----------|
+| 1 | Internal function names in Scope and Goals (D1-R-A-001) | MAJOR | Scope rewritten to behavioral descriptions |
+| 2 | STD-level code traceability in Section III (D1-R-L-001) | MAJOR | Evidence replaced with requirement-level references |
+| 3 | Partial category coverage gap (D2-001) | MAJOR | New P0 scenario added |
+| 4 | Standard tools listed (D1-R-G-001) | MINOR | Section simplified |
+| 5 | Evidence fields add bulk (D1-R-M-001) | MINOR | Evidence condensed |
+| 6 | No P2 priority differentiation (D3-001) | MINOR | 3 scenarios reclassified to P2 |
+| 7 | Head SHA risk not documented (D4-001) | MINOR | Risk entry added |
+| 8 | Owning SIG missing component (D7-001) | MINOR | Updated to reference component/harness |
 
 ---
 
@@ -291,7 +244,7 @@ Ordered by severity and impact:
 |:-------|:-------|
 | Jira source data available | PARTIAL (GitHub Issues API used — full issue body, comments, and labels available; no Jira-native fields) |
 | Linked issues fetched | N/A (no linked Jira issues; related issues referenced in comments) |
-| PR data referenced in STP | YES (PR #2189 fetched — files, commits, reviews, comments available) |
+| PR data referenced in STP | YES (PR #2189 referenced — files, commits, reviews, comments available) |
 | All STP sections present | YES (Sections I, II, III, IV all present and populated) |
 | Template comparison possible | NO (no STP template found at config_dir/templates/stp/stp-template.md; repo_files_fetch disabled) |
 | Project review rules loaded | PARTIAL (dynamically extracted from config files; no static review_rules.yaml; ~55% of rules using defaults) |

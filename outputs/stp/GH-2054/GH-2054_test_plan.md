@@ -8,14 +8,14 @@
 - **Feature Tracking:** [GH-2054](https://github.com/fullsend-ai/fullsend/issues/2054)
 - **Epic Tracking:** GH-2054
 - **QE Owner(s):** TBD
-- **Owning SIG:** N/A
+- **Owning SIG:** Harness (component/harness)
 - **Participating SIGs:** N/A
 
 **Document Conventions (if applicable):** N/A
 
 ### **Feature Overview**
 
-The review agent's sticky summary comment can contradict its own formal review verdict and inline findings. Specifically, the summary says "No findings" while the formal review is `CHANGES_REQUESTED` with critical inline comments. This bug fix adds a consistency safety net in the `post-review` CLI command (`ensureBodyFindingsConsistency`) that detects when the review body omits significant findings despite a blocking verdict, and replaces the body with one synthesized from the structured findings array. The pr-review skill is also updated to instruct the agent to produce consistent output at the source.
+The review agent's sticky summary comment can contradict its own formal review verdict and inline findings. Specifically, the summary says "No findings" while the formal review is `CHANGES_REQUESTED` with critical inline comments. This bug fix adds a consistency safety net in the `post-review` CLI command that detects when the review body omits significant findings despite a blocking verdict, and replaces the body with one synthesized from the structured findings array. The pr-review skill is also updated to instruct the agent to produce consistent output at the source.
 
 ---
 
@@ -37,7 +37,7 @@ technology, and testability before formal test planning.
   - The review agent runs across all orgs using the platform. A misleading "No findings" summary when critical issues exist could cause reviewers to merge code with unaddressed bugs. Fixing this ensures trust in the automated review process.
 - [ ] **Testability**
   - Confirmed requirements are **testable and unambiguous**.
-  - The core fix is in pure Go functions (`ensureBodyFindingsConsistency`, `synthesizeReviewBody`) that accept structured input and return deterministic output. All scenarios are directly unit-testable. PR #2189 includes 12 test cases covering the key paths.
+  - The core fix consists of pure Go functions that accept structured input and return deterministic output. All scenarios are directly unit-testable. PR #2189 includes 12 test cases covering the key paths.
 - [ ] **Acceptance Criteria**
   - Ensured acceptance criteria are **defined clearly** (clear user stories; product requirements clearly defined in Jira).
   - Validation criteria from GH-2054: "On the next 5 review agent runs that submit CHANGES_REQUESTED with inline findings, verify that the summary PR comment lists those findings. The summary should never say 'No findings' when the verdict is CHANGES_REQUESTED and inline comments contain critical or high-severity issues."
@@ -75,14 +75,15 @@ This STP serves as the **overall roadmap for testing**, detailing the scope, app
 
 #### **1. Scope of Testing**
 
-Testing covers the body-verdict consistency enforcement logic added to the `post-review` CLI command in `internal/cli/postreview.go`. The scope includes the `ensureBodyFindingsConsistency` function and its helper `synthesizeReviewBody`, the integration point where the consistency check runs in the `newPostReviewCmd` flow, and the SKILL.md update that instructs the agent to produce consistent output.
+Testing covers the body-verdict consistency enforcement logic added to the `post-review` CLI command. The scope includes the contradiction detection logic that identifies when a review summary omits significant findings despite a blocking verdict, the body synthesis logic that generates an accurate summary from structured findings, the integration point where the consistency check runs in the post-review command flow, and the SKILL.md update that instructs the agent to produce consistent output.
 
 **Testing Goals**
 
-- **P0:** Verify that `ensureBodyFindingsConsistency` correctly detects and replaces a contradictory body when action is `request-changes`/`reject` with critical/high findings that are not referenced in the body.
-- **P0:** Verify that `synthesizeReviewBody` produces correctly formatted markdown with findings grouped by severity in the correct order (critical > high > medium > low > info).
+- **P0:** Verify that the consistency check correctly detects and replaces a contradictory body when action is `request-changes`/`reject` with critical/high findings that are not referenced in the body.
+- **P0:** Verify that body synthesis produces correctly formatted markdown with findings grouped by severity in the correct order (critical > high > medium > low > info).
 - **P0:** Verify no-op behavior for all expected safe conditions (approve, comment, only low/medium findings, body already references categories, nil/empty inputs).
-- **P1:** Verify the consistency check integrates correctly with the `post-review` CLI command flow (runs after `parseReviewResult`, before `sticky.Post`).
+- **P0:** Verify that the body is replaced when only a subset of critical/high finding categories are referenced in the summary.
+- **P1:** Verify the consistency check integrates correctly with the `post-review` CLI command flow (runs after result parsing, before comment posting).
 - **P1:** Verify the SKILL.md update provides clear guidance to prevent the agent from producing contradictory output.
 
 **Out of Scope (Testing Scope Exclusions)**
@@ -105,7 +106,7 @@ Testing covers the body-verdict consistency enforcement logic added to the `post
 - [x] **Automation Testing** — Confirms test automation plan is in place for CI and regression coverage (all tests are expected to be automated)
   - *Details:* All tests are Go unit tests using testify, running in `go test ./internal/cli/...`. PR #2189 includes 12 automated test cases. No manual testing required.
 - [x] **Regression Testing** — Verifies that new changes do not break existing functionality
-  - *Details:* LSP call graph analysis confirms `ensureBodyFindingsConsistency` is called only from `newPostReviewCmd` (line 94). `reviewActionToEvent` is shared with `submitFormalReview` (line 300) — existing tests cover that path. The `sticky.Post` call at line 132 receives the patched body transparently.
+  - *Details:* Call graph analysis confirms the consistency check is invoked only from the post-review command. The action-to-event mapping is shared with formal review submission — existing tests cover that path. The sticky comment posting receives the patched body transparently.
 
 **Non-Functional**
 
@@ -151,9 +152,7 @@ Testing covers the body-verdict consistency enforcement logic added to the `post
 
 #### **3.1. Testing Tools & Frameworks**
 
-- **Test Framework:** Go testing + testify (standard — no new tools)
-- **CI/CD:** GitHub Actions (standard — no new tools)
-- **Other Tools:** None
+No non-standard tools required. All tests use the project-standard Go testing framework with testify and run on GitHub Actions CI.
 
 #### **4. Entry Criteria**
 
@@ -184,6 +183,9 @@ The following conditions must be met before testing can begin:
 - [ ] **Dependencies**
   - Risk: None — no external dependencies for the consistency check logic.
   - Mitigation: N/A.
+- [ ] **Regression (Head SHA preservation)**
+  - Risk: Body synthesis may strip metadata HTML comments (e.g., Head SHA anchor) from the original body, breaking re-review SHA anchoring in `pre-fetch-prior-review.sh`.
+  - Mitigation: Verify synthesized body preserves or reconstructs the Head SHA comment. Add a test case validating metadata comment preservation.
 - [ ] **Other**
   - Risk: The closed PR #2055 used the same branch name (`agent/2054-review-summary-consistency`). PR #2189 force-pushed a new approach on the same branch. Verify no stale CI artifacts from the old approach.
   - Mitigation: Confirm PR #2189 CI runs are against the current commit, not cached results from #2055.
@@ -200,91 +202,97 @@ This section links requirements to test coverage, enabling reviewers to verify a
   - *Scenario:* Verify body replaced when findings contradict summary
   - *Tier:* Unit Tests
   - *Priority:* P0
-  - *Evidence:* `ensureBodyFindingsConsistency` (line 524) detects body/verdict mismatch and calls `synthesizeReviewBody` (line 560)
+  - *Evidence:* GH-2054 validation criteria: summary must reflect findings when verdict is CHANGES_REQUESTED
 
 - — Body-verdict consistency enforcement (continued)
   - *Scenario:* Verify no-op for approve/comment actions
   - *Tier:* Unit Tests
   - *Priority:* P0
-  - *Evidence:* `reviewActionToEvent` (line 529) gates on `REQUEST_CHANGES` event; approve/comment bypass the check
+  - *Evidence:* GH-2054 scope: consistency check only applies to blocking verdicts (request-changes/reject)
 
 - — Body-verdict consistency enforcement (continued)
   - *Scenario:* Verify reject action triggers consistency check
   - *Tier:* Unit Tests
   - *Priority:* P1
-  - *Evidence:* `reviewActionToEvent` maps "reject" to `REQUEST_CHANGES` (line 187), enabling the consistency check
+  - *Evidence:* GH-2054 design: reject maps to blocking verdict, enabling consistency enforcement
 
 - — Body-verdict consistency enforcement (continued)
   - *Scenario:* Verify error handling for nil/empty input
   - *Tier:* Unit Tests
-  - *Priority:* P1
-  - *Evidence:* Guard clauses at lines 525-526 return false for nil result or empty findings
+  - *Priority:* P2
+  - *Evidence:* Defensive input validation: nil result or empty findings must not cause runtime errors
 
 - **GH-2054** — Synthesized body formatting
   - *Scenario:* Verify synthesized body groups findings by severity
   - *Tier:* Unit Tests
   - *Priority:* P0
-  - *Evidence:* `synthesizeReviewBody` (line 568) uses severity order array `["critical", "high", "medium", "low", "info"]` (line 570)
+  - *Evidence:* GH-2054 validation criteria: critical/high findings must be listed in synthesized summary
 
 - — Synthesized body formatting (continued)
   - *Scenario:* Verify findings include category, file location, and remediation
   - *Tier:* Unit Tests
   - *Priority:* P1
-  - *Evidence:* `synthesizeReviewBody` renders `file:line` backtick format (lines 593-598) and remediation (lines 600-602)
+  - *Evidence:* GH-2054 design: synthesized body must provide actionable detail for each finding
 
 - — Synthesized body formatting (continued)
   - *Scenario:* Verify findings without file locations render correctly
   - *Tier:* Unit Tests
-  - *Priority:* P1
-  - *Evidence:* File rendering is conditional on `f.File != ""` (line 593); findings without files skip the backtick block
+  - *Priority:* P2
+  - *Evidence:* Edge case: findings may lack file references; rendering must degrade gracefully
 
 - **GH-2054** — Category-based consistency detection
   - *Scenario:* Verify no-op when body already references finding categories
   - *Tier:* Unit Tests
   - *Priority:* P0
-  - *Evidence:* Category check at lines 551-554 returns false when `bodyLower` contains the category token
+  - *Evidence:* GH-2054 design: body that already reflects findings should not be replaced
+
+- — Category-based consistency detection (continued)
+  - *Scenario:* Verify body replaced when only a subset of critical/high categories are referenced
+  - *Tier:* Unit Tests
+  - *Priority:* P0
+  - *Evidence:* PR #2189 code review finding: partial category coverage must still trigger synthesis to ensure all significant findings are visible
 
 - — Category-based consistency detection (continued)
   - *Scenario:* Verify case-insensitive category matching
   - *Tier:* Unit Tests
-  - *Priority:* P1
-  - *Evidence:* Both body and category are lowercased via `strings.ToLower` (lines 551, 553)
+  - *Priority:* P2
+  - *Evidence:* Edge case: category tokens may appear in mixed case in the body text
 
 - — Category-based consistency detection (continued)
   - *Scenario:* Verify no-op for only low/medium severity findings
   - *Tier:* Unit Tests
   - *Priority:* P1
-  - *Evidence:* Only "critical" and "high" severities are collected as significant (lines 536-539); low/medium findings alone produce an empty `significant` slice
+  - *Evidence:* GH-2054 scope: consistency enforcement only applies when critical/high findings are present
 
 - **GH-2054** — Post-review CLI integration
   - *Scenario:* Verify post-review command applies consistency check before posting
   - *Tier:* Functional
   - *Priority:* P0
-  - *Evidence:* `ensureBodyFindingsConsistency` is called at line 94 in `newPostReviewCmd`, after `parseReviewResult` (line 85) and before `sticky.Post` (line 132). LSP incoming calls confirm this is the only production caller.
+  - *Evidence:* GH-2054 integration requirement: consistency check must run after result parsing and before comment posting
 
 - — Post-review CLI integration (continued)
   - *Scenario:* Verify warning logged when body is synthesized
   - *Tier:* Functional
   - *Priority:* P1
-  - *Evidence:* `printer.StepWarn` is called at line 95 when `patched` is true
+  - *Evidence:* GH-2054 observability: synthesis events must be logged for monitoring
 
 - — Post-review CLI integration (continued)
   - *Scenario:* Verify consistency check integrates with sticky comment flow
   - *Tier:* Functional
   - *Priority:* P1
-  - *Evidence:* The patched `parsed.Body` is passed to `sticky.Post` at line 132 and to `submitFormalReview` at line 137 (via `parsed.Action` and `parsed.Findings`)
+  - *Evidence:* GH-2054 integration requirement: patched body must propagate to both sticky comment and formal review submission
 
 - **GH-2054** — Agent-level body-verdict alignment
   - *Scenario:* Verify SKILL.md instructs findings inclusion for blocking verdicts
   - *Tier:* Functional
   - *Priority:* P1
-  - *Evidence:* SKILL.md diff adds explicit instruction at lines 697-702: "When the action is `request-changes` or `reject`, the body MUST list the findings that drove that verdict."
+  - *Evidence:* GH-2054 proposed change #2: SKILL.md must instruct agent to include findings in body for blocking verdicts
 
 - — Agent-level body-verdict alignment (continued)
   - *Scenario:* Verify end-to-end review with contradictory agent output
   - *Tier:* Functional
   - *Priority:* P1
-  - *Evidence:* End-to-end flow: agent produces JSON with body="No findings" + action="request-changes" + critical findings → CLI detects contradiction → body replaced → sticky comment reflects findings
+  - *Evidence:* GH-2054 validation criteria: end-to-end flow must detect contradiction and replace body so sticky comment reflects actual findings
 
 ---
 
