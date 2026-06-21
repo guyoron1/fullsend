@@ -1,11 +1,30 @@
 status: success
 jira_id: GH-1835
-file_path: /sandbox/workspace/output/GH-1835_test_plan.md
-test_counts:
-  functional: 12
-  e2e: 0
-  total: 12
-validation:
-  passed: 18
-  failed: 0
-  warnings: 0
+verdict: APPROVED_WITH_FINDINGS
+confidence: LOW
+weighted_score: 79
+findings:
+  critical: 0
+  major: 5
+  major_findings:
+    - "D2-2b-001: All 12 scenarios missing 'patterns' field (v2.1-enhanced required)"
+    - "D2-2b-002: All 12 scenarios missing 'variables' field (v2.1-enhanced required)"
+    - "D4-4b-001: Scenario 8 scaffold install test has incomplete test flow"
+    - "D4.5-4.5a-001: related_prs in document_metadata (PR URLs are implementation artifacts)"
+    - "D4.5-4.5a-002: PR #2443 references in all 4 Go stub preconditions"
+  minor: 5
+  actionable: 9
+  total: 10
+artifacts_reviewed:
+  std_yaml: true
+  go_stubs: true
+  python_stubs: false
+  stp_available: true
+dimension_scores:
+  traceability: 95
+  yaml_structure: 70
+  pattern_matching: 50
+  step_quality: 82
+  content_policy: 70
+  pse_quality: 85
+  codegen_readiness: 75
