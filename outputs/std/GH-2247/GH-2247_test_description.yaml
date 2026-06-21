@@ -13,22 +13,11 @@ document_metadata:
     file: "outputs/stp/GH-2247/GH-2247_test_plan.md"
     version: "v1"
     sections_covered: "Section III - Requirements-to-Tests Mapping"
-  related_prs:
-    - repo: "fullsend-ai/fullsend"
-      pr_number: 66
-      url: "https://github.com/fullsend-ai/fullsend/pull/66"
-      title: "Fix shim drift detection to use decoded text comparison"
-      merged: true
-    - repo: "fullsend-ai/fullsend"
-      pr_number: 2101
-      url: "https://github.com/fullsend-ai/fullsend/pull/2101"
-      title: "Bogus update PR that removed sentinel lines (the bug)"
-      merged: false
   total_scenarios: 23
   functional_count: 4
   unit_test_count: 19
   p0_count: 11
-  p1_count: 10
+  p1_count: 11
   p2_count: 1
 
 code_generation_config:
@@ -99,12 +88,14 @@ scenarios:
 
   - scenario_id: "1"
     test_id: "TS-GH-2247-001"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-2247"
     requirement_summary: "Shim drift detection compares decoded text instead of re-encoded base64"
     test_type: "Positive"
+    patterns:
+      primary: "base64-text-comparison"
 
     test_objective:
       title: "Verify identical content with different trailing newlines is not flagged stale"
@@ -218,12 +209,14 @@ scenarios:
 
   - scenario_id: "2"
     test_id: "TS-GH-2247-002"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-2247"
     requirement_summary: "Shim drift detection compares decoded text instead of re-encoded base64"
     test_type: "Positive"
+    patterns:
+      primary: "base64-text-comparison"
 
     test_objective:
       title: "Verify stale managed content is correctly detected"
@@ -302,12 +295,14 @@ scenarios:
 
   - scenario_id: "3"
     test_id: "TS-GH-2247-003"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-2247"
     requirement_summary: "Shim drift detection compares decoded text instead of re-encoded base64"
     test_type: "Positive"
+    patterns:
+      primary: "base64-text-comparison"
 
     test_objective:
       title: "Verify up-to-date shim with user header is not flagged stale"
@@ -370,12 +365,14 @@ scenarios:
 
   - scenario_id: "4"
     test_id: "TS-GH-2247-004"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-2247"
     requirement_summary: "Shim drift detection compares decoded text instead of re-encoded base64"
     test_type: "Positive"
+    patterns:
+      primary: "base64-text-comparison"
 
     test_objective:
       title: "Verify comparison handles carriage return normalization"
@@ -438,12 +435,14 @@ scenarios:
 
   - scenario_id: "5"
     test_id: "TS-GH-2247-005"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-2247"
     requirement_summary: "Shim drift detection compares decoded text instead of re-encoded base64"
     test_type: "Edge Case"
+    patterns:
+      primary: "base64-text-comparison"
 
     test_objective:
       title: "Verify empty remote content triggers enrollment (not update)"
@@ -506,12 +505,14 @@ scenarios:
 
   - scenario_id: "5a"
     test_id: "TS-GH-2247-006"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-2247"
     requirement_summary: "Shim drift detection compares decoded text instead of re-encoded base64"
     test_type: "Positive"
+    patterns:
+      primary: "base64-text-comparison"
 
     test_objective:
       title: "Verify __ORG__ placeholder substitution produces consistent comparison"
@@ -588,12 +589,26 @@ scenarios:
 
   - scenario_id: "6"
     test_id: "TS-GH-2247-007"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-2247"
     requirement_summary: "Sentinel line must never be stripped from shim blob"
     test_type: "Positive"
+    patterns:
+      primary: "sentinel-invariant"
+    variables:
+      closure_scope:
+        - name: "remoteContent"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test"]
+          comment: "Remote shim with sentinel and outdated managed content"
+        - name: "blobOutput"
+          type: "string"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Base64-decoded update blob"
 
     test_objective:
       title: "Verify sentinel present in blob for stale shim update"
@@ -652,12 +667,26 @@ scenarios:
 
   - scenario_id: "7"
     test_id: "TS-GH-2247-008"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-2247"
     requirement_summary: "Sentinel line must never be stripped from shim blob"
     test_type: "Positive"
+    patterns:
+      primary: "sentinel-invariant"
+    variables:
+      closure_scope:
+        - name: "preSentinelRemote"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test"]
+          comment: "Remote shim without sentinel line (legacy format)"
+        - name: "blobOutput"
+          type: "string"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Base64-decoded migration blob"
 
     test_objective:
       title: "Verify sentinel present in blob for pre-sentinel migration"
@@ -716,12 +745,21 @@ scenarios:
 
   - scenario_id: "8"
     test_id: "TS-GH-2247-009"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-2247"
     requirement_summary: "Sentinel line must never be stripped from shim blob"
     test_type: "Positive"
+    patterns:
+      primary: "sentinel-invariant"
+    variables:
+      closure_scope:
+        - name: "blobOutput"
+          type: "string"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Base64-decoded enrollment blob for new repo"
 
     test_objective:
       title: "Verify sentinel present in blob for new enrollment"
@@ -778,12 +816,26 @@ scenarios:
 
   - scenario_id: "9"
     test_id: "TS-GH-2247-010"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-2247"
     requirement_summary: "User-owned content above sentinel is preserved when managed portion is updated"
     test_type: "Positive"
+    patterns:
+      primary: "header-preservation"
+    variables:
+      closure_scope:
+        - name: "remoteWithHeader"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test"]
+          comment: "Remote shim with license header above sentinel"
+        - name: "blobOutput"
+          type: "string"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Base64-decoded update blob"
 
     test_objective:
       title: "Verify license header preserved in updated shim blob"
@@ -844,12 +896,26 @@ scenarios:
 
   - scenario_id: "10"
     test_id: "TS-GH-2247-011"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-2247"
     requirement_summary: "User-owned content above sentinel is preserved"
     test_type: "Positive"
+    patterns:
+      primary: "header-preservation"
+    variables:
+      closure_scope:
+        - name: "remoteWithMultiHeader"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test"]
+          comment: "Remote shim with 6+ line comment header"
+        - name: "blobOutput"
+          type: "string"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Base64-decoded update blob"
 
     test_objective:
       title: "Verify multi-line comment header preserved"
@@ -903,12 +969,26 @@ scenarios:
 
   - scenario_id: "11"
     test_id: "TS-GH-2247-012"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P2"
     mvp: false
     requirement_id: "GH-2247"
     requirement_summary: "User-owned content above sentinel is preserved"
     test_type: "Edge Case"
+    patterns:
+      primary: "header-preservation"
+    variables:
+      closure_scope:
+        - name: "remoteWithBlankHeader"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test"]
+          comment: "Remote shim with blank/whitespace lines above sentinel"
+        - name: "blobOutput"
+          type: "string"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Base64-decoded update blob"
 
     test_objective:
       title: "Verify blank-only header is discarded"
@@ -967,12 +1047,26 @@ scenarios:
 
   - scenario_id: "12"
     test_id: "TS-GH-2247-013"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-2247"
     requirement_summary: "Non-comment YAML content above sentinel is rejected to prevent workflow injection"
     test_type: "Negative"
+    patterns:
+      primary: "injection-guard"
+    variables:
+      closure_scope:
+        - name: "remoteWithInjection"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test"]
+          comment: "Remote shim with non-comment YAML above sentinel"
+        - name: "blobOutput"
+          type: "string"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Base64-decoded output blob"
 
     test_objective:
       title: "Verify non-comment YAML above sentinel is rejected"
@@ -1027,12 +1121,26 @@ scenarios:
 
   - scenario_id: "13"
     test_id: "TS-GH-2247-014"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-2247"
     requirement_summary: "Non-comment YAML above sentinel is rejected"
     test_type: "Positive"
+    patterns:
+      primary: "injection-guard"
+    variables:
+      closure_scope:
+        - name: "remoteWithInjection"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test"]
+          comment: "Remote shim with non-comment content triggering guard"
+        - name: "stderrOutput"
+          type: "string"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Captured stderr output"
 
     test_objective:
       title: "Verify warning emitted when injection guard rejects content"
@@ -1085,12 +1193,26 @@ scenarios:
 
   - scenario_id: "14"
     test_id: "TS-GH-2247-015"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-2247"
     requirement_summary: "Non-comment YAML above sentinel is rejected"
     test_type: "Negative"
+    patterns:
+      primary: "injection-guard"
+    variables:
+      closure_scope:
+        - name: "remoteWithWorkflowKeys"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test"]
+          comment: "Remote shim with jobs/steps/run keys above sentinel"
+        - name: "blobOutput"
+          type: "string"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Base64-decoded output blob"
 
     test_objective:
       title: "Verify injected workflow keys not present in output blob"
@@ -1145,12 +1267,26 @@ scenarios:
 
   - scenario_id: "15"
     test_id: "TS-GH-2247-016"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-2247"
     requirement_summary: "Non-comment YAML above sentinel is rejected"
     test_type: "Edge Case"
+    patterns:
+      primary: "injection-guard"
+    variables:
+      closure_scope:
+        - name: "remoteWithSeparator"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test"]
+          comment: "Remote shim with YAML --- separator above sentinel"
+        - name: "blobOutput"
+          type: "string"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Base64-decoded output blob"
 
     test_objective:
       title: "Verify --- YAML document separator alone is treated as non-comment"
@@ -1209,12 +1345,21 @@ scenarios:
 
   - scenario_id: "16"
     test_id: "TS-GH-2247-017"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-2247"
     requirement_summary: "Pre-sentinel shims are correctly detected as stale and migrated"
     test_type: "Positive"
+    patterns:
+      primary: "pre-sentinel-migration"
+    variables:
+      closure_scope:
+        - name: "preSentinelRemote"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test"]
+          comment: "Remote shim without sentinel line"
 
     test_objective:
       title: "Verify pre-sentinel shim flagged as stale"
@@ -1268,12 +1413,26 @@ scenarios:
 
   - scenario_id: "17"
     test_id: "TS-GH-2247-018"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-2247"
     requirement_summary: "Pre-sentinel shims migrated without content duplication"
     test_type: "Negative"
+    patterns:
+      primary: "pre-sentinel-migration"
+    variables:
+      closure_scope:
+        - name: "preSentinelRemote"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test"]
+          comment: "Pre-sentinel remote with known workflow content"
+        - name: "blobOutput"
+          type: "string"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Base64-decoded migration blob"
 
     test_objective:
       title: "Verify pre-sentinel migration does not duplicate old content"
@@ -1332,12 +1491,26 @@ scenarios:
 
   - scenario_id: "18"
     test_id: "TS-GH-2247-019"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-2247"
     requirement_summary: "Pre-sentinel shims migrated to sentinel-based template"
     test_type: "Positive"
+    patterns:
+      primary: "pre-sentinel-migration"
+    variables:
+      closure_scope:
+        - name: "preSentinelRemote"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test"]
+          comment: "Pre-sentinel remote shim"
+        - name: "blobOutput"
+          type: "string"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Base64-decoded migration blob"
 
     test_objective:
       title: "Verify migrated blob contains sentinel and fresh template"
@@ -1406,12 +1579,26 @@ scenarios:
 
   - scenario_id: "19"
     test_id: "TS-GH-2247-020"
-    tier: "Functional"
+    tier: "Tier 2"
     priority: "P0"
     mvp: true
     requirement_id: "GH-2247"
     requirement_summary: "Reconciliation does not open update PRs for up-to-date repos"
     test_type: "Positive"
+    patterns:
+      primary: "mock-cli-integration"
+    variables:
+      closure_scope:
+        - name: "mockGhLog"
+          type: "string"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Mock gh API call log"
+        - name: "scriptOutput"
+          type: "string"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Script stdout/stderr output"
 
     test_objective:
       title: "Verify full reconciliation skips up-to-date repos"
@@ -1489,12 +1676,26 @@ scenarios:
 
   - scenario_id: "20"
     test_id: "TS-GH-2247-021"
-    tier: "Functional"
+    tier: "Tier 2"
     priority: "P0"
     mvp: true
     requirement_id: "GH-2247"
     requirement_summary: "Reconciliation correctly updates genuinely stale repos"
     test_type: "Positive"
+    patterns:
+      primary: "mock-cli-integration"
+    variables:
+      closure_scope:
+        - name: "mockGhLog"
+          type: "string"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Mock gh API call log"
+        - name: "scriptOutput"
+          type: "string"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Script stdout/stderr output"
 
     test_objective:
       title: "Verify full reconciliation updates genuinely stale repos"
@@ -1572,12 +1773,21 @@ scenarios:
 
   - scenario_id: "21"
     test_id: "TS-GH-2247-022"
-    tier: "Functional"
+    tier: "Tier 2"
     priority: "P1"
     mvp: false
     requirement_id: "GH-2247"
     requirement_summary: "Reconciliation does not produce bogus update PRs"
     test_type: "Negative"
+    patterns:
+      primary: "mock-cli-integration"
+    variables:
+      closure_scope:
+        - name: "mockGhLog"
+          type: "string"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Mock gh API call log"
 
     test_objective:
       title: "Verify no blob created when shim is current"
@@ -1636,12 +1846,26 @@ scenarios:
 
   - scenario_id: "22"
     test_id: "TS-GH-2247-023"
-    tier: "Functional"
+    tier: "Tier 2"
     priority: "P1"
     mvp: false
     requirement_id: "GH-2247"
     requirement_summary: "Reconciliation handles mixed repo states"
     test_type: "Positive"
+    patterns:
+      primary: "mock-cli-integration"
+    variables:
+      closure_scope:
+        - name: "mockGhLog"
+          type: "string"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Mock gh API call log with per-repo call patterns"
+        - name: "scriptOutput"
+          type: "string"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Script stdout/stderr output"
 
     test_objective:
       title: "Verify reconciliation handles mixed repo states correctly"
