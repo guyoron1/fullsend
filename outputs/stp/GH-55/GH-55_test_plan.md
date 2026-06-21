@@ -8,14 +8,14 @@
 - **Feature Tracking:** [GH-55](https://github.com/fullsend-ai/fullsend/issues/55)
 - **Epic Tracking:** [GH-50](https://github.com/fullsend-ai/fullsend/issues/50) — Move backlog.md items to GitHub issues
 - **QE Owner:** ifireball
-- **Owning SIG:** N/A
-- **Participating SIGs:** N/A
+- **Owning SIG:** Documentation / Landscape
+- **Participating SIGs:** Research
 
-**Document Conventions:** This STP covers a research/evaluation task. Test scenarios verify the completeness and quality of evaluation deliverables rather than code functionality.
+**Document Conventions:** This STP covers a research/evaluation task. Test scenarios verify the completeness and quality of evaluation deliverables rather than code functionality. Scenarios use the "Documentation Review" tier to indicate deliverable verification rather than traditional functional software testing.
 
 ### Feature Overview
 
-GH-55 tasks the team with exploring [OpenHands](https://github.com/all-hands-ai/openhands), an open-source AI coding agent platform, and evaluating its relevance to fullsend's problem areas including sandbox execution, agent orchestration, workflow dispatch, and security. The evaluation should produce documented findings in the landscape and problem docs, identify licensing constraints, and propose concrete experiments (tracked in GH-260). Initial investigation has already identified that OpenHands Enterprise requires a commercial license for self-hosted Kubernetes deployments, limiting direct reuse.
+GH-55 tasks the team with exploring [OpenHands](https://github.com/all-hands-ai/openhands), an open-source AI coding agent platform, and evaluating its relevance to fullsend's problem areas including sandbox execution, agent orchestration, workflow dispatch, and security. The evaluation should produce documented findings in the landscape and problem docs, identify licensing constraints, and propose concrete experiments (tracked in [GH-260](https://github.com/fullsend-ai/fullsend/issues/260)). Initial investigation has already identified that OpenHands Enterprise is source-available but requires a commercial license for use beyond one month, limiting direct reuse.
 
 ---
 
@@ -25,7 +25,7 @@ GH-55 tasks the team with exploring [OpenHands](https://github.com/all-hands-ai/
 
 - [x] **Reviewed the relevant requirements.**
   - GH-55 specifies evaluating OpenHands against fullsend's problem areas. The scope is clear: research and documentation, not implementation.
-  - Related issues: GH-50 (backlog extraction origin), GH-260 (concrete experiment proposals).
+  - Related issues: [GH-50](https://github.com/fullsend-ai/fullsend/issues/50) (backlog extraction origin), [GH-260](https://github.com/fullsend-ai/fullsend/issues/260) (concrete experiment proposals).
 
 - [x] **Confirmed clear user stories and understood. Understand the value and customer use cases.**
   - Value: Understanding the landscape of AI coding agent platforms informs fullsend's architectural direction and avoids duplicating solved problems.
@@ -39,33 +39,35 @@ GH-55 tasks the team with exploring [OpenHands](https://github.com/all-hands-ai/
   - AC1: OpenHands evaluated against fullsend problem areas (sandbox, harness, dispatch, security).
   - AC2: Findings documented in landscape/problem docs.
   - AC3: Licensing constraints identified and documented.
-  - AC4: Concrete experiments proposed (ref GH-260).
+  - AC4: Concrete experiments proposed (ref [GH-260](https://github.com/fullsend-ai/fullsend/issues/260)).
 
 - [x] **Confirmed coverage for NFRs.**
   - No non-functional requirements apply to this research task. Documentation quality and accuracy are the primary quality attributes.
 
 #### I.2 — Known Limitations
 
-- OpenHands Enterprise requires a commercial license for self-hosted Kubernetes deployments exceeding one month, limiting direct adoption for fullsend's use case.
+- OpenHands Enterprise is source-available but requires a commercial license for use beyond one month, limiting direct adoption for fullsend's use case.
 - The evaluation is point-in-time (OpenHands is actively developed; findings may become stale).
-- No hands-on deployment or integration testing is in scope for this issue — concrete experiments are deferred to GH-260.
+- No hands-on deployment or integration testing is in scope for this issue — concrete experiments are deferred to [GH-260](https://github.com/fullsend-ai/fullsend/issues/260).
 - The evaluation relies on publicly available documentation and source code; internal roadmap or enterprise features may not be visible.
+- The evaluation should reference known 2025 security disclosures (prompt injection, zero-click token exfiltration) as context for the security model comparison.
 
 #### I.3 — Technology and Design Review
 
-- [ ] **Reviewed developer handoff and documentation.**
+- [x] **Reviewed developer handoff and documentation.**
   - OpenHands has extensive public documentation and MIT-licensed source code. Enterprise directory is source-available but license-restricted.
+  - QE review of research deliverables planned upon PR submission.
 
-- [ ] **Identified technology challenges or unknowns.**
+- [x] **Identified technology challenges or unknowns.**
   - OpenHands uses a different agent execution model (containerized runtime vs fullsend's sandbox+harness model). Direct architectural comparison requires careful mapping.
 
-- [ ] **Confirmed test environment needs are understood.**
+- [x] **Confirmed test environment needs are understood.**
   - No test environment required for this research task. Evaluation is documentation-based.
 
-- [ ] **Reviewed API extensions and interface changes.**
+- [x] **Reviewed API extensions and interface changes.**
   - No API changes. This is a research task producing documentation artifacts only.
 
-- [ ] **Reviewed topology and deployment requirements.**
+- [x] **Reviewed topology and deployment requirements.**
   - Not applicable. No deployment or topology changes.
 
 ---
@@ -81,14 +83,16 @@ This STP covers verification of the research deliverables produced by GH-55: the
 - **P0:** Verify licensing and deployment constraints are accurately documented with actionable recommendations.
 - **P1:** Verify the architectural evaluation covers all core fullsend problem areas (sandbox execution, agent orchestration, dispatch, security model).
 - **P1:** Verify landscape documentation is updated following the established format with cross-references to problem docs.
-- **P2:** Verify concrete experiment proposals are created and linked to GH-260.
+- **P2:** Verify concrete experiment proposals are created and linked to [GH-260](https://github.com/fullsend-ai/fullsend/issues/260).
 
 **Out of Scope (Testing Scope Exclusions):**
 
-- [ ] **OpenHands functional testing** — We are evaluating OpenHands, not testing its functionality. OpenHands has its own test suite.
-- [ ] **Integration or deployment of OpenHands** — No integration with fullsend is planned in this issue. Experiments deferred to GH-260.
-- [ ] **Performance benchmarking** — Comparative performance testing is out of scope for a research task.
-- [ ] **Kubernetes platform testing** — No cluster interaction required for documentation evaluation.
+> _Scope exclusions acknowledged by PM/lead as part of GH-55 scoping._
+
+- [x] **OpenHands functional testing** — We are evaluating OpenHands, not testing its functionality. OpenHands has its own test suite.
+- [x] **Integration or deployment of OpenHands** — No integration with fullsend is planned in this issue. Experiments deferred to [GH-260](https://github.com/fullsend-ai/fullsend/issues/260).
+- [x] **Performance benchmarking** — Comparative performance testing is out of scope for a research task.
+- [x] **Kubernetes platform testing** — No cluster interaction required for documentation evaluation.
 
 #### II.2 — Test Strategy
 
@@ -96,10 +100,11 @@ This STP covers verification of the research deliverables produced by GH-55: the
 
 - [x] **Functional Testing**
   - Verify each research deliverable meets its acceptance criteria: evaluation completeness, licensing analysis, landscape doc update, experiment proposals.
+  - Verify existing landscape.md content integrity is not degraded by the addition of OpenHands evaluation.
 - [ ] **Automation Testing**
-  - Not applicable. Research deliverables are verified through manual review.
-- [x] **Regression Testing**
-  - Verify existing landscape.md content is not degraded by the addition of OpenHands evaluation.
+  - Not applicable. Research deliverables are verified through manual review. STD generation is not expected for this research task.
+- [ ] **Regression Testing**
+  - Not applicable. No versioned code behavior to regress. Content-integrity verification is covered under Functional Testing.
 - [ ] **Upgrade Testing**
   - Not applicable. No versioned components affected by this research task.
 
@@ -120,10 +125,8 @@ This STP covers verification of the research deliverables produced by GH-55: the
 
 - [ ] **Compatibility Testing**
   - Not applicable.
-- [ ] **Upgrade Testing**
-  - Not applicable.
 - [x] **Dependencies**
-  - Verify cross-references to dependent issues (GH-50, GH-260) are accurate and linked.
+  - Verify cross-references to dependent issues ([GH-50](https://github.com/fullsend-ai/fullsend/issues/50), [GH-260](https://github.com/fullsend-ai/fullsend/issues/260)) are accurate and linked.
 - [ ] **Cross Integrations**
   - Not applicable.
 
@@ -159,7 +162,7 @@ No new or special tools required. Standard GitHub PR review process.
 
 - [ ] **Timeline**
   - Risk: OpenHands evolves rapidly; evaluation may become stale before review.
-  - Mitigation: Document the evaluation date prominently; note areas likely to change.
+  - Mitigation: Document the evaluation date prominently; pin evaluation to specific OpenHands release version or commit SHA; note areas likely to change.
   - Status: [ ] Monitoring
 
 - [ ] **Coverage**
@@ -183,7 +186,7 @@ No new or special tools required. Standard GitHub PR review process.
   - Status: [ ] Monitoring
 
 - [ ] **Dependencies**
-  - Risk: GH-260 experiment proposals depend on this evaluation being complete and accurate.
+  - Risk: [GH-260](https://github.com/fullsend-ai/fullsend/issues/260) experiment proposals depend on this evaluation being complete and accurate.
   - Mitigation: Ensure evaluation findings are actionable enough to drive experiment design.
   - Status: [ ] Monitoring
 
@@ -203,8 +206,8 @@ No new or special tools required. Standard GitHub PR review process.
 - **Test Scenarios:**
   - TS-GH-55-001: Verify licensing model constraints identified (positive)
   - TS-GH-55-002: Verify deployment model options documented (positive)
-  - TS-GH-55-003: Verify recommendation for enterprise vs OSS paths provided (positive)
-- **Tier:** Functional
+  - TS-GH-55-003: Verify actionable recommendation distinguishes enterprise (PolyForm-licensed) from OSS (MIT-licensed) paths with documented trade-offs (positive)
+- **Tier:** Documentation Review
 - **Priority:** P0
 
 ---
@@ -214,10 +217,10 @@ No new or special tools required. Standard GitHub PR review process.
 - **Test Scenarios:**
   - TS-GH-55-004: Verify evaluation covers sandbox execution model (positive)
   - TS-GH-55-005: Verify evaluation covers agent orchestration and harness (positive)
-  - TS-GH-55-006: Verify evaluation covers dispatch and provisioning (positive)
-  - TS-GH-55-007: Verify evaluation addresses security model comparison (positive)
+  - TS-GH-55-006: Verify evaluation covers workflow dispatch model (positive)
+  - TS-GH-55-007: Verify evaluation addresses security model comparison including known 2025 vulnerability disclosures (prompt injection, token exfiltration) (positive)
   - TS-GH-55-008: Verify evaluation identifies capability gaps versus fullsend (negative)
-- **Tier:** Functional
+- **Tier:** Documentation Review
 - **Priority:** P1
 
 ---
@@ -229,7 +232,8 @@ No new or special tools required. Standard GitHub PR review process.
   - TS-GH-55-010: Verify findings cross-referenced with problem docs (positive)
   - TS-GH-55-011: Verify evaluation follows existing landscape format (positive)
   - TS-GH-55-012: Verify stale or inaccurate claims not introduced (negative)
-- **Tier:** Functional
+  - TS-GH-55-016: Verify existing landscape.md content not degraded by OpenHands addition (negative)
+- **Tier:** Documentation Review
 - **Priority:** P1
 
 ---
@@ -238,9 +242,10 @@ No new or special tools required. Standard GitHub PR review process.
 - **Requirement Summary:** Concrete experiment proposals created for actionable evaluation
 - **Test Scenarios:**
   - TS-GH-55-013: Verify experiment proposals reference specific problem areas (positive)
-  - TS-GH-55-014: Verify experiments are actionable and scoped (positive)
-  - TS-GH-55-015: Verify experiment proposals linked to GH-260 (positive)
-- **Tier:** Functional
+  - TS-GH-55-014: Verify each experiment proposal defines objective, method, expected output, and effort estimate (positive)
+  - TS-GH-55-015: Verify experiment proposals linked to [GH-260](https://github.com/fullsend-ai/fullsend/issues/260) (positive)
+  - TS-GH-55-017: Verify evaluation findings map to at least 2 of the 4 proposed experiments in GH-260 (prompt injection red-teaming, event stream audit, review quality eval, tiered intent) (positive)
+- **Tier:** Documentation Review
 - **Priority:** P2
 
 ---
