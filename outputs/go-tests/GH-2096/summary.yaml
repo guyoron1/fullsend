@@ -1,0 +1,29 @@
+status: success
+jira_id: GH-2096
+std_source: outputs/std/GH-2096/GH-2096_test_description.yaml
+languages:
+  - language: go
+    framework: testing
+    assertion_library: testify
+    package_name: review
+    files:
+      - threshold_activation_test.go
+      - file_classification_test.go
+      - context_assembly_test.go
+      - triage_fallback_test.go
+      - dispatch_exclusion_test.go
+      - scaffold_embedding_test.go
+      - triage_json_schema_test.go
+      - edge_cases_test.go
+    test_count: 28
+    line_count: 1200
+total_test_count: 28
+total_std_scenarios: 28
+coverage: "28/28 (100%)"
+lsp_patterns_used: false
+config_mode: auto
+notes:
+  - "All 28 STD scenarios have coverage_status NEW — all generated"
+  - "Types and helper functions defined in test files (production code pending)"
+  - "scaffold_embedding_test.go imports internal/scaffold for integration testing"
+  - "Tests are grouped by requirement group matching STD structure"
