@@ -1,0 +1,22 @@
+status: success
+jira_id: GH-2378
+verdict: APPROVED_WITH_FINDINGS
+confidence: MEDIUM
+weighted_score: 92
+findings:
+  critical: 0
+  major: 1
+  minor: 6
+  actionable: 7
+  total: 7
+reviewed: outputs/stp/GH-2378/GH-2378_test_plan.md
+report: outputs/reviews/GH-2378/GH-2378_stp_review.md
+dimension_scores:
+  rule_compliance: 89
+  requirement_coverage: 95
+  scenario_quality: 90
+  risk_accuracy: 95
+  scope_boundary: 100
+  strategy: 100
+  metadata: 75
+scope_downgrade: false
