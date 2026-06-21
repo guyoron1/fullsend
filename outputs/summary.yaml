@@ -1,15 +1,22 @@
 status: success
 jira_id: GH-2096
-file_path: /sandbox/workspace/output/GH-2096_test_plan.md
-test_counts:
-  unit_tests: 16
-  functional: 8
-  end_to_end: 4
-  total: 28
-pr_analyzed: "https://github.com/fullsend-ai/fullsend/pull/2303"
-lsp_analysis: true
-lsp_calls: 9
-regression_trace:
-  - "scaffold.go:FullsendRepoFile -> cli/run.go:bootstrapCommon"
-  - "scaffold.go:WalkFullsendRepo -> installfiles.go:CollectInstallFiles -> layers/workflows.go:Install"
-  - "scaffold.go:WalkFullsendRepoAll -> scaffold_test.go (7 test functions)"
+verdict: APPROVED_WITH_FINDINGS
+confidence: LOW
+weighted_score: 78
+findings:
+  critical: 0
+  major: 5
+  minor: 6
+  actionable: 9
+  total: 11
+reviewed: outputs/stp/GH-2096/GH-2096_test_plan.md
+report: outputs/GH-2096_stp_review.md
+dimension_scores:
+  rule_compliance: 82
+  requirement_coverage: 75
+  scenario_quality: 85
+  risk_accuracy: 80
+  scope_boundary: 90
+  strategy: 70
+  metadata: 40
+scope_downgrade: false
