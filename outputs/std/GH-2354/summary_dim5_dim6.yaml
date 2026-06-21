@@ -1,0 +1,28 @@
+status: success
+jira_id: GH-2354
+verdict: APPROVED_WITH_FINDINGS
+confidence: MEDIUM
+weighted_score: 84
+findings:
+  critical: 0
+  major: 3
+  minor: 5
+  actionable: 7
+  total: 8
+artifacts_reviewed:
+  std_yaml: true
+  go_stubs: true
+  python_stubs: false
+  stp_available: false
+dimension_scores:
+  traceability: null  # not evaluated
+  yaml_structure: null  # not evaluated
+  pattern_matching: null  # not evaluated
+  step_quality: null  # not evaluated
+  content_policy: null  # not evaluated
+  pse_quality: 82
+  codegen_readiness: 87
+dimensions_evaluated:
+  - 5  # PSE Docstring Quality
+  - 6  # Code Generation Readiness
+scope_note: "Review limited to Dimensions 5 and 6 per request"
