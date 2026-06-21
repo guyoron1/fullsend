@@ -1,0 +1,956 @@
+---
+# Software Test Description (STD) — GH-56
+# Generated: 2026-06-21
+# Format: v2.1-enhanced (single comprehensive file)
+
+document_metadata:
+  std_version: "2.1-enhanced"
+  generated_date: "2026-06-21"
+  jira_issue: "GH-56"
+  jira_summary: "Explore ambient-code/platform and Evaluate Relevance to FullSend"
+  source_bugs: []
+  stp_reference:
+    file: "outputs/stp/GH-56/GH-56_test_plan.md"
+    version: "v1"
+    sections_covered: "Section III - Requirements-to-Tests Mapping"
+  related_prs:
+    - repo: "fullsend-ai/fullsend"
+      pr_number: 110
+      url: "https://github.com/fullsend-ai/fullsend/pull/110"
+      title: "Add ACP landscape entry with evaluation analysis"
+      merged: true
+  total_scenarios: 8
+  functional_count: 8
+  e2e_count: 0
+  p0_count: 0
+  p1_count: 6
+  p2_count: 2
+
+code_generation_config:
+  std_version: "2.1-enhanced"
+  framework: "testing"
+  assertion_library: "testify"
+  language: "go"
+  package_name: "tests"
+  context_init: "context.Background()"
+  imports:
+    standard:
+      - "context"
+      - "testing"
+      - "os"
+      - "os/exec"
+      - "fmt"
+      - "strings"
+      - "path/filepath"
+    test_framework:
+      - path: "github.com/stretchr/testify/assert"
+      - path: "github.com/stretchr/testify/require"
+    project:
+      - "github.com/fullsend-ai/fullsend/internal/config"
+  timeout_constants: {}
+  helper_library_imports: []
+
+common_preconditions:
+  infrastructure:
+    - name: "Git repository clone"
+      requirement: "Local clone of fullsend-ai/fullsend repository with PR #110 merged"
+      validation: "git log --oneline | grep 'ACP landscape'"
+    - name: "Go toolchain"
+      requirement: "Go 1.23+"
+      validation: "go version"
+  operators: []
+  cluster_configuration:
+    topology: "None"
+    cpu_features: "Standard"
+    storage: "N/A"
+    network: "N/A"
+  rbac_requirements: []
+
+scenarios:
+  - scenario_id: "1"
+    test_id: "TS-GH-56-001"
+    tier: "Functional"
+    priority: "P1"
+    mvp: true
+    requirement_id: "GH-56"
+
+    variables:
+      closure_scope:
+        - name: "docContent"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "Test"]
+          comment: "Content of agent-infrastructure.md"
+        - name: "err"
+          type: "error"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "Test"]
+          comment: "Error from file operations"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "Test"
+        description: "ACP evaluation documentation completeness"
+        decorators: []
+      context:
+        description: "All evaluation points present"
+        decorators: []
+      it:
+        description: "should contain all ACP evaluation points in documentation"
+        test_id_format: "[test_id:TS-GH-56-001]"
+
+    code_structure: |
+      func TestACPEvaluationPointsPresent(t *testing.T) {
+        // Setup: read docs/problems/agent-infrastructure.md
+        // Test: verify all evaluation points present
+        // Assert: controller overhead, UI-centric design, CR surface friction,
+        //         shared workspace risk, plain Pod execution limits
+      }
+
+    test_objective:
+      title: "Verify all ACP evaluation points present in docs"
+      what: |
+        Validates that the documentation in docs/problems/agent-infrastructure.md
+        contains all five ACP evaluation points identified during the research:
+        controller overhead, UI-centric design, CR surface friction, shared
+        workspace risk, and plain Pod execution limits. Each point must be
+        substantively addressed, not merely mentioned.
+      why: |
+        The primary deliverable of GH-56 is comprehensive documentation of why
+        ACP is a weak fit for FullSend's goals. Missing evaluation points would
+        leave gaps in the team's understanding and could lead to revisiting
+        already-explored approaches.
+      acceptance_criteria:
+        - "Documentation contains section on controller overhead"
+        - "Documentation contains section on UI-centric design"
+        - "Documentation contains section on CR surface friction"
+        - "Documentation contains section on shared workspace risk"
+        - "Documentation contains section on plain Pod execution limits"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "go test with testify assertions"
+
+    specific_preconditions:
+      - name: "Documentation file exists"
+        requirement: "docs/problems/agent-infrastructure.md exists with ACP section"
+        validation: "test -f docs/problems/agent-infrastructure.md"
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Read agent-infrastructure.md content"
+          command: "os.ReadFile(\"docs/problems/agent-infrastructure.md\")"
+          validation: "File read without error"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Check for controller overhead evaluation point"
+          command: "strings.Contains(docContent, \"controller overhead\") or equivalent phrase"
+          validation: "Content contains controller overhead discussion"
+        - step_id: "TEST-02"
+          action: "Check for UI-centric design evaluation point"
+          command: "strings.Contains(docContent, \"UI-centric\") or equivalent phrase"
+          validation: "Content contains UI-centric design discussion"
+        - step_id: "TEST-03"
+          action: "Check for CR surface friction evaluation point"
+          command: "strings.Contains(docContent, \"CR\") or equivalent custom-resource phrase"
+          validation: "Content contains CR surface friction discussion"
+        - step_id: "TEST-04"
+          action: "Check for shared workspace risk evaluation point"
+          command: "strings.Contains(docContent, \"shared workspace\") or equivalent phrase"
+          validation: "Content contains shared workspace risk discussion"
+        - step_id: "TEST-05"
+          action: "Check for plain Pod execution limits evaluation point"
+          command: "strings.Contains(docContent, \"plain Pod\") or equivalent phrase"
+          validation: "Content contains plain Pod execution limits discussion"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "All five ACP evaluation points are present in documentation"
+        condition: "Each evaluation keyword/phrase found in document content"
+        failure_impact: "Incomplete research documentation; team lacks full ACP assessment"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "2"
+    test_id: "TS-GH-56-002"
+    tier: "Functional"
+    priority: "P1"
+    mvp: true
+    requirement_id: "GH-56"
+
+    variables:
+      closure_scope:
+        - name: "docContent"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "Test"]
+          comment: "Content of agent-infrastructure.md"
+        - name: "err"
+          type: "error"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "Test"]
+          comment: "Error from file operations"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "Test"
+        description: "ACP evaluation claim accuracy"
+        decorators: []
+      context:
+        description: "Claims match issue discussion"
+        decorators: []
+      it:
+        description: "should have evaluation claims matching issue discussion findings"
+        test_id_format: "[test_id:TS-GH-56-002]"
+
+    code_structure: |
+      func TestEvaluationClaimsMatchDiscussion(t *testing.T) {
+        // Setup: read docs/problems/agent-infrastructure.md
+        // Test: verify key claims from issue discussion are reflected
+        // Assert: claims about operator overhead, UI design, workspace injection
+      }
+
+    test_objective:
+      title: "Verify evaluation claims match issue discussion findings"
+      what: |
+        Validates that the claims made in the ACP evaluation documentation
+        accurately reflect the findings discussed in the GH-56 issue comments.
+        Key discussion points from @ifireball and @ralphbean must be represented
+        without distortion or omission.
+      why: |
+        Documentation accuracy is critical for architectural decisions. If the
+        written evaluation misrepresents the discussion findings, the team could
+        make incorrect build-vs-adopt decisions based on faulty documentation.
+      acceptance_criteria:
+        - "Documentation reflects operator overhead concerns from issue discussion"
+        - "Documentation reflects UI-centric design limitation from issue discussion"
+        - "Documentation reflects shared-workspace injection risk from issue discussion"
+        - "No claims contradict issue discussion findings"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "go test with testify assertions"
+
+    specific_preconditions:
+      - name: "Issue discussion context"
+        requirement: "Understanding of GH-56 issue comment findings"
+        validation: "N/A — manual cross-reference"
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Read agent-infrastructure.md content"
+          command: "os.ReadFile(\"docs/problems/agent-infrastructure.md\")"
+          validation: "File read without error"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify operator overhead claim present and accurate"
+          command: "Check content for operator overhead discussion matching issue findings"
+          validation: "Claim aligns with issue discussion"
+        - step_id: "TEST-02"
+          action: "Verify UI-centric limitation claim present and accurate"
+          command: "Check content for UI-centric design discussion matching issue findings"
+          validation: "Claim aligns with issue discussion"
+        - step_id: "TEST-03"
+          action: "Verify shared-workspace risk claim present and accurate"
+          command: "Check content for workspace injection risk matching issue findings"
+          validation: "Claim aligns with issue discussion"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Evaluation claims are accurate representations of issue discussion"
+        condition: "Each documented claim matches corresponding issue comment finding"
+        failure_impact: "Misleading documentation could cause incorrect architectural decisions"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "3"
+    test_id: "TS-GH-56-003"
+    tier: "Functional"
+    priority: "P1"
+    mvp: true
+    requirement_id: "GH-56"
+
+    variables:
+      closure_scope:
+        - name: "docContent"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "Test"]
+          comment: "Content of agent-infrastructure.md"
+        - name: "err"
+          type: "error"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "Test"]
+          comment: "Error from file operations"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "Test"
+        description: "ACP evaluation claim freshness"
+        decorators: []
+      context:
+        description: "No stale or inaccurate claims"
+        decorators: []
+      it:
+        description: "should contain no stale or inaccurate platform claims"
+        test_id_format: "[test_id:TS-GH-56-003]"
+
+    code_structure: |
+      func TestNoStaleOrInaccurateClaims(t *testing.T) {
+        // Setup: read docs/problems/agent-infrastructure.md
+        // Test: verify no outdated version references or dead links
+        // Assert: all claims reference current ACP state
+      }
+
+    test_objective:
+      title: "Verify no stale or inaccurate platform claims"
+      what: |
+        Validates that the ACP evaluation documentation does not contain stale
+        or factually inaccurate claims about the Ambient Code Platform. Checks
+        for outdated version references, discontinued features, or claims that
+        have been superseded by ACP updates.
+      why: |
+        Point-in-time evaluations risk becoming misleading if claims are stated
+        as permanent facts. Ensuring no stale claims protects the team from
+        acting on outdated information.
+      acceptance_criteria:
+        - "No references to discontinued ACP features"
+        - "Claims are framed as point-in-time observations where appropriate"
+        - "No factually incorrect statements about ACP architecture"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "go test with testify assertions"
+
+    specific_preconditions:
+      - name: "ACP documentation context"
+        requirement: "Understanding of current ACP platform state"
+        validation: "N/A — manual verification required"
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Read agent-infrastructure.md content"
+          command: "os.ReadFile(\"docs/problems/agent-infrastructure.md\")"
+          validation: "File read without error"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Check for temporal framing of claims"
+          command: "Verify claims use point-in-time language where appropriate"
+          validation: "Claims are appropriately framed"
+        - step_id: "TEST-02"
+          action: "Check for outdated version references"
+          command: "Scan for version numbers and validate currency"
+          validation: "No outdated version references found"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "No stale or inaccurate claims in ACP evaluation"
+        condition: "All claims are current and accurately framed"
+        failure_impact: "Stale documentation could mislead architectural decisions"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "4"
+    test_id: "TS-GH-56-004"
+    tier: "Functional"
+    priority: "P1"
+    mvp: true
+    requirement_id: "GH-56"
+
+    variables:
+      closure_scope:
+        - name: "landscapeContent"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "Test"]
+          comment: "Content of docs/landscape.md"
+        - name: "detailContent"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "Test"]
+          comment: "Content of docs/problems/agent-infrastructure.md"
+        - name: "err"
+          type: "error"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "Test"]
+          comment: "Error from file operations"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "Test"
+        description: "Cross-link integrity"
+        decorators: []
+      context:
+        description: "Landscape-to-detail link resolves"
+        decorators: []
+      it:
+        description: "should have landscape-to-detail cross-link that resolves"
+        test_id_format: "[test_id:TS-GH-56-004]"
+
+    code_structure: |
+      func TestLandscapeToDetailCrossLink(t *testing.T) {
+        // Setup: read docs/landscape.md
+        // Test: extract ACP cross-link and verify target file exists
+        // Assert: link target file exists and anchor is valid
+      }
+
+    test_objective:
+      title: "Verify landscape-to-detail cross-link resolves"
+      what: |
+        Validates that the cross-link from the ACP entry in docs/landscape.md
+        to the detailed analysis in docs/problems/agent-infrastructure.md
+        resolves correctly. The link must point to an existing file and, if it
+        includes an anchor, the anchor target must exist in the destination.
+      why: |
+        Cross-links are the primary navigation mechanism between the landscape
+        overview and detailed evaluations. A broken link would leave readers
+        unable to access the detailed ACP analysis from the landscape page.
+      acceptance_criteria:
+        - "Landscape.md contains a link to agent-infrastructure.md"
+        - "The linked file exists at the referenced path"
+        - "The link uses a valid relative path"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "go test with testify assertions"
+
+    specific_preconditions:
+      - name: "Both documentation files exist"
+        requirement: "docs/landscape.md and docs/problems/agent-infrastructure.md present"
+        validation: "test -f docs/landscape.md && test -f docs/problems/agent-infrastructure.md"
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Read docs/landscape.md content"
+          command: "os.ReadFile(\"docs/landscape.md\")"
+          validation: "File read without error"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Extract cross-links from landscape ACP entry"
+          command: "Parse markdown for links matching agent-infrastructure pattern"
+          validation: "At least one cross-link found"
+        - step_id: "TEST-02"
+          action: "Resolve relative link path from landscape.md location"
+          command: "filepath.Join(filepath.Dir(landscapePath), extractedLink)"
+          validation: "Resolved path is valid"
+        - step_id: "TEST-03"
+          action: "Verify target file exists"
+          command: "os.Stat(resolvedPath)"
+          validation: "File exists without error"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Landscape-to-detail cross-link resolves to existing file"
+        condition: "Link target file exists at resolved path"
+        failure_impact: "Broken navigation between landscape overview and detailed analysis"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "5"
+    test_id: "TS-GH-56-005"
+    tier: "Functional"
+    priority: "P1"
+    mvp: true
+    requirement_id: "GH-56"
+
+    variables:
+      closure_scope:
+        - name: "landscapeContent"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "Test"]
+          comment: "Content of docs/landscape.md"
+        - name: "detailContent"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "Test"]
+          comment: "Content of docs/problems/agent-infrastructure.md"
+        - name: "err"
+          type: "error"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "Test"]
+          comment: "Error from file operations"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "Test"
+        description: "Anchor target validation"
+        decorators: []
+      context:
+        description: "Anchor target exists in destination"
+        decorators: []
+      it:
+        description: "should have anchor target that exists in destination doc"
+        test_id_format: "[test_id:TS-GH-56-005]"
+
+    code_structure: |
+      func TestAnchorTargetExists(t *testing.T) {
+        // Setup: read both landscape.md and agent-infrastructure.md
+        // Test: extract anchor from cross-link, verify heading exists in target
+        // Assert: anchor maps to valid heading in destination document
+      }
+
+    test_objective:
+      title: "Verify anchor target exists in destination doc"
+      what: |
+        Validates that if the cross-link from landscape.md includes a fragment
+        anchor (e.g., #ambient-code-platform), the corresponding heading exists
+        in the destination document (agent-infrastructure.md). Anchors are
+        derived from markdown heading text by lowercasing and hyphenating.
+      why: |
+        Fragment anchors that point to non-existent headings silently fail in
+        markdown renderers, taking the reader to the top of the document instead
+        of the relevant section. This degrades the documentation experience.
+      acceptance_criteria:
+        - "Cross-link anchor fragment maps to existing heading in target document"
+        - "Heading text matches anchor after markdown slug transformation"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "go test with testify assertions"
+
+    specific_preconditions:
+      - name: "Cross-link contains anchor"
+        requirement: "Landscape.md ACP link includes a # fragment"
+        validation: "Link parsing extracts anchor portion"
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Read both documentation files"
+          command: "os.ReadFile for landscape.md and agent-infrastructure.md"
+          validation: "Both files read without error"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Extract anchor fragment from cross-link"
+          command: "Parse link URL for # fragment"
+          validation: "Anchor fragment extracted"
+        - step_id: "TEST-02"
+          action: "Extract all headings from destination document"
+          command: "Parse markdown headings using regex"
+          validation: "Headings list populated"
+        - step_id: "TEST-03"
+          action: "Convert headings to GitHub-style slugs"
+          command: "Lowercase, replace spaces with hyphens, strip special chars"
+          validation: "Slug list generated"
+        - step_id: "TEST-04"
+          action: "Check anchor exists in slug list"
+          command: "Search slug list for anchor fragment"
+          validation: "Anchor found in slug list"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Anchor target maps to valid heading in destination document"
+        condition: "Anchor slug exists in destination document heading slugs"
+        failure_impact: "Silent anchor failure causes reader to land at wrong section"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "6"
+    test_id: "TS-GH-56-006"
+    tier: "Functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-56"
+
+    variables:
+      closure_scope:
+        - name: "landscapeContent"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "Test"]
+          comment: "Content of docs/landscape.md"
+        - name: "err"
+          type: "error"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "Test"]
+          comment: "Error from file operations"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "Test"
+        description: "Broken anchor detection"
+        decorators: []
+      context:
+        description: "Broken anchor returns clear error"
+        decorators: []
+      it:
+        description: "should detect and report broken anchors clearly"
+        test_id_format: "[test_id:TS-GH-56-006]"
+
+    code_structure: |
+      func TestBrokenAnchorDetection(t *testing.T) {
+        // Setup: read landscape.md, introduce intentional broken anchor
+        // Test: verify link validation detects broken anchor
+        // Assert: broken anchor is detected and reported
+      }
+
+    test_objective:
+      title: "Verify broken anchor returns clear error"
+      what: |
+        Validates that when a cross-link anchor points to a non-existent heading,
+        the validation logic detects this and produces a clear, actionable error
+        message identifying the broken anchor and the expected heading.
+      why: |
+        Proactive detection of broken anchors during testing prevents silent
+        failures in production documentation. Clear error messages enable fast
+        remediation by documentation authors.
+      acceptance_criteria:
+        - "Broken anchor is detected by validation logic"
+        - "Error message identifies the specific broken anchor"
+        - "Error message suggests the expected heading or similar matches"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "go test with testify assertions"
+
+    specific_preconditions:
+      - name: "Link validation utility"
+        requirement: "Test helper function for markdown link validation"
+        validation: "Helper function available in test suite"
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Read documentation files"
+          command: "os.ReadFile for landscape.md and agent-infrastructure.md"
+          validation: "Files read without error"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Create test case with intentionally broken anchor"
+          command: "Construct link with non-existent anchor fragment"
+          validation: "Broken anchor test case created"
+        - step_id: "TEST-02"
+          action: "Run anchor validation on broken link"
+          command: "Call anchor validation function with broken link"
+          validation: "Validation returns error"
+        - step_id: "TEST-03"
+          action: "Verify error message clarity"
+          command: "Check error message contains anchor name and helpful context"
+          validation: "Error message is actionable"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Broken anchor produces clear, actionable error"
+        condition: "Error message identifies broken anchor and suggests fix"
+        failure_impact: "Silent broken links would go undetected"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "7"
+    test_id: "TS-GH-56-007"
+    tier: "Functional"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-56"
+
+    variables:
+      closure_scope:
+        - name: "landscapeContent"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "Test"]
+          comment: "Content of docs/landscape.md"
+        - name: "detailContent"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "Test"]
+          comment: "Content of docs/problems/agent-infrastructure.md"
+        - name: "err"
+          type: "error"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "Test"]
+          comment: "Error from file operations"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "Test"
+        description: "Document structure integration"
+        decorators: []
+      context:
+        description: "New sections in correct location"
+        decorators: []
+      it:
+        description: "should have new sections placed in correct document locations"
+        test_id_format: "[test_id:TS-GH-56-007]"
+
+    code_structure: |
+      func TestNewSectionsCorrectLocation(t *testing.T) {
+        // Setup: read landscape.md and agent-infrastructure.md
+        // Test: verify ACP entry position in landscape, section position in detail doc
+        // Assert: sections appear in logical document order
+      }
+
+    test_objective:
+      title: "Verify new sections in correct document location"
+      what: |
+        Validates that the new ACP entry in landscape.md is placed in the
+        correct alphabetical or categorical position among other landscape
+        entries, and that the detailed analysis section in agent-infrastructure.md
+        is positioned logically within the document structure.
+      why: |
+        Consistent document organization ensures readers can find information
+        predictably. Misplaced sections break the mental model of how the
+        documentation is structured.
+      acceptance_criteria:
+        - "ACP entry in landscape.md is in correct position relative to other entries"
+        - "ACP analysis section in agent-infrastructure.md follows document conventions"
+        - "New sections do not break document flow"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "go test with testify assertions"
+
+    specific_preconditions:
+      - name: "Document structure knowledge"
+        requirement: "Understanding of expected document organization conventions"
+        validation: "N/A — inferred from existing sections"
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Read both documentation files"
+          command: "os.ReadFile for landscape.md and agent-infrastructure.md"
+          validation: "Both files read without error"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Extract section headings from landscape.md"
+          command: "Parse markdown headings"
+          validation: "Headings list populated"
+        - step_id: "TEST-02"
+          action: "Verify ACP entry position among landscape entries"
+          command: "Check ACP heading appears in expected position"
+          validation: "ACP entry in correct position"
+        - step_id: "TEST-03"
+          action: "Extract section headings from agent-infrastructure.md"
+          command: "Parse markdown headings"
+          validation: "Headings list populated"
+        - step_id: "TEST-04"
+          action: "Verify ACP analysis section position"
+          command: "Check ACP section appears in logical document order"
+          validation: "ACP section in correct position"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "New sections are placed in correct document locations"
+        condition: "Section positions follow document organization conventions"
+        failure_impact: "Misplaced sections degrade documentation navigability"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "8"
+    test_id: "TS-GH-56-008"
+    tier: "Functional"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-56"
+
+    variables:
+      closure_scope:
+        - name: "landscapeContent"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "Test"]
+          comment: "Content of docs/landscape.md"
+        - name: "detailContent"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "Test"]
+          comment: "Content of docs/problems/agent-infrastructure.md"
+        - name: "originalLandscapeContent"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "Test"]
+          comment: "Baseline content of landscape.md before PR"
+        - name: "originalDetailContent"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "Test"]
+          comment: "Baseline content of agent-infrastructure.md before PR"
+        - name: "err"
+          type: "error"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "Test"]
+          comment: "Error from file operations"
+
+    test_structure:
+      type: "single"
+      describe:
+        wrapper: "Test"
+        description: "Content preservation"
+        decorators: []
+      context:
+        description: "Existing content unmodified"
+        decorators: []
+      it:
+        description: "should leave existing content unmodified by insertion"
+        test_id_format: "[test_id:TS-GH-56-008]"
+
+    code_structure: |
+      func TestExistingContentUnmodified(t *testing.T) {
+        // Setup: get baseline content from git (pre-PR state)
+        // Test: compare non-ACP sections between baseline and current
+        // Assert: existing content unchanged
+      }
+
+    test_objective:
+      title: "Verify existing content unmodified by insertion"
+      what: |
+        Validates that the existing content in both landscape.md and
+        agent-infrastructure.md was not modified by the PR #110 changes.
+        Only new sections should be added; pre-existing sections, formatting,
+        and content must remain identical to the pre-PR state.
+      why: |
+        Documentation PRs that inadvertently modify existing content can
+        introduce regressions or break existing cross-references. Verifying
+        content preservation ensures the PR is purely additive.
+      acceptance_criteria:
+        - "Pre-existing sections in landscape.md are identical to pre-PR state"
+        - "Pre-existing sections in agent-infrastructure.md are identical to pre-PR state"
+        - "No unintended whitespace or formatting changes"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "go test with testify assertions"
+
+    specific_preconditions:
+      - name: "Git history access"
+        requirement: "Ability to access pre-PR file state via git"
+        validation: "git show HEAD~1:docs/landscape.md"
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Get baseline content from git pre-PR state"
+          command: "git show HEAD~1:docs/landscape.md and git show HEAD~1:docs/problems/agent-infrastructure.md"
+          validation: "Baseline content retrieved"
+        - step_id: "SETUP-02"
+          action: "Read current file content"
+          command: "os.ReadFile for both files"
+          validation: "Current content read"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Extract non-ACP sections from current landscape.md"
+          command: "Remove ACP-specific sections from current content"
+          validation: "Non-ACP content extracted"
+        - step_id: "TEST-02"
+          action: "Compare non-ACP sections with baseline"
+          command: "String comparison of baseline vs filtered current content"
+          validation: "Content matches baseline"
+        - step_id: "TEST-03"
+          action: "Extract non-ACP sections from current agent-infrastructure.md"
+          command: "Remove ACP-specific sections from current content"
+          validation: "Non-ACP content extracted"
+        - step_id: "TEST-04"
+          action: "Compare non-ACP sections with baseline"
+          command: "String comparison of baseline vs filtered current content"
+          validation: "Content matches baseline"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Existing documentation content is preserved unchanged"
+        condition: "Pre-existing sections identical to pre-PR state"
+        failure_impact: "Unintended content modifications could break existing documentation"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.23+"
+        - "git"
+      scenario_specific_rbac: []
+---
