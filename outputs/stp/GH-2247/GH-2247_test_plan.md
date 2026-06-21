@@ -4,7 +4,7 @@
 
 ### Metadata & Tracking
 
-- **Enhancement:** [GH-2247](https://github.com/fullsend-ai/fullsend/issues/2247)
+- **Enhancement (Bug Fix):** [GH-2247](https://github.com/fullsend-ai/fullsend/issues/2247)
 - **Feature Tracking:** [GH-2247](https://github.com/fullsend-ai/fullsend/issues/2247)
 - **Epic Tracking:** N/A
 - **QE Owner:** TBD
@@ -15,7 +15,7 @@
 
 ### Feature Overview
 
-The `reconcile-repos.sh` script manages shim workflow enrollment across GitHub repositories. A bug in the shim drift detection logic caused false-positive staleness detection when logically identical content was encoded with different trailing newlines (e.g., from the GitHub content API). This produced bogus update PRs (such as PR #2101) that removed the sentinel line `# --- fullsend managed below - do not edit ---`, risking infinite reconciliation churn. The fix replaces base64-level comparison (`managed_content_b64`) with decoded text comparison via `extract_managed_content`, normalizing encoding differences before comparison.
+The `reconcile-repos.sh` script manages shim workflow enrollment across GitHub repositories. A bug in the shim drift detection logic caused false-positive staleness detection when logically identical content was encoded with different trailing newlines (e.g., from the GitHub content API). This produced bogus update PRs (such as [PR #2101](https://github.com/fullsend-ai/fullsend/pull/2101)) that removed the sentinel line `# --- fullsend managed below - do not edit ---`, risking infinite reconciliation churn. The fix replaces base64-level comparison (`managed_content_b64`) with decoded text comparison via `extract_managed_content`, normalizing encoding differences before comparison.
 
 ---
 
@@ -25,7 +25,7 @@ The `reconcile-repos.sh` script manages shim workflow enrollment across GitHub r
 
 - [x] **Reviewed the relevant requirements.**
   - GH-2247 describes the root cause: `managed_content_b64()` re-encodes decoded content to base64 for comparison, but trailing newline differences between the template output and GitHub API response produce different base64 strings for identical text.
-  - PR #2101 is the concrete symptom: a bogus PR removing the sentinel and YAML document separator.
+  - [PR #2101](https://github.com/fullsend-ai/fullsend/pull/2101) is the concrete symptom: a bogus PR removing the sentinel and YAML document separator.
 
 - [x] **Confirmed clear user stories and understood. Understand the value and customer use cases.**
   - As a repo maintainer, I expect the reconcile bot to only create update PRs when the shim workflow has genuinely drifted from the template, not due to encoding artifacts.
@@ -98,7 +98,7 @@ This test plan covers the shim drift detection and comparison logic in `reconcil
   - Tests run in CI via `make test` or direct script invocation.
 
 - [x] **Regression Testing** -- Applicable. Test 5 in the test harness is a direct regression test for GH-2247.
-  - Validates the specific scenario (trailing newline difference) that caused PR #2101.
+  - Validates the specific scenario (trailing newline difference) that caused [PR #2101](https://github.com/fullsend-ai/fullsend/pull/2101).
 
 **Non-Functional:**
 
@@ -158,7 +158,7 @@ No new or special tools required. All tests use standard bash scripting with moc
 
 - [ ] **Coverage**
   - Risk: Tests use mocked GitHub API responses, which may not capture all real-world encoding variations.
-  - Mitigation: Test 5 specifically models the encoding difference observed in the real bug (PR #2101). Additional encoding variations (e.g., CRLF) covered by carriage return normalization test.
+  - Mitigation: Test 5 specifically models the encoding difference observed in the real bug ([PR #2101](https://github.com/fullsend-ai/fullsend/pull/2101)). Additional encoding variations (e.g., CRLF) covered by carriage return normalization test.
   - Status: Acceptable.
 
 - [ ] **Environment**
@@ -217,9 +217,9 @@ No new or special tools required. All tests use standard bash scripting with moc
   - Verify comment header preserved above sentinel | Unit Tests | P2
   - Verify non-comment content above sentinel rejected | Unit Tests | P2
 
-- **GH-2247** | Base64 encoding/decoding round-trip does not corrupt shim content
+- **GH-2247** | Base64 encoding/decoding round-trip does not corrupt shim content (Note: This group focuses on encoding pathway integrity — verifying that base64 encode/decode preserves content byte-for-byte. Group 1 tests comparison outcomes given encoding-equivalent inputs. The distinction is: Group 1 validates the *decision* logic; Group 6 validates the *data transformation* preceding it.)
   - Verify base64 round-trip preserves multi-line YAML | Unit Tests | P1
-  - Verify GitHub API base64 line wrapping handled | Unit Tests | P1
+  - Verify line-wrapped base64 input is decoded correctly | Unit Tests | P1
 
 ---
 
