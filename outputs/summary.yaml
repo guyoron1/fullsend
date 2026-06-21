@@ -1,0 +1,23 @@
+status: success
+jira_id: GH-1230
+file_path: /sandbox/workspace/output/GH-1230_test_plan.md
+test_counts:
+  unit_tests: 22
+  tier1: 0
+  tier2: 0
+  total: 22
+requirements:
+  total: 7
+  p0: 3
+  p1: 4
+regression_analysis:
+  lsp_calls: 6
+  files_analyzed:
+    - internal/cli/postreview.go
+    - internal/security/scanner.go
+    - internal/forge/forge.go
+    - internal/cli/run.go
+  key_findings:
+    - "sanitizeReviewResult called by newPostReviewCmd before any forge API interaction"
+    - "OutputPipeline used in 3 production files: postreview.go, run.go, scan.go"
+    - "Call chain: newPostReviewCmd → sanitizeReviewResult → OutputPipeline().Scan() → UnicodeNormalizer + SecretRedactor"
