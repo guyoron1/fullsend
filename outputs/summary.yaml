@@ -1,0 +1,21 @@
+status: success
+jira_id: GH-58
+file_path: /sandbox/workspace/output/GH-58_test_plan.md
+test_counts:
+  functional: 12
+  end_to_end: 1
+  total: 13
+lsp_analysis: true
+lsp_calls:
+  - documentSymbol on internal/dispatch/gcf/provisioner.go
+  - documentSymbol on internal/mintcore/handler.go
+  - incomingCalls on EnsureOrgInMint (24 callers found)
+  - incomingCalls on RegisterPerRepoWIF (13 callers found)
+  - incomingCalls on RemoveOrgFromMint (8 callers found)
+  - findReferences on RoleOnlyAppIDs (6 references across 2 files)
+  - findReferences on gcpAPI (62 references)
+regression_findings:
+  - EnsureOrgInMint called by runMintEnrollOrg, runMintEnrollRepo, provisionWithExistingMint, provisionSelfManaged
+  - RoleOnlyAppIDs used by handler.go (NewHandler) and provisioner.go (EnsureOrgInMint guard)
+  - GetServiceTrafficEnvVars used by EnsureOrgInMint, RegisterPerRepoWIF, RemoveOrgFromMint
+  - 20+ existing test functions cover EnsureOrgInMint including 3 new DataInconsistencyGuard tests
