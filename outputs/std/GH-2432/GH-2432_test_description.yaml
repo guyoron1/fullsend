@@ -14,17 +14,6 @@ document_metadata:
     file: "outputs/stp/GH-2432/GH-2432_test_plan.md"
     version: "v1"
     sections_covered: "Section II.4 - Test Scenarios"
-  related_prs:
-    - repo: "fullsend-ai/fullsend"
-      pr_number: 2434
-      url: "https://github.com/fullsend-ai/fullsend/pull/2434"
-      title: "Retry logic inside MergeChangeProposal + unit tests"
-      merged: false
-    - repo: "fullsend-ai/fullsend"
-      pr_number: 2435
-      url: "https://github.com/fullsend-ai/fullsend/pull/2435"
-      title: "Adds UpdatePullRequestBranch to forge interface + E2E retry"
-      merged: true
   total_scenarios: 9
   unit_count: 6
   tier1_count: 2
@@ -43,9 +32,11 @@ code_generation_config:
   imports:
     standard:
       - "context"
+      - "errors"
       - "fmt"
       - "net/http"
       - "net/http/httptest"
+      - "strings"
       - "testing"
       - "time"
     test_framework:
@@ -80,6 +71,17 @@ scenarios:
     priority: "P0"
     mvp: true
     requirement_id: "REQ-001"
+
+    patterns:
+      primary: "api-retry-mock"
+      helpers_required:
+        - "httptest-server"
+
+    code_structure:
+      type: "function"
+      framework: "testing"
+      subtest_style: "t.Run"
+      mock_strategy: "httptest"
 
     test_objective:
       title: "Successful merge on first attempt (happy path)"
@@ -165,7 +167,11 @@ scenarios:
           action: "Call MergeChangeProposal with valid owner/repo/number"
           command: "client.MergeChangeProposal(ctx, owner, repo, prNumber)"
           validation: "Function returns nil"
-      cleanup: []
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close httptest server"
+          command: "defer server.Close()"
+          validation: "Server resources released"
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -195,6 +201,18 @@ scenarios:
     priority: "P0"
     mvp: true
     requirement_id: "REQ-001"
+
+    patterns:
+      primary: "api-retry-mock"
+      helpers_required:
+        - "httptest-server"
+        - "stateful-handler"
+
+    code_structure:
+      type: "function"
+      framework: "testing"
+      subtest_style: "t.Run"
+      mock_strategy: "httptest"
 
     test_objective:
       title: "409 triggers branch update and successful retry"
@@ -293,7 +311,11 @@ scenarios:
           action: "Call MergeChangeProposal"
           command: "client.MergeChangeProposal(ctx, owner, repo, prNumber)"
           validation: "Function returns nil after retry"
-      cleanup: []
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close httptest server"
+          command: "defer server.Close()"
+          validation: "Server resources released"
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -323,6 +345,17 @@ scenarios:
     priority: "P1"
     mvp: true
     requirement_id: "REQ-003"
+
+    patterns:
+      primary: "api-retry-mock"
+      helpers_required:
+        - "httptest-server"
+
+    code_structure:
+      type: "function"
+      framework: "testing"
+      subtest_style: "t.Run"
+      mock_strategy: "httptest"
 
     test_objective:
       title: "Non-409 error is not retried"
@@ -405,7 +438,11 @@ scenarios:
           action: "Call MergeChangeProposal"
           command: "client.MergeChangeProposal(ctx, owner, repo, prNumber)"
           validation: "Function returns error"
-      cleanup: []
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close httptest server"
+          command: "defer server.Close()"
+          validation: "Server resources released"
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -440,6 +477,18 @@ scenarios:
     priority: "P1"
     mvp: true
     requirement_id: "REQ-002"
+
+    patterns:
+      primary: "api-retry-mock"
+      helpers_required:
+        - "httptest-server"
+        - "persistent-error-handler"
+
+    code_structure:
+      type: "function"
+      framework: "testing"
+      subtest_style: "t.Run"
+      mock_strategy: "httptest"
 
     test_objective:
       title: "Persistent 409 exhausts retries"
@@ -519,7 +568,11 @@ scenarios:
           action: "Call MergeChangeProposal"
           command: "client.MergeChangeProposal(ctx, owner, repo, prNumber)"
           validation: "Function returns error after retries exhausted"
-      cleanup: []
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close httptest server"
+          command: "defer server.Close()"
+          validation: "Server resources released"
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -549,6 +602,15 @@ scenarios:
     priority: "P1"
     mvp: false
     requirement_id: "REQ-001"
+
+    patterns:
+      primary: "interface-compliance"
+      helpers_required: []
+
+    code_structure:
+      type: "function"
+      framework: "testing"
+      subtest_style: "t.Run"
 
     test_objective:
       title: "MergeChangeProposal remains compatible with forge.Client interface"
@@ -620,6 +682,16 @@ scenarios:
     mvp: false
     requirement_id: "REQ-001"
 
+    patterns:
+      primary: "mock-client-validation"
+      helpers_required:
+        - "fake-client"
+
+    code_structure:
+      type: "function"
+      framework: "testing"
+      subtest_style: "t.Run"
+
     test_objective:
       title: "FakeClient.MergeChangeProposal still works for other tests"
       what: |
@@ -675,7 +747,11 @@ scenarios:
           action: "Call FakeClient.MergeChangeProposal with error config"
           command: "fakeClient.MergeChangeProposal(ctx, owner, repo, number)"
           validation: "Returns configured error"
-      cleanup: []
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "No external resources to clean up"
+          command: "N/A"
+          validation: "N/A"
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -699,6 +775,17 @@ scenarios:
     priority: "P0"
     mvp: true
     requirement_id: "REQ-001"
+
+    patterns:
+      primary: "e2e-enrollment-flow"
+      helpers_required:
+        - "e2e-environment"
+        - "github-credentials"
+
+    code_structure:
+      type: "function"
+      framework: "testing"
+      subtest_style: "t.Run"
 
     test_objective:
       title: "TestAdminInstallUninstall enrollment PR merge succeeds under race"
@@ -789,6 +876,18 @@ scenarios:
     mvp: false
     requirement_id: "REQ-004"
 
+    patterns:
+      primary: "api-retry-mock"
+      helpers_required:
+        - "httptest-server"
+        - "context-cancellation"
+
+    code_structure:
+      type: "function"
+      framework: "testing"
+      subtest_style: "t.Run"
+      mock_strategy: "httptest"
+
     test_objective:
       title: "Context cancelled during retry delay"
       what: |
@@ -857,7 +956,11 @@ scenarios:
           action: "Call MergeChangeProposal with short-lived context"
           command: "client.MergeChangeProposal(ctx, owner, repo, prNumber)"
           validation: "Function returns context error"
-      cleanup: []
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close httptest server"
+          command: "defer server.Close()"
+          validation: "Server resources released"
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -877,6 +980,18 @@ scenarios:
     priority: "P2"
     mvp: false
     requirement_id: "REQ-001"
+
+    patterns:
+      primary: "api-retry-mock"
+      helpers_required:
+        - "httptest-server"
+        - "error-injection"
+
+    code_structure:
+      type: "function"
+      framework: "testing"
+      subtest_style: "t.Run"
+      mock_strategy: "httptest"
 
     test_objective:
       title: "update-branch call fails but retry still proceeds"
@@ -971,7 +1086,11 @@ scenarios:
           action: "Call MergeChangeProposal"
           command: "client.MergeChangeProposal(ctx, owner, repo, prNumber)"
           validation: "Function returns nil (merge succeeded on retry despite update-branch failure)"
-      cleanup: []
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close httptest server"
+          command: "defer server.Close()"
+          validation: "Server resources released"
 
     assertions:
       - assertion_id: "ASSERT-01"
