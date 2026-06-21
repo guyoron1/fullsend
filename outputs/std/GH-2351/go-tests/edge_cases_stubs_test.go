@@ -9,7 +9,7 @@ Jira: GH-2351
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"sync"
 	"testing"
 
@@ -30,7 +30,7 @@ func TestComparePathPresenceEdgeCases(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		Preconditions:
-		    - FakeClient with ListRepositoryFilesErr set (to detect if called)
+		    - FakeClient with Errors map entry for 'ListRepositoryFiles' set (to detect if called)
 
 		Steps:
 		    1. Call ComparePathPresence with empty expected paths slice

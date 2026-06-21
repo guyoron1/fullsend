@@ -9,7 +9,7 @@ Jira: GH-2351
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -52,7 +52,7 @@ func TestFakeClientListRepositoryFiles(t *testing.T) {
 
 		Expected:
 		    - No error returned
-		    - Result is an empty slice (not nil)
+		    - Result is nil or empty
 		*/
 	})
 
@@ -61,7 +61,7 @@ func TestFakeClientListRepositoryFiles(t *testing.T) {
 		/*
 		[NEGATIVE]
 		Preconditions:
-		    - FakeClient with ListRepositoryFilesErr set to "injected test error"
+		    - FakeClient with Errors map entry for 'ListRepositoryFiles' set to "injected test error"
 
 		Steps:
 		    1. Call ListRepositoryFiles on FakeClient

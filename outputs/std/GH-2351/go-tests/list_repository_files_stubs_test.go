@@ -9,7 +9,7 @@ Jira: GH-2351
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -62,7 +62,7 @@ func TestListRepositoryFiles(t *testing.T) {
 		/*
 		[NEGATIVE]
 		Preconditions:
-		    - FakeClient configured with TruncatedTree=true
+		    - FakeClient with Errors map entry for 'ListRepositoryFiles' set to truncation error
 
 		Steps:
 		    1. Call ListRepositoryFiles
@@ -78,7 +78,7 @@ func TestListRepositoryFiles(t *testing.T) {
 		/*
 		[NEGATIVE]
 		Preconditions:
-		    - FakeClient with ListRepositoryFilesErr set to "repository not found"
+		    - FakeClient with Errors map entry for 'ListRepositoryFiles' set to "repository not found"
 
 		Steps:
 		    1. Call ListRepositoryFiles with invalid owner/repo

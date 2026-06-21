@@ -9,7 +9,8 @@ Jira: GH-2351
 
 import (
 	"context"
-	"fmt"
+	"errors"
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -17,6 +18,9 @@ import (
 
 	"github.com/fullsend-ai/fullsend/internal/forge"
 )
+
+// Imports used when stubs are implemented:
+var _ = sort.Strings
 
 func TestComparePathPresence(t *testing.T) {
 	/*
@@ -75,7 +79,7 @@ func TestComparePathPresence(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		Preconditions:
-		    - FakeClient with GetFileContentErr set to sentinel error
+		    - FakeClient with Errors map entry for 'GetFileContent' set to sentinel error
 		    - FakeClient FileContents populated with test paths
 
 		Steps:
@@ -92,7 +96,7 @@ func TestComparePathPresence(t *testing.T) {
 		/*
 		[NEGATIVE]
 		Preconditions:
-		    - FakeClient with ListRepositoryFilesErr set to "API rate limit exceeded"
+		    - FakeClient with Errors map entry for 'ListRepositoryFiles' set to "API rate limit exceeded"
 
 		Steps:
 		    1. Call ComparePathPresence with any expected paths
