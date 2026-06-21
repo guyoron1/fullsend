@@ -1,0 +1,24 @@
+status: success
+jira_id: GH-2351
+verdict: NEEDS_REVISION
+confidence: LOW
+weighted_score: 76
+findings:
+  critical: 3
+  major: 6
+  minor: 4
+  actionable: 12
+  total: 13
+artifacts_reviewed:
+  std_yaml: true
+  go_stubs: true
+  python_stubs: false
+  stp_available: true
+dimension_scores:
+  traceability: 95
+  yaml_structure: 60
+  pattern_matching: 75
+  step_quality: 55
+  content_policy: 95
+  pse_quality: 85
+  codegen_readiness: 40
