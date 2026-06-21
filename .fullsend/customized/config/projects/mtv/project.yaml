@@ -1,0 +1,74 @@
+project_id: "mtv"
+display_name: "Migration Toolkit for Virtualization (MTV)"
+description: "Tool for migrating VMs from external platforms to OpenShift Virtualization"
+
+feature_toggles:
+  polarion: false
+  test_strategy: "tier"     # use tier2.yaml for classification and code generation
+  tier1_tests: false        # MTV uses Python/pytest only
+  tier2_tests: true
+  unit_tests: false
+
+versioning:
+  product_name: "Migration Toolkit for Virtualization"
+  platform_name: "OCP"
+  current_version: "2.12"
+
+stp_document:
+  header: "MTV Test plan"
+
+sig_mappings:
+  sig-migration: "migration"
+
+decorator_mappings: {}      # MTV pytest tests don't use Go-style decorators
+
+scope_boundaries:
+  validation_gate: "Would removing MTV/Forklift make this test meaningless?"
+  in_scope_resources:
+    - "Migration"
+    - "Plan"
+    - "Provider"
+    - "NetworkMap"
+    - "StorageMap"
+    - "Hook"
+    - "Host"
+    - "ForkliftController"
+    - "OVAProviderServer"
+    - "HyperVProviderServer"
+    - "OvirtVolumePopulator"
+    - "OpenstackVolumePopulator"
+    - "VSphereXcopyVolumePopulator"
+  out_of_scope_if_only:
+    - "Pod"
+    - "Deployment"
+    - "StatefulSet"
+    - "ConfigMap"
+    - "Secret"
+    - "Service"
+    - "Namespace"
+    - "PersistentVolumeClaim"
+    - "Node"
+  cli_tools:
+    - "kubectl-mtv"
+    - "oc"
+    - "kubectl"
+    - "virtctl"
+  domain_vocabulary:
+    - "Migration"
+    - "Plan"
+    - "Provider"
+    - "NetworkMap"
+    - "StorageMap"
+    - "Hook"
+    - "Host"
+    - "ForkliftController"
+    - "Warm migration"
+    - "Cold migration"
+    - "Cutover"
+    - "Copy-offload"
+    - "XCOPY"
+    - "virt-v2v"
+    - "forklift-controller"
+    - "forklift-api"
+    - "populator-controller"
+    - "inventory"

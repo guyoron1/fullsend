@@ -18,7 +18,7 @@ Generates **Python/pytest test stubs** with PSE docstrings for design review.
 
 ## Input Required
 
-- `jira_id`: Jira ticket ID (e.g., "MYPROJ-12345")
+- `jira_id`: Jira ticket ID (e.g., "CNV-66855")
 
 **Prerequisites:**
 - STD YAML file must exist at `outputs/std/{JIRA_ID}/{JIRA_ID}_test_description.yaml`
@@ -46,28 +46,43 @@ outputs/std/{JIRA_ID}/python-tests/
 
 ## CRITICAL REQUIREMENT
 
-**Generate ONE test stub per STD scenario. No exceptions.**
+**Generate ONE test stub per STD scenario with `coverage_status: NEW` or
+`PARTIAL_COVERAGE`. Skip `EXISTING_COVERAGE` scenarios.**
 
-- CORRECT: 8 STD scenarios → 8 generated `def test_*()` functions
+- CORRECT: 8 STD scenarios (6 NEW + 2 EXISTING) → 6 generated `def test_*()` functions
 - WRONG: 8 STD scenarios → 3 test files (grouped without covering all scenarios)
 
-**Pattern-based file grouping is allowed**, but **EVERY scenario must get a test stub**.
+**Pattern-based file grouping is allowed**, but **EVERY non-EXISTING scenario must get a test stub**.
+
+When `coverage_status` is absent on a scenario, treat it as `NEW` (backward compatible).
+
+---
+
+## Mode-Dependent Configuration
+
+**Tier mode** (`test_strategy: "tier"`): Read import patterns and conventions from
+`{project_context.config_dir}/tier2.yaml` and `project_context.repo_rules`.
+
+**Auto mode** (`test_strategy: "auto"` or `config_dir: null`): Read from
+`code_generation_config` in the STD YAML. Skip repo_rules integration (no upstream
+repo rules available). Use standard pytest conventions as defaults.
 
 ---
 
 ## Repo Rules Integration (AGENTS.md + SOFTWARE_TEST_DESCRIPTION.md)
 
-When `project_context.repo_rules` is available, the following rules from the target
+When `project_context.repo_rules` is available (tier mode only), the following rules from the target
 repository's `AGENTS.md` and `SOFTWARE_TEST_DESCRIPTION.md` **override** QualityFlow
 defaults. These represent the team's coding standards and MUST be followed.
 
 ### Rules from AGENTS.md (repo_rules.agents_rules)
 
 **Marker rules:**
-- **`python` is implicit** — Do NOT add `@pytest.mark.python` explicitly. It is added
-  automatically to all tests without an exclusion marker. Do NOT include `python` in
+- **`tier2` is implicit** — Do NOT add `@pytest.mark.tier2` explicitly. It is added
+  automatically to all tests without an exclusion marker. Do NOT include `tier2` in
   the Markers docstring section.
-- **Team markers are implicit** — project-specific team markers are added automatically based on
+- **Team markers are implicit** — `network`, `storage`, `virt`, `iuo`, `observability`,
+  `infrastructure`, `data_protection`, and `chaos` are added automatically based on
   directory location. Do NOT add them explicitly.
 - **`pytest.skip/skipif` are forbidden** — Do not use `pytest.skip()`,
   `@pytest.mark.skip`, or `@pytest.mark.skipif` in any generated code.
@@ -80,7 +95,7 @@ defaults. These represent the team's coding standards and MUST be followed.
 - **STP link required in module docstring** — Every test module MUST include the STP
   reference directly in the module docstring.
 - **Name resources by function** — In Preconditions, name objects by their role
-  (e.g., "client resource", "server resource"), not generic labels ("resource-A", "resource-B").
+  (e.g., "client VM", "server VM"), not generic labels ("VM-A", "VM-B").
 - **conftest.py is for fixtures only** — Helper functions and utility classes MUST NOT
   be placed in conftest.py.
 - **Coverage tracking** — Module docstring must contain STP link. If no STP exists,
@@ -88,8 +103,8 @@ defaults. These represent the team's coding standards and MUST be followed.
 
 **Fixture naming:**
 - ALWAYS use NOUNS (what they provide), NEVER verbs.
-  - Good: `resource_with_storage`
-  - Bad: `create_resource_with_storage`
+  - Good: `vm_with_disk`
+  - Bad: `create_vm_with_disk`
 
 ### Rules from SOFTWARE_TEST_DESCRIPTION.md (repo_rules.std_format)
 
@@ -107,7 +122,7 @@ PSE format documented below.** The section below serves as the fallback.
 
 ## PSE Docstring Format
 
-**Note:** Import patterns and Polarion config come from `{project_context.config_dir}/python.yaml`. If the project has `polarion: false` in its config, skip Polarion marker references.
+**Note:** Import patterns and Polarion config come from `{project_context.config_dir}/tier2.yaml`. If the project has `polarion: false` in its config, skip Polarion marker references.
 
 ### Module Docstring (Required)
 ```python
@@ -126,7 +141,7 @@ Jira: {JIRA_ID}
 **Do NOT include in module docstring:**
 - PR references or URLs
 - Feature gate names
-- Design document/enhancement references
+- VEP/enhancement references
 - Implementation details
 
 ### Class Docstring (Shared Preconditions)
@@ -139,7 +154,7 @@ class TestFeatureName:
         - gating
 
     Parametrize:
-        - storage_class: [default-storage-class, local-storage]
+        - storage_class: [ocs-storagecluster-ceph-rbd, hostpath-csi]
 
     Preconditions:
         - {Shared precondition 1 — resource creation}
@@ -148,20 +163,20 @@ class TestFeatureName:
     __test__ = False
 ```
 
-**Note:** `python` marker is NOT listed — it is implicit (added automatically by the
+**Note:** `tier2` marker is NOT listed — it is implicit (added automatically by the
 test framework). Only list markers that are NOT auto-added (e.g., `gating`, `arm64`).
 
 **Class-level Preconditions include ONLY test-specific setup:**
-- Resource creation (application instances, network configs, peer resources)
-- Baseline data recording (identifiers, addresses, interface names)
+- Resource creation (VMs, NADs, peer VMs)
+- Baseline data recording (MAC addresses, IP addresses, interface names)
 
 **Do NOT include in Preconditions:**
 - Test environment requirements (cluster version, node count, storage type, network infrastructure)
-- Platform prerequisites (platform version, product version, operator installations)
+- Platform prerequisites (OCP version, CNV version, operator installations)
 - Cluster configuration that the STP Test Environment section already describes
 
 Tests assume the test environment described in the STP (Section II.3) is already in place.
-Tests that share the same resource setup MUST be grouped in one class.
+Tests that share the same VM/NAD setup MUST be grouped in one class.
 
 ### Standalone Test Function (No Class Needed)
 
@@ -176,7 +191,7 @@ def test_specific_behavior():
         - gating
 
     Parametrize:
-        - os_image: [standard, minimal]
+        - os_image: [rhel9, fedora]
 
     Preconditions:
         - {Setup requirement}
@@ -206,7 +221,7 @@ def test_specific_behavior(self):
         1. {Discrete action — patch, execute, wait}
 
     Expected:
-        - {Concrete, verifiable assertion — e.g., "Resource is ready"}
+        - {Concrete, verifiable assertion — e.g., "VM is Running"}
     """
 ```
 
@@ -219,20 +234,20 @@ When a test should run with multiple parameter combinations, add a `Parametrize:
 ```python
 def test_online_disk_resize(self):
     """
-    Test that a running resource's disk can be expanded.
+    Test that a running VM's disk can be expanded.
 
     Parametrize:
-        - storage_class: [default-storage-class, local-storage]
+        - storage_class: [ocs-storagecluster-ceph-rbd, hostpath-csi]
 
     Preconditions:
         - Storage class from parameter exists
-        - Running resource with a storage volume as boot disk
+        - Running VM with a DataVolume as boot disk
 
     Steps:
         1. Expand PVC by 1Gi
 
     Expected:
-        - Disk size inside resource is greater than original size
+        - Disk size inside VM is greater than original size
     """
 ```
 
@@ -251,23 +266,23 @@ When tests within a class depend on the execution order of previous tests,
 use `@pytest.mark.incremental` marker in the class Markers section:
 
 ```python
-class TestSomeFeature:
+class TestVMSomeFeature:
     """
-    Tests for feature with ordered dependencies.
+    Tests for VM feature with ordered dependencies.
 
     Markers:
         - incremental
 
     Preconditions:
-        - Running resource with feature configured
+        - Running VM with feature configured
     """
     __test__ = False
 
-    def test_resource_is_created(self):
-        """Test that a resource with feature can be created."""
+    def test_vm_is_created(self):
+        """Test that a VM with feature can be created."""
 
-    def test_resource_migration(self):
-        """Test that a resource with feature can be migrated."""
+    def test_vm_migration(self):
+        """Test that a VM with feature can be migrated."""
 ```
 
 ---
@@ -280,13 +295,13 @@ and MUST NOT appear in Phase 1 output:
 - **No `@pytest.fixture` definitions** — Fixtures are Phase 2 implementation
 - **No `@pytest.mark.*` decorators** — Use `Markers:` section in docstrings instead
 - **No fixture parameters in test signatures** — Write `def test_foo(self):` not
-  `def test_foo(self, network_configs, resource_with_secondary_interface):`
+  `def test_foo(self, bridge_nads, vm_with_secondary_interface):`
 - **No `import pytest`** — Not needed when there are no decorators or fixtures
 - **No PR references** — PRs are STP-level context, not STD
 - **No block comments above tests** — All test information goes in the docstring
 - **No fixture names in Preconditions** — Use descriptive requirements, not fixture names
-  - GOOD: "Running application with standard image"
-  - BAD: "Running resource (resource_to_restart fixture)"
+  - GOOD: "Running Fedora virtual machine"
+  - BAD: "Running Fedora VM (vm_to_restart fixture)"
 
 **What Phase 1 stubs contain:**
 - Module docstring (STP Reference + Jira only)
@@ -300,20 +315,32 @@ and MUST NOT appear in Phase 1 output:
 
 ## Workflow
 
-### Step 1: Read STD YAML
+### Step 1: Read STD YAML and Determine Mode
 
 Load `outputs/std/{JIRA_ID}/{JIRA_ID}_test_description.yaml`
 
 **Extract:**
+
+- `document_metadata.test_strategy_mode` to determine filtering
+- `code_generation_config` (auto mode only — framework, imports, package)
 - Total scenario count: `len(scenarios)`
-- All python scenarios (filter by `tier: "End-to-End"`)
+
+**Tier mode** (`test_strategy_mode: "tier"` or absent):
+
+- Filter scenarios by `tier: "Tier 2"`
+
+**Auto mode** (`test_strategy_mode: "auto"` AND `code_generation_config.language: "python"`):
+
+- Include ALL scenarios with `coverage_status: NEW` or `PARTIAL_COVERAGE`
+- Skip `EXISTING_COVERAGE` scenarios (no stubs needed for already-tested behaviors)
+- Read import patterns and conventions from `code_generation_config`
 
 ### Step 2: Group Scenarios by Pattern
 
 **CRITICAL: This step is for file organization only. ALL scenarios must still get stubs.**
 
 For each scenario:
-1. Detect basic patterns (resource types, operations, domains) for grouping
+1. Detect basic patterns (localnet, NAD type, VM type) for grouping
 2. Assign scenario to a file group
 
 Result: Map of `{file_name: [scenario1, scenario2, ...]}`
@@ -387,7 +414,18 @@ Generate the stub file with ALL scenarios in the group.
 
 After all files generated:
 
-1. **Count STD scenarios:** Count all End-to-End scenarios in STD: `N_std`
+**Tier mode:**
+
+1. **Count STD scenarios:** Count all Tier 2 scenarios in STD: `N_std`
+2. **Count generated stubs:** Count all `def test_*()` functions: `N_stubs`
+3. **Verify completeness:**
+   - If `N_stubs < N_std`: ERROR + list missing scenario IDs
+   - If `N_stubs == N_std`: SUCCESS
+
+**Auto mode:**
+
+1. **Count STD scenarios:** Count scenarios with `coverage_status: NEW` or
+   `PARTIAL_COVERAGE` (or absent): `N_std`
 2. **Count generated stubs:** Count all `def test_*()` functions: `N_stubs`
 3. **Verify completeness:**
    - If `N_stubs < N_std`: ERROR + list missing scenario IDs
@@ -411,14 +449,14 @@ Generate summary with:
 **These rules are mandatory and override the field mapping when there is a conflict.**
 
 #### What goes in Preconditions (setup — before the test runs)
-- ALL resource creation: application instances, network configs, pods, peer resources, storage
-- ALL baseline data recording: "Record identifier", "Save IP address"
+- ALL resource creation: VMs, NADs, pods, peer VMs, storage
+- ALL baseline data recording: "Record MAC address", "Save IP address"
 - Baseline state verification: confirming the starting state before the test action
 - Any action that establishes the starting state for the test
 - **Never** test environment requirements (cluster version, node count, storage class, operator version)
 
 #### What goes in Steps (actions — during the test)
-- The test action itself: "Patch resource spec", "Execute ping", "Wait for completion"
+- The test action itself: "Patch VM spec", "Execute ping", "Wait for completion"
 - ONLY actions that are part of the test execution
 - **Never** resource creation (that's a Precondition)
 - **Never** verification statements (that's Expected)
@@ -430,7 +468,7 @@ Generate summary with:
 - Must be **concrete and verifiable** using assertion wording patterns:
   - GOOD: "MAC address equals pre-change value"
   - GOOD: "Ping succeeds with 0% packet loss"
-  - GOOD: "Resource is ready"
+  - GOOD: "VM is Running"
   - BAD: "Interfaces correctly configured" (missing the how)
   - BAD: "Everything works" (not verifiable)
 - Must describe the **observable outcome**, not the internal mechanism
@@ -446,14 +484,14 @@ fails, the test ran but produced a wrong result (test failure).
 
 | Action | PSE Section | Example |
 |--------|-------------|---------|
-| Create resource/config/pod | **Preconditions** | "Running resource with secondary interface" |
-| Record baseline data | **Preconditions** | "Identifier and interface name recorded" |
-| Verify baseline state | **Preconditions** | "Resource is in Ready state before test action" |
-| Patch/Update resource | **Steps** | "Patch resource spec to change network config" |
+| Create VM/NAD/Pod | **Preconditions** | "Running VM with secondary interface" |
+| Record baseline data | **Preconditions** | "MAC address and interface name recorded" |
+| Verify baseline state | **Preconditions** | "VM is in Running state before test action" |
+| Patch/Update resource | **Steps** | "Patch VM spec to change NAD reference" |
 | Wait for completion | **Steps** | "Wait for update to complete" |
-| Execute command | **Steps** | "Execute ping from resource-A to resource-B" |
+| Execute command | **Steps** | "Execute ping from VM-A to VM-B" |
 | Verify/Confirm outcome | **Expected** | "Ping succeeds with 0% packet loss" |
-| Assert state | **Expected** | "Resource is ready" |
+| Assert state | **Expected** | "VM is Running" |
 
 ### Field Mapping
 
@@ -472,32 +510,32 @@ fails, the test ran but produced a wrong result (test failure).
 **STD YAML Input:**
 ```yaml
 test_objective:
-  title: "Resource network interface can be swapped while running"
+  title: "VM network interface can be swapped while running"
   acceptance_criteria:
-    - "Swap completes without resource restart"
+    - "Swap completes without VM restart"
 specific_preconditions:
-  - requirement: "Resource in Ready state with original network config"
+  - requirement: "VM in Running state with original NAD"
 test_steps:
   test_execution:
-    - action: "Update resource spec to reference target network config"
+    - action: "Update VM spec to reference target NAD"
     - action: "Wait for update to complete"
 ```
 
 **PSE Docstring Output:**
 ```python
-def test_config_swap_while_running(self):
+def test_nad_swap_while_running(self):
     """
-    Test that resource network interface can be swapped while running.
+    Test that VM network interface can be swapped while running.
 
     Preconditions:
-        - Resource in Ready state with original network config
+        - VM in Running state with original NAD
 
     Steps:
-        1. Update resource spec to reference target network config
+        1. Update VM spec to reference target NAD
         2. Wait for update to complete
 
     Expected:
-        - Resource is connected to target network
+        - VM is connected to target NAD network
     """
     pass
 ```
@@ -512,8 +550,8 @@ Use clear, natural language that maps directly to assertions:
 |-----------------|---------|
 | `X equals Y` | `assert x == y` |
 | `X does not equal Y` | `assert x != y` |
-| `Resource is "Ready"` | `assert resource.status == Ready` |
-| `Resource is not ready` | `assert resource.status != Ready` |
+| `VM is "Running"` | `assert vm.status == Running` |
+| `VM is not running` | `assert vm.status != Running` |
 | `File exists` / `Resource x exists` | `assert exists(x)` |
 | `File does not exist` / `Resource x does NOT exist` | `assert not exists(x)` |
 | `X does not contain Y` | `assert y not in x` |
@@ -526,7 +564,10 @@ Use clear, natural language that maps directly to assertions:
 ## Success Criteria
 
 Stub generation succeeds when:
-- All STD End-to-End scenarios have corresponding `def test_*()` functions
+
+- **Tier mode:** All STD Tier 2 scenarios have corresponding `def test_*()` functions
+- **Auto mode:** All STD scenarios with `coverage_status: NEW`/`PARTIAL_COVERAGE` have
+  corresponding `def test_*()` functions
 - Every scenario has PSE docstring (Preconditions/Steps/Expected)
 - Each test verifies **ONE thing** with ONE Expected
 - Related tests are grouped in classes with shared preconditions
@@ -548,8 +589,10 @@ Stub generation succeeds when:
 - Suggestion: "Run `/std-builder {JIRA_ID}` first"
 - Exit
 
-**If no End-to-End scenarios found:**
-- Warning: "No End-to-End scenarios found in STD"
+**If no applicable scenarios found:**
+
+- Tier mode: "No Tier 2 scenarios found in STD"
+- Auto mode: "No Python scenarios with NEW/PARTIAL_COVERAGE status found in STD"
 - Exit (no stubs to generate)
 
 ---

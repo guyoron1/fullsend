@@ -13,8 +13,8 @@ required_files:
 
 # These files are OPTIONAL (presence controlled by feature toggles)
 optional_files:
-  - go.yaml              # Required if feature_toggles.go_tests = true
-  - python.yaml          # Required if feature_toggles.python_tests = true
+  - tier1.yaml           # Required if feature_toggles.tier1_tests = true
+  - tier2.yaml           # Required if feature_toggles.tier2_tests = true
   - review_rules.yaml    # Project-specific review rules (optional override; auto-extracted from config files by review-rules-extractor when absent)
 
 # Optional directories
@@ -31,7 +31,7 @@ validation:
       - display_name
     optional_fields:
       - description
-      - feature_toggles
+      - feature_toggles        # includes test_strategy: "auto" (default) or "tier"
       - versioning
       - stp_document
       - sig_mappings
@@ -56,13 +56,13 @@ validation:
       - instance
       - prefixes
 
-  go_yaml:
+  tier1_yaml:
     required_fields:
       - enabled
       - language
       - framework
 
-  python_yaml:
+  tier2_yaml:
     required_fields:
       - enabled
       - language
@@ -76,11 +76,15 @@ validation:
       - std_rules
 
 # Feature toggle consistency rules
+# These rules only apply when test_strategy is "tier" (or absent with tier config present).
+# In "auto" mode, tier1.yaml/tier2.yaml are not required — test conventions are detected from the repo.
 toggle_consistency:
-  - toggle: go_tests
-    requires_file: go.yaml
-    error: "go_tests is true but go.yaml not found"
+  - toggle: tier1_tests
+    requires_file: tier1.yaml
+    condition: "test_strategy == 'tier'"
+    error: "tier1_tests is true but tier1.yaml not found (only enforced when test_strategy is 'tier')"
 
-  - toggle: python_tests
-    requires_file: python.yaml
-    error: "python_tests is true but python.yaml not found"
+  - toggle: tier2_tests
+    requires_file: tier2.yaml
+    condition: "test_strategy == 'tier'"
+    error: "tier2_tests is true but tier2.yaml not found (only enforced when test_strategy is 'tier')"

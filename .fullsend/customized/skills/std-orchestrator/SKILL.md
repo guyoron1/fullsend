@@ -24,8 +24,8 @@ Coordinates the Software Test Description (STD) generation workflow by:
 
 ## Input Required
 
-- `stp_file_path`: Path to the STP markdown file (e.g., `outputs/stp/MYPROJ-12345/MYPROJ-12345_test_plan.md`)
-- `jira_id`: The Jira ticket ID (e.g., "MYPROJ-12345")
+- `stp_file_path`: Path to the STP markdown file (e.g., `outputs/stp/CNV-66855/CNV-66855_test_plan.md`)
+- `jira_id`: The Jira ticket ID (e.g., "CNV-66855")
 - `output_dir`: Base directory for outputs (defaults to `outputs/std/{JIRA_ID}/`)
 - `phase`: `phase1` (default) or `phase2`
 
@@ -58,33 +58,42 @@ Execute the following steps in order:
 
 **Expected bullet-based format:**
 ```markdown
-- **[MYPROJ-12345]** — As a user, I want to reset a resource
-  - *Test Scenario:* [Functional] Verify basic reset operation succeeds
+- **[CNV-12345]** — As a user, I want to reset a VM
+  - *Test Scenario:* [Tier 1] Verify basic reset operation succeeds
   - *Priority:* P0
 
-- **[MYPROJ-12345]** — As a user, I want to verify reset preserves state
-  - *Test Scenario:* [Functional] Verify reset preserves pod UID
+- **[CNV-12345]** — As a user, I want to verify reset preserves state
+  - *Test Scenario:* [Tier 1] Verify reset preserves pod UID
   - *Priority:* P0
 ```
 
 **Parse and extract:**
 - Requirement ID (Jira key from `**[ID]**`)
 - Requirement summary (text after `— `)
-- Tier classification from test scenario (Functional, End-to-End)
+- Test type classification from test scenario:
+  - Tier mode: `[Tier 1]`, `[Tier 2]`
+  - Auto mode: `[unit]`, `[functional]`, `[integration]`, `[e2e]`
 - Priority (P0, P1, P2)
 - Scenario description (from `*Test Scenario:*` line)
+- Coverage status (if present): `[EXISTING_COVERAGE]`, `[PARTIAL_COVERAGE]`
 
 **Store as:**
 ```yaml
 scenarios:
   - scenario_id: 1
-    tier: "Functional"
+    tier: "Tier 1"                # tier mode
+    test_type: "functional"       # auto mode (one or the other)
     priority: "P0"
     description: "Verify basic reset operation succeeds"
+    coverage_status: "NEW"        # optional, defaults to NEW
   - scenario_id: 2
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     description: "Verify reset preserves pod UID"
+    coverage_status: "EXISTING_COVERAGE"
+    covered_by:
+      - test_function: "TestResetPreservesPodUID"
+        test_file: "pkg/compute/reset_test.go"
 ```
 
 ---
@@ -99,17 +108,31 @@ scenarios:
    - Known limitations (from Section I.2)
    - API extensions (from Section I.3 API Extensions checkbox)
    - Test environment (from Section II.3)
-   - Source bugs (if bug-fix ticket)
+   - Source bugs (if Closed Loop ticket)
    - Fix versions
+
+1.5. **Extract Source Constants (if present):**
+   - Check if the STP contains a `## Source Constants` or `#### Section III.2 — Source Constants` section
+   - If found, parse the markdown table into a structured array:
+     ```yaml
+     source_constants:
+       - name: "SENTINEL"
+         value: "# --- managed section - do not edit ---"
+         source_file: "pkg/scripts/sync.sh"
+         line: 14
+     ```
+   - Values are in backtick-wrapped cells — strip the backticks but preserve the exact content
+   - If the section is not present, set `source_constants` to an empty array
 
 2. **Call std-generator skill ONCE** with:
    - ALL scenarios array (from Step 1)
    - STP context
+   - `source_constants` array (from Step 1.5, may be empty)
    - STP file path
 
 3. **Output file:**
    - `outputs/std/{JIRA_ID}/{JIRA_ID}_test_description.yaml`
-   - Example: `outputs/std/MYPROJ-12345/MYPROJ-12345_test_description.yaml`
+   - Example: `outputs/std/CNV-66855/CNV-66855_test_description.yaml`
    - Single comprehensive file with:
      - document_metadata (shared across all scenarios)
      - common_preconditions (shared infrastructure)
@@ -128,37 +151,42 @@ scenarios:
 
 ---
 
-### Step 2.5: Route to Code Generators (Based on Phase and test_routing)
+### Step 2.5: Route to Code Generators (Based on Phase + Strategy)
 
-**After STD YAML is validated, call appropriate code generators based on the project's test routing configuration:**
+**After STD YAML is validated, call appropriate code generators.**
 
-**Read `project_context.test_routing` to determine which generator handles each classification:**
-- `test_routing.functional` → routes Functional scenarios to the specified language generator (default: `go`)
-- `test_routing.e2e` → routes End-to-End scenarios to the specified language generator (default: `python`)
+**Routing depends on `test_strategy_mode` in the STD YAML `document_metadata`:**
 
-**If phase == "phase1" (default):**
-1. Detect tier split in STD (Functional count, End-to-End count)
-2. **If Functional scenarios exist:**
-   - Route based on `test_routing.functional` (default: `go`)
-   - If `go`: Call go-test-generator with `phase=phase1`
-   - If `python`: Call python-test-generator with `phase=phase1`
-   - Output: Test stubs with PSE comments/docstrings
-3. **If End-to-End scenarios exist:**
-   - Route based on `test_routing.e2e` (default: `python`)
-   - If `go`: Call go-test-generator with `phase=phase1`
-   - If `python`: Call python-test-generator with `phase=phase1`
-   - Output: Test stubs with PSE comments/docstrings
+#### Tier mode routing
 
-**If phase == "phase2":**
-1. Same routing as phase1, but with `phase=phase2`
-2. Output: Full working implementations
+1. Detect tier split in STD (Tier 1 count, Tier 2 count)
+2. **If Tier 1 scenarios exist:**
+   - Call go-test-generator with `phase={phase}`
+   - Output: Go/Ginkgo test stubs (phase1) or implementations (phase2)
+3. **If Tier 2 scenarios exist:**
+   - Call python-test-generator with `phase={phase}`
+   - Output: Python/pytest test stubs (phase1) or implementations (phase2)
+
+#### Auto mode routing
+
+1. Read `code_generation_config.language` from STD YAML
+2. Route to the appropriate generator based on detected language:
+
+| Language | Generator | Output |
+|:---------|:----------|:-------|
+| `go` | go-test-generator | Go test stubs/implementations |
+| `python` | python-test-generator | Python test stubs/implementations |
+
+3. Generate for ALL scenarios with `coverage_status: NEW` or `PARTIAL_COVERAGE`
+4. Skip `EXISTING_COVERAGE` scenarios
+5. Pass `code_generation_config` so the generator uses detected framework conventions
 
 **Output files:**
 ```
 outputs/std/{JIRA_ID}/
-├── go-tests/           (if routed to Go)
+├── go-tests/           (if language is Go, or Tier 1 in tier mode)
 │   └── *_stubs_test.go (Phase 1: stubs, Phase 2: implementation)
-└── python-tests/       (if routed to Python)
+└── python-tests/       (if language is Python, or Tier 2 in tier mode)
     └── test_*_stubs.py (Phase 1: stubs, Phase 2: implementation)
 ```
 
@@ -180,16 +208,16 @@ outputs/std/{JIRA_ID}/
 ---
 status: success
 component: std-orchestrator
-jira_id: MYPROJ-12345
+jira_id: CNV-66855
 phase: phase1  # or phase2
-stp_file: outputs/stp/MYPROJ-12345/MYPROJ-12345_test_plan.md
-output_dir: outputs/std/MYPROJ-12345/
+stp_file: outputs/stp/CNV-66855/CNV-66855_test_plan.md
+output_dir: outputs/std/CNV-66855/
 
 execution_summary:
   total_stp_scenarios: 12
-  functional_scenarios: 9
-  e2e_scenarios: 3
-  std_file_generated: "MYPROJ-12345_test_description.yaml"
+  tier_1_scenarios: 9
+  tier_2_scenarios: 3
+  std_file_generated: "CNV-66855_test_description.yaml"
   scenarios_in_std: 12
   total_duration: "2 minutes"
 
@@ -206,7 +234,7 @@ code_generation:
 
 validation_results:
   std_file:
-    file: MYPROJ-12345_test_description.yaml
+    file: CNV-66855_test_description.yaml
     status: valid
     yaml_syntax: passed
     required_sections: passed
@@ -227,8 +255,8 @@ notes:
 
 **Simple structure (STD YAML only):**
 ```
-outputs/std/MYPROJ-12345/
-├── MYPROJ-12345_test_description.yaml     (NEW - comprehensive STD for ALL scenarios)
+outputs/std/CNV-66855/
+├── CNV-66855_test_description.yaml     (NEW - comprehensive STD for ALL scenarios)
 └── std_generation_summary.yaml         (summary report)
 ```
 
@@ -309,37 +337,36 @@ Before marking orchestration as complete, validate:
 
 **User command (Phase 1 - default):**
 ```
-Generate STD/PSE/Code for MYPROJ-12345
+Generate STD/PSE/Code for CNV-66855
 ```
 
 **Orchestrator execution (Phase 1):**
 ```
-1. Read outputs/stp/MYPROJ-12345/MYPROJ-12345_test_plan.md
-2. Parse Section III → 12 scenarios found (9 Functional, 3 End-to-End)
-3. Call std-generator ONCE → MYPROJ-12345_test_description.yaml
+1. Read outputs/stp/CNV-66855/CNV-66855_test_plan.md
+2. Parse Section III → 12 scenarios found (9 Tier 1, 3 Tier 2)
+3. Call std-generator ONCE → CNV-66855_test_description.yaml
 4. Validate STD YAML
-5. Read project_context.test_routing (functional→go, e2e→python)
-6. Call go-test-generator (phase=phase1) → 9 test stubs in go-tests/
-7. Call python-test-generator (phase=phase1) → 3 test stubs in python-tests/
-8. Generate summary → std_generation_summary.yaml
-9. Report to user: "✅ Generated Phase 1 test stubs for 12 scenarios"
+5. Call go-test-generator (phase=phase1) → 9 test stubs in go-tests/
+6. Call python-test-generator (phase=phase1) → 3 test stubs in python-tests/
+7. Generate summary → std_generation_summary.yaml
+8. Report to user: "✅ Generated Phase 1 test stubs for 12 scenarios"
 ```
 
 **Example output (Phase 1):**
 ```
 ✅ Phase 1 Test Stubs Generated!
 
-📄 Input: outputs/stp/MYPROJ-12345/MYPROJ-12345_test_plan.md
+📄 Input: outputs/stp/CNV-66855/CNV-66855_test_plan.md
 
 📊 Summary:
-- STP scenarios: 12 (9 Functional, 3 End-to-End)
-- STD file: MYPROJ-12345_test_description.yaml (internal format)
+- STP scenarios: 12 (9 Tier 1, 3 Tier 2)
+- STD file: CNV-66855_test_description.yaml (internal format)
 - Phase: 1 (Design stubs with PSE docstrings)
 
 📁 Output:
-- outputs/std/MYPROJ-12345/MYPROJ-12345_test_description.yaml
-- outputs/std/MYPROJ-12345/go-tests/ (9 test stubs with PSE comments)
-- outputs/std/MYPROJ-12345/python-tests/ (3 test stubs with PSE docstrings)
+- outputs/std/CNV-66855/CNV-66855_test_description.yaml
+- outputs/std/CNV-66855/go-tests/ (9 test stubs with PSE comments)
+- outputs/std/CNV-66855/python-tests/ (3 test stubs with PSE docstrings)
 
 📋 Phase 1 Checklist:
 - [ ] STP link in module docstring
@@ -354,8 +381,8 @@ Generate STD/PSE/Code for MYPROJ-12345
 1. Review the test stubs
 2. Submit PR for design review
 3. After approval, run:
-   - /generate-go-tests MYPROJ-12345     (Functional tests)
-   - /generate-python-tests MYPROJ-12345 (End-to-End tests)
+   - /generate-go-tests CNV-66855     (Tier 1 implementation)
+   - /generate-python-tests CNV-66855 (Tier 2 implementation)
 ```
 
 ---

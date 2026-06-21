@@ -39,17 +39,17 @@ When `project_context.repo_rules` is available, apply these rules:
 
 **From repo_rules.agents_rules (AGENTS.md):**
 - Test Design Workflow: STP → STD → Implementation (mandatory)
-- The end-to-end marker is implicit — do NOT emit it explicitly in STD metadata
+- `tier2` is implicit — do NOT emit `@pytest.mark.tier2` in STD metadata
 - Team markers are implicit — do NOT emit `@pytest.mark.network`, etc.
 - `pytest.skip/skipif` are forbidden
 - STD stubs must have STP link in module docstring
-- Name resources by function ("client resource"), not generic labels ("resource-A")
+- Name resources by function ("client VM"), not generic labels ("VM-A")
 - `@pytest.mark.incremental` for dependent tests, not `pytest-dependency`
 
 **From repo_rules.testing_tiers (testing-tiers.md):**
 - Tier definitions for classification validation:
-  - Functional: operator/infrastructure tests, single feature verification
-  - End-to-End: customer use case tests, complete user workflows
+  - Tier 1: operator/infrastructure tests, single feature verification
+  - Tier 2: customer use case tests, complete user workflows
   - Tier 3: complex/hardware/platform-specific/time-consuming tests
 - Use these definitions when classifying scenarios in the STD
 
@@ -61,10 +61,10 @@ within each scenario in the STD YAML.
 - `scenarios`: Array of ALL scenario rows from STP Section III
   - Each scenario has:
     - `scenario_id`: Scenario number (e.g., 1, 2, 3)
-    - `tier`: Tier classification (e.g., "Functional", "End-to-End")
+    - `tier`: Tier classification (e.g., "Tier 1", "Tier 2")
     - `priority`: Priority (e.g., "P0", "P1", "P2")
     - `description`: Scenario description text
-    - `requirement_id`: Requirement ID (e.g., "BUGS-67890")
+    - `requirement_id`: Requirement ID (e.g., "OCPBUGS-59657")
 - `stp_context`: Context from the STP document
   - `jira_issue`: Jira ticket ID and metadata
   - `feature_description`: Feature overview (from Feature Overview section)
@@ -72,13 +72,27 @@ within each scenario in the STD YAML.
   - `api_endpoints`: API endpoints (from Section I.3 API Extensions, if applicable)
   - `known_limitations`: Known limitations (from Section I.2)
   - `test_environment`: Test environment requirements (from Section II.3)
-- `stp_file_path`: Path to source STP file (e.g., `outputs/stp/MYPROJ-12345/MYPROJ-12345_test_plan.md`)
+- `source_constants` (optional): Array of literal constants extracted from source code by the STP Builder
+  - Each constant has:
+    - `name`: Constant identifier (e.g., "SENTINEL", "SCRIPT_PATH")
+    - `value`: Exact value from source code (verbatim, never paraphrased)
+    - `source_file`: File where the constant was found
+    - `line`: Line number (or `—` for PR-derived paths)
+  - Example:
+    ```yaml
+    source_constants:
+      - name: "SENTINEL"
+        value: "# --- managed section - do not edit ---"
+        source_file: "pkg/scripts/sync.sh"
+        line: 14
+    ```
+- `stp_file_path`: Path to source STP file (e.g., `outputs/stp/CNV-66855/CNV-66855_test_plan.md`)
 
 ## Output
 
 **Single comprehensive STD YAML file:**
 - Filename: `{JIRA_ID}_test_description.yaml`
-- Example: `MYPROJ-12345_test_description.yaml`
+- Example: `CNV-66855_test_description.yaml`
 - Location: `outputs/std/{JIRA_ID}/{JIRA_ID}_test_description.yaml`
 - Size: Variable (~100-200 lines per scenario + 100 lines shared metadata)
 - Format: Valid YAML with document metadata + scenarios array
@@ -114,7 +128,7 @@ document_metadata:
   generated_date: "YYYY-MM-DD"
   jira_issue: "{JIRA_ID}"
   jira_summary: "{Jira issue summary}"
-  source_bugs: ["{BUGS-XXXXX}", ...]  # If applicable
+  source_bugs: ["{OCPBUGS-XXXXX}", ...]  # If applicable
   stp_reference:
     file: "outputs/stp/{JIRA_ID}/{JIRA_ID}_test_plan.md"
     version: "v1"
@@ -130,20 +144,26 @@ document_metadata:
       title: "{PR title}"
       merged: true
 
-  # Optional — Kubernetes SIG convention. Omit if project doesn't use SIGs.
   owning_sig: "{sig-name}"
   participating_sigs: ["{sig-1}", "{sig-2}"]
 
   total_scenarios: {count}
-  functional_count: {count}
-  e2e_count: {count}
+  tier_1_count: {count}           # tier mode only (0 in auto mode)
+  tier_2_count: {count}           # tier mode only (0 in auto mode)
+  unit_count: {count}             # auto mode only (0 in tier mode)
+  functional_count: {count}       # auto mode only (0 in tier mode)
+  e2e_count: {count}              # auto mode only (0 in tier mode)
   p0_count: {count}
   p1_count: {count}
+  existing_coverage_count: {count}  # scenarios with EXISTING_COVERAGE status
+  new_count: {count}                # scenarios with NEW status
+  test_strategy_mode: "tier|auto"
 ```
 
 **Derivation:**
 - Extract from STP metadata table (Section I)
-- Count scenarios by tier and priority
+- Count scenarios by tier/type and priority
+- Count scenarios by coverage_status
 - List all related PRs from STP Section II.4
 
 ---
@@ -152,32 +172,116 @@ document_metadata:
 
 **Purpose:** Code generation configuration for downstream test file generation
 
-Read all `code_generation_config` values from `{project_context.config_dir}/go.yaml` at runtime:
+**Mode-dependent population:**
+
+#### Tier mode (`test_strategy: "tier"`)
+
+Read from `{project_context.config_dir}/tier1.yaml` (or tier2.yaml for Python).
+The following serves as documentation/example for the CNV project.
+
+#### Auto mode (`test_strategy: "auto"` or `config_dir: null`)
+
+Populate from `test_strategy` output (from test-strategy-resolver skill):
 
 ```yaml
 code_generation_config:
   std_version: "2.1-enhanced"
-  framework: "{from go.yaml}"
-  assertion_library: "{from go.yaml}"
-  language: "{from go.yaml}"
-  package_name: "{from go.yaml default_package, or inferred from sig_mappings}"
-  context_init: "{from go.yaml}"
-  imports: "{from go.yaml}"
-  timeout_constants: "{from go.yaml}"
-  helper_library_imports: "{from go.yaml}"
+  framework: "{test_strategy.framework}"           # e.g., "testing"
+  assertion_library: "{test_strategy.assertion_library}"  # e.g., "testify"
+  language: "{test_strategy.language}"              # e.g., "go"
+  package_name: "{test_strategy.package_name}"      # e.g., "cli"
+
+  imports:
+    standard: "{test_strategy.imports.standard}"
+    framework: "{test_strategy.imports.framework}"
+    project: "{test_strategy.imports.project}"
+
+  # Omit in auto mode (CNV-specific):
+  # context_init, dot_imports, k8s_core, kubevirt_base, kubevirt_api
+  # timeout_constants, helper_library_imports
 ```
 
-**Package Name Inference Rules:**
+Skip CNV-specific fields (context_init, dot_imports, k8s imports, KubeVirt helpers,
+timeout constants, helper_library_imports) when in auto mode. These are project-specific
+and have no meaning for auto-detected projects.
 
-**If `owning_sig` is present AND `project_context.sig_mappings` exists:**
-- Read SIG-to-package mapping from `project_context.sig_mappings` in `project.yaml`
-- Example: `sig-networking` → `"networking"`, `sig-apps` → `"apps"`
+#### Tier mode example (CNV)
 
-**Otherwise:**
-- Use `default_package` from `{project_context.config_dir}/go.yaml`
-- Example: `"tests"` (default for projects without SIG conventions)
+```yaml
+code_generation_config:
+  std_version: "2.1-enhanced"
+  framework: "ginkgo-v2"
+  assertion_library: "gomega"
+  language: "go"
+  package_name: "{INFER_FROM_SIG}"  # sig-network → "network", sig-compute → "compute"
 
-**Note on SIG field:** `owning_sig` is **optional** and follows the Kubernetes SIG convention. Projects without SIGs should omit this field entirely. The package name will default to `default_package` from `go.yaml`.
+  # Context initialization (injected at BeforeAll start)
+  context_init:
+    - statement: "ctx := context.Background()"
+      variable: "ctx"
+      type: "context.Context"
+    - statement: "namespace := testsuite.GetTestNamespace(nil)"
+      variable: "namespace"
+      type: "string"
+
+  # Global imports (read from {project_context.config_dir}/tier1.yaml)
+  imports:
+    dot_imports:
+      - "github.com/onsi/ginkgo/v2"
+      - "github.com/onsi/gomega"
+    standard:
+      - "context"
+      - "time"
+    k8s_core:
+      - path: "k8s.io/api/core/v1"
+        alias: "k8sv1"
+      - path: "k8s.io/apimachinery/pkg/apis/meta/v1"
+        alias: "metav1"
+    kubevirt_base:
+      - "kubevirt.io/kubevirt/tests/decorators"
+      - "kubevirt.io/kubevirt/tests/framework/kubevirt"
+      - "kubevirt.io/kubevirt/tests/testsuite"
+      - "kubevirt.io/kubevirt/tests/libvmi"
+    kubevirt_api:
+      - path: "kubevirt.io/api/core/v1"
+        alias: "v1"
+    network:
+      - path: "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
+        alias: "networkv1"
+
+  # Timeout constants mapping (read from {project_context.config_dir}/tier1.yaml)
+  timeout_constants:
+    tiny: "StartupTimeoutSecondsTiny"       # 30s
+    small: "StartupTimeoutSecondsSmall"     # 60s
+    medium: "StartupTimeoutSecondsMedium"   # 90s
+    large: "StartupTimeoutSecondsLarge"     # 120s
+    xlarge: "StartupTimeoutSecondsXLarge"   # 180s
+    huge: "StartupTimeoutSecondsHuge"       # 240s
+    xhuge: "StartupTimeoutSecondsXHuge"     # 300s
+
+  migration_timeout: "MigrationWaitTime"  # 240s
+
+  # Helper library import mappings (read from {project_context.config_dir}/tier1.yaml)
+  helper_library_imports:
+    libvmifact: "kubevirt.io/kubevirt/tests/libvmifact"
+    libnet: "kubevirt.io/kubevirt/tests/libnet"
+    libwait: "kubevirt.io/kubevirt/tests/libwait"
+    libpod: "kubevirt.io/kubevirt/tests/libpod"
+    libvmops: "kubevirt.io/kubevirt/tests/libvmops"
+    libmigration: "kubevirt.io/kubevirt/tests/libmigration"
+    libstorage: "kubevirt.io/kubevirt/tests/libstorage"
+    console: "kubevirt.io/kubevirt/tests/console"
+    matcher: "kubevirt.io/kubevirt/tests/framework/matcher"
+```
+
+**Derivation:**
+- **package_name**: Infer from `owning_sig`:
+  - sig-network → "network"
+  - sig-compute → "compute"
+  - sig-storage → "storage"
+  - sig-migration → "migration"
+  - default → "tests"
+- All other fields are STATIC (copy from template above)
 
 ---
 
@@ -189,13 +293,13 @@ code_generation_config:
 ```yaml
 common_preconditions:
   infrastructure:
-    - name: "Kubernetes cluster"
-      requirement: "Platform {version}+ with CNI plugin"
-      validation: "{platform-cli} version"
+    - name: "OpenShift cluster"
+      requirement: "OCP {version}+ with OVN-Kubernetes"
+      validation: "oc version"
 
-    - name: "Product operator"
-      requirement: "Operator {version}+"
-      validation: "{platform-cli} get deployment -n {operator-namespace} | grep {operator-name}"
+    - name: "OpenShift Virtualization"
+      requirement: "CNV {version}+"
+      validation: "oc get csv -n openshift-cnv | grep kubevirt-hyperconverged"
 
     - name: "{Additional infrastructure}"
       requirement: "{From STP Section II.5}"
@@ -204,18 +308,18 @@ common_preconditions:
   operators:
     - name: "{Operator name}"
       namespace: "{namespace}"
-      validation: "{platform-cli get deployment command}"
+      validation: "{oc get csv command}"
 
   cluster_configuration:
     topology: "{Single-node|Multi-node}"
-    cpu_features: "{Standard|Nested}"
+    cpu_virtualization: "{Standard|Nested}"
     storage: "{StorageClass requirement}"
     network: "{CNI requirement}"
 
   rbac_requirements:
     - permission: "{verb} on {resource}"
       scope: "{Cluster|Namespace: {namespace}}"
-      validation: "{platform-cli} auth can-i {verb} {resource}"
+      validation: "oc auth can-i {verb} {resource}"
 ```
 
 **Derivation:**
@@ -236,12 +340,24 @@ common_preconditions:
 scenarios:
   - scenario_id: "{NUM}"
     test_id: "TS-{JIRA_ID}-{NUM:03d}"
-    tier: "{Functional|End-to-End}"
+    tier: "{Tier 1|Tier 2}"             # tier mode
+    test_type: "{unit|functional|e2e}"  # auto mode (use instead of tier)
     priority: "{P0|P1|P2}"
     mvp: {true|false}
     requirement_id: "{REQUIREMENT_ID}"
 
-    # ===== PATTERN METADATA (AUTO-GENERATED) =====
+    # ===== COVERAGE STATUS (from STP deduplication) =====
+    coverage_status: "{NEW|PARTIAL_COVERAGE|EXISTING_COVERAGE}"  # optional, defaults to NEW
+    covered_by:                           # present only for EXISTING_COVERAGE or PARTIAL_COVERAGE
+      - test_function: "{existing test function name}"
+        test_file: "{path to existing test file}"
+        behavior_tested: "{brief description}"
+
+    # For EXISTING_COVERAGE scenarios: only include scenario_id, test_id,
+    # requirement_id, coverage_status, and covered_by. Skip all sections
+    # below (patterns, variables, test_structure, test_steps, assertions).
+
+    # ===== PATTERN METADATA (AUTO-GENERATED, tier mode only) =====
     patterns:
       primary: "{matched_primary_pattern}"
       secondary:
@@ -280,7 +396,8 @@ scenarios:
       context:
         description: "{Scenario description}"
         decorators:
-          - "{structural_decorators from decorator_mappings}"
+          - "Ordered"
+          - "decorators.OncePerOrderedCleanup"
 
       it:
         description: "should {test_objective}"
@@ -319,7 +436,7 @@ scenarios:
     classification:
       test_type: "{Functional|Integration|E2E}"
       scope: "{Single-component|Multi-component}"
-      automation_approach: "pytest with python-wrapper"
+      automation_approach: "pytest with openshift-python-wrapper"
 
     specific_preconditions:
       # Scenario-specific requirements (beyond common_preconditions)
@@ -331,7 +448,7 @@ scenarios:
       # YAML definitions for this specific scenario
       resource_definitions:
         - name: "{resource_name}"
-          type: "{Kubernetes resource kind, e.g., Pod|Deployment|Service|etc}"
+          type: "{VirtualMachine|Pod|NetworkAttachmentDefinition|etc}"
           yaml: |
             {Complete YAML definition}
 
@@ -392,7 +509,15 @@ scenarios:
 - `acceptance_criteria`: Extract from scenario description and STP acceptance criteria
 - `classification`: Infer from tier and scenario complexity
 - `specific_preconditions`: Add scenario-specific requirements (e.g., external router for networking tests)
-- `test_data`: Generate realistic YAML for resources, pods, networks based on scenario
+- `test_data`: Generate realistic YAML for VMs, pods, networks based on scenario
+  - **CRITICAL — Source Constants Rule:** When `source_constants` are provided in the input,
+    use them **verbatim** for any matching test_data fields. Specifically:
+    - Sentinel/marker strings: use the exact `value` from source_constants, never infer or paraphrase
+    - File paths: use the exact path from source_constants, never construct paths from description text
+    - Template content: if a source constant provides template text, embed it as-is
+    - If a test scenario references a concept that matches a source constant by name (e.g., "sentinel",
+      "marker", "script path"), the STD MUST use the source_constants value — not an LLM-inferred value
+    - If no source_constants are provided, derive test_data from scenario descriptions as before (best-effort)
 - `test_steps`: Expand scenario into 5-10 detailed steps (setup → execute → cleanup)
 - `assertions`: Extract validation points from scenario description (2-5 per scenario)
 - `dependencies`: List K8s resources, tools, and RBAC specific to this scenario
@@ -401,53 +526,94 @@ scenarios:
 
 ## PATTERN ENHANCEMENT (AUTO-GENERATION)
 
-**CRITICAL:** All scenarios MUST include pattern metadata for production-ready STD
+**Mode gate:** Pattern enhancement applies in **tier mode only** (`test_strategy: "tier"`).
+In **auto mode**, skip this entire section — auto-detected projects do not have pattern
+libraries, decorators, or KubeVirt-specific helpers. Auto-mode scenarios use a simpler
+structure: `test_objective`, `test_steps`, `assertions`, and reference `code_generation_config`.
+
+**CRITICAL (tier mode):** All scenarios MUST include pattern metadata for production-ready STD
 
 For each scenario, analyze the description and automatically add pattern metadata using the rules below.
 
 ### Pattern Matching Rules
 
-All pattern matching rules are config-driven. Read them from `{project_context.config_dir}/patterns/go_patterns.yaml` (for Go/Ginkgo Functional tests) or `{project_context.config_dir}/patterns/python_patterns.yaml` (for Python/pytest End-to-End tests). If no pattern file exists, use the scenario description and test_objective to infer test structure directly without pattern metadata.
-
-The pattern file defines four mapping sections:
+Apply these rules to match scenarios to patterns from `{project_context.config_dir}/patterns/` directory:
 
 #### 1. Keywords → Primary Pattern
 
-A map of keyword lists to pattern IDs. Analyze the scenario description for keywords defined in the pattern file and resolve to the corresponding primary pattern ID.
+Analyze the scenario description for these keywords:
+
+- Contains **"connectivity"**, **"ping"**, **"reach"** → `network-connectivity-001`
+- Contains **"migration"**, **"migrate"** → `migration-001`
+- Contains **"hotplug"**, **"attach"** → `network-hotplug-001`
+- Contains **"lifecycle"**, **"create"**, **"delete"** → `vm-lifecycle-001`
+- Contains **"console"**, **"login"**, **"SSH"** → `console-001`
+- Contains **"snapshot"**, **"restore"** → `snapshot-001`
+- Contains **"clone"**, **"copy"** → `clone-001`
 
 #### 2. Resources → Setup Patterns
 
-A map of resource names to setup pattern IDs. Identify resources mentioned in the scenario and add the corresponding setup patterns. Resource creation typically also implies a wait/readiness pattern.
+Identify required resources and add setup patterns:
+
+- Mentions **"VM"**, **"VMI"**, **"VirtualMachineInstance"** → Add `factory-001`
+- Mentions **"Pod"** → Add `factory-pod-001`
+- Mentions **"NetworkAttachmentDefinition"**, **"NAD"** → Add `network-nad-001`
+- **Any VMI creation** → Also add `wait-002` (always wait for VMI ready)
 
 #### 3. Actions → Execution Patterns
 
-A map of action verbs to execution pattern IDs. Identify test actions in the scenario and add the corresponding execution patterns.
+Identify test actions and add execution patterns:
 
-#### 4. Helpers → Library Mappings
+- Action: **"ping"**, **"connectivity test"** → Add `network-ping-001`
+- Action: **"migrate"** → Add `migration-execute-001`
+- Action: **"console"**, **"login"** → Add `console-001`
+- Action: **"hotplug"**, **"attach"** → Add `network-hotplug-execute-001`
 
-Each pattern ID maps to a list of required helper libraries, and each helper library lists its available functions. Use these mappings to populate the `helpers` field in the STD YAML. Only include helpers for patterns actually matched in steps 1-3.
+#### 4. Infer Helpers from Patterns
+
+Based on matched patterns, automatically infer required helper libraries:
+
+**Pattern → Helper Mapping:**
+- `network-connectivity-001` requires: **libvmifact**, **libnet**, **libwait**
+- `factory-001` requires: **libvmifact**, **libvmi**
+- `migration-001` requires: **libvmifact**, **libmigration**
+- `console-001` requires: **console**
+- `factory-pod-001` requires: **libpod**
+- `network-nad-001` requires: **libnet**
+- `wait-002` requires: **libwait**
+
+**Helper Library Functions (Common):**
+- **libvmifact**: `NewFedora`, `NewAlpineWithTestTooling`, `NewCirros`, `NewAlpine`
+- **libvmi**: `WithInterface`, `WithNetwork`, `WithMasqueradeNetworking`
+- **libnet**: `PingFromVMConsole`, `GetVmiPrimaryIPByFamily`, `CreateNetworkAttachmentDefinition`
+- **libwait**: `WaitUntilVMIReady`, `WaitForVMIPhase`
+- **console**: `LoginToFedora`, `LoginToAlpine`, `RunCommand`, `SafeExpectBatch`
+- **libmigration**: `MigrateVMI`, `ConfirmVMIPostMigration`
+- **libpod**: `RenderPod`, `CreatePodFromDefinition`
 
 #### 5. Add Decorators
 
 Add test decorators based on tier and domain:
 
-**IMPORTANT: All decorator names are project-specific.** Read decorator mappings from `project_context.decorator_mappings` in `project.yaml`. Projects without decorators should leave this section empty.
+**Tier-based:**
+- Tier 1 → `decorators.Tier1`
+- Tier 2 → `decorators.Tier2`
 
-**Classification-based (read from `decorator_mappings.classification`):**
-- Functional → classification decorator for functional tests
-- End-to-End → classification decorator for end-to-end tests
+**Domain-based (from scenario description):**
+- Network-related → `decorators.SigNetwork`
+- Migration-related → `decorators.SigCompute`
+- Storage-related → `decorators.SigStorage`
+- Compute-related → `decorators.SigCompute`
 
-**Domain-based (read from `decorator_mappings.domain`):**
-- Map test domain (network, storage, compute, etc.) to project-specific domain decorators
-
-**Structural (read from `decorator_mappings.structural`):**
-- Ordering and cleanup decorators as defined by the project's test framework
+**Always add:**
+- `Ordered` (for proper test execution order)
+- `decorators.OncePerOrderedCleanup` (for cleanup after ordered tests)
 
 #### 6. Generate Code Templates
 
 For each matched pattern:
 
-1. **Read pattern definition** from `{project_context.config_dir}/patterns/go_patterns.yaml`
+1. **Read pattern definition** from `{project_context.config_dir}/patterns/tier1_patterns.yaml`
 2. **Extract the `template` field** for that pattern
 3. **Add as `code_template`** to the corresponding test step
 4. **Add `pattern_id`** to link step to pattern
@@ -457,12 +623,12 @@ For each matched pattern:
 test_steps:
   setup:
     - step_id: "SETUP-01"
-      action: "Create specialized resource"
+      action: "Create Fedora VMI"
       pattern_id: "factory-001"           # Added
       code_template: |                    # Added from pattern library
-        resource := factory.NewSpecializedResource(
-            resource.WithInterface(iface),
-            resource.WithNetwork(network),
+        vmi := libvmifact.NewFedora(
+            libvmi.WithInterface(iface),
+            libvmi.WithNetwork(network),
         )
 ```
 
@@ -483,20 +649,27 @@ Context("{scenario_description}", Ordered) {
 
 Replace placeholders:
 - `{scenario_description}`: Brief description of scenario
-- `{test_id}`: The test_id field (e.g., TS-MYPROJ12345-001)
+- `{test_id}`: The test_id field (e.g., TS-CNV66855-001)
 - `{test_objective}`: The test_objective.title field
 
 ---
 
 ### Pattern Library Reference
 
-**Location**: `{project_context.config_dir}/patterns/go_patterns.yaml`
+**Location**: `{project_context.config_dir}/patterns/tier1_patterns.yaml`
 
-**Available Patterns:** Defined in the project's `go_patterns.yaml` file. Each pattern has:
-- A unique ID (e.g., `connectivity-001`, `factory-001`)
-- Keyword conditions for matching scenarios
-- Code template references
-- Required helper library mappings
+**Available Patterns:**
+- `network-connectivity-001` - Network connectivity tests
+- `factory-001` - VMI creation with factory
+- `wait-002` - Wait for VMI ready
+- `console-001` - Console login
+- `migration-001` - Live migration
+- `network-nad-001` - NetworkAttachmentDefinition creation
+- `factory-pod-001` - Pod creation
+- `table-001` - Table-driven tests
+- `network-hotplug-001` - Network interface hotplug
+- `snapshot-001` - VM snapshot operations
+- `clone-001` - VM cloning operations
 
 Each pattern provides:
 - **keywords**: Trigger words for matching
@@ -539,7 +712,7 @@ Guidelines:
 - Generate ONE file for ALL scenarios (not one file per scenario)
 - Extract common preconditions to avoid duplication
 - Be specific and detailed in scenario specifications
-- Use realistic project-specific patterns
+- Use realistic KubeVirt/OpenShift patterns
 - Include complete YAML definitions for test resources
 - Link scenarios to requirements (Jira, GitHub PRs)
 - Prioritize assertions (P0 = critical, P1 = nice to have)
@@ -549,7 +722,7 @@ CRITICAL - Pattern Enhancement (AUTO-GENERATED):
 - Apply pattern matching rules (keywords → patterns, resources → setup patterns, etc.)
 - Infer helper libraries from matched patterns
 - Add decorators based on tier and domain
-- Generate code templates from pattern library (`{project_context.config_dir}/patterns/go_patterns.yaml`)
+- Generate code templates from pattern library (`{project_context.config_dir}/patterns/tier1_patterns.yaml`)
 - Add code_structure hint for each scenario
 - Add pattern_id and code_template to each test step
 - This is NOT optional - ALL scenarios MUST have pattern metadata
@@ -576,7 +749,12 @@ STP CONTEXT:
   Test Environment: {test_environment}
   Fix Versions: {fix_versions}
 
-ALL SCENARIOS (from STP Section III):
+SOURCE CONSTANTS (from STP Section III.2, if present):
+{source_constants_array}
+NOTE: These values were extracted from actual source code by the STP Builder.
+Use them VERBATIM in test_data fields. Do not infer, paraphrase, or modify.
+
+ALL SCENARIOS (from STP Section III.1):
 {scenarios_array}
 
 Generate ONE comprehensive STD YAML file with:
@@ -615,7 +793,7 @@ Before outputting the STD YAML, validate ALL of the following:
 - [ ] ALL scenarios have `code_structure` field
 - [ ] ALL test steps have `pattern_id` where applicable
 - [ ] ALL test steps have `code_template` where applicable
-- [ ] Pattern IDs match patterns in `{project_context.config_dir}/patterns/go_patterns.yaml`
+- [ ] Pattern IDs match patterns in `{project_context.config_dir}/patterns/tier1_patterns.yaml`
 
 **v2.1 Enhancement:**
 - [ ] `code_generation_config` section exists at document level
@@ -624,10 +802,16 @@ Before outputting the STD YAML, validate ALL of the following:
 - [ ] ALL scenarios have `variables` section
 - [ ] ALL scenarios have `test_structure` section
 - [ ] ALL `variables.closure_scope` includes at minimum: ctx, namespace, err
-- [ ] ALL `test_structure.context.decorators` includes structural decorators from `decorator_mappings`
+- [ ] ALL `test_structure.context.decorators` includes: Ordered, decorators.OncePerOrderedCleanup
 - [ ] ALL code_templates use `=` (not `:=`) for closure variables
 - [ ] ALL `Expect(err)` calls use `ExpectWithOffset(1, err)`
 - [ ] ALL scenarios with setup steps have corresponding cleanup templates
+
+**Source Constants Compliance (when source_constants provided):**
+- [ ] ALL sentinel/marker strings in test_data match source_constants values exactly
+- [ ] ALL file paths in test_data match source_constants paths exactly
+- [ ] No test_data field contains an LLM-inferred value when a matching source_constant exists
+- [ ] Source constants are referenced with their original name in a `source_constant_ref` field
 
 **If ANY validation fails:**
 - Log error with scenario_id and specific failure
@@ -673,7 +857,7 @@ STD generation is successful when:
 - `outputs/std/{JIRA_ID}/{JIRA_ID}_test_description.yaml`
 
 **Example:**
-- `outputs/std/MYPROJ-12345/MYPROJ-12345_test_description.yaml`
+- `outputs/std/CNV-66855/CNV-66855_test_description.yaml`
 
 **Note:** This comprehensive STD YAML is the single source of truth for all test scenarios. It is used by downstream generators (go-test-generator, python-test-generator) to produce working test code.
 

@@ -1,6 +1,6 @@
 ---
 name: go-stub-generator
-description: Generate Go/Ginkgo test stubs with PSE comments from STD YAML (Phase 1 - design review)
+description: Generate Go test stubs with PSE comments from STD YAML (Phase 1 - design review)
 model: claude-opus-4-6
 ---
 
@@ -8,9 +8,13 @@ model: claude-opus-4-6
 
 ## Purpose
 
-Generates **Go/Ginkgo test stubs** with PSE comments for design review.
+Generates **Go test stubs** with PSE comments for design review. Supports two
+frameworks based on `code_generation_config`:
 
-**Output:** Test stubs with `PendingIt()` + `Skip()` + PSE comments (excluded from test execution)
+- **Ginkgo v2** (tier mode): `PendingIt()` + `Skip()` stubs
+- **stdlib testing** (auto mode): `t.Run()` + `t.Skip()` stubs
+
+**Output:** Test stubs excluded from execution, with PSE comments for review.
 
 **Key Principle:** The STD = the comments in the test files (no separate document needed for review).
 
@@ -18,7 +22,7 @@ Generates **Go/Ginkgo test stubs** with PSE comments for design review.
 
 ## Input Required
 
-- `jira_id`: Jira ticket ID (e.g., "MYPROJ-12345")
+- `jira_id`: Jira ticket ID (e.g., "CNV-66855")
 
 **Prerequisites:**
 - STD YAML file must exist at `outputs/std/{JIRA_ID}/{JIRA_ID}_test_description.yaml`
@@ -35,11 +39,17 @@ outputs/std/{JIRA_ID}/go-tests/
 └── ... (one file per feature group)
 ```
 
-**File Characteristics:**
+**File Characteristics (tier mode — Ginkgo):**
 - **Language:** Go (Ginkgo v2 + Gomega)
 - **Size:** 50-150 lines per file (PSE comments + PendingIt)
 - **Status:** Test stubs excluded from execution (`PendingIt` + `Skip`)
 - **Body:** `Skip("Phase 1: Design only")` only
+
+**File Characteristics (auto mode — stdlib):**
+- **Language:** Go (stdlib `testing` + testify or other detected assertion lib)
+- **Size:** 30-100 lines per file (PSE comments + t.Run)
+- **Status:** Test stubs excluded from execution (`t.Skip`)
+- **Body:** `t.Skip("Phase 1: Design only")` only
 
 ---
 
@@ -72,13 +82,15 @@ Jira: {JIRA_ID}
 
 ### Describe Block Comments (Shared Preconditions)
 ```go
-var _ = Describe("{Feature}", {domain_decorator}, Serial, func() {
+var _ = Describe("{Feature}", decorators.SigNetwork, Serial, func() {
     /*
     Markers:
-        - {markers from go.yaml}
+        - tier1
+        - gating
 
     Preconditions:
-        - {shared preconditions from STD}
+        - OpenShift cluster with CNV 4.22+
+        - Multiple NetworkAttachmentDefinitions
     */
 ```
 
@@ -87,16 +99,16 @@ var _ = Describe("{Feature}", {domain_decorator}, Serial, func() {
     /*
     [NEGATIVE] (if applicable)
     Preconditions:
-        - Resource running with original network config
+        - VM running with original NAD
 
     Steps:
-        1. Update resource spec to reference target network config
+        1. Update VM spec to reference target NAD
         2. Wait for update to complete
 
     Expected:
-        - Resource is connected to target network
+        - VM is connected to target NAD network
     */
-    PendingIt("[test_id:TS-MYPROJ12345-001] should allow config update while resource running", func() {
+    PendingIt("[test_id:TS-CNV72329-001] should allow NAD swap while VM running", func() {
         Skip("Phase 1: Design only - awaiting implementation")
     })
 ```
@@ -105,20 +117,24 @@ var _ = Describe("{Feature}", {domain_decorator}, Serial, func() {
 
 ## Workflow
 
-### Step 1: Read STD YAML
+### Step 1: Read STD YAML and Determine Mode
 
 Load `outputs/std/{JIRA_ID}/{JIRA_ID}_test_description.yaml`
 
 **Extract:**
-- Total scenario count: `len(scenarios)`
-- All Functional scenarios (filter by `tier: "Functional"`)
+- `code_generation_config.framework` to determine stub format
+- `document_metadata.test_strategy_mode` to determine filtering
+
+**Tier mode:** Filter scenarios by `tier: "Tier 1"`.
+**Auto mode:** Include ALL scenarios with `coverage_status: NEW` or `PARTIAL_COVERAGE`.
+Skip `EXISTING_COVERAGE` scenarios (no stubs needed for already-tested behaviors).
 
 ### Step 2: Group Scenarios by Pattern
 
 **CRITICAL: This step is for file organization only. ALL scenarios must still get stubs.**
 
 For each scenario:
-1. Detect basic patterns (resource type, config type) for grouping
+1. Detect basic patterns (NAD type, OS type) for grouping
 2. Assign scenario to a file group
 
 Result: Map of `{file_name: [scenario1, scenario2, ...]}`
@@ -161,16 +177,17 @@ Generate the stub file with ALL scenarios in the group.
 
 4. **Assemble File Structure**
 
-   **IMPORTANT: Package name and imports are config-driven.** Read from `{project_context.config_dir}/go.yaml`:
-   - `package_name`: Use `default_package` from `go.yaml` or SIG-derived package name from `project_context.sig_mappings`
-   - Imports: Read `imports` section from `go.yaml` (dot_imports, standard, k8s_core, etc.)
-   - Decorators: Read from `project_context.decorator_mappings` in `project.yaml`
+   **Tier mode (Ginkgo):**
+
+   The package name and import paths come from `{project_context.config_dir}/tier1.yaml`
+   (e.g., `default_package`, `imports`). The decorators and SIG references also come
+   from project config.
 
    ```go
-   package {package_name}  // From go.yaml default_package or SIG mapping
+   package network  // Read from tier1.yaml `default_package`
 
    import (
-       . "github.com/onsi/ginkgo/v2"  // From go.yaml imports.dot_imports
+       . "github.com/onsi/ginkgo/v2"  // Read from tier1.yaml `imports`
    )
 
    /*
@@ -180,7 +197,7 @@ Generate the stub file with ALL scenarios in the group.
    Jira: {JIRA_ID}
    */
 
-   var _ = Describe("[{JIRA_ID}] {Feature}", {domain_decorator}, func() {
+   var _ = Describe("[{JIRA_ID}] {Feature}", decorators.SigNetwork, func() {
        /*
        Markers:
            - tier1
@@ -195,6 +212,52 @@ Generate the stub file with ALL scenarios in the group.
    })
    ```
 
+   **Auto mode (stdlib testing):**
+
+   The package name and imports come from `code_generation_config` in the STD YAML
+   (populated from test-strategy-resolver detection). No decorators or SIG wrappers.
+
+   ```go
+   package cli  // from code_generation_config.package_name
+
+   import (
+       "testing"
+
+       "github.com/stretchr/testify/assert"  // from code_generation_config.imports.framework
+   )
+
+   /*
+   {Feature} Tests
+
+   STP Reference: {STP_URL}
+   Jira: {JIRA_ID}
+   */
+
+   func TestFeature(t *testing.T) {
+       /*
+       Preconditions:
+           - {shared preconditions}
+       */
+
+       t.Run("{scenario description}", func(t *testing.T) {
+           t.Skip("Phase 1: Design only - awaiting implementation")
+           /*
+           Preconditions:
+               - {scenario preconditions}
+
+           Steps:
+               1. {step 1}
+               2. {step 2}
+
+           Expected:
+               - {expected outcome}
+           */
+       })
+
+       // Additional t.Run blocks for each scenario
+   }
+   ```
+
 5. **Save File**
    - Derive filename from feature group (snake_case + _test.go)
    - Save to `outputs/std/{JIRA_ID}/go-tests/{feature_slug}_stubs_test.go`
@@ -205,7 +268,7 @@ Generate the stub file with ALL scenarios in the group.
 
 After all files generated:
 
-1. **Count STD scenarios:** Count all Functional scenarios in STD: `N_std`
+1. **Count STD scenarios:** Count all Tier 1 scenarios in STD: `N_std`
 2. **Count generated stubs:** Count all `PendingIt()` blocks: `N_stubs`
 3. **Verify completeness:**
    - If `N_stubs < N_std`: ERROR + list missing scenario IDs
@@ -229,14 +292,14 @@ Generate summary with:
 **These rules are mandatory and override the field mapping when there is a conflict.**
 
 #### What goes in Preconditions (setup — before the test runs)
-- ALL resource creation: application instances, network configs, pods, peer resources, storage
-- ALL baseline data recording: "Record identifier", "Save IP address"
+- ALL resource creation: VMs, NADs, pods, peer VMs, storage
+- ALL baseline data recording: "Record MAC address", "Save IP address"
 - Baseline state verification: confirming the starting state before the test action
 - Any action that establishes the starting state for the test
 - **Never** test environment requirements (cluster version, node count, storage class, operator version)
 
 #### What goes in Steps (actions — during the test)
-- The test action itself: "Patch resource spec", "Execute ping", "Wait for completion"
+- The test action itself: "Patch VM spec", "Execute ping", "Wait for completion"
 - ONLY actions that are part of the test execution
 - **Never** resource creation (that's a Precondition)
 - **Never** verification statements (that's Expected)
@@ -262,14 +325,14 @@ fails, the test ran but produced a wrong result (test failure).
 
 | Action | PSE Section | Example |
 |--------|-------------|---------|
-| Create resource/config/pod | **Preconditions** | "Running resource with secondary interface" |
-| Record baseline data | **Preconditions** | "Identifier and interface name recorded" |
-| Verify baseline state | **Preconditions** | "Resource is in Ready state before test action" |
-| Patch/Update resource | **Steps** | "Update resource spec to reference target network config" |
+| Create VM/NAD/Pod | **Preconditions** | "Running VM with secondary interface" |
+| Record baseline data | **Preconditions** | "MAC address and interface name recorded" |
+| Verify baseline state | **Preconditions** | "VM is in Running state before test action" |
+| Patch/Update resource | **Steps** | "Update VM spec to reference target NAD" |
 | Wait for completion | **Steps** | "Wait for operation to complete" |
-| Execute command | **Steps** | "Ping from resource-A to resource-B" |
+| Execute command | **Steps** | "Ping from VM-A to VM-B" |
 | Verify/Confirm outcome | **Expected** | "Ping succeeds with 0% packet loss" |
-| Assert state | **Expected** | "Resource is ready after operation" |
+| Assert state | **Expected** | "VM is Running after operation" |
 
 ### Field Mapping
 
@@ -287,14 +350,14 @@ fails, the test ran but produced a wrong result (test failure).
 **STD YAML Input:**
 ```yaml
 test_objective:
-  title: "Resource network interface can be swapped while running"
+  title: "VM network interface can be swapped while running"
   acceptance_criteria:
-    - "Swap completes without resource restart"
+    - "Swap completes without VM restart"
 specific_preconditions:
-  - requirement: "Resource in Ready state with original network config"
+  - requirement: "VM in Running state with original NAD"
 test_steps:
   test_execution:
-    - action: "Update resource spec to reference target network config"
+    - action: "Update VM spec to reference target NAD"
     - action: "Wait for update to complete"
 ```
 
@@ -302,16 +365,16 @@ test_steps:
 ```go
 /*
 Preconditions:
-    - Resource in Ready state with original network config
+    - VM in Running state with original NAD
 
 Steps:
-    1. Update resource spec to reference target network config
+    1. Update VM spec to reference target NAD
     2. Wait for update to complete
 
 Expected:
-    - Resource is connected to target network
+    - VM is connected to target NAD network
 */
-PendingIt("[test_id:TS-MYPROJ12345-001] should allow config update while resource running", func() {
+PendingIt("[test_id:TS-CNV72329-001] should allow NAD swap while VM running", func() {
     Skip("Phase 1: Design only - awaiting implementation")
 })
 ```
@@ -321,7 +384,9 @@ PendingIt("[test_id:TS-MYPROJ12345-001] should allow config update while resourc
 ## Success Criteria
 
 Stub generation succeeds when:
-- All STD Functional scenarios have corresponding `PendingIt()` blocks
+
+- **Tier mode:** All STD Tier 1 scenarios have corresponding `PendingIt()` blocks
+- **Auto mode:** All STD scenarios with `coverage_status: NEW`/`PARTIAL_COVERAGE` have `t.Run()` blocks
 - Every scenario ID appears in generated code with `[test_id:TS-XXX]` label
 - Valid Go syntax (proper imports, package declaration)
 - Files saved to `outputs/std/{JIRA_ID}/go-tests/`
@@ -335,8 +400,10 @@ Stub generation succeeds when:
 - Suggestion: "Run `/std-builder {JIRA_ID}` first"
 - Exit
 
-**If no Functional scenarios found:**
-- Warning: "No Functional scenarios found in STD"
+**If no applicable scenarios found:**
+
+- Tier mode: "No Tier 1 scenarios found in STD"
+- Auto mode: "No Go scenarios with NEW/PARTIAL_COVERAGE status found in STD"
 - Exit (no stubs to generate)
 
 ---

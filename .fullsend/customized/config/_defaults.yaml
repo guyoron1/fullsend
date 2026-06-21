@@ -5,8 +5,9 @@ version: "1.0"
 feature_toggles:
   polarion: false
   unit_tests: false
-  go_tests: true
-  python_tests: true
+  test_strategy: "auto"    # "auto" = detect from repo; "tier" = use tier1.yaml/tier2.yaml
+  tier1_tests: true
+  tier2_tests: true
   stp_generation: true
   std_generation: true
   stp_review: true

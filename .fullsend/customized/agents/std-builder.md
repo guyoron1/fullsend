@@ -1,126 +1,343 @@
 ---
 name: std-builder
-description: >-
-  Generate STD (YAML + test stubs with PSE docstrings) from an existing
-  STP file. Produces internal STD YAML, Go/Ginkgo stubs, and Python/pytest stubs.
-tools: >-
-  Read, Write, Edit, Glob, Grep, Bash
-model: opus
-skills:
-  - project-resolver
-  - std-orchestrator
-  - go-stub-generator
-  - python-stub-generator
-  - pipeline-state
-  - output-validator
+description: Generate STD (YAML + test stubs with PSE docstrings) from an existing STP file
+argument-hint: <JIRA-ID>
+allowed-tools: Read, Write, Edit, Task, Glob, Grep, Skill
 ---
 
-# QualityFlow STD Builder Agent (FullSend)
+# STD Builder
 
-You are the QualityFlow STD builder running inside a FullSend sandbox.
-Your job is to generate a Software Test Description (STD) from an existing STP.
+Generates the complete Software Test Description (STD):
+1. **STD YAML file** (internal format for automation)
+2. **Test stubs with PSE docstrings** (the deliverable for human review)
 
-## Environment
+Per [SOFTWARE_TEST_DESCRIPTION.md](https://github.com/rnetser/openshift-virtualization-tests/blob/std-template/docs/SOFTWARE_TEST_DESCRIPTION.md), the STD = docstrings in test files.
 
-- `FULLSEND_OUTPUT_DIR` — write all output files here
-- `FULLSEND_TARGET_REPO_DIR` — the QualityFlow project directory
-- `JIRA_TICKET` — the Jira ticket to process
+---
 
-## Important Notes
+When the user runs this command with a Jira ID, you MUST:
 
-- Do NOT attempt to use `mcp__*` tools.
-- **You MUST complete Step 5 (Push Output) before finishing.** The sandbox
-  file extraction channel is unreliable — git push is the only way to
-  preserve output. Do not stop after generating the STD YAML.
+## Step 0: Resolve Project
 
-## Workflow
+Use the Skill tool to invoke the project-resolver skill:
 
-### Step 0: Project Resolution
+**Tool:** Skill
+**Parameters:**
+- skill: "project-resolver"
+- args: "$ARGUMENTS"
 
-```bash
-cd $FULLSEND_TARGET_REPO_DIR
-```
+This returns `project_context` containing:
+- `project_id`, `display_name`, `jira_id`
+- `config_dir` (path to project config files)
+- `feature_toggles` (what capabilities are enabled)
+- `stp_header`, `versioning`
 
-Invoke the **project-resolver** skill with `$JIRA_TICKET`.
+**If project resolution fails:** Display the error and exit. Do not proceed.
 
-Check `std_generation` toggle — if false, exit.
+**Check std_generation toggle:**
+If `project_context.feature_toggles.std_generation` is false:
+- Output: "STD generation is disabled for project {project_context.display_name} (std_generation toggle is false)."
+- Exit. Do not proceed.
 
-### Step 1: Verify STP Exists
+### Step 0.5: Pipeline State
 
-Check that the STP file exists at:
+Use the Skill tool to invoke the pipeline-state skill:
+
+**Tool:** Skill
+**Parameters:**
+- skill: "pipeline-state"
+- args: "start-phase {JIRA_ID} std"
+
+This will:
+1. Read or initialize pipeline state
+2. Validate prerequisites (`stp.status == completed`)
+3. Check approval gate: if `stp_review` is in `approval_gates` (default: yes),
+   verify `outputs/state/{JIRA_ID}/approvals.yaml` has `stp_review.status == approved`
+4. Check if STP has been modified since last STD generation (staleness)
+5. Update `std` phase status to `in_progress`
+
+**If prerequisites not met:** Show the suggestion (e.g., "Run `/stp-builder` first") and exit.
+
+**If approval gate blocks:** Show message: "STP Review is awaiting human approval.
+Approve it in the QualityFlow dashboard before proceeding." and exit.
+
+**If STP is stale:** Show warning but continue. The user can choose to re-run
+`/stp-builder` if needed.
+
+## Step 1: Parse the Jira ID
+
+Extract the Jira ID from `project_context.jira_id` (e.g., CNV-66855, VIRTSTRAT-494).
+
+## Step 2: Verify STP File Exists
+
+**CRITICAL: STD generation requires an existing STP file.**
+
+Check that the STP file exists:
 ```
 outputs/stp/{JIRA_ID}/{JIRA_ID}_test_plan.md
 ```
 
-If not found, write an error summary and exit.
+**If STP file does NOT exist:**
+- Inform the user: "STP file not found. Please run `/stp-builder {JIRA_ID}` first."
+- Exit - do not proceed with STD generation
 
-### Step 2: Generate STD YAML
+**If STP file exists:**
+- Proceed to Step 3
 
-Invoke the **std-orchestrator** skill with the Jira ID. It will:
+## Step 3: Generate STD YAML (Internal Format)
 
-1. Read the STP file
-2. Parse Section III (Requirements-to-Tests Mapping)
+Use the Skill tool to invoke the std-orchestrator skill:
+
+**Tool:** Skill
+**Parameters:**
+- skill: "std-orchestrator"
+- args: "{JIRA_ID}"
+
+The std-orchestrator skill will:
+1. Read the STP file at `outputs/stp/{JIRA_ID}/{JIRA_ID}_test_plan.md`
+2. Parse Section III (Requirements-to-Tests Mapping table)
 3. Extract all test scenarios
-4. Generate comprehensive STD YAML
+4. Generate comprehensive STD YAML file:
+   - Output: `outputs/std/{JIRA_ID}/{JIRA_ID}_test_description.yaml`
+5. Validate STD YAML
 
-Write to: `$FULLSEND_OUTPUT_DIR/{JIRA_ID}_test_description.yaml`
+## Step 4: Generate Test Stubs (The Actual STD)
 
-### Step 3: Generate Test Stubs
+After STD YAML is generated, generate test stubs with PSE docstrings.
 
-Check tier distribution in STD YAML and feature toggles.
+**Routing depends on `project_context.feature_toggles.test_strategy`:**
 
-**If Tier 1 scenarios exist AND `go_tests` is true:**
+### Tier mode (`test_strategy == "tier"`)
 
-Invoke **go-stub-generator** skill. Write Go stubs with `PendingIt()` blocks
-and PSE comments to: `$FULLSEND_OUTPUT_DIR/go-tests/`
+**Check tier distribution in STD YAML:**
+- Count Tier 1 scenarios
+- Count Tier 2 scenarios
 
-**If Tier 2 scenarios exist AND `python_tests` is true:**
+**Check feature toggles from project_context before generating stubs:**
 
-Invoke **python-stub-generator** skill. Write Python stubs with `__test__ = False`
-and PSE docstrings to: `$FULLSEND_OUTPUT_DIR/python-tests/`
+**If Tier 1 scenarios exist AND `project_context.feature_toggles.tier1_tests` is true:**
 
-### Step 4: Write Summary
+Use the Skill tool to invoke go-stub-generator:
 
-Write `$FULLSEND_OUTPUT_DIR/summary.yaml`:
+**Tool:** Skill
+**Parameters:**
+- skill: "go-stub-generator"
+- args: "{JIRA_ID}"
 
+This generates Go/Ginkgo test stubs with PSE comments:
+- Output: `outputs/std/{JIRA_ID}/go-tests/*_stubs_test.go`
+- Contains: `PendingIt()` blocks with PSE comments
+- Excluded from test execution
+
+**If Tier 1 scenarios exist BUT `project_context.feature_toggles.tier1_tests` is false:**
+- Skip Go stub generation
+- Log: "Skipping Go stub generation: tier1_tests is disabled for project {project_context.display_name}."
+
+**If Tier 2 scenarios exist AND `project_context.feature_toggles.tier2_tests` is true:**
+
+Use the Skill tool to invoke python-stub-generator:
+
+**Tool:** Skill
+**Parameters:**
+- skill: "python-stub-generator"
+- args: "{JIRA_ID}"
+
+This generates Python/pytest test stubs with PSE docstrings:
+- Output: `outputs/std/{JIRA_ID}/python-tests/test_*_stubs.py`
+- Contains: `pass` body with comprehensive docstrings
+- Marked with `__test__ = False` to exclude from collection
+
+**If Tier 2 scenarios exist BUT `project_context.feature_toggles.tier2_tests` is false:**
+- Skip Python stub generation
+- Log: "Skipping Python stub generation: tier2_tests is disabled for project {project_context.display_name}."
+
+### Auto mode (`test_strategy == "auto"`)
+
+Read `code_generation_config` from the STD YAML to determine language and framework.
+Route to the appropriate stub generator based on detected language — NOT based on
+tier counts or tier1_tests/tier2_tests toggles.
+
+| Detected Language | Stub Generator | Output |
+|:------------------|:---------------|:-------|
+| `go` | go-stub-generator | `outputs/std/{JIRA_ID}/go-tests/*_stubs_test.go` |
+| `python` | python-stub-generator | `outputs/std/{JIRA_ID}/python-tests/test_*_stubs.py` |
+
+Generate stubs for ALL scenarios with `coverage_status: NEW` or `PARTIAL_COVERAGE`.
+Skip `EXISTING_COVERAGE` scenarios (they have no test specs to generate stubs from).
+
+Pass `code_generation_config` to the stub generator so it uses the detected framework
+(e.g., stdlib+testify instead of Ginkgo for Go).
+
+## Step 5: Report to User
+
+Once complete, show the user:
+
+```
+✅ STD Generation Complete!
+
+📄 Input: outputs/stp/{JIRA_ID}/{JIRA_ID}_test_plan.md
+
+📊 Summary:
+- STP scenarios: {TOTAL_COUNT} ({TIER1_COUNT} Tier 1, {TIER2_COUNT} Tier 2)
+- STD YAML: {JIRA_ID}_test_description.yaml (internal format)
+
+📁 STD Output (for review):
+- outputs/std/{JIRA_ID}/go-tests/*_stubs_test.go ({TIER1_COUNT} test stubs)
+- outputs/std/{JIRA_ID}/python-tests/test_*_stubs.py ({TIER2_COUNT} test stubs)
+
+📋 Phase 1 Checklist:
+- [ ] STP link in module docstring
+- [ ] Tests grouped in class with shared preconditions
+- [ ] Each test has: Preconditions, Steps, Expected
+- [ ] Each test verifies ONE thing with ONE Expected
+- [ ] Test bodies contain only 'pass' / Skip()
+
+✅ Ready for design review!
+
+📌 Next steps:
+1. Review the test stubs (the STD)
+2. Submit PR for design review
+3. After approval, run:
+   - /generate-go-tests {JIRA_ID}     (Tier 1 implementation)
+   - /generate-python-tests {JIRA_ID} (Tier 2 implementation)
+```
+
+---
+
+## Output Structure
+
+```
+outputs/std/{JIRA_ID}/
+├── {JIRA_ID}_test_description.yaml     (STD YAML - internal format)
+├── go-tests/                           (Tier 1 STD - test stubs)
+│   └── {feature}_stubs_test.go         (PendingIt + PSE comments)
+└── python-tests/                       (Tier 2 STD - test stubs)
+    └── test_{feature}_stubs.py         (__test__=False + PSE docstrings)
+```
+
+---
+
+## Workflow Overview
+
+```
+User: /std-builder {JIRA_ID}
+  ↓
+0. Resolve project: project-resolver → project_context
+  ↓
+1. Verify STP exists: outputs/stp/{JIRA_ID}/{JIRA_ID}_test_plan.md
+  ↓
+2. Generate STD YAML (internal):
+   → outputs/std/{JIRA_ID}/{JIRA_ID}_test_description.yaml
+  ↓
+3. Generate test stubs (respecting feature toggles):
+   → outputs/std/{JIRA_ID}/go-tests/*_stubs_test.go (if tier1_tests enabled)
+   → outputs/std/{JIRA_ID}/python-tests/test_*_stubs.py (if tier2_tests enabled)
+  ↓
+4. Report results:
+   STD complete - ready for design review
+```
+
+---
+
+## Error Handling
+
+**If STP file not found:**
+- Error message: "STP file not found at outputs/stp/{JIRA_ID}/{JIRA_ID}_test_plan.md"
+- Suggestion: "Please run `/stp-builder {JIRA_ID}` first to create the STP"
+- Exit without proceeding
+
+**If STP Section III is empty:**
+- Error message: "No test scenarios found in STP Section III"
+- Suggestion: "Verify STP file is complete and contains Requirements-to-Tests Mapping table"
+- Exit
+
+**If std-orchestrator skill fails:**
+- Display error message from skill
+- Show partial results if any
+- Suggest reviewing errors and re-running
+
+**If stub generation fails:**
+- Show which stubs were generated successfully
+- Report which scenarios failed
+- STD YAML is still available for manual review
+
+---
+
+## Prerequisites
+
+**Before running this command:**
+1. ✅ STP file must exist (run `/stp-builder {JIRA_ID}` first)
+2. ✅ STP must contain Section III with test scenarios
+
+---
+
+## Example Usage
+
+**Step 1: Generate STP**
+```
+User: /stp-builder {JIRA_ID}
+Output: outputs/stp/{JIRA_ID}/{JIRA_ID}_test_plan.md
+```
+
+**Step 2: Generate STD (YAML + Stubs)**
+```
+User: /std-builder {JIRA_ID}
+Output:
+   - outputs/std/{JIRA_ID}/{JIRA_ID}_test_description.yaml (internal)
+   - outputs/std/{JIRA_ID}/go-tests/*_stubs_test.go (if tier1_tests enabled)
+   - outputs/std/{JIRA_ID}/python-tests/test_*_stubs.py (if tier2_tests enabled)
+```
+
+**Step 3: After Design Review - Generate Implementation**
+```
+User: /generate-go-tests {JIRA_ID}
+User: /generate-python-tests {JIRA_ID}
+Output: Full working test implementations
+```
+
+---
+
+## Step 6: Update Pipeline State (on completion)
+
+After all generation completes successfully:
+
+**Tool:** Skill
+**Parameters:**
+- skill: "pipeline-state"
+- args: "complete-phase {JIRA_ID} std"
+
+Pass phase-specific data:
 ```yaml
-status: success
-jira_id: <ticket>
-stp_source: <path to STP>
-std_yaml: <path to STD YAML>
-test_counts:
-  total: <count>
-  tier1: <count>
-  tier2: <count>
+output: "outputs/std/{JIRA_ID}/{JIRA_ID}_test_description.yaml"
+stp_checksum_at_generation: <SHA-256 of STP file>
+scenario_counts:
+  total: {TOTAL_COUNT}
+  tier1: {TIER1_COUNT}
+  tier2: {TIER2_COUNT}
 stubs:
-  go: <count or 0>
-  python: <count or 0>
+  go: "outputs/std/{JIRA_ID}/go-tests/"
+  python: "outputs/std/{JIRA_ID}/python-tests/"
 ```
 
-### Step 5: Push Output to PR Branch (MANDATORY)
+If generation **fails**, update with:
+- skill: "pipeline-state"
+- args: "fail-phase {JIRA_ID} std"
 
-Copy output files to the target repo and push. This ensures output is
-preserved even if sandbox file extraction fails.
+After state update, show the **next-step suggestion** from the response.
 
-```bash
-DEST="$FULLSEND_TARGET_REPO_DIR/outputs/std/$JIRA_TICKET"
-mkdir -p "$DEST" "$DEST/go-tests" "$DEST/python-tests"
-cp "$FULLSEND_OUTPUT_DIR/${JIRA_TICKET}_test_description.yaml" "$DEST/" 2>/dev/null || true
-cp "$FULLSEND_OUTPUT_DIR/go-tests/"*_stubs_test.go "$DEST/go-tests/" 2>/dev/null || true
-cp "$FULLSEND_OUTPUT_DIR/python-tests/"test_*_stubs.py "$DEST/python-tests/" 2>/dev/null || true
-cp "$FULLSEND_OUTPUT_DIR/summary.yaml" "$DEST/" 2>/dev/null || true
-cd "$FULLSEND_TARGET_REPO_DIR"
-git config user.email "qualityflow[bot]@users.noreply.github.com"
-git config user.name "QualityFlow"
-# Derive repo and branch from git state (runner_env may not flow through)
-REMOTE_URL=$(git remote get-url origin)
-REPO_NAME=$(echo "$REMOTE_URL" | sed -n 's|.*github\.com[:/]\(.*\)\.git|\1|p')
-BRANCH=$(git rev-parse --abbrev-ref HEAD)
-git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${REPO_NAME}.git"
-git add "outputs/std/$JIRA_TICKET/"
-git commit -m "Add STD output for $JIRA_TICKET [skip ci]" || true
-git push origin "HEAD:$BRANCH" || echo "Push failed — output available in sandbox artifacts"
-```
+---
 
-If git push fails, do not treat it as a fatal error. The output files in
-`$FULLSEND_OUTPUT_DIR` will be extracted by FullSend as a fallback.
+## Notes
+
+- **STD = Test stubs with docstrings** (per SOFTWARE_TEST_DESCRIPTION.md)
+- **STD YAML = Internal format** (for automation, not for review)
+- **Two-phase workflow:**
+  - Phase 1 (this command): Generate stubs for design review
+  - Phase 2 (/generate-*-tests): Generate full implementation
+- **Test stubs are excluded from execution:**
+  - Go: `PendingIt()` with `Skip()`
+  - Python: `__test__ = False` with `pass`
+
+---
+
+**End of STD Builder Command**

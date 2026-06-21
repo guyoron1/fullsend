@@ -25,7 +25,9 @@ configured language/framework.
 
 **Prerequisites:**
 - STD YAML at `outputs/std/{JIRA_ID}/{JIRA_ID}_test_description.yaml`
-- At least one language config file in `{project_context.config_dir}/`
+- At least one of:
+  - Language config file in `{project_context.config_dir}/` (tier mode)
+  - `code_generation_config` in STD YAML (auto mode — `config_dir` may be null)
 
 ---
 
@@ -49,16 +51,26 @@ outputs/tests/{JIRA_ID}/{language}/   (any other language)
 
 ## CRITICAL REQUIREMENT
 
-**Generate ONE test case per STD scenario. No exceptions.**
+**Generate ONE test case per STD scenario with `coverage_status: NEW` or
+`PARTIAL_COVERAGE`. Skip `EXISTING_COVERAGE` — emit a reference comment instead.**
 
-- 19 STD scenarios → 19 generated test functions/blocks
-- Pattern-based file grouping is allowed, but EVERY scenario gets a test
+- 19 STD scenarios (12 NEW + 1 PARTIAL + 6 EXISTING) → 13 test functions + 6 reference comments
+- Pattern-based file grouping is allowed, but EVERY non-EXISTING scenario gets a test
+- For `EXISTING_COVERAGE` scenarios, emit a comment referencing the existing test:
+  ```go
+  // Covered by existing test: TestComparePathPresence_AllPresent
+  // in internal/scaffold/pathpresence_test.go
+  ```
+
+When `coverage_status` is absent on a scenario, treat it as `NEW` (backward compatible).
 
 ---
 
 ## Workflow
 
 ### Step 1: Discover Language Targets
+
+**Tier mode** (`config_dir` is not null):
 
 Scan `{project_context.config_dir}/` for YAML files with
 `enabled: true` and a `language:` field:
@@ -79,6 +91,26 @@ Each language config provides:
 - `build_command` — validation command
 - `test_patterns` — naming conventions
 
+**Auto mode** (`config_dir` is null):
+
+Read `code_generation_config` directly from the STD YAML. The STD YAML IS the config
+in auto mode — it contains the detected language, framework, imports, and package name
+from the test-strategy-resolver.
+
+```yaml
+# From STD YAML code_generation_config:
+language: "go"
+framework: "testing"
+assertion_library: "testify"
+package_name: "cli"
+imports:
+  standard: ["context", "testing"]
+  framework: ["github.com/stretchr/testify/assert"]
+  project: ["github.com/org/repo/internal/cli"]
+```
+
+No config directory scanning needed — generate for the single detected language.
+
 ### Step 2: Read STD YAML
 
 Load `outputs/std/{JIRA_ID}/{JIRA_ID}_test_description.yaml`
@@ -90,9 +122,13 @@ Extract:
 
 ### Step 3: Load Pattern Rules
 
-For each enabled language, read patterns from:
+**Tier mode:** For each enabled language, read patterns from:
 - `{project_context.config_dir}/patterns/{language}_patterns.yaml`
 - Fresh LSP patterns if available
+
+**Auto mode:** Skip pattern loading (no pattern library exists for auto-detected
+projects). Instead, read existing test files in `SOURCE_REPO_PATH` to learn
+conventions (indentation, assertion style, helper patterns) directly from the repo.
 
 ### Step 4: Generate Tests Per Language
 
@@ -243,10 +279,11 @@ apply those coding standards to all generated test code. Common rules:
 
 After all files generated:
 
-1. Count STD scenarios per tier/type
+1. Count STD scenarios per tier/type, excluding `EXISTING_COVERAGE`
 2. Count generated test cases per language
-3. Verify 1:1 mapping: every scenario has a test
-4. Report missing scenario IDs
+3. Verify 1:1 mapping: every `NEW`/`PARTIAL_COVERAGE` scenario has a test
+4. Verify every `EXISTING_COVERAGE` scenario has a reference comment
+5. Report missing scenario IDs
 
 ---
 
@@ -265,7 +302,10 @@ Generate summary per language:
 
 **STD not found:** Error + suggest running `/std-builder` first.
 
-**No language configs:** Error + suggest creating language YAML in config.
+**No language configs (tier mode):** Error + suggest creating language YAML in config.
+
+**No code_generation_config (auto mode):** Error + STD YAML may not have been generated
+with auto mode. Suggest re-running `/std-builder`.
 
 **Pattern not recognized:** Warning + fall back to direct STD-to-test generation.
 
