@@ -1,0 +1,24 @@
+status: success
+jira_id: "GH-2247"
+verdict: APPROVED_WITH_FINDINGS
+confidence: LOW
+weighted_score: 89
+findings:
+  critical: 0
+  major: 3
+  minor: 4
+  actionable: 6
+  total: 7
+artifacts_reviewed:
+  std_yaml: true
+  go_stubs: true
+  python_stubs: false
+  stp_available: true
+dimension_scores:
+  traceability: 100
+  yaml_structure: 95
+  pattern_matching: 80
+  step_quality: 85
+  content_policy: 70
+  pse_quality: 90
+  codegen_readiness: 90
