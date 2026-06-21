@@ -1,12 +1,24 @@
-status: needs_revision
+status: success
 jira_id: GH-57
-initial_verdict: APPROVED_WITH_FINDINGS
-final_verdict: NEEDS_REVISION
-iterations: 2
+verdict: NEEDS_REVISION
+confidence: MEDIUM
+weighted_score: 76
 findings:
-  initial: {critical: 0, major: 4, minor: 2}
-  final: {critical: 3, major: 1, minor: 0}
-root_cause: STP content describes wrong feature - generated from incorrect source data
-recommendation: Regenerate STP via /stp-builder GH-57 using correct PR source data
-actual_feature: "feat(#2096): add two-pass review strategy for large PRs"
-stp_feature: "Review latent.space Article on Code Reviews Being Dead (research task)"
+  critical: 1
+  major: 5
+  minor: 3
+  actionable: 8
+  total: 9
+artifacts_reviewed:
+  std_yaml: true
+  go_stubs: true
+  python_stubs: false
+  stp_available: true
+dimension_scores:
+  traceability: 92
+  yaml_structure: 55
+  pattern_matching: 75
+  step_quality: 78
+  content_policy: 95
+  pse_quality: 82
+  codegen_readiness: 30
