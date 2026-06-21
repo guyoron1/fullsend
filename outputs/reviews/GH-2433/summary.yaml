@@ -1,0 +1,22 @@
+status: success
+jira_id: GH-2433
+verdict: APPROVED_WITH_FINDINGS
+confidence: MEDIUM
+weighted_score: 92
+findings:
+  critical: 0
+  major: 2
+  minor: 4
+  actionable: 5
+  total: 6
+reviewed: outputs/stp/GH-2433/GH-2433_test_plan.md
+report: outputs/reviews/GH-2433/GH-2433_stp_review.md
+dimension_scores:
+  rule_compliance: 88
+  requirement_coverage: 97
+  scenario_quality: 90
+  risk_accuracy: 95
+  scope_boundary: 92
+  strategy: 95
+  metadata: 95
+scope_downgrade: false
