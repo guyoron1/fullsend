@@ -14,46 +14,38 @@ document_metadata:
     file: "outputs/stp/GH-2378/GH-2378_test_plan.md"
     version: "v1"
     sections_covered: "Section III - Requirements-to-Tests Mapping"
-  related_prs:
-    - repo: "fullsend-ai/fullsend"
-      pr_number: 2381
-      url: "https://github.com/fullsend-ai/fullsend/pull/2381"
-      title: "Fix code agent status comment to reflect actual outcome"
-      merged: true
   total_scenarios: 10
-  unit_test_count: 9
-  functional_count: 1
-  e2e_count: 0
+  tier1_count: 10
+  tier2_count: 0
   p0_count: 5
   p1_count: 4
   p2_count: 1
 
 code_generation_config:
   std_version: "2.1-enhanced"
-  framework: "testing"
-  assertion_library: "testify"
+  framework: "ginkgo-v2"
+  assertion_library: "gomega"
   language: "go"
   package_name: "tests"
   context_init: "context.Background()"
   imports:
     standard:
       - "context"
-      - "testing"
       - "os"
       - "os/exec"
       - "fmt"
       - "strings"
     test_framework:
-      - path: "github.com/stretchr/testify/assert"
-      - path: "github.com/stretchr/testify/require"
+      - path: "github.com/onsi/ginkgo/v2"
+      - path: "github.com/onsi/gomega"
     project:
       - "github.com/fullsend-ai/fullsend/internal/config"
   build_tags:
     - "e2e"
   test_patterns:
-    function_prefix: "Test"
-    subtest_style: "t.Run"
-    assertion_style: "testify"
+    function_prefix: "Describe"
+    subtest_style: "Context/It"
+    assertion_style: "gomega"
 
 common_preconditions:
   infrastructure:
@@ -91,10 +83,18 @@ common_preconditions:
 scenarios:
   - scenario_id: "001"
     test_id: "TS-GH-2378-001"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-2378"
+
+    patterns:
+      primary_pattern: "shell-function-unit"
+      helpers_required:
+        - "bash-mock-functions"
+      decorators: []
+
+    code_structure: "Describe -> Context -> It (Ginkgo v2)"
 
     variables:
       closure_scope:
@@ -159,9 +159,9 @@ scenarios:
           command: "export AGENT_EXIT_CODE=1"
           validation: "Variable is set"
         - step_id: "SETUP-02"
-          action: "Ensure no feature branch exists"
-          command: "Simulate branch check returning false"
-          validation: "Branch check returns non-existent"
+          action: "Mock branch check to return false (no feature branch)"
+          command: "git() { if [ \"$1\" = \"rev-parse\" ] && [ \"$2\" = \"--verify\" ]; then return 1; fi; command git \"$@\"; }"
+          validation: "git rev-parse --verify returns non-zero"
       test_execution:
         - step_id: "TEST-01"
           action: "Call detect_noop function"
@@ -195,10 +195,18 @@ scenarios:
 
   - scenario_id: "002"
     test_id: "TS-GH-2378-002"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-2378"
+
+    patterns:
+      primary_pattern: "shell-function-unit"
+      helpers_required:
+        - "bash-mock-functions"
+      decorators: []
+
+    code_structure: "Describe -> Context -> It (Ginkgo v2)"
 
     variables:
       closure_scope:
@@ -264,9 +272,9 @@ scenarios:
           command: "export AGENT_EXIT_CODE=2"
           validation: "Variable is set"
         - step_id: "SETUP-02"
-          action: "Simulate feature branch existing with no changed files"
-          command: "Simulate branch check true, changed files count 0"
-          validation: "Branch exists, no changes"
+          action: "Mock branch check to return true with zero changed files"
+          command: "git() { if [ \"$1\" = \"rev-parse\" ] && [ \"$2\" = \"--verify\" ]; then return 0; elif [ \"$1\" = \"diff\" ] && [ \"$2\" = \"--name-only\" ]; then echo ''; fi; command git \"$@\"; }"
+          validation: "git rev-parse --verify returns 0, git diff --name-only returns empty"
       test_execution:
         - step_id: "TEST-01"
           action: "Call detect_noop function"
@@ -300,10 +308,18 @@ scenarios:
 
   - scenario_id: "003"
     test_id: "TS-GH-2378-003"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-2378"
+
+    patterns:
+      primary_pattern: "shell-function-unit"
+      helpers_required:
+        - "bash-mock-functions"
+      decorators: []
+
+    code_structure: "Describe -> Context -> It (Ginkgo v2)"
 
     variables:
       closure_scope:
@@ -401,10 +417,18 @@ scenarios:
 
   - scenario_id: "004"
     test_id: "TS-GH-2378-004"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-2378"
+
+    patterns:
+      primary_pattern: "shell-function-unit"
+      helpers_required:
+        - "bash-mock-functions"
+      decorators: []
+
+    code_structure: "Describe -> Context -> It (Ginkgo v2)"
 
     variables:
       closure_scope:
@@ -494,10 +518,18 @@ scenarios:
 
   - scenario_id: "005"
     test_id: "TS-GH-2378-005"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-2378"
+
+    patterns:
+      primary_pattern: "shell-function-unit"
+      helpers_required:
+        - "bash-mock-functions"
+      decorators: []
+
+    code_structure: "Describe -> Context -> It (Ginkgo v2)"
 
     variables:
       closure_scope:
@@ -582,10 +614,18 @@ scenarios:
 
   - scenario_id: "006"
     test_id: "TS-GH-2378-006"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-2378"
+
+    patterns:
+      primary_pattern: "shell-function-unit"
+      helpers_required:
+        - "bash-mock-functions"
+      decorators: []
+
+    code_structure: "Describe -> Context -> It (Ginkgo v2)"
 
     variables:
       closure_scope:
@@ -674,10 +714,18 @@ scenarios:
 
   - scenario_id: "007"
     test_id: "TS-GH-2378-007"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-2378"
+
+    patterns:
+      primary_pattern: "unit-test-env-propagation"
+      helpers_required:
+        - "go-exec-mock"
+      decorators: []
+
+    code_structure: "Describe -> Context -> It (Ginkgo v2)"
 
     variables:
       closure_scope:
@@ -733,21 +781,21 @@ scenarios:
       setup:
         - step_id: "SETUP-01"
           action: "Create test fixture with mock agent returning non-zero exit"
-          command: "Set up test case with expected exit code"
-          validation: "Fixture is ready"
+          command: "mockAgent := exec.Command(\"false\"); // or use a test helper that returns exit code 1"
+          validation: "Mock agent command is configured to exit with code 1"
       test_execution:
         - step_id: "TEST-01"
-          action: "Call runAgent or equivalent function"
-          command: "Invoke Go function under test"
-          validation: "Function completes"
+          action: "Call runAgent with the mock agent command"
+          command: "err := runAgent(ctx, mockConfig)"
+          validation: "runAgent returns without panic; err may be non-nil (expected for non-zero exit)"
         - step_id: "TEST-02"
-          action: "Capture environment variables passed to post-script"
-          command: "Inspect cmd.Env for AGENT_EXIT_CODE"
-          validation: "AGENT_EXIT_CODE is present with correct value"
+          action: "Inspect cmd.Env slice for AGENT_EXIT_CODE entry"
+          command: "envVars := capturedCmd.Env; Expect(envVars).To(ContainElement(\"AGENT_EXIT_CODE=1\"))"
+          validation: "AGENT_EXIT_CODE=1 is present in cmd.Env slice"
       cleanup:
         - step_id: "CLEANUP-01"
-          action: "Clean up test fixtures"
-          command: "Standard Go test cleanup"
+          action: "Clean up test fixtures via Go defer / t.Cleanup"
+          command: "// Handled by GinkgoT().Cleanup() or AfterEach block"
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -769,10 +817,18 @@ scenarios:
 
   - scenario_id: "008"
     test_id: "TS-GH-2378-008"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-2378"
+
+    patterns:
+      primary_pattern: "shell-function-unit"
+      helpers_required:
+        - "bash-mock-functions"
+      decorators: []
+
+    code_structure: "Describe -> Context -> It (Ginkgo v2)"
 
     variables:
       closure_scope:
@@ -833,9 +889,9 @@ scenarios:
     test_steps:
       setup:
         - step_id: "SETUP-01"
-          action: "Set AGENT_EXIT_CODE to non-zero and simulate existing changes"
-          command: "export AGENT_EXIT_CODE=1; simulate changed files"
-          validation: "Variables set, changes simulated"
+          action: "Set AGENT_EXIT_CODE to non-zero and mock git diff to report changed files"
+          command: "export AGENT_EXIT_CODE=1; git() { if [ \"$1\" = \"diff\" ] && [ \"$2\" = \"--name-only\" ]; then echo 'file1.go\nfile2.go\nfile3.go'; fi; command git \"$@\"; }"
+          validation: "AGENT_EXIT_CODE=1, git diff --name-only returns 3 files"
       test_execution:
         - step_id: "TEST-01"
           action: "Call detect_noop function"
@@ -860,10 +916,18 @@ scenarios:
 
   - scenario_id: "009"
     test_id: "TS-GH-2378-009"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P2"
     mvp: false
     requirement_id: "GH-2378"
+
+    patterns:
+      primary_pattern: "shell-function-unit"
+      helpers_required:
+        - "bash-mock-functions"
+      decorators: []
+
+    code_structure: "Describe -> Context -> It (Ginkgo v2)"
 
     variables:
       closure_scope:
@@ -922,9 +986,9 @@ scenarios:
     test_steps:
       setup:
         - step_id: "SETUP-01"
-          action: "Set AGENT_EXIT_CODE to non-zero and simulate detached HEAD"
-          command: "export AGENT_EXIT_CODE=1; simulate detached HEAD"
-          validation: "Variables set, detached HEAD simulated"
+          action: "Set AGENT_EXIT_CODE to non-zero and mock git symbolic-ref to fail (detached HEAD)"
+          command: "export AGENT_EXIT_CODE=1; git() { if [ \"$1\" = \"symbolic-ref\" ] && [ \"$2\" = \"HEAD\" ]; then return 1; fi; command git \"$@\"; }"
+          validation: "AGENT_EXIT_CODE=1, git symbolic-ref HEAD returns non-zero"
       test_execution:
         - step_id: "TEST-01"
           action: "Call detect_noop function"
@@ -949,10 +1013,19 @@ scenarios:
 
   - scenario_id: "010"
     test_id: "TS-GH-2378-010"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-2378"
+
+    patterns:
+      primary_pattern: "functional-integration"
+      helpers_required:
+        - "bash-mock-functions"
+        - "gh-cli-mock"
+      decorators: []
+
+    code_structure: "Describe -> Context -> It (Ginkgo v2)"
 
     variables:
       closure_scope:
@@ -1022,22 +1095,22 @@ scenarios:
           command: "Export all required environment variables with non-zero exit code"
           validation: "All variables set"
         - step_id: "SETUP-02"
-          action: "Mock or intercept gh issue comment call"
-          command: "Set up mock to capture comment body"
-          validation: "Mock is active"
+          action: "Create mock gh binary that captures comment body to a temp file"
+          command: "mkdir -p \"$MOCK_BIN_DIR\"; printf '#!/bin/bash\\nif [ \"$1\" = \"issue\" ] && [ \"$2\" = \"comment\" ]; then\\n  echo \"$4\" > \"$CAPTURED_COMMENT_FILE\"\\nfi\\n' > \"$MOCK_BIN_DIR/gh\"; chmod +x \"$MOCK_BIN_DIR/gh\"; export PATH=\"$MOCK_BIN_DIR:$PATH\""
+          validation: "Mock gh binary exists at $MOCK_BIN_DIR/gh and is executable"
       test_execution:
         - step_id: "TEST-01"
           action: "Run post-code.sh"
           command: "bash post-code.sh"
-          validation: "Script completes (may exit non-zero, that's expected)"
+          validation: "Script exits with expected non-zero code; capture exit code for assertion"
         - step_id: "TEST-02"
-          action: "Capture the comment body posted to the issue"
-          command: "Read captured comment from mock"
-          validation: "Comment body is available for inspection"
+          action: "Read the captured comment body from mock output file"
+          command: "issueComment=$(cat \"$CAPTURED_COMMENT_FILE\")"
+          validation: "issueComment variable contains non-empty string"
       cleanup:
         - step_id: "CLEANUP-01"
-          action: "Remove mock and clean up environment"
-          command: "Remove mock, unset variables"
+          action: "Remove mock binary directory and clean up environment"
+          command: "rm -rf \"$MOCK_BIN_DIR\"; rm -f \"$CAPTURED_COMMENT_FILE\"; unset AGENT_EXIT_CODE PUSH_TOKEN REPO_FULL_NAME ISSUE_NUMBER GITHUB_RUN_ID"
 
     assertions:
       - assertion_id: "ASSERT-01"

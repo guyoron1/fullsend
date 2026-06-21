@@ -33,8 +33,11 @@ var _ = Describe("[GH-2378] End-to-End Agent Failure Status Comment", func() {
 		    - GITHUB_RUN_ID set to workflow run identifier
 
 		Steps:
-		    1. Run post-code.sh with agent failure conditions
-		    2. Capture the comment body posted to the issue
+		    1. Set environment variables: AGENT_EXIT_CODE=1, PUSH_TOKEN, REPO_FULL_NAME, ISSUE_NUMBER, GITHUB_RUN_ID
+		    2. Create mock gh binary in temp dir that captures comment body to file
+		    3. Prepend mock dir to PATH so post-code.sh uses mock gh
+		    4. Run post-code.sh (expect non-zero exit)
+		    5. Read captured comment body from mock output file
 
 		Expected:
 		    - Issue comment contains 'Code agent failed'
