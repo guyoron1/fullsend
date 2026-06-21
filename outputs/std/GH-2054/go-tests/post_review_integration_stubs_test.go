@@ -18,7 +18,7 @@ func TestPostReviewIntegration(t *testing.T) {
 
 	Preconditions:
 	    - Go toolchain 1.23+ available
-	    - FullSend CLI built from source at PR #2189 or later
+	    - FullSend CLI built from source with GH-2054 fix applied
 	    - Mock forge.Client available for stubbing GitHub API calls
 	*/
 

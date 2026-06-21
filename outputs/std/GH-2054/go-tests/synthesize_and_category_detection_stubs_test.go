@@ -18,7 +18,7 @@ func TestSynthesizeReviewBody(t *testing.T) {
 
 	Preconditions:
 	    - Go toolchain 1.23+ available
-	    - FullSend CLI built from source at PR #2189 or later
+	    - FullSend CLI built from source with GH-2054 fix applied
 	*/
 
 	t.Run("groups findings by severity in descending order", func(t *testing.T) {
@@ -77,7 +77,7 @@ func TestCategoryBasedConsistencyDetection(t *testing.T) {
 
 	Preconditions:
 	    - Go toolchain 1.23+ available
-	    - FullSend CLI built from source at PR #2189 or later
+	    - FullSend CLI built from source with GH-2054 fix applied
 	*/
 
 	t.Run("no-op when body already references all finding categories", func(t *testing.T) {

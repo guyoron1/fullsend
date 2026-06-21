@@ -5,1708 +5,1562 @@
 # Format: v2.1-enhanced (comprehensive single-file STD)
 
 document_metadata:
-  std_version: "2.1-enhanced"
-  generated_date: "2026-06-21"
-  jira_issue: "GH-2054"
-  jira_summary: "Review Agent Summary Comment Should Reflect Inline Findings and Verdict"
+  std_version: 2.1-enhanced
+  generated_date: '2026-06-21'
+  jira_issue: GH-2054
+  jira_summary: Review Agent Summary Comment Should Reflect Inline Findings and Verdict
   source_bugs:
-    - "GH-2054"
+  - GH-2054
   stp_reference:
-    file: "outputs/stp/GH-2054/GH-2054_test_plan.md"
-    version: "v1"
-    sections_covered: "Section III - Requirements-to-Tests Mapping"
-  related_prs:
-    - repo: "fullsend-ai/fullsend"
-      pr_number: 2189
-      url: "https://github.com/fullsend-ai/fullsend/pull/2189"
-      title: "Fix body-verdict consistency in post-review command"
-      merged: false
-  owning_sig: "harness"
+    file: outputs/stp/GH-2054/GH-2054_test_plan.md
+    version: v1
+    sections_covered: Section III - Requirements-to-Tests Mapping
+  owning_sig: harness
   total_scenarios: 16
-  unit_test_count: 11
-  functional_count: 5
+  tier_1_count: 16
+  tier_2_count: 0
   p0_count: 6
   p1_count: 7
   p2_count: 3
-
 code_generation_config:
-  std_version: "2.1-enhanced"
-  framework: "testing"
-  assertion_library: "testify"
-  language: "go"
-  package_name: "cli_test"
-  context_init: "context.Background()"
+  std_version: 2.1-enhanced
+  framework: testing
+  assertion_library: testify
+  language: go
+  package_name: cli_test
+  context_init: context.Background()
   imports:
     standard:
-      - "context"
-      - "testing"
-      - "strings"
+    - context
+    - testing
+    - strings
     test_framework:
-      - path: "github.com/stretchr/testify/assert"
-      - path: "github.com/stretchr/testify/require"
+    - path: github.com/stretchr/testify/assert
+    - path: github.com/stretchr/testify/require
     project:
-      - "github.com/fullsend-ai/fullsend/internal/cli"
+    - github.com/fullsend-ai/fullsend/internal/cli
   timeout_constants:
-    default: "30s"
-    setup: "60s"
-
+    default: 30s
+    setup: 60s
 common_preconditions:
   infrastructure:
-    - name: "Go toolchain"
-      requirement: "Go 1.23+"
-      validation: "go version"
-    - name: "FullSend CLI"
-      requirement: "Built from source at PR #2189 or later"
-      validation: "go build ./cmd/fullsend"
+  - name: Go toolchain
+    requirement: Go 1.23+
+    validation: go version
+  - name: FullSend CLI
+    requirement: Built from source with GH-2054 fix applied
+    validation: go build ./cmd/fullsend
   cluster_configuration:
-    topology: "None"
-    cpu_features: "Standard"
-    storage: "N/A"
-    network: "N/A"
+    topology: None
+    cpu_features: Standard
+    storage: N/A
+    network: N/A
   rbac_requirements: []
   operators: []
-
 scenarios:
-  # ============================================================
-  # BODY-VERDICT CONSISTENCY ENFORCEMENT (Unit Tests)
-  # ============================================================
-
-  - scenario_id: "001"
-    test_id: "TS-GH-2054-001"
-    tier: "Unit Tests"
-    priority: "P0"
-    mvp: true
-    requirement_id: "GH-2054"
-
-    variables:
-      closure_scope:
-        - name: "result"
-          type: "*ReviewResult"
-          initialized_in: "test"
-          used_in: ["test"]
-          comment: "Review result with contradictory body and findings"
-        - name: "patched"
-          type: "string"
-          initialized_in: "test"
-          used_in: ["test"]
-          comment: "Output body after consistency enforcement"
-
-    test_structure:
-      type: "table-driven"
-      describe:
-        description: "ensureBodyFindingsConsistency"
-      context:
-        description: "when findings contradict summary body"
-        decorators: []
-      it:
-        description: "should replace body with synthesized findings summary"
-        test_id_format: "[test_id:TS-GH-2054-001]"
-
-    code_structure: |
-      func TestEnsureBodyFindingsConsistency_ReplacesContradictoryBody(t *testing.T) {
-        // Arrange: ReviewResult with action=request-changes,
-        // critical findings, but body says "No findings"
-        // Act: call ensureBodyFindingsConsistency
-        // Assert: body is replaced with synthesized content
-      }
-
-    test_objective:
-      title: "Verify body replaced when findings contradict summary"
-      what: |
-        Tests that ensureBodyFindingsConsistency detects when a review body
-        contains "No findings" or similarly empty content while the action is
-        "request-changes" and the findings array contains critical/high severity
-        items. The function should replace the body with a synthesized summary.
-      why: |
-        This is the core bug fix for GH-2054. Without this check, the sticky
-        summary comment can say "No findings" while the formal review is
-        CHANGES_REQUESTED with critical inline comments, misleading reviewers.
-      acceptance_criteria:
-        - "Body is replaced when action is request-changes and critical findings exist but body omits them"
-        - "Replaced body contains all critical/high finding categories"
-        - "Original contradictory body is not preserved"
-
-    classification:
-      test_type: "Unit"
-      scope: "Single-function"
-      automation_approach: "go test with testify"
-
-    specific_preconditions: []
-
-    test_data:
-      resource_definitions:
-        - name: "contradictory_review_result"
-          type: "ReviewResult"
-          yaml: |
-            action: "request-changes"
-            body: "## Review Summary\n\nNo findings to report."
-            findings:
-              - category: "logic-error"
-                severity: "critical"
-                file: "pkg/handler.go"
-                line: 42
-                message: "Nil pointer dereference in error path"
-                remediation: "Add nil check before accessing field"
-
-    test_steps:
-      setup:
-        - step_id: "SETUP-01"
-          action: "Create ReviewResult with contradictory body and critical findings"
-          command: "Construct ReviewResult struct in test"
-          validation: "Struct is properly initialized"
-      test_execution:
-        - step_id: "TEST-01"
-          action: "Call ensureBodyFindingsConsistency with the contradictory result"
-          command: "ensureBodyFindingsConsistency(&result)"
-          validation: "Function returns without error"
-        - step_id: "TEST-02"
-          action: "Verify body has been replaced"
-          command: "assert.NotContains(t, result.Body, \"No findings\")"
-          validation: "Body no longer contains contradictory text"
-        - step_id: "TEST-03"
-          action: "Verify synthesized body contains finding categories"
-          command: "assert.Contains(t, result.Body, \"logic-error\")"
-          validation: "Replaced body references the critical finding category"
-      cleanup: []
-
-    assertions:
-      - assertion_id: "ASSERT-01"
-        priority: "P0"
-        description: "Body no longer contains contradictory 'No findings' text"
-        condition: "result.Body does not contain 'No findings'"
-        failure_impact: "Core bug not fixed — misleading summary persists"
-      - assertion_id: "ASSERT-02"
-        priority: "P0"
-        description: "Synthesized body includes critical finding categories"
-        condition: "result.Body contains all critical/high category tokens"
-        failure_impact: "Synthesized body is incomplete — findings still hidden"
-
-    dependencies:
-      kubernetes_resources: []
-      external_tools: []
-      scenario_specific_rbac: []
-
-  - scenario_id: "002"
-    test_id: "TS-GH-2054-002"
-    tier: "Unit Tests"
-    priority: "P0"
-    mvp: true
-    requirement_id: "GH-2054"
-
-    variables:
-      closure_scope:
-        - name: "result"
-          type: "*ReviewResult"
-          initialized_in: "test"
-          used_in: ["test"]
-          comment: "Review result with approve or comment action"
-
-    test_structure:
-      type: "table-driven"
-      describe:
-        description: "ensureBodyFindingsConsistency"
-      context:
-        description: "when action is approve or comment"
-        decorators: []
-      it:
-        description: "should not modify the body"
-        test_id_format: "[test_id:TS-GH-2054-002]"
-
-    code_structure: |
-      func TestEnsureBodyFindingsConsistency_NoOpForApproveComment(t *testing.T) {
-        for _, action := range []string{"approve", "comment"} {
-          t.Run(action, func(t *testing.T) {
-            // Arrange: ReviewResult with non-blocking action
-            // Act: call ensureBodyFindingsConsistency
-            // Assert: body is unchanged
-          })
-        }
-      }
-
-    test_objective:
-      title: "Verify no-op for approve/comment actions"
-      what: |
-        Tests that ensureBodyFindingsConsistency does not modify the review body
-        when the action is "approve" or "comment", regardless of what findings
-        exist. These are non-blocking verdicts where consistency enforcement
-        is intentionally skipped.
-      why: |
-        The consistency check should only apply to blocking verdicts
-        (request-changes, reject). Modifying approve/comment bodies would be
-        unexpected behavior and could break existing workflows.
-      acceptance_criteria:
-        - "Body is unchanged when action is 'approve'"
-        - "Body is unchanged when action is 'comment'"
-        - "Body is unchanged even if findings array contains critical items"
-
-    classification:
-      test_type: "Unit"
-      scope: "Single-function"
-      automation_approach: "go test with testify"
-
-    specific_preconditions: []
-
-    test_data:
-      resource_definitions:
-        - name: "approve_result"
-          type: "ReviewResult"
-          yaml: |
-            action: "approve"
-            body: "LGTM - no issues found."
-            findings: []
-        - name: "comment_with_findings"
-          type: "ReviewResult"
-          yaml: |
-            action: "comment"
-            body: "Some notes for the author."
-            findings:
-              - category: "style"
-                severity: "critical"
-                message: "Inconsistent naming"
-
-    test_steps:
-      setup:
-        - step_id: "SETUP-01"
-          action: "Create ReviewResult with approve action"
-          command: "Construct ReviewResult struct"
-          validation: "Struct initialized with approve action"
-      test_execution:
-        - step_id: "TEST-01"
-          action: "Call ensureBodyFindingsConsistency for approve action"
-          command: "ensureBodyFindingsConsistency(&result)"
-          validation: "Function returns without error"
-        - step_id: "TEST-02"
-          action: "Verify body is unchanged"
-          command: "assert.Equal(t, originalBody, result.Body)"
-          validation: "Body matches original text exactly"
-      cleanup: []
-
-    assertions:
-      - assertion_id: "ASSERT-01"
-        priority: "P0"
-        description: "Body is not modified for non-blocking actions"
-        condition: "result.Body == originalBody for approve and comment actions"
-        failure_impact: "Consistency check incorrectly triggers on non-blocking verdicts"
-
-    dependencies:
-      kubernetes_resources: []
-      external_tools: []
-      scenario_specific_rbac: []
-
-  - scenario_id: "003"
-    test_id: "TS-GH-2054-003"
-    tier: "Unit Tests"
-    priority: "P1"
-    mvp: false
-    requirement_id: "GH-2054"
-
-    variables:
-      closure_scope:
-        - name: "result"
-          type: "*ReviewResult"
-          initialized_in: "test"
-          used_in: ["test"]
-          comment: "Review result with reject action and critical findings"
-
-    test_structure:
-      type: "single"
-      describe:
-        description: "ensureBodyFindingsConsistency"
-      context:
-        description: "when action is reject with critical findings"
-        decorators: []
-      it:
-        description: "should trigger consistency check and replace body"
-        test_id_format: "[test_id:TS-GH-2054-003]"
-
-    code_structure: |
-      func TestEnsureBodyFindingsConsistency_RejectAction(t *testing.T) {
-        // Arrange: ReviewResult with action=reject and critical findings
-        // Act: call ensureBodyFindingsConsistency
-        // Assert: body is replaced (reject is a blocking verdict)
-      }
-
-    test_objective:
-      title: "Verify reject action triggers consistency check"
-      what: |
-        Tests that the consistency check also applies to the "reject" action,
-        not just "request-changes". Both are blocking verdicts that should
-        trigger body-findings consistency enforcement.
-      why: |
-        The reject action maps to a blocking verdict. If the body contradicts
-        findings for a reject action, the same misleading behavior occurs.
-      acceptance_criteria:
-        - "Body is replaced when action is 'reject' and critical findings exist but body omits them"
-
-    classification:
-      test_type: "Unit"
-      scope: "Single-function"
-      automation_approach: "go test with testify"
-
-    specific_preconditions: []
-    test_data:
-      resource_definitions:
-        - name: "reject_result"
-          type: "ReviewResult"
-          yaml: |
-            action: "reject"
-            body: "No significant issues."
-            findings:
-              - category: "security-issue"
-                severity: "critical"
-                message: "Hardcoded credentials detected"
-
-    test_steps:
-      setup:
-        - step_id: "SETUP-01"
-          action: "Create ReviewResult with reject action and critical findings"
-          command: "Construct ReviewResult struct"
-          validation: "Struct initialized"
-      test_execution:
-        - step_id: "TEST-01"
-          action: "Call ensureBodyFindingsConsistency"
-          command: "ensureBodyFindingsConsistency(&result)"
-          validation: "Function returns without error"
-        - step_id: "TEST-02"
-          action: "Verify body was replaced"
-          command: "assert.Contains(t, result.Body, \"security-issue\")"
-          validation: "Body contains the critical finding category"
-      cleanup: []
-
-    assertions:
-      - assertion_id: "ASSERT-01"
-        priority: "P0"
-        description: "Reject action triggers body replacement"
-        condition: "Body is synthesized when reject + critical findings"
-        failure_impact: "Reject verdicts can still have contradictory summaries"
-
-    dependencies:
-      kubernetes_resources: []
-      external_tools: []
-      scenario_specific_rbac: []
-
-  - scenario_id: "004"
-    test_id: "TS-GH-2054-004"
-    tier: "Unit Tests"
-    priority: "P2"
-    mvp: false
-    requirement_id: "GH-2054"
-
-    variables:
-      closure_scope:
-        - name: "result"
-          type: "*ReviewResult"
-          initialized_in: "test"
-          used_in: ["test"]
-          comment: "Nil or empty ReviewResult for defensive testing"
-
-    test_structure:
-      type: "table-driven"
-      describe:
-        description: "ensureBodyFindingsConsistency"
-      context:
-        description: "when input is nil or empty"
-        decorators: []
-      it:
-        description: "should handle gracefully without panic"
-        test_id_format: "[test_id:TS-GH-2054-004]"
-
-    code_structure: |
-      func TestEnsureBodyFindingsConsistency_NilEmptyInput(t *testing.T) {
-        tests := []struct{
-          name string
-          result *ReviewResult
-        }{
-          {"nil result", nil},
-          {"empty findings", &ReviewResult{Action: "request-changes", Findings: nil}},
-          {"empty body", &ReviewResult{Action: "request-changes", Body: "", Findings: findings}},
-        }
-        for _, tt := range tests {
-          t.Run(tt.name, func(t *testing.T) {
-            // Act + Assert: no panic
-          })
-        }
-      }
-
-    test_objective:
-      title: "Verify error handling for nil/empty input"
-      what: |
-        Tests that ensureBodyFindingsConsistency handles edge cases gracefully:
-        nil result pointer, nil/empty findings array, empty body string.
-        None of these should cause a panic or runtime error.
-      why: |
-        Defensive input validation ensures the consistency check doesn't
-        introduce new crashes in production when unexpected input is received.
-      acceptance_criteria:
-        - "No panic when result is nil"
-        - "No panic when findings array is nil or empty"
-        - "No panic when body is empty string"
-
-    classification:
-      test_type: "Unit"
-      scope: "Single-function"
-      automation_approach: "go test with testify"
-
-    specific_preconditions: []
-    test_data:
-      resource_definitions: []
-
-    test_steps:
-      setup: []
-      test_execution:
-        - step_id: "TEST-01"
-          action: "Call ensureBodyFindingsConsistency with nil result"
-          command: "assert.NotPanics(t, func() { ensureBodyFindingsConsistency(nil) })"
-          validation: "No panic occurs"
-        - step_id: "TEST-02"
-          action: "Call with empty findings"
-          command: "ensureBodyFindingsConsistency(&ReviewResult{Findings: nil})"
-          validation: "No panic, body unchanged"
-        - step_id: "TEST-03"
-          action: "Call with empty body"
-          command: "ensureBodyFindingsConsistency(&ReviewResult{Body: \"\"})"
-          validation: "No panic, body remains empty or is synthesized"
-      cleanup: []
-
-    assertions:
-      - assertion_id: "ASSERT-01"
-        priority: "P0"
-        description: "No runtime panic for any nil/empty input combination"
-        condition: "Function completes without panic for all edge cases"
-        failure_impact: "Production crash risk from unexpected input"
-
-    dependencies:
-      kubernetes_resources: []
-      external_tools: []
-      scenario_specific_rbac: []
-
-  # ============================================================
-  # SYNTHESIZED BODY FORMATTING (Unit Tests)
-  # ============================================================
-
-  - scenario_id: "005"
-    test_id: "TS-GH-2054-005"
-    tier: "Unit Tests"
-    priority: "P0"
-    mvp: true
-    requirement_id: "GH-2054"
-
-    variables:
-      closure_scope:
-        - name: "findings"
-          type: "[]Finding"
-          initialized_in: "test"
-          used_in: ["test"]
-          comment: "Mixed-severity findings for body synthesis"
-        - name: "body"
-          type: "string"
-          initialized_in: "test"
-          used_in: ["test"]
-          comment: "Synthesized body output"
-
-    test_structure:
-      type: "single"
-      describe:
-        description: "synthesizeReviewBody"
-      context:
-        description: "with findings of mixed severity"
-        decorators: []
-      it:
-        description: "should group findings by severity in descending order"
-        test_id_format: "[test_id:TS-GH-2054-005]"
-
-    code_structure: |
-      func TestSynthesizeReviewBody_GroupsBySeverity(t *testing.T) {
-        // Arrange: findings with critical, high, medium, low severities
-        // Act: call synthesizeReviewBody
-        // Assert: output groups by severity: critical > high > medium > low > info
-      }
-
-    test_objective:
-      title: "Verify synthesized body groups findings by severity"
-      what: |
-        Tests that synthesizeReviewBody produces markdown with findings
-        organized by severity level in descending order: critical first,
-        then high, medium, low, and info last.
-      why: |
-        Severity ordering ensures reviewers see the most impactful issues
-        first. This is a core validation criterion from GH-2054.
-      acceptance_criteria:
-        - "Critical findings appear before high findings in output"
-        - "High findings appear before medium findings"
-        - "All severity groups are represented when findings of that severity exist"
-
-    classification:
-      test_type: "Unit"
-      scope: "Single-function"
-      automation_approach: "go test with testify"
-
-    specific_preconditions: []
-    test_data:
-      resource_definitions:
-        - name: "mixed_severity_findings"
-          type: "[]Finding"
-          yaml: |
-            - category: "logic-error"
-              severity: "critical"
-              message: "Nil pointer dereference"
-            - category: "performance"
-              severity: "medium"
-              message: "Unbounded loop"
-            - category: "security-issue"
-              severity: "high"
-              message: "Missing input validation"
-            - category: "style"
-              severity: "low"
-              message: "Inconsistent naming"
-
-    test_steps:
-      setup:
-        - step_id: "SETUP-01"
-          action: "Create findings array with mixed severities"
-          command: "Construct []Finding slice"
-          validation: "Array contains findings of different severities"
-      test_execution:
-        - step_id: "TEST-01"
-          action: "Call synthesizeReviewBody with mixed findings"
-          command: "body := synthesizeReviewBody(findings)"
-          validation: "Non-empty body returned"
-        - step_id: "TEST-02"
-          action: "Verify severity ordering"
-          command: "criticalIdx < highIdx < mediumIdx < lowIdx"
-          validation: "Critical section appears first, then high, then medium, then low"
-      cleanup: []
-
-    assertions:
-      - assertion_id: "ASSERT-01"
-        priority: "P0"
-        description: "Findings grouped by severity in descending order"
-        condition: "strings.Index for critical < high < medium < low"
-        failure_impact: "Reviewers may miss critical issues buried below low-severity items"
-
-    dependencies:
-      kubernetes_resources: []
-      external_tools: []
-      scenario_specific_rbac: []
-
-  - scenario_id: "006"
-    test_id: "TS-GH-2054-006"
-    tier: "Unit Tests"
-    priority: "P1"
-    mvp: false
-    requirement_id: "GH-2054"
-
-    variables:
-      closure_scope:
-        - name: "findings"
-          type: "[]Finding"
-          initialized_in: "test"
-          used_in: ["test"]
-          comment: "Findings with file location metadata"
-        - name: "body"
-          type: "string"
-          initialized_in: "test"
-          used_in: ["test"]
-          comment: "Synthesized body output"
-
-    test_structure:
-      type: "single"
-      describe:
-        description: "synthesizeReviewBody"
-      context:
-        description: "with findings that have file locations"
-        decorators: []
-      it:
-        description: "should include category, file, and remediation"
-        test_id_format: "[test_id:TS-GH-2054-006]"
-
-    code_structure: |
-      func TestSynthesizeReviewBody_IncludesDetailedInfo(t *testing.T) {
-        // Arrange: findings with category, file, line, remediation
-        // Act: call synthesizeReviewBody
-        // Assert: output contains category, file:line, and remediation text
-      }
-
-    test_objective:
-      title: "Verify findings include category, file location, and remediation"
-      what: |
-        Tests that each finding in the synthesized body includes the category
-        label, file path with line number, and the remediation suggestion,
-        providing actionable detail for the reviewer.
-      why: |
-        The synthesized body must provide enough detail for reviewers to
-        understand and act on each finding without navigating to inline comments.
-      acceptance_criteria:
-        - "Body contains the category token for each finding"
-        - "Body contains file:line reference for findings with file locations"
-        - "Body contains remediation text for each finding"
-
-    classification:
-      test_type: "Unit"
-      scope: "Single-function"
-      automation_approach: "go test with testify"
-
-    specific_preconditions: []
-    test_data:
-      resource_definitions:
-        - name: "detailed_finding"
-          type: "Finding"
-          yaml: |
-            category: "logic-error"
-            severity: "critical"
-            file: "pkg/handler.go"
-            line: 42
-            message: "Nil pointer dereference"
-            remediation: "Add nil check before accessing field"
-
-    test_steps:
-      setup:
-        - step_id: "SETUP-01"
-          action: "Create finding with full metadata"
-          command: "Construct Finding struct"
-          validation: "Finding has category, file, line, remediation"
-      test_execution:
-        - step_id: "TEST-01"
-          action: "Call synthesizeReviewBody"
-          command: "body := synthesizeReviewBody([]Finding{finding})"
-          validation: "Non-empty body returned"
-        - step_id: "TEST-02"
-          action: "Verify body contains detailed info"
-          command: "assert.Contains for category, file path, remediation"
-          validation: "All three fields present in output"
-      cleanup: []
-
-    assertions:
-      - assertion_id: "ASSERT-01"
-        priority: "P0"
-        description: "Synthesized body includes category, file, and remediation"
-        condition: "Body contains 'logic-error', 'pkg/handler.go', and remediation text"
-        failure_impact: "Synthesized summary lacks actionable detail"
-
-    dependencies:
-      kubernetes_resources: []
-      external_tools: []
-      scenario_specific_rbac: []
-
-  - scenario_id: "007"
-    test_id: "TS-GH-2054-007"
-    tier: "Unit Tests"
-    priority: "P2"
-    mvp: false
-    requirement_id: "GH-2054"
-
-    variables:
-      closure_scope:
-        - name: "findings"
-          type: "[]Finding"
-          initialized_in: "test"
-          used_in: ["test"]
-          comment: "Findings without file location metadata"
-        - name: "body"
-          type: "string"
-          initialized_in: "test"
-          used_in: ["test"]
-          comment: "Synthesized body output"
-
-    test_structure:
-      type: "single"
-      describe:
-        description: "synthesizeReviewBody"
-      context:
-        description: "with findings lacking file locations"
-        decorators: []
-      it:
-        description: "should render finding without file reference"
-        test_id_format: "[test_id:TS-GH-2054-007]"
-
-    code_structure: |
-      func TestSynthesizeReviewBody_NoFileLocation(t *testing.T) {
-        // Arrange: finding without File or Line fields
-        // Act: call synthesizeReviewBody
-        // Assert: output renders gracefully without file reference
-      }
-
-    test_objective:
-      title: "Verify findings without file locations render correctly"
-      what: |
-        Tests that synthesizeReviewBody handles findings that lack file and
-        line references gracefully, rendering them without a broken or empty
-        file location string.
-      why: |
-        Some findings (e.g., architectural concerns) may not reference a
-        specific file. The rendering must degrade gracefully.
-      acceptance_criteria:
-        - "No empty file reference markers in output"
-        - "Finding message and category still displayed"
-        - "No panic or error when file/line are zero values"
-
-    classification:
-      test_type: "Unit"
-      scope: "Single-function"
-      automation_approach: "go test with testify"
-
-    specific_preconditions: []
-    test_data:
-      resource_definitions:
-        - name: "no_file_finding"
-          type: "Finding"
-          yaml: |
-            category: "architecture"
-            severity: "high"
-            message: "Missing abstraction layer"
-            remediation: "Extract interface for dependency injection"
-
-    test_steps:
-      setup:
-        - step_id: "SETUP-01"
-          action: "Create finding without file/line fields"
-          command: "Construct Finding struct with empty File"
-          validation: "Finding has no file reference"
-      test_execution:
-        - step_id: "TEST-01"
-          action: "Call synthesizeReviewBody"
-          command: "body := synthesizeReviewBody([]Finding{finding})"
-          validation: "Non-empty body returned"
-        - step_id: "TEST-02"
-          action: "Verify no broken file reference"
-          command: "assert.NotContains(t, body, \":0\")"
-          validation: "No ':0' or empty file markers in output"
-      cleanup: []
-
-    assertions:
-      - assertion_id: "ASSERT-01"
-        priority: "P0"
-        description: "Graceful rendering without file location"
-        condition: "Body contains finding info without broken file reference"
-        failure_impact: "Synthesized body has confusing empty file markers"
-
-    dependencies:
-      kubernetes_resources: []
-      external_tools: []
-      scenario_specific_rbac: []
-
-  # ============================================================
-  # CATEGORY-BASED CONSISTENCY DETECTION (Unit Tests)
-  # ============================================================
-
-  - scenario_id: "008"
-    test_id: "TS-GH-2054-008"
-    tier: "Unit Tests"
-    priority: "P0"
-    mvp: true
-    requirement_id: "GH-2054"
-
-    variables:
-      closure_scope:
-        - name: "result"
-          type: "*ReviewResult"
-          initialized_in: "test"
-          used_in: ["test"]
-          comment: "Review result where body already references finding categories"
-
-    test_structure:
-      type: "single"
-      describe:
-        description: "ensureBodyFindingsConsistency"
-      context:
-        description: "when body already references all finding categories"
-        decorators: []
-      it:
-        description: "should not replace the body"
-        test_id_format: "[test_id:TS-GH-2054-008]"
-
-    code_structure: |
-      func TestEnsureBodyFindingsConsistency_NoOpWhenCategoriesPresent(t *testing.T) {
-        // Arrange: ReviewResult with body mentioning all finding categories
-        // Act: call ensureBodyFindingsConsistency
-        // Assert: body is unchanged
-      }
-
-    test_objective:
-      title: "Verify no-op when body already references finding categories"
-      what: |
-        Tests that ensureBodyFindingsConsistency does not replace the body
-        when the existing body text already contains references to all
-        critical/high finding categories (e.g., body mentions "logic-error"
-        when a logic-error finding exists).
-      why: |
-        A body that already references findings is consistent — replacing it
-        would destroy potentially valuable agent-generated context and phrasing.
-      acceptance_criteria:
-        - "Body is unchanged when all critical/high category tokens appear in body"
-        - "Original body content is fully preserved"
-
-    classification:
-      test_type: "Unit"
-      scope: "Single-function"
-      automation_approach: "go test with testify"
-
-    specific_preconditions: []
-    test_data:
-      resource_definitions:
-        - name: "consistent_result"
-          type: "ReviewResult"
-          yaml: |
-            action: "request-changes"
-            body: "## Review\n\nFound a logic-error in the handler code.\n\nAlso detected a security-issue with credentials."
-            findings:
-              - category: "logic-error"
-                severity: "critical"
-                message: "Nil pointer dereference"
-              - category: "security-issue"
-                severity: "high"
-                message: "Hardcoded credentials"
-
-    test_steps:
-      setup:
-        - step_id: "SETUP-01"
-          action: "Create ReviewResult with body referencing all categories"
-          command: "Construct ReviewResult struct"
-          validation: "Body contains all finding category tokens"
-      test_execution:
-        - step_id: "TEST-01"
-          action: "Call ensureBodyFindingsConsistency"
-          command: "ensureBodyFindingsConsistency(&result)"
-          validation: "Function returns without error"
-        - step_id: "TEST-02"
-          action: "Verify body unchanged"
-          command: "assert.Equal(t, originalBody, result.Body)"
-          validation: "Body exactly matches original"
-      cleanup: []
-
-    assertions:
-      - assertion_id: "ASSERT-01"
-        priority: "P0"
-        description: "Body preserved when categories already referenced"
-        condition: "result.Body == originalBody"
-        failure_impact: "Valid agent-generated body unnecessarily replaced"
-
-    dependencies:
-      kubernetes_resources: []
-      external_tools: []
-      scenario_specific_rbac: []
-
-  - scenario_id: "009"
-    test_id: "TS-GH-2054-009"
-    tier: "Unit Tests"
-    priority: "P0"
-    mvp: true
-    requirement_id: "GH-2054"
-
-    variables:
-      closure_scope:
-        - name: "result"
-          type: "*ReviewResult"
-          initialized_in: "test"
-          used_in: ["test"]
-          comment: "Review result where body only references some finding categories"
-
-    test_structure:
-      type: "single"
-      describe:
-        description: "ensureBodyFindingsConsistency"
-      context:
-        description: "when body references only a subset of critical/high categories"
-        decorators: []
-      it:
-        description: "should replace body to include all findings"
-        test_id_format: "[test_id:TS-GH-2054-009]"
-
-    code_structure: |
-      func TestEnsureBodyFindingsConsistency_PartialCategoryMatch(t *testing.T) {
-        // Arrange: body mentions "logic-error" but not "security-issue"
-        // Act: call ensureBodyFindingsConsistency
-        // Assert: body is replaced to cover all categories
-      }
-
-    test_objective:
-      title: "Verify body replaced when only a subset of critical/high categories are referenced"
-      what: |
-        Tests that the consistency check triggers when the body mentions some
-        but not all critical/high finding categories. Partial coverage is not
-        sufficient — all significant findings must be visible.
-      why: |
-        A body that mentions only 1 of 3 critical findings gives a false sense
-        of completeness. Replacing ensures all significant issues are surfaced.
-      acceptance_criteria:
-        - "Body is replaced when one critical category is mentioned but another is missing"
-        - "Replacement body includes all critical/high categories"
-
-    classification:
-      test_type: "Unit"
-      scope: "Single-function"
-      automation_approach: "go test with testify"
-
-    specific_preconditions: []
-    test_data:
-      resource_definitions:
-        - name: "partial_coverage_result"
-          type: "ReviewResult"
-          yaml: |
-            action: "request-changes"
-            body: "Found a logic-error in the code."
-            findings:
-              - category: "logic-error"
-                severity: "critical"
-                message: "Nil pointer dereference"
-              - category: "security-issue"
-                severity: "critical"
-                message: "Missing authentication check"
-
-    test_steps:
-      setup:
-        - step_id: "SETUP-01"
-          action: "Create ReviewResult with partial category coverage in body"
-          command: "Construct ReviewResult struct"
-          validation: "Body mentions logic-error but not security-issue"
-      test_execution:
-        - step_id: "TEST-01"
-          action: "Call ensureBodyFindingsConsistency"
-          command: "ensureBodyFindingsConsistency(&result)"
-          validation: "Function returns without error"
-        - step_id: "TEST-02"
-          action: "Verify body was replaced"
-          command: "assert.Contains(t, result.Body, \"security-issue\")"
-          validation: "Body now references the missing category"
-      cleanup: []
-
-    assertions:
-      - assertion_id: "ASSERT-01"
-        priority: "P0"
-        description: "Body replaced when critical categories only partially covered"
-        condition: "Synthesized body contains both 'logic-error' and 'security-issue'"
-        failure_impact: "Some critical findings remain hidden in summary"
-
-    dependencies:
-      kubernetes_resources: []
-      external_tools: []
-      scenario_specific_rbac: []
-
-  - scenario_id: "010"
-    test_id: "TS-GH-2054-010"
-    tier: "Unit Tests"
-    priority: "P2"
-    mvp: false
-    requirement_id: "GH-2054"
-
-    variables:
-      closure_scope:
-        - name: "result"
-          type: "*ReviewResult"
-          initialized_in: "test"
-          used_in: ["test"]
-          comment: "Review result with mixed-case category tokens in body"
-
-    test_structure:
-      type: "single"
-      describe:
-        description: "ensureBodyFindingsConsistency"
-      context:
-        description: "when body references categories in different cases"
-        decorators: []
-      it:
-        description: "should match categories case-insensitively"
-        test_id_format: "[test_id:TS-GH-2054-010]"
-
-    code_structure: |
-      func TestEnsureBodyFindingsConsistency_CaseInsensitiveMatch(t *testing.T) {
-        // Arrange: body contains "Logic-Error" (mixed case), finding has "logic-error"
-        // Act: call ensureBodyFindingsConsistency
-        // Assert: body is NOT replaced (case-insensitive match succeeds)
-      }
-
-    test_objective:
-      title: "Verify case-insensitive category matching"
-      what: |
-        Tests that category matching between the body text and finding
-        categories is case-insensitive. A body containing "Logic-Error"
-        should match a finding with category "logic-error".
-      why: |
-        Agent-generated bodies may use title case or mixed case for
-        category tokens. Case-sensitive matching would cause unnecessary
-        body replacement.
-      acceptance_criteria:
-        - "Body with 'Logic-Error' matches finding category 'logic-error'"
-        - "Body is not replaced when categories match case-insensitively"
-
-    classification:
-      test_type: "Unit"
-      scope: "Single-function"
-      automation_approach: "go test with testify"
-
-    specific_preconditions: []
-    test_data:
-      resource_definitions:
-        - name: "mixed_case_result"
-          type: "ReviewResult"
-          yaml: |
-            action: "request-changes"
-            body: "Found a Logic-Error in the handler."
-            findings:
-              - category: "logic-error"
-                severity: "critical"
-                message: "Nil pointer dereference"
-
-    test_steps:
-      setup:
-        - step_id: "SETUP-01"
-          action: "Create ReviewResult with mixed-case category in body"
-          command: "Construct ReviewResult struct"
-          validation: "Body uses 'Logic-Error' while finding uses 'logic-error'"
-      test_execution:
-        - step_id: "TEST-01"
-          action: "Call ensureBodyFindingsConsistency"
-          command: "ensureBodyFindingsConsistency(&result)"
-          validation: "Function returns without error"
-        - step_id: "TEST-02"
-          action: "Verify body is unchanged (case-insensitive match)"
-          command: "assert.Equal(t, originalBody, result.Body)"
-          validation: "Body not replaced"
-      cleanup: []
-
-    assertions:
-      - assertion_id: "ASSERT-01"
-        priority: "P0"
-        description: "Case-insensitive category matching works"
-        condition: "Body unchanged when case-insensitive match finds all categories"
-        failure_impact: "Valid bodies unnecessarily replaced due to case mismatch"
-
-    dependencies:
-      kubernetes_resources: []
-      external_tools: []
-      scenario_specific_rbac: []
-
-  - scenario_id: "011"
-    test_id: "TS-GH-2054-011"
-    tier: "Unit Tests"
-    priority: "P1"
-    mvp: false
-    requirement_id: "GH-2054"
-
-    variables:
-      closure_scope:
-        - name: "result"
-          type: "*ReviewResult"
-          initialized_in: "test"
-          used_in: ["test"]
-          comment: "Review result with only low/medium severity findings"
-
-    test_structure:
-      type: "single"
-      describe:
-        description: "ensureBodyFindingsConsistency"
-      context:
-        description: "when only low/medium severity findings exist"
-        decorators: []
-      it:
-        description: "should not replace the body"
-        test_id_format: "[test_id:TS-GH-2054-011]"
-
-    code_structure: |
-      func TestEnsureBodyFindingsConsistency_NoOpForLowMediumOnly(t *testing.T) {
-        // Arrange: request-changes with only low/medium findings
-        // Act: call ensureBodyFindingsConsistency
-        // Assert: body is unchanged
-      }
-
-    test_objective:
-      title: "Verify no-op for only low/medium severity findings"
-      what: |
-        Tests that the consistency check does not trigger when the findings
-        array contains only low and/or medium severity items. The check
-        only applies when critical or high severity findings are present.
-      why: |
-        Low/medium findings are less impactful. Replacing the body for
-        these would be overly aggressive and could disrupt valid summaries.
-      acceptance_criteria:
-        - "Body is unchanged when only low severity findings exist"
-        - "Body is unchanged when only medium severity findings exist"
-        - "Body is unchanged when both low and medium but no critical/high findings exist"
-
-    classification:
-      test_type: "Unit"
-      scope: "Single-function"
-      automation_approach: "go test with testify"
-
-    specific_preconditions: []
-    test_data:
-      resource_definitions:
-        - name: "low_medium_result"
-          type: "ReviewResult"
-          yaml: |
-            action: "request-changes"
-            body: "Minor suggestions for improvement."
-            findings:
-              - category: "style"
-                severity: "low"
-                message: "Inconsistent naming convention"
-              - category: "performance"
-                severity: "medium"
-                message: "Consider caching result"
-
-    test_steps:
-      setup:
-        - step_id: "SETUP-01"
-          action: "Create ReviewResult with only low/medium findings"
-          command: "Construct ReviewResult struct"
-          validation: "No critical or high severity findings"
-      test_execution:
-        - step_id: "TEST-01"
-          action: "Call ensureBodyFindingsConsistency"
-          command: "ensureBodyFindingsConsistency(&result)"
-          validation: "Function returns without error"
-        - step_id: "TEST-02"
-          action: "Verify body is unchanged"
-          command: "assert.Equal(t, originalBody, result.Body)"
-          validation: "Body matches original"
-      cleanup: []
-
-    assertions:
-      - assertion_id: "ASSERT-01"
-        priority: "P0"
-        description: "Body unchanged for low/medium-only findings"
-        condition: "result.Body == originalBody"
-        failure_impact: "Consistency check too aggressive — replaces valid bodies"
-
-    dependencies:
-      kubernetes_resources: []
-      external_tools: []
-      scenario_specific_rbac: []
-
-  # ============================================================
-  # POST-REVIEW CLI INTEGRATION (Functional Tests)
-  # ============================================================
-
-  - scenario_id: "012"
-    test_id: "TS-GH-2054-012"
-    tier: "Functional"
-    priority: "P0"
-    mvp: true
-    requirement_id: "GH-2054"
-
-    variables:
-      closure_scope:
-        - name: "cmd"
-          type: "*exec.Cmd"
-          initialized_in: "test"
-          used_in: ["test"]
-          comment: "CLI command execution for post-review"
-        - name: "output"
-          type: "string"
-          initialized_in: "test"
-          used_in: ["test"]
-          comment: "CLI stdout/stderr output"
-
-    test_structure:
-      type: "single"
-      describe:
-        description: "post-review command"
-      context:
-        description: "when review result has contradictory body"
-        decorators: []
-      it:
-        description: "should apply consistency check before posting"
-        test_id_format: "[test_id:TS-GH-2054-012]"
-
-    code_structure: |
-      func TestPostReviewCommand_AppliesConsistencyCheck(t *testing.T) {
-        // Arrange: mock forge.Client, create contradictory review JSON
-        // Act: invoke post-review command with contradictory input
-        // Assert: posted comment body contains findings, not "No findings"
-      }
-
-    test_objective:
-      title: "Verify post-review command applies consistency check before posting"
-      what: |
-        Tests the integration point where the consistency check runs in the
-        post-review CLI command flow. Verifies that after parsing the review
-        result JSON but before posting the sticky comment, the body is checked
-        for contradictions and replaced if necessary.
-      why: |
-        This is the end-to-end validation that the consistency check is wired
-        into the correct point in the command pipeline. Without this, the unit
-        tests pass but the fix may not actually run in production.
-      acceptance_criteria:
-        - "Consistency check runs between result parsing and comment posting"
-        - "Posted comment body reflects findings, not original contradictory text"
-
-    classification:
-      test_type: "Functional"
-      scope: "CLI command integration"
-      automation_approach: "go test with testify and mock forge.Client"
-
-    specific_preconditions:
-      - name: "Mock forge.Client"
-        requirement: "Stubbed GitHub API client capturing posted comment body"
-        validation: "Mock captures Post() call arguments"
-
-    test_data:
-      resource_definitions:
-        - name: "contradictory_review_json"
-          type: "ReviewResult JSON"
-          yaml: |
-            {
-              "action": "request-changes",
-              "body": "No significant findings.",
-              "findings": [
-                {
-                  "category": "logic-error",
-                  "severity": "critical",
-                  "file": "pkg/handler.go",
-                  "line": 42,
-                  "message": "Nil pointer dereference"
-                }
-              ]
-            }
-
-    test_steps:
-      setup:
-        - step_id: "SETUP-01"
-          action: "Create mock forge.Client that captures posted body"
-          command: "Set up mock with assertion on Post() body argument"
-          validation: "Mock is ready to capture"
-        - step_id: "SETUP-02"
-          action: "Write contradictory review JSON to temp file"
-          command: "os.WriteFile with review result JSON"
-          validation: "Temp file created"
-      test_execution:
-        - step_id: "TEST-01"
-          action: "Execute post-review command with contradictory input"
-          command: "Run post-review with mock client and temp file"
-          validation: "Command completes without error"
-        - step_id: "TEST-02"
-          action: "Verify posted body was corrected"
-          command: "assert.Contains(t, capturedBody, \"logic-error\")"
-          validation: "Posted body contains finding categories"
-        - step_id: "TEST-03"
-          action: "Verify original contradictory text removed"
-          command: "assert.NotContains(t, capturedBody, \"No significant findings\")"
-          validation: "Contradictory text was replaced"
-      cleanup:
-        - step_id: "CLEANUP-01"
-          action: "Remove temp file"
-          command: "os.Remove(tempFile)"
-
-    assertions:
-      - assertion_id: "ASSERT-01"
-        priority: "P0"
-        description: "Consistency check runs before posting"
-        condition: "Posted body differs from input body when contradictory"
-        failure_impact: "Fix not integrated — contradictory summaries still posted"
-      - assertion_id: "ASSERT-02"
-        priority: "P0"
-        description: "Posted body contains corrected findings"
-        condition: "Posted body includes critical finding categories"
-        failure_impact: "Consistency check runs but produces wrong output"
-
-    dependencies:
-      kubernetes_resources: []
-      external_tools:
-        - "go 1.23+"
-      scenario_specific_rbac: []
-
-  - scenario_id: "013"
-    test_id: "TS-GH-2054-013"
-    tier: "Functional"
-    priority: "P1"
-    mvp: false
-    requirement_id: "GH-2054"
-
-    variables:
-      closure_scope:
-        - name: "logOutput"
-          type: "bytes.Buffer"
-          initialized_in: "test"
-          used_in: ["test"]
-          comment: "Captured log output for warning verification"
-
-    test_structure:
-      type: "single"
-      describe:
-        description: "post-review command"
-      context:
-        description: "when body is synthesized"
-        decorators: []
-      it:
-        description: "should emit StepWarn log message"
-        test_id_format: "[test_id:TS-GH-2054-013]"
-
-    code_structure: |
-      func TestPostReviewCommand_LogsWarningOnSynthesis(t *testing.T) {
-        // Arrange: capture log output, create contradictory result
-        // Act: call ensureBodyFindingsConsistency
-        // Assert: log output contains StepWarn about body synthesis
-      }
-
-    test_objective:
-      title: "Verify warning logged when body is synthesized"
-      what: |
-        Tests that a StepWarn log message is emitted when the consistency
-        check detects a contradiction and replaces the body. This provides
-        observability into when the safety net is triggered.
-      why: |
-        Operators need to know when the CLI is overriding agent output.
-        The warning log enables monitoring and debugging.
-      acceptance_criteria:
-        - "StepWarn log message emitted when body is synthesized"
-        - "Log message indicates body replacement occurred"
-
-    classification:
-      test_type: "Functional"
-      scope: "CLI observability"
-      automation_approach: "go test with log capture"
-
-    specific_preconditions: []
-    test_data:
-      resource_definitions: []
-
-    test_steps:
-      setup:
-        - step_id: "SETUP-01"
-          action: "Set up log capture"
-          command: "Redirect log output to buffer"
-          validation: "Log capture active"
-      test_execution:
-        - step_id: "TEST-01"
-          action: "Trigger body synthesis with contradictory input"
-          command: "ensureBodyFindingsConsistency(&contradictoryResult)"
-          validation: "Body is replaced"
-        - step_id: "TEST-02"
-          action: "Verify warning log emitted"
-          command: "assert.Contains(t, logOutput.String(), \"synthesized\")"
-          validation: "Log output contains synthesis warning"
-      cleanup: []
-
-    assertions:
-      - assertion_id: "ASSERT-01"
-        priority: "P0"
-        description: "Warning logged on body synthesis"
-        condition: "Log output contains StepWarn about body synthesis"
-        failure_impact: "No observability when safety net triggers"
-
-    dependencies:
-      kubernetes_resources: []
-      external_tools: []
-      scenario_specific_rbac: []
-
-  - scenario_id: "014"
-    test_id: "TS-GH-2054-014"
-    tier: "Functional"
-    priority: "P1"
-    mvp: false
-    requirement_id: "GH-2054"
-
-    variables:
-      closure_scope:
-        - name: "mockClient"
-          type: "*MockForgeClient"
-          initialized_in: "test"
-          used_in: ["test"]
-          comment: "Mock capturing both sticky comment and formal review body"
-
-    test_structure:
-      type: "single"
-      describe:
-        description: "post-review command"
-      context:
-        description: "when consistency check patches the body"
-        decorators: []
-      it:
-        description: "should propagate patched body to both sticky comment and formal review"
-        test_id_format: "[test_id:TS-GH-2054-014]"
-
-    code_structure: |
-      func TestPostReviewCommand_PropagatesPatchedBody(t *testing.T) {
-        // Arrange: mock client tracking both sticky post and formal review
-        // Act: run post-review with contradictory input
-        // Assert: both sticky comment and formal review use patched body
-      }
-
-    test_objective:
-      title: "Verify consistency check integrates with sticky comment flow"
-      what: |
-        Tests that the patched body propagates to both the sticky comment
-        posting and the formal review submission. The consistency check must
-        run at a point where its output affects all downstream consumers.
-      why: |
-        If the patched body only reaches the sticky comment but not the formal
-        review (or vice versa), the fix is incomplete and inconsistency persists.
-      acceptance_criteria:
-        - "Sticky comment body contains patched content"
-        - "Formal review body contains patched content"
-        - "Both outputs are identical"
-
-    classification:
-      test_type: "Functional"
-      scope: "CLI command integration"
-      automation_approach: "go test with mock forge.Client"
-
-    specific_preconditions:
-      - name: "Mock forge.Client"
-        requirement: "Captures both sticky.Post and formal review submission body"
-        validation: "Mock records both calls"
-
-    test_data:
-      resource_definitions: []
-
-    test_steps:
-      setup:
-        - step_id: "SETUP-01"
-          action: "Create mock client tracking both output paths"
-          command: "Set up mock capturing sticky and review bodies"
-          validation: "Mock ready to capture"
-      test_execution:
-        - step_id: "TEST-01"
-          action: "Execute post-review with contradictory result"
-          command: "Run post-review command"
-          validation: "Command completes"
-        - step_id: "TEST-02"
-          action: "Verify sticky comment body"
-          command: "assert.Contains(t, stickyBody, findingCategory)"
-          validation: "Sticky comment has patched body"
-        - step_id: "TEST-03"
-          action: "Verify formal review body"
-          command: "assert.Contains(t, reviewBody, findingCategory)"
-          validation: "Formal review has patched body"
-      cleanup: []
-
-    assertions:
-      - assertion_id: "ASSERT-01"
-        priority: "P0"
-        description: "Patched body reaches both output paths"
-        condition: "stickyBody and reviewBody both contain patched content"
-        failure_impact: "Partial fix — one output still contradictory"
-
-    dependencies:
-      kubernetes_resources: []
-      external_tools: []
-      scenario_specific_rbac: []
-
-  - scenario_id: "015"
-    test_id: "TS-GH-2054-015"
-    tier: "Functional"
-    priority: "P1"
-    mvp: false
-    requirement_id: "GH-2054"
-
-    variables:
-      closure_scope: []
-
-    test_structure:
-      type: "single"
-      describe:
-        description: "SKILL.md documentation"
-      context:
-        description: "body-verdict consistency instruction"
-        decorators: []
-      it:
-        description: "should include instruction for blocking verdicts"
-        test_id_format: "[test_id:TS-GH-2054-015]"
-
-    code_structure: |
-      func TestSkillMD_ContainsConsistencyInstruction(t *testing.T) {
-        // Read SKILL.md content
-        // Assert: contains instruction about including findings in body
-        // for blocking verdicts (request-changes, reject)
-      }
-
-    test_objective:
-      title: "Verify SKILL.md instructs findings inclusion for blocking verdicts"
-      what: |
-        Tests that the pr-review skill's SKILL.md file contains an explicit
-        instruction telling the agent to include significant findings in
-        the review body when the verdict is blocking (request-changes/reject).
-      why: |
-        The SKILL.md update is the source-level fix that prevents the agent
-        from producing contradictory output. The CLI safety net is a fallback.
-      acceptance_criteria:
-        - "SKILL.md contains instruction about body-verdict consistency"
-        - "Instruction mentions blocking verdicts (request-changes or reject)"
-        - "Instruction mentions including findings in body"
-
-    classification:
-      test_type: "Documentation validation"
-      scope: "File content"
-      automation_approach: "go test with file read and string assertions"
-
-    specific_preconditions:
-      - name: "SKILL.md path"
-        requirement: "skills/pr-review/SKILL.md must exist"
-        validation: "os.Stat(skillPath)"
-
-    test_data:
-      resource_definitions: []
-
-    test_steps:
-      setup:
-        - step_id: "SETUP-01"
-          action: "Locate SKILL.md file"
-          command: "Resolve path to skills/pr-review/SKILL.md"
-          validation: "File exists"
-      test_execution:
-        - step_id: "TEST-01"
-          action: "Read SKILL.md content"
-          command: "os.ReadFile(skillPath)"
-          validation: "File read successfully"
-        - step_id: "TEST-02"
-          action: "Verify consistency instruction present"
-          command: "assert.Contains(t, content, consistency-related keywords)"
-          validation: "Instruction found in SKILL.md"
-      cleanup: []
-
-    assertions:
-      - assertion_id: "ASSERT-01"
-        priority: "P0"
-        description: "SKILL.md contains body-verdict consistency instruction"
-        condition: "File contains instruction about including findings for blocking verdicts"
-        failure_impact: "Agent not instructed to produce consistent output — relies entirely on CLI fallback"
-
-    dependencies:
-      kubernetes_resources: []
-      external_tools: []
-      scenario_specific_rbac: []
-
-  - scenario_id: "016"
-    test_id: "TS-GH-2054-016"
-    tier: "Functional"
-    priority: "P1"
-    mvp: false
-    requirement_id: "GH-2054"
-
-    variables:
-      closure_scope:
-        - name: "mockClient"
-          type: "*MockForgeClient"
-          initialized_in: "test"
-          used_in: ["test"]
-          comment: "Mock client for end-to-end flow"
-        - name: "reviewJSON"
-          type: "string"
-          initialized_in: "test"
-          used_in: ["test"]
-          comment: "Simulated contradictory agent output"
-
-    test_structure:
-      type: "single"
-      describe:
-        description: "post-review end-to-end"
-      context:
-        description: "with contradictory agent output"
-        decorators: []
-      it:
-        description: "should detect contradiction and fix summary"
-        test_id_format: "[test_id:TS-GH-2054-016]"
-
-    code_structure: |
-      func TestPostReview_EndToEnd_ContradictoryAgentOutput(t *testing.T) {
-        // Arrange: full contradictory review result JSON (agent-like output)
-        // Act: run complete post-review flow
-        // Assert: final sticky comment reflects actual findings
-      }
-
-    test_objective:
-      title: "Verify end-to-end review with contradictory agent output"
-      what: |
-        Tests the complete post-review flow starting from a contradictory
-        agent-generated review result (body says "No findings" but findings
-        array has critical items) through to the final posted sticky comment.
-        Validates the entire pipeline detects and corrects the contradiction.
-      why: |
-        This is the acceptance test from GH-2054's validation criteria:
-        "the summary PR comment lists those findings" when verdict is
-        CHANGES_REQUESTED with inline findings.
-      acceptance_criteria:
-        - "Starting from contradictory input, final posted comment contains findings"
-        - "Summary never says 'No findings' when critical findings exist"
-        - "Correct severity ordering in final output"
-
-    classification:
-      test_type: "Functional"
-      scope: "End-to-end CLI flow"
-      automation_approach: "go test with mock forge.Client"
-
-    specific_preconditions:
-      - name: "Mock forge.Client"
-        requirement: "Full mock simulating GitHub API"
-        validation: "Mock captures all API calls"
-
-    test_data:
-      resource_definitions:
-        - name: "full_contradictory_review"
-          type: "ReviewResult JSON"
-          yaml: |
-            {
-              "action": "request-changes",
-              "body": "## Review Summary\n\nLGTM! No findings to report. The code looks good overall.",
-              "findings": [
-                {
-                  "category": "logic-error",
-                  "severity": "critical",
-                  "file": "pkg/handler.go",
-                  "line": 42,
-                  "message": "Nil pointer dereference in error path",
-                  "remediation": "Add nil check before accessing field"
-                },
-                {
-                  "category": "security-issue",
-                  "severity": "high",
-                  "file": "pkg/auth.go",
-                  "line": 15,
-                  "message": "Missing input validation on user-provided data",
-                  "remediation": "Validate and sanitize input before processing"
-                },
-                {
-                  "category": "style",
-                  "severity": "low",
-                  "file": "pkg/utils.go",
-                  "line": 8,
-                  "message": "Unused import"
-                }
-              ]
-            }
-
-    test_steps:
-      setup:
-        - step_id: "SETUP-01"
-          action: "Create full mock environment"
-          command: "Set up mock client and write review JSON"
-          validation: "Environment ready"
-      test_execution:
-        - step_id: "TEST-01"
-          action: "Execute complete post-review flow"
-          command: "Run post-review with full contradictory input"
-          validation: "Command completes successfully"
-        - step_id: "TEST-02"
-          action: "Verify final posted comment contains findings"
-          command: "assert.Contains(t, postedBody, \"logic-error\")"
-          validation: "Critical finding visible in posted comment"
-        - step_id: "TEST-03"
-          action: "Verify 'No findings' text removed"
-          command: "assert.NotContains(t, postedBody, \"No findings\")"
-          validation: "Contradictory text eliminated"
-        - step_id: "TEST-04"
-          action: "Verify severity ordering"
-          command: "criticalIdx < highIdx in posted body"
-          validation: "Critical findings appear before high findings"
-      cleanup:
-        - step_id: "CLEANUP-01"
-          action: "Clean up temp files"
-          command: "os.RemoveAll(tempDir)"
-
-    assertions:
-      - assertion_id: "ASSERT-01"
-        priority: "P0"
-        description: "End-to-end contradiction detection and correction"
-        condition: "Posted comment contains findings, not 'No findings'"
-        failure_impact: "Core acceptance criteria not met — GH-2054 bug persists"
-      - assertion_id: "ASSERT-02"
-        priority: "P1"
-        description: "Severity ordering preserved in final output"
-        condition: "Critical findings before high findings in posted body"
-        failure_impact: "Output ordering inconsistent"
-
-    dependencies:
-      kubernetes_resources: []
-      external_tools:
-        - "go 1.23+"
-      scenario_specific_rbac: []
+- scenario_id: '001'
+  test_id: TS-GH-2054-001
+  tier: Tier 1
+  priority: P0
+  mvp: true
+  requirement_id: GH-2054
+  variables:
+    closure_scope:
+    - name: result
+      type: '*ReviewResult'
+      initialized_in: test
+      used_in:
+      - test
+      comment: Review result with contradictory body and findings
+    - name: patched
+      type: string
+      initialized_in: test
+      used_in:
+      - test
+      comment: Output body after consistency enforcement
+  test_structure:
+    type: table-driven
+    describe:
+      description: ensureBodyFindingsConsistency
+    context:
+      description: when findings contradict summary body
+      decorators: []
+    it:
+      description: should replace body with synthesized findings summary
+      test_id_format: '[test_id:TS-GH-2054-001]'
+  code_structure: "func TestEnsureBodyFindingsConsistency_ReplacesContradictoryBody(t *testing.T) {\n  // Arrange: ReviewResult\
+    \ with action=request-changes,\n  // critical findings, but body says \"No findings\"\n  // Act: call ensureBodyFindingsConsistency\n\
+    \  // Assert: body is replaced with synthesized content\n}\n"
+  test_objective:
+    title: Verify body replaced when findings contradict summary
+    what: 'Tests that ensureBodyFindingsConsistency detects when a review body
+
+      contains "No findings" or similarly empty content while the action is
+
+      "request-changes" and the findings array contains critical/high severity
+
+      items. The function should replace the body with a synthesized summary.
+
+      '
+    why: 'This is the core bug fix for GH-2054. Without this check, the sticky
+
+      summary comment can say "No findings" while the formal review is
+
+      CHANGES_REQUESTED with critical inline comments, misleading reviewers.
+
+      '
+    acceptance_criteria:
+    - Body is replaced when action is request-changes and critical findings exist but body omits them
+    - Replaced body contains all critical/high finding categories
+    - Original contradictory body is not preserved
+  classification:
+    test_type: Unit
+    scope: Single-function
+    automation_approach: go test with testify
+  specific_preconditions: []
+  test_data:
+    resource_definitions:
+    - name: contradictory_review_result
+      type: ReviewResult
+      yaml: "action: \"request-changes\"\nbody: \"## Review Summary\\n\\nNo findings to report.\"\nfindings:\n  - category:\
+        \ \"logic-error\"\n    severity: \"critical\"\n    file: \"pkg/handler.go\"\n    line: 42\n    message: \"Nil pointer\
+        \ dereference in error path\"\n    remediation: \"Add nil check before accessing field\"\n"
+  test_steps:
+    setup:
+    - step_id: SETUP-01
+      action: Create ReviewResult with contradictory body and critical findings
+      command: Construct ReviewResult struct in test
+      validation: Struct is properly initialized
+    test_execution:
+    - step_id: TEST-01
+      action: Call ensureBodyFindingsConsistency with the contradictory result
+      command: ensureBodyFindingsConsistency(&result)
+      validation: Function returns without error
+    - step_id: TEST-02
+      action: Verify body has been replaced
+      command: assert.NotContains(t, result.Body, "No findings")
+      validation: Body no longer contains contradictory text
+    - step_id: TEST-03
+      action: Verify synthesized body contains finding categories
+      command: assert.Contains(t, result.Body, "logic-error")
+      validation: Replaced body references the critical finding category
+    cleanup: []
+  assertions:
+  - assertion_id: ASSERT-01
+    priority: P0
+    description: Body no longer contains contradictory 'No findings' text
+    condition: result.Body does not contain 'No findings'
+    failure_impact: Core bug not fixed — misleading summary persists
+  - assertion_id: ASSERT-02
+    priority: P0
+    description: Synthesized body includes critical finding categories
+    condition: result.Body contains all critical/high category tokens
+    failure_impact: Synthesized body is incomplete — findings still hidden
+  dependencies:
+    kubernetes_resources: []
+    external_tools: []
+    scenario_specific_rbac: []
+  patterns:
+    primary_pattern: body-verdict-consistency
+    helpers_required:
+    - testify-assertions
+- scenario_id: '002'
+  test_id: TS-GH-2054-002
+  tier: Tier 1
+  priority: P0
+  mvp: true
+  requirement_id: GH-2054
+  variables:
+    closure_scope:
+    - name: result
+      type: '*ReviewResult'
+      initialized_in: test
+      used_in:
+      - test
+      comment: Review result with approve or comment action
+  test_structure:
+    type: table-driven
+    describe:
+      description: ensureBodyFindingsConsistency
+    context:
+      description: when action is approve or comment
+      decorators: []
+    it:
+      description: should not modify the body
+      test_id_format: '[test_id:TS-GH-2054-002]'
+  code_structure: "func TestEnsureBodyFindingsConsistency_NoOpForApproveComment(t *testing.T) {\n  for _, action := range\
+    \ []string{\"approve\", \"comment\"} {\n    t.Run(action, func(t *testing.T) {\n      // Arrange: ReviewResult with non-blocking\
+    \ action\n      // Act: call ensureBodyFindingsConsistency\n      // Assert: body is unchanged\n    })\n  }\n}\n"
+  test_objective:
+    title: Verify no-op for approve/comment actions
+    what: 'Tests that ensureBodyFindingsConsistency does not modify the review body
+
+      when the action is "approve" or "comment", regardless of what findings
+
+      exist. These are non-blocking verdicts where consistency enforcement
+
+      is intentionally skipped.
+
+      '
+    why: 'The consistency check should only apply to blocking verdicts
+
+      (request-changes, reject). Modifying approve/comment bodies would be
+
+      unexpected behavior and could break existing workflows.
+
+      '
+    acceptance_criteria:
+    - Body is unchanged when action is 'approve'
+    - Body is unchanged when action is 'comment'
+    - Body is unchanged even if findings array contains critical items
+  classification:
+    test_type: Unit
+    scope: Single-function
+    automation_approach: go test with testify
+  specific_preconditions: []
+  test_data:
+    resource_definitions:
+    - name: approve_result
+      type: ReviewResult
+      yaml: 'action: "approve"
+
+        body: "LGTM - no issues found."
+
+        findings: []
+
+        '
+    - name: comment_with_findings
+      type: ReviewResult
+      yaml: "action: \"comment\"\nbody: \"Some notes for the author.\"\nfindings:\n  - category: \"style\"\n    severity:\
+        \ \"critical\"\n    message: \"Inconsistent naming\"\n"
+  test_steps:
+    setup:
+    - step_id: SETUP-01
+      action: Create ReviewResult with approve action
+      command: Construct ReviewResult struct
+      validation: Struct initialized with approve action
+    test_execution:
+    - step_id: TEST-01
+      action: Call ensureBodyFindingsConsistency for approve action
+      command: ensureBodyFindingsConsistency(&result)
+      validation: Function returns without error
+    - step_id: TEST-02
+      action: Verify body is unchanged
+      command: assert.Equal(t, originalBody, result.Body)
+      validation: Body matches original text exactly
+    cleanup: []
+  assertions:
+  - assertion_id: ASSERT-01
+    priority: P0
+    description: Body is not modified for non-blocking actions
+    condition: result.Body == originalBody for approve and comment actions
+    failure_impact: Consistency check incorrectly triggers on non-blocking verdicts
+  dependencies:
+    kubernetes_resources: []
+    external_tools: []
+    scenario_specific_rbac: []
+  patterns:
+    primary_pattern: body-verdict-consistency
+    helpers_required:
+    - testify-assertions
+- scenario_id: '003'
+  test_id: TS-GH-2054-003
+  tier: Tier 1
+  priority: P1
+  mvp: false
+  requirement_id: GH-2054
+  variables:
+    closure_scope:
+    - name: result
+      type: '*ReviewResult'
+      initialized_in: test
+      used_in:
+      - test
+      comment: Review result with reject action and critical findings
+  test_structure:
+    type: single
+    describe:
+      description: ensureBodyFindingsConsistency
+    context:
+      description: when action is reject with critical findings
+      decorators: []
+    it:
+      description: should trigger consistency check and replace body
+      test_id_format: '[test_id:TS-GH-2054-003]'
+  code_structure: "func TestEnsureBodyFindingsConsistency_RejectAction(t *testing.T) {\n  // Arrange: ReviewResult with action=reject\
+    \ and critical findings\n  // Act: call ensureBodyFindingsConsistency\n  // Assert: body is replaced (reject is a blocking\
+    \ verdict)\n}\n"
+  test_objective:
+    title: Verify reject action triggers consistency check
+    what: 'Tests that the consistency check also applies to the "reject" action,
+
+      not just "request-changes". Both are blocking verdicts that should
+
+      trigger body-findings consistency enforcement.
+
+      '
+    why: 'The reject action maps to a blocking verdict. If the body contradicts
+
+      findings for a reject action, the same misleading behavior occurs.
+
+      '
+    acceptance_criteria:
+    - Body is replaced when action is 'reject' and critical findings exist but body omits them
+  classification:
+    test_type: Unit
+    scope: Single-function
+    automation_approach: go test with testify
+  specific_preconditions: []
+  test_data:
+    resource_definitions:
+    - name: reject_result
+      type: ReviewResult
+      yaml: "action: \"reject\"\nbody: \"No significant issues.\"\nfindings:\n  - category: \"security-issue\"\n    severity:\
+        \ \"critical\"\n    message: \"Hardcoded credentials detected\"\n"
+  test_steps:
+    setup:
+    - step_id: SETUP-01
+      action: Create ReviewResult with reject action and critical findings
+      command: Construct ReviewResult struct
+      validation: Struct initialized
+    test_execution:
+    - step_id: TEST-01
+      action: Call ensureBodyFindingsConsistency
+      command: ensureBodyFindingsConsistency(&result)
+      validation: Function returns without error
+    - step_id: TEST-02
+      action: Verify body was replaced
+      command: assert.Contains(t, result.Body, "security-issue")
+      validation: Body contains the critical finding category
+    cleanup: []
+  assertions:
+  - assertion_id: ASSERT-01
+    priority: P0
+    description: Reject action triggers body replacement
+    condition: Body is synthesized when reject + critical findings
+    failure_impact: Reject verdicts can still have contradictory summaries
+  dependencies:
+    kubernetes_resources: []
+    external_tools: []
+    scenario_specific_rbac: []
+  patterns:
+    primary_pattern: body-verdict-consistency
+    helpers_required:
+    - testify-assertions
+- scenario_id: '004'
+  test_id: TS-GH-2054-004
+  tier: Tier 1
+  priority: P2
+  mvp: false
+  requirement_id: GH-2054
+  variables:
+    closure_scope:
+    - name: result
+      type: '*ReviewResult'
+      initialized_in: test
+      used_in:
+      - test
+      comment: Nil or empty ReviewResult for defensive testing
+  test_structure:
+    type: table-driven
+    describe:
+      description: ensureBodyFindingsConsistency
+    context:
+      description: when input is nil or empty
+      decorators: []
+    it:
+      description: should handle gracefully without panic
+      test_id_format: '[test_id:TS-GH-2054-004]'
+  code_structure: "func TestEnsureBodyFindingsConsistency_NilEmptyInput(t *testing.T) {\n  tests := []struct{\n    name string\n\
+    \    result *ReviewResult\n  }{\n    {\"nil result\", nil},\n    {\"empty findings\", &ReviewResult{Action: \"request-changes\"\
+    , Findings: nil}},\n    {\"empty body\", &ReviewResult{Action: \"request-changes\", Body: \"\", Findings: findings}},\n\
+    \  }\n  for _, tt := range tests {\n    t.Run(tt.name, func(t *testing.T) {\n      // Act + Assert: no panic\n    })\n\
+    \  }\n}\n"
+  test_objective:
+    title: Verify error handling for nil/empty input
+    what: 'Tests that ensureBodyFindingsConsistency handles edge cases gracefully:
+
+      nil result pointer, nil/empty findings array, empty body string.
+
+      None of these should cause a panic or runtime error.
+
+      '
+    why: 'Defensive input validation ensures the consistency check doesn''t
+
+      introduce new crashes in production when unexpected input is received.
+
+      '
+    acceptance_criteria:
+    - No panic when result is nil
+    - No panic when findings array is nil or empty
+    - No panic when body is empty string
+  classification:
+    test_type: Unit
+    scope: Single-function
+    automation_approach: go test with testify
+  specific_preconditions: []
+  test_data:
+    resource_definitions: []
+  test_steps:
+    setup: []
+    test_execution:
+    - step_id: TEST-01
+      action: Call ensureBodyFindingsConsistency with nil result
+      command: assert.NotPanics(t, func() { ensureBodyFindingsConsistency(nil) })
+      validation: No panic occurs
+    - step_id: TEST-02
+      action: Call with empty findings
+      command: 'ensureBodyFindingsConsistency(&ReviewResult{Findings: nil})'
+      validation: No panic, body unchanged
+    - step_id: TEST-03
+      action: Call with empty body
+      command: 'ensureBodyFindingsConsistency(&ReviewResult{Body: ""})'
+      validation: No panic, body remains empty or is synthesized
+    cleanup: []
+  assertions:
+  - assertion_id: ASSERT-01
+    priority: P0
+    description: No runtime panic for any nil/empty input combination
+    condition: Function completes without panic for all edge cases
+    failure_impact: Production crash risk from unexpected input
+  dependencies:
+    kubernetes_resources: []
+    external_tools: []
+    scenario_specific_rbac: []
+  patterns:
+    primary_pattern: body-verdict-consistency
+    helpers_required:
+    - testify-assertions
+- scenario_id: '005'
+  test_id: TS-GH-2054-005
+  tier: Tier 1
+  priority: P0
+  mvp: true
+  requirement_id: GH-2054
+  variables:
+    closure_scope:
+    - name: findings
+      type: '[]Finding'
+      initialized_in: test
+      used_in:
+      - test
+      comment: Mixed-severity findings for body synthesis
+    - name: body
+      type: string
+      initialized_in: test
+      used_in:
+      - test
+      comment: Synthesized body output
+  test_structure:
+    type: single
+    describe:
+      description: synthesizeReviewBody
+    context:
+      description: with findings of mixed severity
+      decorators: []
+    it:
+      description: should group findings by severity in descending order
+      test_id_format: '[test_id:TS-GH-2054-005]'
+  code_structure: "func TestSynthesizeReviewBody_GroupsBySeverity(t *testing.T) {\n  // Arrange: findings with critical, high,\
+    \ medium, low severities\n  // Act: call synthesizeReviewBody\n  // Assert: output groups by severity: critical > high\
+    \ > medium > low > info\n}\n"
+  test_objective:
+    title: Verify synthesized body groups findings by severity
+    what: 'Tests that synthesizeReviewBody produces markdown with findings
+
+      organized by severity level in descending order: critical first,
+
+      then high, medium, low, and info last.
+
+      '
+    why: 'Severity ordering ensures reviewers see the most impactful issues
+
+      first. This is a core validation criterion from GH-2054.
+
+      '
+    acceptance_criteria:
+    - Critical findings appear before high findings in output
+    - High findings appear before medium findings
+    - All severity groups are represented when findings of that severity exist
+  classification:
+    test_type: Unit
+    scope: Single-function
+    automation_approach: go test with testify
+  specific_preconditions: []
+  test_data:
+    resource_definitions:
+    - name: mixed_severity_findings
+      type: '[]Finding'
+      yaml: "- category: \"logic-error\"\n  severity: \"critical\"\n  message: \"Nil pointer dereference\"\n- category: \"\
+        performance\"\n  severity: \"medium\"\n  message: \"Unbounded loop\"\n- category: \"security-issue\"\n  severity:\
+        \ \"high\"\n  message: \"Missing input validation\"\n- category: \"style\"\n  severity: \"low\"\n  message: \"Inconsistent\
+        \ naming\"\n"
+  test_steps:
+    setup:
+    - step_id: SETUP-01
+      action: Create findings array with mixed severities
+      command: Construct []Finding slice
+      validation: Array contains findings of different severities
+    test_execution:
+    - step_id: TEST-01
+      action: Call synthesizeReviewBody with mixed findings
+      command: body := synthesizeReviewBody(findings)
+      validation: Non-empty body returned
+    - step_id: TEST-02
+      action: Verify severity ordering
+      command: criticalIdx < highIdx < mediumIdx < lowIdx
+      validation: Critical section appears first, then high, then medium, then low
+    cleanup: []
+  assertions:
+  - assertion_id: ASSERT-01
+    priority: P0
+    description: Findings grouped by severity in descending order
+    condition: strings.Index for critical < high < medium < low
+    failure_impact: Reviewers may miss critical issues buried below low-severity items
+  dependencies:
+    kubernetes_resources: []
+    external_tools: []
+    scenario_specific_rbac: []
+  patterns:
+    primary_pattern: body-synthesis
+    helpers_required:
+    - testify-assertions
+- scenario_id: '006'
+  test_id: TS-GH-2054-006
+  tier: Tier 1
+  priority: P1
+  mvp: false
+  requirement_id: GH-2054
+  variables:
+    closure_scope:
+    - name: findings
+      type: '[]Finding'
+      initialized_in: test
+      used_in:
+      - test
+      comment: Findings with file location metadata
+    - name: body
+      type: string
+      initialized_in: test
+      used_in:
+      - test
+      comment: Synthesized body output
+  test_structure:
+    type: single
+    describe:
+      description: synthesizeReviewBody
+    context:
+      description: with findings that have file locations
+      decorators: []
+    it:
+      description: should include category, file, and remediation
+      test_id_format: '[test_id:TS-GH-2054-006]'
+  code_structure: "func TestSynthesizeReviewBody_IncludesDetailedInfo(t *testing.T) {\n  // Arrange: findings with category,\
+    \ file, line, remediation\n  // Act: call synthesizeReviewBody\n  // Assert: output contains category, file:line, and\
+    \ remediation text\n}\n"
+  test_objective:
+    title: Verify findings include category, file location, and remediation
+    what: 'Tests that each finding in the synthesized body includes the category
+
+      label, file path with line number, and the remediation suggestion,
+
+      providing actionable detail for the reviewer.
+
+      '
+    why: 'The synthesized body must provide enough detail for reviewers to
+
+      understand and act on each finding without navigating to inline comments.
+
+      '
+    acceptance_criteria:
+    - Body contains the category token for each finding
+    - Body contains file:line reference for findings with file locations
+    - Body contains remediation text for each finding
+  classification:
+    test_type: Unit
+    scope: Single-function
+    automation_approach: go test with testify
+  specific_preconditions: []
+  test_data:
+    resource_definitions:
+    - name: detailed_finding
+      type: Finding
+      yaml: 'category: "logic-error"
+
+        severity: "critical"
+
+        file: "pkg/handler.go"
+
+        line: 42
+
+        message: "Nil pointer dereference"
+
+        remediation: "Add nil check before accessing field"
+
+        '
+  test_steps:
+    setup:
+    - step_id: SETUP-01
+      action: Create finding with full metadata
+      command: Construct Finding struct
+      validation: Finding has category, file, line, remediation
+    test_execution:
+    - step_id: TEST-01
+      action: Call synthesizeReviewBody
+      command: body := synthesizeReviewBody([]Finding{finding})
+      validation: Non-empty body returned
+    - step_id: TEST-02
+      action: Verify body contains detailed info
+      command: assert.Contains for category, file path, remediation
+      validation: All three fields present in output
+    cleanup: []
+  assertions:
+  - assertion_id: ASSERT-01
+    priority: P0
+    description: Synthesized body includes category, file, and remediation
+    condition: Body contains 'logic-error', 'pkg/handler.go', and remediation text
+    failure_impact: Synthesized summary lacks actionable detail
+  dependencies:
+    kubernetes_resources: []
+    external_tools: []
+    scenario_specific_rbac: []
+  patterns:
+    primary_pattern: body-synthesis
+    helpers_required:
+    - testify-assertions
+- scenario_id: '007'
+  test_id: TS-GH-2054-007
+  tier: Tier 1
+  priority: P2
+  mvp: false
+  requirement_id: GH-2054
+  variables:
+    closure_scope:
+    - name: findings
+      type: '[]Finding'
+      initialized_in: test
+      used_in:
+      - test
+      comment: Findings without file location metadata
+    - name: body
+      type: string
+      initialized_in: test
+      used_in:
+      - test
+      comment: Synthesized body output
+  test_structure:
+    type: single
+    describe:
+      description: synthesizeReviewBody
+    context:
+      description: with findings lacking file locations
+      decorators: []
+    it:
+      description: should render finding without file reference
+      test_id_format: '[test_id:TS-GH-2054-007]'
+  code_structure: "func TestSynthesizeReviewBody_NoFileLocation(t *testing.T) {\n  // Arrange: finding without File or Line\
+    \ fields\n  // Act: call synthesizeReviewBody\n  // Assert: output renders gracefully without file reference\n}\n"
+  test_objective:
+    title: Verify findings without file locations render correctly
+    what: 'Tests that synthesizeReviewBody handles findings that lack file and
+
+      line references gracefully, rendering them without a broken or empty
+
+      file location string.
+
+      '
+    why: 'Some findings (e.g., architectural concerns) may not reference a
+
+      specific file. The rendering must degrade gracefully.
+
+      '
+    acceptance_criteria:
+    - No empty file reference markers in output
+    - Finding message and category still displayed
+    - No panic or error when file/line are zero values
+  classification:
+    test_type: Unit
+    scope: Single-function
+    automation_approach: go test with testify
+  specific_preconditions: []
+  test_data:
+    resource_definitions:
+    - name: no_file_finding
+      type: Finding
+      yaml: 'category: "architecture"
+
+        severity: "high"
+
+        message: "Missing abstraction layer"
+
+        remediation: "Extract interface for dependency injection"
+
+        '
+  test_steps:
+    setup:
+    - step_id: SETUP-01
+      action: Create finding without file/line fields
+      command: Construct Finding struct with empty File
+      validation: Finding has no file reference
+    test_execution:
+    - step_id: TEST-01
+      action: Call synthesizeReviewBody
+      command: body := synthesizeReviewBody([]Finding{finding})
+      validation: Non-empty body returned
+    - step_id: TEST-02
+      action: Verify no broken file reference
+      command: assert.NotContains(t, body, ":0")
+      validation: No ':0' or empty file markers in output
+    cleanup: []
+  assertions:
+  - assertion_id: ASSERT-01
+    priority: P0
+    description: Graceful rendering without file location
+    condition: Body contains finding info without broken file reference
+    failure_impact: Synthesized body has confusing empty file markers
+  dependencies:
+    kubernetes_resources: []
+    external_tools: []
+    scenario_specific_rbac: []
+  patterns:
+    primary_pattern: body-synthesis
+    helpers_required:
+    - testify-assertions
+- scenario_id: 008
+  test_id: TS-GH-2054-008
+  tier: Tier 1
+  priority: P0
+  mvp: true
+  requirement_id: GH-2054
+  variables:
+    closure_scope:
+    - name: result
+      type: '*ReviewResult'
+      initialized_in: test
+      used_in:
+      - test
+      comment: Review result where body already references finding categories
+  test_structure:
+    type: single
+    describe:
+      description: ensureBodyFindingsConsistency
+    context:
+      description: when body already references all finding categories
+      decorators: []
+    it:
+      description: should not replace the body
+      test_id_format: '[test_id:TS-GH-2054-008]'
+  code_structure: "func TestEnsureBodyFindingsConsistency_NoOpWhenCategoriesPresent(t *testing.T) {\n  // Arrange: ReviewResult\
+    \ with body mentioning all finding categories\n  // Act: call ensureBodyFindingsConsistency\n  // Assert: body is unchanged\n\
+    }\n"
+  test_objective:
+    title: Verify no-op when body already references finding categories
+    what: 'Tests that ensureBodyFindingsConsistency does not replace the body
+
+      when the existing body text already contains references to all
+
+      critical/high finding categories (e.g., body mentions "logic-error"
+
+      when a logic-error finding exists).
+
+      '
+    why: 'A body that already references findings is consistent — replacing it
+
+      would destroy potentially valuable agent-generated context and phrasing.
+
+      '
+    acceptance_criteria:
+    - Body is unchanged when all critical/high category tokens appear in body
+    - Original body content is fully preserved
+  classification:
+    test_type: Unit
+    scope: Single-function
+    automation_approach: go test with testify
+  specific_preconditions: []
+  test_data:
+    resource_definitions:
+    - name: consistent_result
+      type: ReviewResult
+      yaml: "action: \"request-changes\"\nbody: \"## Review\\n\\nFound a logic-error in the handler code.\\n\\nAlso detected\
+        \ a security-issue with credentials.\"\nfindings:\n  - category: \"logic-error\"\n    severity: \"critical\"\n   \
+        \ message: \"Nil pointer dereference\"\n  - category: \"security-issue\"\n    severity: \"high\"\n    message: \"\
+        Hardcoded credentials\"\n"
+  test_steps:
+    setup:
+    - step_id: SETUP-01
+      action: Create ReviewResult with body referencing all categories
+      command: Construct ReviewResult struct
+      validation: Body contains all finding category tokens
+    test_execution:
+    - step_id: TEST-01
+      action: Call ensureBodyFindingsConsistency
+      command: ensureBodyFindingsConsistency(&result)
+      validation: Function returns without error
+    - step_id: TEST-02
+      action: Verify body unchanged
+      command: assert.Equal(t, originalBody, result.Body)
+      validation: Body exactly matches original
+    cleanup: []
+  assertions:
+  - assertion_id: ASSERT-01
+    priority: P0
+    description: Body preserved when categories already referenced
+    condition: result.Body == originalBody
+    failure_impact: Valid agent-generated body unnecessarily replaced
+  dependencies:
+    kubernetes_resources: []
+    external_tools: []
+    scenario_specific_rbac: []
+  patterns:
+    primary_pattern: category-detection
+    helpers_required:
+    - testify-assertions
+- scenario_id: 009
+  test_id: TS-GH-2054-009
+  tier: Tier 1
+  priority: P0
+  mvp: true
+  requirement_id: GH-2054
+  variables:
+    closure_scope:
+    - name: result
+      type: '*ReviewResult'
+      initialized_in: test
+      used_in:
+      - test
+      comment: Review result where body only references some finding categories
+  test_structure:
+    type: single
+    describe:
+      description: ensureBodyFindingsConsistency
+    context:
+      description: when body references only a subset of critical/high categories
+      decorators: []
+    it:
+      description: should replace body to include all findings
+      test_id_format: '[test_id:TS-GH-2054-009]'
+  code_structure: "func TestEnsureBodyFindingsConsistency_PartialCategoryMatch(t *testing.T) {\n  // Arrange: body mentions\
+    \ \"logic-error\" but not \"security-issue\"\n  // Act: call ensureBodyFindingsConsistency\n  // Assert: body is replaced\
+    \ to cover all categories\n}\n"
+  test_objective:
+    title: Verify body replaced when only a subset of critical/high categories are referenced
+    what: 'Tests that the consistency check triggers when the body mentions some
+
+      but not all critical/high finding categories. Partial coverage is not
+
+      sufficient — all significant findings must be visible.
+
+      '
+    why: 'A body that mentions only 1 of 3 critical findings gives a false sense
+
+      of completeness. Replacing ensures all significant issues are surfaced.
+
+      '
+    acceptance_criteria:
+    - Body is replaced when one critical category is mentioned but another is missing
+    - Replacement body includes all critical/high categories
+  classification:
+    test_type: Unit
+    scope: Single-function
+    automation_approach: go test with testify
+  specific_preconditions: []
+  test_data:
+    resource_definitions:
+    - name: partial_coverage_result
+      type: ReviewResult
+      yaml: "action: \"request-changes\"\nbody: \"Found a logic-error in the code.\"\nfindings:\n  - category: \"logic-error\"\
+        \n    severity: \"critical\"\n    message: \"Nil pointer dereference\"\n  - category: \"security-issue\"\n    severity:\
+        \ \"critical\"\n    message: \"Missing authentication check\"\n"
+  test_steps:
+    setup:
+    - step_id: SETUP-01
+      action: Create ReviewResult with partial category coverage in body
+      command: Construct ReviewResult struct
+      validation: Body mentions logic-error but not security-issue
+    test_execution:
+    - step_id: TEST-01
+      action: Call ensureBodyFindingsConsistency
+      command: ensureBodyFindingsConsistency(&result)
+      validation: Function returns without error
+    - step_id: TEST-02
+      action: Verify body was replaced
+      command: assert.Contains(t, result.Body, "security-issue")
+      validation: Body now references the missing category
+    cleanup: []
+  assertions:
+  - assertion_id: ASSERT-01
+    priority: P0
+    description: Body replaced when critical categories only partially covered
+    condition: Synthesized body contains both 'logic-error' and 'security-issue'
+    failure_impact: Some critical findings remain hidden in summary
+  dependencies:
+    kubernetes_resources: []
+    external_tools: []
+    scenario_specific_rbac: []
+  patterns:
+    primary_pattern: category-detection
+    helpers_required:
+    - testify-assertions
+- scenario_id: '010'
+  test_id: TS-GH-2054-010
+  tier: Tier 1
+  priority: P2
+  mvp: false
+  requirement_id: GH-2054
+  variables:
+    closure_scope:
+    - name: result
+      type: '*ReviewResult'
+      initialized_in: test
+      used_in:
+      - test
+      comment: Review result with mixed-case category tokens in body
+  test_structure:
+    type: single
+    describe:
+      description: ensureBodyFindingsConsistency
+    context:
+      description: when body references categories in different cases
+      decorators: []
+    it:
+      description: should match categories case-insensitively
+      test_id_format: '[test_id:TS-GH-2054-010]'
+  code_structure: "func TestEnsureBodyFindingsConsistency_CaseInsensitiveMatch(t *testing.T) {\n  // Arrange: body contains\
+    \ \"Logic-Error\" (mixed case), finding has \"logic-error\"\n  // Act: call ensureBodyFindingsConsistency\n  // Assert:\
+    \ body is NOT replaced (case-insensitive match succeeds)\n}\n"
+  test_objective:
+    title: Verify case-insensitive category matching
+    what: 'Tests that category matching between the body text and finding
+
+      categories is case-insensitive. A body containing "Logic-Error"
+
+      should match a finding with category "logic-error".
+
+      '
+    why: 'Agent-generated bodies may use title case or mixed case for
+
+      category tokens. Case-sensitive matching would cause unnecessary
+
+      body replacement.
+
+      '
+    acceptance_criteria:
+    - Body with 'Logic-Error' matches finding category 'logic-error'
+    - Body is not replaced when categories match case-insensitively
+  classification:
+    test_type: Unit
+    scope: Single-function
+    automation_approach: go test with testify
+  specific_preconditions: []
+  test_data:
+    resource_definitions:
+    - name: mixed_case_result
+      type: ReviewResult
+      yaml: "action: \"request-changes\"\nbody: \"Found a Logic-Error in the handler.\"\nfindings:\n  - category: \"logic-error\"\
+        \n    severity: \"critical\"\n    message: \"Nil pointer dereference\"\n"
+  test_steps:
+    setup:
+    - step_id: SETUP-01
+      action: Create ReviewResult with mixed-case category in body
+      command: Construct ReviewResult struct
+      validation: Body uses 'Logic-Error' while finding uses 'logic-error'
+    test_execution:
+    - step_id: TEST-01
+      action: Call ensureBodyFindingsConsistency
+      command: ensureBodyFindingsConsistency(&result)
+      validation: Function returns without error
+    - step_id: TEST-02
+      action: Verify body is unchanged (case-insensitive match)
+      command: assert.Equal(t, originalBody, result.Body)
+      validation: Body not replaced
+    cleanup: []
+  assertions:
+  - assertion_id: ASSERT-01
+    priority: P0
+    description: Case-insensitive category matching works
+    condition: Body unchanged when case-insensitive match finds all categories
+    failure_impact: Valid bodies unnecessarily replaced due to case mismatch
+  dependencies:
+    kubernetes_resources: []
+    external_tools: []
+    scenario_specific_rbac: []
+  patterns:
+    primary_pattern: category-detection
+    helpers_required:
+    - testify-assertions
+- scenario_id: '011'
+  test_id: TS-GH-2054-011
+  tier: Tier 1
+  priority: P1
+  mvp: false
+  requirement_id: GH-2054
+  variables:
+    closure_scope:
+    - name: result
+      type: '*ReviewResult'
+      initialized_in: test
+      used_in:
+      - test
+      comment: Review result with only low/medium severity findings
+  test_structure:
+    type: single
+    describe:
+      description: ensureBodyFindingsConsistency
+    context:
+      description: when only low/medium severity findings exist
+      decorators: []
+    it:
+      description: should not replace the body
+      test_id_format: '[test_id:TS-GH-2054-011]'
+  code_structure: "func TestEnsureBodyFindingsConsistency_NoOpForLowMediumOnly(t *testing.T) {\n  // Arrange: request-changes\
+    \ with only low/medium findings\n  // Act: call ensureBodyFindingsConsistency\n  // Assert: body is unchanged\n}\n"
+  test_objective:
+    title: Verify no-op for only low/medium severity findings
+    what: 'Tests that the consistency check does not trigger when the findings
+
+      array contains only low and/or medium severity items. The check
+
+      only applies when critical or high severity findings are present.
+
+      '
+    why: 'Low/medium findings are less impactful. Replacing the body for
+
+      these would be overly aggressive and could disrupt valid summaries.
+
+      '
+    acceptance_criteria:
+    - Body is unchanged when only low severity findings exist
+    - Body is unchanged when only medium severity findings exist
+    - Body is unchanged when both low and medium but no critical/high findings exist
+  classification:
+    test_type: Unit
+    scope: Single-function
+    automation_approach: go test with testify
+  specific_preconditions: []
+  test_data:
+    resource_definitions:
+    - name: low_medium_result
+      type: ReviewResult
+      yaml: "action: \"request-changes\"\nbody: \"Minor suggestions for improvement.\"\nfindings:\n  - category: \"style\"\
+        \n    severity: \"low\"\n    message: \"Inconsistent naming convention\"\n  - category: \"performance\"\n    severity:\
+        \ \"medium\"\n    message: \"Consider caching result\"\n"
+  test_steps:
+    setup:
+    - step_id: SETUP-01
+      action: Create ReviewResult with only low/medium findings
+      command: Construct ReviewResult struct
+      validation: No critical or high severity findings
+    test_execution:
+    - step_id: TEST-01
+      action: Call ensureBodyFindingsConsistency
+      command: ensureBodyFindingsConsistency(&result)
+      validation: Function returns without error
+    - step_id: TEST-02
+      action: Verify body is unchanged
+      command: assert.Equal(t, originalBody, result.Body)
+      validation: Body matches original
+    cleanup: []
+  assertions:
+  - assertion_id: ASSERT-01
+    priority: P0
+    description: Body unchanged for low/medium-only findings
+    condition: result.Body == originalBody
+    failure_impact: Consistency check too aggressive — replaces valid bodies
+  dependencies:
+    kubernetes_resources: []
+    external_tools: []
+    scenario_specific_rbac: []
+  patterns:
+    primary_pattern: category-detection
+    helpers_required:
+    - testify-assertions
+- scenario_id: '012'
+  test_id: TS-GH-2054-012
+  tier: Tier 1
+  priority: P0
+  mvp: true
+  requirement_id: GH-2054
+  variables:
+    closure_scope:
+    - name: cmd
+      type: '*exec.Cmd'
+      initialized_in: test
+      used_in:
+      - test
+      comment: CLI command execution for post-review
+    - name: output
+      type: string
+      initialized_in: test
+      used_in:
+      - test
+      comment: CLI stdout/stderr output
+  test_structure:
+    type: single
+    describe:
+      description: post-review command
+    context:
+      description: when review result has contradictory body
+      decorators: []
+    it:
+      description: should apply consistency check before posting
+      test_id_format: '[test_id:TS-GH-2054-012]'
+  code_structure: "func TestPostReviewCommand_AppliesConsistencyCheck(t *testing.T) {\n  // Arrange: mock forge.Client, create\
+    \ contradictory review JSON\n  // Act: invoke post-review command with contradictory input\n  // Assert: posted comment\
+    \ body contains findings, not \"No findings\"\n}\n"
+  test_objective:
+    title: Verify post-review command applies consistency check before posting
+    what: 'Tests the integration point where the consistency check runs in the
+
+      post-review CLI command flow. Verifies that after parsing the review
+
+      result JSON but before posting the sticky comment, the body is checked
+
+      for contradictions and replaced if necessary.
+
+      '
+    why: 'This is the end-to-end validation that the consistency check is wired
+
+      into the correct point in the command pipeline. Without this, the unit
+
+      tests pass but the fix may not actually run in production.
+
+      '
+    acceptance_criteria:
+    - Consistency check runs between result parsing and comment posting
+    - Posted comment body reflects findings, not original contradictory text
+  classification:
+    test_type: Functional
+    scope: CLI command integration
+    automation_approach: go test with testify and mock forge.Client
+  specific_preconditions:
+  - name: Mock forge.Client
+    requirement: Stubbed GitHub API client capturing posted comment body
+    validation: Mock captures Post() call arguments
+  test_data:
+    resource_definitions:
+    - name: contradictory_review_json
+      type: ReviewResult JSON
+      yaml: "{\n  \"action\": \"request-changes\",\n  \"body\": \"No significant findings.\",\n  \"findings\": [\n    {\n\
+        \      \"category\": \"logic-error\",\n      \"severity\": \"critical\",\n      \"file\": \"pkg/handler.go\",\n  \
+        \    \"line\": 42,\n      \"message\": \"Nil pointer dereference\"\n    }\n  ]\n}\n"
+  test_steps:
+    setup:
+    - step_id: SETUP-01
+      action: Create mock forge.Client that captures posted body
+      command: Set up mock with assertion on Post() body argument
+      validation: Mock is ready to capture
+    - step_id: SETUP-02
+      action: Write contradictory review JSON to temp file
+      command: os.WriteFile with review result JSON
+      validation: Temp file created
+    test_execution:
+    - step_id: TEST-01
+      action: Execute post-review command with contradictory input
+      command: Run post-review with mock client and temp file
+      validation: Command completes without error
+    - step_id: TEST-02
+      action: Verify posted body was corrected
+      command: assert.Contains(t, capturedBody, "logic-error")
+      validation: Posted body contains finding categories
+    - step_id: TEST-03
+      action: Verify original contradictory text removed
+      command: assert.NotContains(t, capturedBody, "No significant findings")
+      validation: Contradictory text was replaced
+    cleanup:
+    - step_id: CLEANUP-01
+      action: Remove temp file
+      command: os.Remove(tempFile)
+  assertions:
+  - assertion_id: ASSERT-01
+    priority: P0
+    description: Consistency check runs before posting
+    condition: Posted body differs from input body when contradictory
+    failure_impact: Fix not integrated — contradictory summaries still posted
+  - assertion_id: ASSERT-02
+    priority: P0
+    description: Posted body contains corrected findings
+    condition: Posted body includes critical finding categories
+    failure_impact: Consistency check runs but produces wrong output
+  dependencies:
+    kubernetes_resources: []
+    external_tools:
+    - go 1.23+
+    scenario_specific_rbac: []
+  patterns:
+    primary_pattern: cli-integration
+    helpers_required:
+    - mock-forge-client
+    - testify-assertions
+- scenario_id: '013'
+  test_id: TS-GH-2054-013
+  tier: Tier 1
+  priority: P1
+  mvp: false
+  requirement_id: GH-2054
+  variables:
+    closure_scope:
+    - name: logOutput
+      type: bytes.Buffer
+      initialized_in: test
+      used_in:
+      - test
+      comment: Captured log output for warning verification
+  test_structure:
+    type: single
+    describe:
+      description: post-review command
+    context:
+      description: when body is synthesized
+      decorators: []
+    it:
+      description: should emit StepWarn log message
+      test_id_format: '[test_id:TS-GH-2054-013]'
+  code_structure: "func TestPostReviewCommand_LogsWarningOnSynthesis(t *testing.T) {\n  // Arrange: capture log output, create\
+    \ contradictory result\n  // Act: call ensureBodyFindingsConsistency\n  // Assert: log output contains StepWarn about\
+    \ body synthesis\n}\n"
+  test_objective:
+    title: Verify warning logged when body is synthesized
+    what: 'Tests that a StepWarn log message is emitted when the consistency
+
+      check detects a contradiction and replaces the body. This provides
+
+      observability into when the safety net is triggered.
+
+      '
+    why: 'Operators need to know when the CLI is overriding agent output.
+
+      The warning log enables monitoring and debugging.
+
+      '
+    acceptance_criteria:
+    - StepWarn log message emitted when body is synthesized
+    - Log message indicates body replacement occurred
+  classification:
+    test_type: Functional
+    scope: CLI observability
+    automation_approach: go test with log capture
+  specific_preconditions: []
+  test_data:
+    resource_definitions: []
+  test_steps:
+    setup:
+    - step_id: SETUP-01
+      action: Set up log capture
+      command: Redirect log output to buffer
+      validation: Log capture active
+    test_execution:
+    - step_id: TEST-01
+      action: Trigger body synthesis with contradictory input
+      command: ensureBodyFindingsConsistency(&contradictoryResult)
+      validation: Body is replaced
+    - step_id: TEST-02
+      action: Verify warning log emitted
+      command: assert.Contains(t, logOutput.String(), "synthesized")
+      validation: Log output contains synthesis warning
+    cleanup: []
+  assertions:
+  - assertion_id: ASSERT-01
+    priority: P0
+    description: Warning logged on body synthesis
+    condition: Log output contains StepWarn about body synthesis
+    failure_impact: No observability when safety net triggers
+  dependencies:
+    kubernetes_resources: []
+    external_tools: []
+    scenario_specific_rbac: []
+  patterns:
+    primary_pattern: cli-integration
+    helpers_required:
+    - log-capture
+    - testify-assertions
+- scenario_id: '014'
+  test_id: TS-GH-2054-014
+  tier: Tier 1
+  priority: P1
+  mvp: false
+  requirement_id: GH-2054
+  variables:
+    closure_scope:
+    - name: mockClient
+      type: '*MockForgeClient'
+      initialized_in: test
+      used_in:
+      - test
+      comment: Mock capturing both sticky comment and formal review body
+  test_structure:
+    type: single
+    describe:
+      description: post-review command
+    context:
+      description: when consistency check patches the body
+      decorators: []
+    it:
+      description: should propagate patched body to both sticky comment and formal review
+      test_id_format: '[test_id:TS-GH-2054-014]'
+  code_structure: "func TestPostReviewCommand_PropagatesPatchedBody(t *testing.T) {\n  // Arrange: mock client tracking both\
+    \ sticky post and formal review\n  // Act: run post-review with contradictory input\n  // Assert: both sticky comment\
+    \ and formal review use patched body\n}\n"
+  test_objective:
+    title: Verify consistency check integrates with sticky comment flow
+    what: 'Tests that the patched body propagates to both the sticky comment
+
+      posting and the formal review submission. The consistency check must
+
+      run at a point where its output affects all downstream consumers.
+
+      '
+    why: 'If the patched body only reaches the sticky comment but not the formal
+
+      review (or vice versa), the fix is incomplete and inconsistency persists.
+
+      '
+    acceptance_criteria:
+    - Sticky comment body contains patched content
+    - Formal review body contains patched content
+    - Both outputs are identical
+  classification:
+    test_type: Functional
+    scope: CLI command integration
+    automation_approach: go test with mock forge.Client
+  specific_preconditions:
+  - name: Mock forge.Client
+    requirement: Captures both sticky.Post and formal review submission body
+    validation: Mock records both calls
+  test_data:
+    resource_definitions: []
+  test_steps:
+    setup:
+    - step_id: SETUP-01
+      action: Create mock client tracking both output paths
+      command: Set up mock capturing sticky and review bodies
+      validation: Mock ready to capture
+    test_execution:
+    - step_id: TEST-01
+      action: Execute post-review with contradictory result
+      command: Run post-review command
+      validation: Command completes
+    - step_id: TEST-02
+      action: Verify sticky comment body
+      command: assert.Contains(t, stickyBody, findingCategory)
+      validation: Sticky comment has patched body
+    - step_id: TEST-03
+      action: Verify formal review body
+      command: assert.Contains(t, reviewBody, findingCategory)
+      validation: Formal review has patched body
+    cleanup: []
+  assertions:
+  - assertion_id: ASSERT-01
+    priority: P0
+    description: Patched body reaches both output paths
+    condition: stickyBody and reviewBody both contain patched content
+    failure_impact: Partial fix — one output still contradictory
+  dependencies:
+    kubernetes_resources: []
+    external_tools: []
+    scenario_specific_rbac: []
+  patterns:
+    primary_pattern: cli-integration
+    helpers_required:
+    - mock-forge-client
+    - testify-assertions
+- scenario_id: '015'
+  test_id: TS-GH-2054-015
+  tier: Tier 1
+  priority: P1
+  mvp: false
+  requirement_id: GH-2054
+  variables:
+    closure_scope: []
+  test_structure:
+    type: single
+    describe:
+      description: SKILL.md documentation
+    context:
+      description: body-verdict consistency instruction
+      decorators: []
+    it:
+      description: should include instruction for blocking verdicts
+      test_id_format: '[test_id:TS-GH-2054-015]'
+  code_structure: "func TestSkillMD_ContainsConsistencyInstruction(t *testing.T) {\n  // Read SKILL.md content\n  // Assert:\
+    \ contains instruction about including findings in body\n  // for blocking verdicts (request-changes, reject)\n}\n"
+  test_objective:
+    title: Verify SKILL.md instructs findings inclusion for blocking verdicts
+    what: 'Tests that the pr-review skill''s SKILL.md file contains an explicit
+
+      instruction telling the agent to include significant findings in
+
+      the review body when the verdict is blocking (request-changes/reject).
+
+      '
+    why: 'The SKILL.md update is the source-level fix that prevents the agent
+
+      from producing contradictory output. The CLI safety net is a fallback.
+
+      '
+    acceptance_criteria:
+    - SKILL.md contains instruction about body-verdict consistency
+    - Instruction mentions blocking verdicts (request-changes or reject)
+    - Instruction mentions including findings in body
+  classification:
+    test_type: Documentation validation
+    scope: File content
+    automation_approach: go test with file read and string assertions
+  specific_preconditions:
+  - name: SKILL.md path
+    requirement: skills/pr-review/SKILL.md must exist
+    validation: os.Stat(skillPath)
+  test_data:
+    resource_definitions: []
+  test_steps:
+    setup:
+    - step_id: SETUP-01
+      action: Locate SKILL.md file
+      command: Resolve path to skills/pr-review/SKILL.md
+      validation: File exists
+    test_execution:
+    - step_id: TEST-01
+      action: Read SKILL.md content
+      command: os.ReadFile(skillPath)
+      validation: File read successfully
+    - step_id: TEST-02
+      action: Verify consistency instruction present
+      command: assert.Contains(t, content, consistency-related keywords)
+      validation: Instruction found in SKILL.md
+    cleanup: []
+  assertions:
+  - assertion_id: ASSERT-01
+    priority: P0
+    description: SKILL.md contains body-verdict consistency instruction
+    condition: File contains instruction about including findings for blocking verdicts
+    failure_impact: Agent not instructed to produce consistent output — relies entirely on CLI fallback
+  dependencies:
+    kubernetes_resources: []
+    external_tools: []
+    scenario_specific_rbac: []
+  patterns:
+    primary_pattern: file-content-validation
+    helpers_required:
+    - testify-assertions
+- scenario_id: '016'
+  test_id: TS-GH-2054-016
+  tier: Tier 1
+  priority: P1
+  mvp: false
+  requirement_id: GH-2054
+  variables:
+    closure_scope:
+    - name: mockClient
+      type: '*MockForgeClient'
+      initialized_in: test
+      used_in:
+      - test
+      comment: Mock client for end-to-end flow
+    - name: reviewJSON
+      type: string
+      initialized_in: test
+      used_in:
+      - test
+      comment: Simulated contradictory agent output
+  test_structure:
+    type: single
+    describe:
+      description: post-review end-to-end
+    context:
+      description: with contradictory agent output
+      decorators: []
+    it:
+      description: should detect contradiction and fix summary
+      test_id_format: '[test_id:TS-GH-2054-016]'
+  code_structure: "func TestPostReview_EndToEnd_ContradictoryAgentOutput(t *testing.T) {\n  // Arrange: full contradictory\
+    \ review result JSON (agent-like output)\n  // Act: run complete post-review flow\n  // Assert: final sticky comment reflects\
+    \ actual findings\n}\n"
+  test_objective:
+    title: Verify end-to-end review with contradictory agent output
+    what: 'Tests the complete post-review flow starting from a contradictory
+
+      agent-generated review result (body says "No findings" but findings
+
+      array has critical items) through to the final posted sticky comment.
+
+      Validates the entire pipeline detects and corrects the contradiction.
+
+      '
+    why: 'This is the acceptance test from GH-2054''s validation criteria:
+
+      "the summary PR comment lists those findings" when verdict is
+
+      CHANGES_REQUESTED with inline findings.
+
+      '
+    acceptance_criteria:
+    - Starting from contradictory input, final posted comment contains findings
+    - Summary never says 'No findings' when critical findings exist
+    - Correct severity ordering in final output
+  classification:
+    test_type: Functional
+    scope: End-to-end CLI flow
+    automation_approach: go test with mock forge.Client
+  specific_preconditions:
+  - name: Mock forge.Client
+    requirement: Full mock simulating GitHub API
+    validation: Mock captures all API calls
+  test_data:
+    resource_definitions:
+    - name: full_contradictory_review
+      type: ReviewResult JSON
+      yaml: "{\n  \"action\": \"request-changes\",\n  \"body\": \"## Review Summary\\n\\nLGTM! No findings to report. The\
+        \ code looks good overall.\",\n  \"findings\": [\n    {\n      \"category\": \"logic-error\",\n      \"severity\"\
+        : \"critical\",\n      \"file\": \"pkg/handler.go\",\n      \"line\": 42,\n      \"message\": \"Nil pointer dereference\
+        \ in error path\",\n      \"remediation\": \"Add nil check before accessing field\"\n    },\n    {\n      \"category\"\
+        : \"security-issue\",\n      \"severity\": \"high\",\n      \"file\": \"pkg/auth.go\",\n      \"line\": 15,\n    \
+        \  \"message\": \"Missing input validation on user-provided data\",\n      \"remediation\": \"Validate and sanitize\
+        \ input before processing\"\n    },\n    {\n      \"category\": \"style\",\n      \"severity\": \"low\",\n      \"\
+        file\": \"pkg/utils.go\",\n      \"line\": 8,\n      \"message\": \"Unused import\"\n    }\n  ]\n}\n"
+  test_steps:
+    setup:
+    - step_id: SETUP-01
+      action: Create full mock environment
+      command: Set up mock client and write review JSON
+      validation: Environment ready
+    test_execution:
+    - step_id: TEST-01
+      action: Execute complete post-review flow
+      command: Run post-review with full contradictory input
+      validation: Command completes successfully
+    - step_id: TEST-02
+      action: Verify final posted comment contains findings
+      command: assert.Contains(t, postedBody, "logic-error")
+      validation: Critical finding visible in posted comment
+    - step_id: TEST-03
+      action: Verify 'No findings' text removed
+      command: assert.NotContains(t, postedBody, "No findings")
+      validation: Contradictory text eliminated
+    - step_id: TEST-04
+      action: Verify severity ordering
+      command: criticalIdx < highIdx in posted body
+      validation: Critical findings appear before high findings
+    cleanup:
+    - step_id: CLEANUP-01
+      action: Clean up temp files
+      command: os.RemoveAll(tempDir)
+  assertions:
+  - assertion_id: ASSERT-01
+    priority: P0
+    description: End-to-end contradiction detection and correction
+    condition: Posted comment contains findings, not 'No findings'
+    failure_impact: Core acceptance criteria not met — GH-2054 bug persists
+  - assertion_id: ASSERT-02
+    priority: P1
+    description: Severity ordering preserved in final output
+    condition: Critical findings before high findings in posted body
+    failure_impact: Output ordering inconsistent
+  dependencies:
+    kubernetes_resources: []
+    external_tools:
+    - go 1.23+
+    scenario_specific_rbac: []
+  patterns:
+    primary_pattern: cli-integration
+    helpers_required:
+    - mock-forge-client
+    - testify-assertions
