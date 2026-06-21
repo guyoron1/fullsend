@@ -1,0 +1,29 @@
+status: success
+jira_id: GH-2354
+verdict: APPROVED_WITH_FINDINGS
+confidence: MEDIUM
+weighted_score: 79
+findings:
+  critical: 0
+  major: 3
+  minor: 5
+  actionable: 7
+  total: 8
+artifacts_reviewed:
+  std_yaml: true
+  go_stubs: true
+  python_stubs: false
+  stp_available: false
+dimension_scores:
+  traceability: null  # not evaluated
+  yaml_structure: null  # not evaluated
+  pattern_matching: 70
+  step_quality: 85
+  content_policy: 80
+  pse_quality: null  # not evaluated
+  codegen_readiness: null  # not evaluated
+dimensions_evaluated:
+  - 3  # Pattern Matching Correctness
+  - 4  # Test Step Quality
+  - 4.5  # STD Content Policy
+scope_note: "Review limited to Dimensions 3, 4, and 4.5 per request"
