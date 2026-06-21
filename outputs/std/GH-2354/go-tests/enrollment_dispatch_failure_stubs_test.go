@@ -20,7 +20,6 @@ func TestEnrollmentDispatchFailure(t *testing.T) {
 	    - tier1
 
 	Preconditions:
-	    - Go 1.23+ toolchain available
 	    - forge.FakeClient supports configurable DispatchWorkflow errors
 	*/
 
@@ -72,8 +71,8 @@ func TestEnrollmentDispatchFailure(t *testing.T) {
 		    1. Invoke enrollment install with dispatch-error FakeClient
 
 		Expected:
-		    - No panic on dispatch error
-		    - Error propagated cleanly (err != nil, contains dispatch error info)
+		    - No panic: require.NotPanics(t, func() { enrollmentInstall(...) })
+		    - Error propagated cleanly: assert.ErrorContains(t, err, expectedDispatchErrMsg)
 		    - No data race detected
 		*/
 		t.Skip("Phase 1: Design only - awaiting implementation [test_id:TS-GH-2354-021]")

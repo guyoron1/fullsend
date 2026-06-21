@@ -19,7 +19,6 @@ func TestEnrollmentProgressFeedback(t *testing.T) {
 	    - tier1
 
 	Preconditions:
-	    - Go 1.23+ toolchain available
 	    - forge.FakeClient supports configurable workflow run responses
 	    - UI printer with buffer capture available for output assertions
 	*/
@@ -32,10 +31,12 @@ func TestEnrollmentProgressFeedback(t *testing.T) {
 
 		Steps:
 		    1. Invoke enrollment install with delayed-completion FakeClient
+		    2. Read and inspect UI printer buffer contents
 
 		Expected:
-		    - Printer buffer contains at least one progress message
-		    - Progress messages are non-empty
+		    - Printer buffer contains at least one progress message matching
+		      keywords "waiting", "polling", or "checking"
+		    - printerBuf.Len() > 0
 		*/
 		t.Skip("Phase 1: Design only - awaiting implementation [test_id:TS-GH-2354-007]")
 	})
@@ -48,10 +49,12 @@ func TestEnrollmentProgressFeedback(t *testing.T) {
 
 		Steps:
 		    1. Invoke enrollment install with delayed-completion FakeClient
+		    2. Read and inspect UI printer buffer contents
 
 		Expected:
-		    - Printer output contains elapsed time indicator matching pattern \\d+[smh]
-		    - Time format is human-readable (e.g., "30s", "1m30s")
+		    - Printer output contains elapsed time indicator matching
+		      regexp pattern `\d+[smh]` (e.g., "2s", "30s", "1m30s")
+		    - regexp.MatchString(`\d+[smh]`, printerBuf.String()) == true
 		*/
 		t.Skip("Phase 1: Design only - awaiting implementation [test_id:TS-GH-2354-008]")
 	})

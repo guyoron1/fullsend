@@ -1,30 +1,14 @@
 status: success
 jira_id: GH-2354
-stp_source: outputs/stp/GH-2354/GH-2354_test_plan.md
-std_yaml: outputs/std/GH-2354/GH-2354_test_description.yaml
-test_counts:
-  total: 21
-  tier1: 21
-  tier2: 0
-stubs:
-  go: 21
-  python: 0
-go_stub_files:
-  - enrollment_timeout_bound_stubs_test.go
-  - enrollment_backoff_stubs_test.go
-  - enrollment_progress_feedback_stubs_test.go
-  - enrollment_happy_path_stubs_test.go
-  - enrollment_timeout_error_quality_stubs_test.go
-  - enrollment_user_interruption_stubs_test.go
-  - enrollment_unenrollment_parity_stubs_test.go
-  - enrollment_dispatch_failure_stubs_test.go
-priority_distribution:
-  p0: 6
-  p1: 13
-  p2: 2
-notes:
-  - "All 21 scenarios are Functional tier (Go test stubs)"
-  - "No E2E scenarios — Python stubs not generated"
-  - "python.yaml missing from project config; python_tests toggle warned"
-  - "No pattern files found; test structure inferred from scenario descriptions"
-  - "Phase 1 stubs with t.Skip() — excluded from test execution"
+initial_verdict: APPROVED_WITH_FINDINGS
+final_verdict: APPROVED
+iterations: 1
+initial_score: 82
+final_score: 94
+findings:
+  initial: {critical: 0, major: 7, minor: 8}
+  final: {critical: 0, major: 0, minor: 3}
+artifacts_refined:
+  std_yaml: true
+  go_stubs: true
+  python_stubs: false

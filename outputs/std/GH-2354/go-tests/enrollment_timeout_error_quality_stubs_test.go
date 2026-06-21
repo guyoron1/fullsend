@@ -20,7 +20,6 @@ func TestEnrollmentTimeoutErrorQuality(t *testing.T) {
 	    - tier1
 
 	Preconditions:
-	    - Go 1.23+ toolchain available
 	    - forge.FakeClient configured to never complete workflow
 	*/
 

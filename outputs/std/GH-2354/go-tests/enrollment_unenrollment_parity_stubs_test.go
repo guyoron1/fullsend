@@ -19,7 +19,6 @@ func TestUnenrollmentParity(t *testing.T) {
 	    - tier1
 
 	Preconditions:
-	    - Go 1.23+ toolchain available
 	    - forge.FakeClient supports configurable workflow run responses
 	    - Unenrollment code path accessible for testing
 	*/
@@ -52,6 +51,7 @@ func TestUnenrollmentParity(t *testing.T) {
 
 		Expected:
 		    - Unenrollment poll intervals increase exponentially
+		      (interval[i+1] >= interval[i] for all i AND max(intervals) <= enrollmentPollMax + tolerance)
 		    - Backoff pattern matches enrollment (same initial and max interval constants)
 		*/
 		t.Skip("Phase 1: Design only - awaiting implementation [test_id:TS-GH-2354-018]")

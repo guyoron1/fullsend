@@ -20,7 +20,6 @@ func TestEnrollmentUserInterruption(t *testing.T) {
 	    - tier1
 
 	Preconditions:
-	    - Go 1.23+ toolchain available
 	    - forge.FakeClient supports configurable workflow run responses
 	    - Cancellable context available for simulating Ctrl+C
 	*/

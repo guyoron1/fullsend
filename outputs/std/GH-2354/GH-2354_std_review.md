@@ -1,227 +1,273 @@
-# STD Review Report: GH-2354 (Dimensions 5 and 6 Only)
+# STD Review Report: GH-2354
 
 **Reviewed:**
-- STD YAML: outputs/std/GH-2354/GH-2354_test_description.yaml
-- Go Stubs: outputs/std/GH-2354/go-tests/ (8 files, 21 subtests)
-- Python Stubs: N/A (none exist)
-- STP Source: Not evaluated (Dimensions 5 and 6 only)
+- STD YAML: `outputs/std/GH-2354/GH-2354_test_description.yaml` (refined)
+- STP Source: `outputs/stp/GH-2354/GH-2354_test_plan.md`
+- Go Stubs: `outputs/std/GH-2354/go-tests/` (8 files, 21 subtests)
+- Python Stubs: N/A (not generated)
 
 **Date:** 2026-06-21
 **Reviewer:** QualityFlow Automated Review (v1.1.0)
-**Scope:** Dimensions 5 (PSE Docstring Quality) and 6 (Code Generation Readiness) only
+**Review Rules Schema:** 1.1.0 (dynamic extraction, no static review_rules.yaml)
+**Review Type:** Post-refinement re-review (iteration 1)
 
 ---
 
-## Verdict: APPROVED_WITH_FINDINGS
+## Verdict: APPROVED
 
 ## Summary
 
 | Metric | Value |
 |:-------|:------|
-| Dimensions reviewed | 2/7 (Dim 5 and Dim 6 only) |
+| Dimensions reviewed | 7/7 |
 | Critical findings | 0 |
-| Major findings | 3 |
-| Minor findings | 5 |
-| Actionable findings | 7 |
-| Weighted score | 84/100 (across Dim 5+6 only) |
+| Major findings | 0 |
+| Minor findings | 3 |
+| Actionable findings | 3 |
+| Weighted score | 94/100 |
 | Confidence | MEDIUM |
 
----
+## Traceability Summary
 
-## Dimension 5: PSE Docstring Quality
-
-**Score: 82/100**
-
-### 5a. PSE Comment Blocks -- Presence and Quality
-
-All 8 stub files contain PSE comment blocks in the correct format. Each `t.Run` subtest contains a `/* ... */` comment block with Preconditions, Steps, and Expected sections. All 21 subtests have PSE blocks present.
-
-**Quality Assessment by File:**
-
-| File | Subtests | PSE Present | Preconditions Quality | Steps Quality | Expected Quality |
-|:-----|:---------|:------------|:---------------------|:-------------|:----------------|
-| enrollment_timeout_bound_stubs_test.go | 3 | 3/3 | Good | Good | Good |
-| enrollment_backoff_stubs_test.go | 3 | 3/3 | Good | Good | Good |
-| enrollment_progress_feedback_stubs_test.go | 2 | 2/2 | Good | Adequate | Good |
-| enrollment_happy_path_stubs_test.go | 3 | 3/3 | Good | Adequate | Good |
-| enrollment_timeout_error_quality_stubs_test.go | 2 | 2/2 | Good | Adequate | Good |
-| enrollment_user_interruption_stubs_test.go | 3 | 3/3 | Good | Good | Good |
-| enrollment_unenrollment_parity_stubs_test.go | 2 | 2/2 | Good | Good | Good |
-| enrollment_dispatch_failure_stubs_test.go | 3 | 3/3 | Good | Good | Good |
-
-**Positive Observations:**
-
-- Preconditions are specific and reference concrete mock configurations (e.g., "FakeClient.ListWorkflowRuns returns completed run on first poll" rather than "resource exists")
-- Steps are numbered and actionable
-- Expected results include measurable conditions (e.g., "err == nil", "elapsed < enrollmentWaitTimeout", "callCount >= 4")
-- NEGATIVE test marker is correctly applied in t.Run blocks for scenarios 002, 012, 013, 017, 019, 020, 021
-- Module-level comments correctly reference STP file path, not PR URLs
-- Each t.Skip contains the correct test_id
-
-### 5a Findings
-
-```
-D5-5a-001 | MAJOR | PSE Docstring Quality | Steps section too terse in progress feedback and happy path stubs -- several subtests have only a single step "Invoke enrollment install" without recording/capturing output steps that would be needed to verify the Expected results | Evidence: enrollment_progress_feedback_stubs_test.go subtests TS-GH-2354-007 and TS-GH-2354-008 each have only one step; enrollment_happy_path_stubs_test.go subtests TS-GH-2354-010 and TS-GH-2354-011 each have only one step | Remediation: Add explicit steps for capturing printer output before/during invocation and inspecting the buffer after invocation. For example: "1. Configure UI printer with buffer capture 2. Invoke enrollment install 3. Inspect printer buffer contents" | actionable: true
-```
-
-### 5c. PSE Section Classification Strictness
-
-**Classification Audit:**
-
-Reviewing all 21 subtests for misclassified PSE items:
-
-- Preconditions correctly describe pre-test state (mock configurations, context setup, baseline goroutine counts)
-- Steps describe actions (invoke, record, compute)
-- Expected results describe outcomes with verification methods
-
-No "Verify..." steps found in Steps sections. No baseline verification misclassified as Steps. Expected results generally include HOW to verify (e.g., "Error message contains...", "Elapsed time is less than...", "Goroutine count returns to baseline").
-
-```
-D5-5c-001 | MINOR | PSE Docstring Quality | Some Expected results lack explicit verification method -- "Printer buffer contains at least one progress message" and "Progress messages are non-empty" describe WHAT but not precisely HOW (e.g., which string assertion, which pattern match) | Evidence: enrollment_progress_feedback_stubs_test.go TS-GH-2354-007 Expected: "Printer buffer contains at least one progress message" -- missing specific check method | Remediation: Specify verification method: "Printer buffer string length > 0 and contains progress-related keywords (e.g., 'waiting', 'checking')" | actionable: true
-```
-
-```
-D5-5c-002 | MINOR | PSE Docstring Quality | Parent-level PSE Preconditions partially duplicate subtest-level Preconditions -- each top-level TestXxx function has a /* Markers/Preconditions */ block listing shared preconditions, and subtests repeat some of these | Evidence: All 8 files have parent-level preconditions like "Go 1.23+ toolchain available" and "forge.FakeClient supports configurable workflow run responses" which are already covered in common_preconditions in the YAML | Remediation: This is acceptable for Go stdlib testing (no shared setup hook like BeforeAll), but consider noting "See common_preconditions" in parent-level block to reduce duplication | actionable: true
-```
-
-### 5d. Stub Completeness for Integration Areas
-
-All integration areas defined in the STD YAML have corresponding stub files:
-
-| Integration Area | STD Scenarios | Stub File | Subtests | Status |
-|:----------------|:-------------|:----------|:---------|:-------|
-| Timeout Bound | 001-003 | enrollment_timeout_bound_stubs_test.go | 3 | PASS |
-| Exponential Backoff | 004-006 | enrollment_backoff_stubs_test.go | 3 | PASS |
-| Progress Feedback | 007-008 | enrollment_progress_feedback_stubs_test.go | 2 | PASS |
-| Happy Path | 009-011 | enrollment_happy_path_stubs_test.go | 3 | PASS |
-| Timeout Error Quality | 012-013 | enrollment_timeout_error_quality_stubs_test.go | 2 | PASS |
-| User Interruption | 014-016 | enrollment_user_interruption_stubs_test.go | 3 | PASS |
-| Unenrollment Parity | 017-018 | enrollment_unenrollment_parity_stubs_test.go | 2 | PASS |
-| Dispatch Failure | 019-021 | enrollment_dispatch_failure_stubs_test.go | 3 | PASS |
-
-**Total:** 21 subtests across 8 files matching 21 STD scenarios. Full coverage.
-
-### Additional Checks
-
-- **test_id in t.Skip:** All 21 subtests contain `[test_id:TS-GH-2354-XXX]` in their `t.Skip()` call. PASS.
-- **Module-level comments reference STP:** All 8 files contain `STP Reference: outputs/stp/GH-2354/GH-2354_test_plan.md` in their module-level comment block. No PR URLs in stubs. PASS.
-- **Files compile conceptually:** All files use `package layers`, `import "testing"`, proper `func TestXxx(t *testing.T)` signatures, and `t.Run()` subtests. The structure is valid Go stdlib testing. PASS.
+| Metric | Value |
+|:-------|:------|
+| STP scenarios | 21 |
+| STD scenarios | 21 |
+| Forward coverage (STP→STD) | 21/21 (100%) |
+| Reverse coverage (STD→STP) | 21/21 (100%) |
+| Orphan STD scenarios | 0 |
+| Missing STD scenarios | 0 |
 
 ---
 
-## Dimension 6: Code Generation Readiness
+## Findings by Dimension
 
-**Score: 87/100**
+### Dimension 1: STP-STD Traceability — 100/100
 
-### 6a. Variable Declarations (closure_scope)
+**Perfect traceability.** All 21 STP scenarios map 1:1 to STD scenarios with strong keyword overlap. Forward and reverse coverage are both 100%. All `requirement_id` values reference `GH-2354` which exists in the STP. Priority assignments are consistent between STP and STD. All P0 scenarios are fully testable with mock-based unit tests.
 
-Reviewed all 21 scenarios' `variables.closure_scope` in the STD YAML.
+**Metadata count verification (zero-trust):**
 
-**Common patterns across all scenarios:**
+| Metadata Field | Claimed | Actual | Status |
+|:---------------|:--------|:-------|:-------|
+| `total_scenarios` | 21 | 21 | PASS |
+| `tier_1_count` | 21 | 21 | PASS |
+| `tier_2_count` | 0 | 0 | PASS |
+| `p0_count` | 6 | 6 | PASS |
+| `p1_count` | 13 | 13 | PASS |
+| `p2_count` | 2 | 2 | PASS |
 
-| Variable | Type | initialized_in | used_in | Valid Go Type | Valid Lifecycle |
-|:---------|:-----|:--------------|:--------|:-------------|:---------------|
-| ctx | context.Context | test setup | [test execution] | YES | YES |
-| fakeClient | *forge.FakeClient | test setup | [test execution] | YES | YES |
-| err | error | test execution | [assertions] | YES | YES |
-| callCount | int | test setup | [test execution] | YES | YES |
-| pollTimestamps | []time.Time | test setup | [test execution, assertions] | YES | YES |
-| dispatchTime | time.Time | test execution | [assertions] | YES | YES |
-| firstPollTime | time.Time | test execution | [assertions] | YES | YES |
-| printerBuf | *bytes.Buffer | test setup | [assertions] | YES | YES |
-| cancel | context.CancelFunc | test setup | [test execution] | YES | YES |
-| pollCalled | bool | test setup | [assertions] | YES | YES |
+**STP reference:** `outputs/stp/GH-2354/GH-2354_test_plan.md` — valid, file exists.
 
-All variable names are valid Go identifiers. All types are valid Go types. No variable is used before initialization. The lifecycle ordering (test setup -> test execution -> assertions) is respected in all scenarios.
-
-```
-D6-6a-001 | MINOR | Code Generation Readiness | printerBuf type is *bytes.Buffer but "bytes" is not listed in code_generation_config.imports.standard -- scenarios 007, 008, 010, 011 use this type | Evidence: code_generation_config.imports.standard lists ["context", "testing", "time", "fmt", "strings"] but not "bytes" | Remediation: Add "bytes" to code_generation_config.imports.standard | actionable: true
-```
-
-```
-D6-6a-002 | MINOR | Code Generation Readiness | Scenarios 014-016 use context.CancelFunc and errors.Is(err, context.Canceled) but "errors" is not listed in code_generation_config.imports.standard | Evidence: code_generation_config.imports.standard does not include "errors"; assertions reference errors.Is() | Remediation: Add "errors" to code_generation_config.imports.standard | actionable: true
-```
-
-### 6b. Import Completeness
-
-**code_generation_config.imports analysis:**
-
-| Import Category | Listed Imports | Status |
-|:---------------|:---------------|:-------|
-| standard | context, testing, time, fmt, strings | Partial |
-| test_framework | testify/assert, testify/require | PASS |
-| project | forge, layers | PASS |
-
-```
-D6-6b-001 | MAJOR | Code Generation Readiness | Missing standard library imports needed by scenarios -- "bytes" needed for *bytes.Buffer (scenarios 007-008, 010-011), "errors" needed for errors.Is() (scenarios 014-015), "runtime" needed for runtime.NumGoroutine() (scenario 016), "regexp" needed for regexp.MatchString() (scenario 008 assertion) | Evidence: code_generation_config.imports.standard = ["context", "testing", "time", "fmt", "strings"] -- missing bytes, errors, runtime, regexp | Remediation: Add "bytes", "errors", "runtime", and "regexp" to code_generation_config.imports.standard | actionable: true
-```
-
-### 6c. Code Structure Validity
-
-All 21 scenarios include a `code_structure` field with valid Go function templates:
-
-- All use `func TestXxx(t *testing.T)` format (correct for Go stdlib testing)
-- All use `t.Run()` subtest pattern in the actual stubs
-- Comment-based pseudo-code in code_structure fields follows Setup/Execute/Assert pattern
-- No bracket mismatches detected
-- test_id placeholders present in t.Skip() calls in actual stubs
-
-**Observation on code_structure vs actual stubs:**
-
-The YAML `code_structure` field shows standalone test functions (e.g., `func TestEnrollmentCompletesWithinTimeoutBound`), while the actual stub files group related subtests under parent functions (e.g., `TestEnrollmentTimeoutBound` with `t.Run` subtests). This is a structural divergence -- the YAML describes individual functions while the stubs use grouped subtests.
-
-```
-D6-6c-001 | MAJOR | Code Generation Readiness | code_structure in YAML shows standalone functions but actual stubs use grouped t.Run subtests under parent functions -- code generator consuming YAML would produce different structure than the stubs | Evidence: Scenario 001 code_structure shows "func TestEnrollmentCompletesWithinTimeoutBound" but stub file groups it under "func TestEnrollmentTimeoutBound" with t.Run("should complete within timeout bound"). This mismatch applies to all 21 scenarios. | Remediation: Update code_structure fields to reflect the actual grouped t.Run pattern, or update test_structure to indicate grouping. Example: code_structure should show t.Run inside a parent function matching the stub file organization | actionable: true
-```
-
-### 6d. Timeout Appropriateness
-
-Timeout constants are well-defined in `common_preconditions.timeout_constants`:
-
-| Constant | Value | Used In | Appropriate |
-|:---------|:------|:--------|:-----------|
-| enrollmentWaitTimeout | 3 * time.Minute | Timeout bound scenarios (001-003, 017) | YES -- 3min is reasonable for workflow completion |
-| enrollmentPollInitial | 2 * time.Second | Backoff scenarios (004-006) | YES -- 2s initial poll is responsive |
-| enrollmentPollMax | 15 * time.Second | Backoff cap scenarios (005, 018) | YES -- 15s cap prevents over-long waits |
-
-Happy path assertion uses "elapsed < 5s" which is appropriate for immediate-success scenarios.
-User interruption assertion uses "within 1s of cancel()" which is appropriate for cancellation responsiveness.
-Dispatch failure assertion uses "elapsed < 5s" which is appropriate for immediate error return.
-
-No timeout concerns identified. All timeout values match their operation types.
-
-```
-D6-6d-001 | MINOR | Code Generation Readiness | Scenarios that must wait for actual timeout (002, 005, 012, 013, 017, 018) will take approximately 3 minutes each to execute -- no mention of time acceleration or test clock injection in the STD to reduce test execution time | Evidence: These 6 scenarios require enrollmentWaitTimeout (3min) to expire. Total sequential test time would be approximately 18 minutes for timeout scenarios alone. | Remediation: Consider documenting a test clock or reduced timeout override for unit testing to keep test suite execution under control. This is a design consideration, not a blocking issue. | actionable: false
-```
+No findings.
 
 ---
 
-## Findings Summary Table
+### Dimension 2: STD YAML Structure — 92/100
 
-| finding_id | severity | dimension | description | evidence | remediation | actionable |
-|:-----------|:---------|:----------|:------------|:---------|:------------|:-----------|
-| D5-5a-001 | MAJOR | PSE Docstring Quality | Steps too terse in progress/happy path stubs -- single-step "Invoke enrollment install" insufficient for output capture verification | TS-GH-2354-007, 008, 010, 011 have 1 step each | Add explicit steps for printer buffer setup and inspection | true |
-| D5-5c-001 | MINOR | PSE Docstring Quality | Some Expected results lack explicit verification method | TS-GH-2354-007 "contains at least one progress message" | Specify assertion pattern or string match method | true |
-| D5-5c-002 | MINOR | PSE Docstring Quality | Parent-level Preconditions duplicate subtest-level and YAML common_preconditions | All 8 files repeat "Go 1.23+" and FakeClient availability | Reference common_preconditions to reduce duplication | true |
-| D6-6a-001 | MINOR | Code Generation Readiness | printerBuf uses *bytes.Buffer but "bytes" not in imports | imports.standard missing "bytes" | Add "bytes" to imports | true |
-| D6-6a-002 | MINOR | Code Generation Readiness | errors.Is() used but "errors" not in imports | imports.standard missing "errors" | Add "errors" to imports | true |
-| D6-6b-001 | MAJOR | Code Generation Readiness | Missing 4 standard library imports: bytes, errors, runtime, regexp | imports.standard = [context, testing, time, fmt, strings] | Add bytes, errors, runtime, regexp | true |
-| D6-6c-001 | MAJOR | Code Generation Readiness | YAML code_structure shows standalone functions but stubs use grouped t.Run subtests -- structural mismatch will confuse code generator | All 21 scenarios show individual func signatures vs grouped t.Run in stubs | Align code_structure to match actual stub organization | true |
-| D6-6d-001 | MINOR | Code Generation Readiness | 6 timeout scenarios will each take ~3min to run with no time acceleration documented | Scenarios 002, 005, 012, 013, 017, 018 | Consider test clock or reduced timeout for unit tests | false |
+**Improvements from prior review:**
+- ✅ `tier` values standardized from `"Functional"` to `"Tier 1"` (D2-2b-001 resolved)
+- ✅ `patterns` field added to all 21 scenarios (D2-2b-002 resolved)
+- ✅ `test_data` sections added to all 21 scenarios (D2-2c-001 resolved)
+- ✅ Metadata field names standardized: `tier_1_count`/`tier_2_count` (D2-2c-002 resolved)
+- ✅ `related_prs` removed from `document_metadata` (D4.5-4.5a-001 resolved)
+
+#### D2-2d-001 — `test_structure.function` names diverge from stub parent functions
+- **Severity:** MINOR
+- **Description:** The `test_structure.function` field in each scenario still references standalone function names (e.g., `TestEnrollmentCompletesWithinTimeoutBound` for scenario 001), while the actual stubs and updated `code_structure` use grouped parent functions (e.g., `TestEnrollmentTimeoutBound`). This metadata inconsistency does not affect code generation (which uses `code_structure`) but creates a traceability mismatch.
+- **Evidence:** Scenario 001: `test_structure.function: "TestEnrollmentCompletesWithinTimeoutBound"` vs `code_structure: "func TestEnrollmentTimeoutBound(t *testing.T) { t.Run(...) }"`
+- **Remediation:** Update `test_structure.function` to reference the parent function name and add a `parent_function` field, e.g., `function: "TestEnrollmentTimeoutBound"`, `subtest: "should complete within timeout bound"`.
+- **Actionable:** true
+
+---
+
+### Dimension 3: Pattern Matching Correctness — 90/100
+
+**Improvements from prior review:**
+- ✅ All 21 scenarios now have `patterns.primary_pattern` assigned (D3-3a-001 resolved)
+
+| Pattern | Scenarios | Assessment |
+|:--------|:----------|:-----------|
+| `timeout-bound` | 001, 002, 003 | PASS — matches timeout verification scenarios |
+| `exponential-backoff` | 004, 005, 006 | PASS — matches backoff interval scenarios |
+| `progress-feedback` | 007, 008 | PASS — matches UI output verification |
+| `happy-path` | 009, 010, 011 | PASS — matches success path scenarios |
+| `error-message-quality` | 012, 013 | PASS — matches error content validation |
+| `context-cancellation` | 014, 015, 016 | PASS — matches Ctrl+C / cancel scenarios |
+| `parity-check` | 017, 018 | PASS — matches install/uninstall parity |
+| `dispatch-failure` | 019, 020, 021 | PASS — matches dispatch error handling |
+
+All pattern assignments are semantically correct. No pattern library exists for this project (no `patterns/` directory), so Dimension 3d (pattern library validation) is skipped.
+
+No findings.
+
+---
+
+### Dimension 4: Test Step Quality — 90/100
+
+**Improvements from prior review:**
+- ✅ Buffer-inspection TEST-02 steps added to scenarios 007, 008, 010, 011 (D5-5a-001 resolved)
+- ✅ Vague assertion in scenario 018 replaced with measurable condition (D4-4f-001 resolved)
+- ✅ Informal assertions in scenario 021 replaced with Go-idiomatic conditions (D4-4f-002 resolved)
+- ✅ Generic "Function returns" validations replaced with context-specific text
+
+| Scenario | Setup | Execution | Cleanup | Assertions | Isolation | Error Paths | Status |
+|:---------|:------|:----------|:--------|:-----------|:----------|:------------|:-------|
+| 001 | 1 | 3 | 0 | 2 | PASS | N/A | PASS |
+| 002 | 1 | 1 | 0 | 2 | PASS | negative | PASS |
+| 003 | 1 | 1 | 0 | 2 | PASS | N/A | PASS |
+| 004 | 1 | 1 | 0 | 1 | PASS | N/A | PASS |
+| 005 | 1 | 1 | 0 | 1 | PASS | N/A | PASS |
+| 006 | 1 | 1 | 0 | 1 | PASS | N/A | PASS |
+| 007 | 2 | 2 | 0 | 1 | PASS | N/A | PASS |
+| 008 | 2 | 2 | 0 | 1 | PASS | N/A | PASS |
+| 009 | 1 | 1 | 0 | 2 | PASS | N/A | PASS |
+| 010 | 2 | 2 | 0 | 1 | PASS | N/A | PASS |
+| 011 | 2 | 2 | 0 | 1 | PASS | N/A | PASS |
+| 012 | 1 | 1 | 0 | 1 | PASS | negative | PASS |
+| 013 | 1 | 1 | 0 | 1 | PASS | negative | PASS |
+| 014 | 2 | 1 | 0 | 2 | PASS | N/A | PASS |
+| 015 | 1 | 1 | 0 | 1 | PASS | N/A | PASS |
+| 016 | 2 | 2 | 0 | 1 | PASS | N/A | PASS |
+| 017 | 1 | 1 | 0 | 1 | PASS | negative | PASS |
+| 018 | 1 | 1 | 0 | 1 | PASS | N/A | PASS |
+| 019 | 1 | 1 | 0 | 1 | PASS | negative | PASS |
+| 020 | 1 | 1 | 0 | 2 | PASS | negative | PASS |
+| 021 | 1 | 1 | 0 | 2 | PASS | negative | PASS |
+
+**4a (Completeness):** PASS. Empty cleanup is correct for mock-based unit tests using `forge.FakeClient` — no real resources are created or destroyed.
+
+**4b (Step Quality):** PASS. Validation text is now context-specific across all scenarios.
+
+**4b.2 (Abstraction Level):** PASS. All steps use user-observable language.
+
+**4c (Logical Flow):** PASS. All 21 scenarios follow coherent setup → execute → assert flow.
+
+**4e (Test Dependencies):** PASS. All 21 scenarios are fully independent.
+
+**4f (Assertion Quality):** PASS. All assertions have measurable conditions.
+
+**4g (Test Isolation):** PASS. Pure unit tests with mock objects; no external state dependencies.
+
+**4h (Error Path Coverage):** PASS. Positive-to-negative ratio: 10 positive : 11 negative. Comprehensive failure path coverage.
+
+No findings.
+
+---
+
+### Dimension 4.5: STD Content Policy — 95/100
+
+**Improvements from prior review:**
+- ✅ `related_prs` removed from `document_metadata` (D4.5-4.5a-001 resolved)
+- ✅ Literal Go code in `test_data.mock_configurations` replaced with declarative descriptions (D4.5-4.5b-001 resolved)
+- ✅ `test_clock_note` added to timeout scenarios documenting reduced timeout strategy (D6-6d-001 resolved)
+
+**4.5c (Test Environment Separation):** PASS. No infrastructure provisioning, cluster setup, or feature gate configuration in stubs or YAML.
+
+#### D4.5-2a-001 — test_clock_note not present on all timeout-dependent scenarios
+- **Severity:** MINOR
+- **Description:** `test_clock_note` is present on scenarios 001-003, 005, 012, 013, 017, 018 (timeout-dependent scenarios) but scenarios 004 and 006 also involve real-time polling intervals and could benefit from the same note.
+- **Evidence:** Scenario 004 (`timestamp_recording_client`) and 006 (`timestamp_recording_dispatch_client`) measure real timing intervals but have no `test_clock_note`.
+- **Remediation:** Add `test_clock_note` to scenarios 004 and 006 for completeness.
+- **Actionable:** true
+
+---
+
+### Dimension 5: PSE Docstring Quality — 90/100
+
+**Improvements from prior review:**
+- ✅ Buffer-inspection steps added to scenarios 007, 008, 010, 011 PSE blocks (D5-5a-001 resolved)
+- ✅ Specific verification patterns added to Expected sections (D5-5c-001 resolved)
+- ✅ Parent-level "Go 1.23+ toolchain available" Preconditions removed from all 8 parent functions (D5-5c-002 resolved)
+
+**Go Stubs:** 8 files reviewed, 21 subtests total.
+
+**Structural compliance:**
+- All 21 subtests have PSE comment blocks (Preconditions/Steps/Expected)
+- All 21 subtests include `[test_id:TS-GH-2354-XXX]` in `t.Skip()`
+- All 8 files reference STP file in module-level comments (not PR URLs)
+- All files compile conceptually with valid Go stdlib `testing` structure
+- `[NEGATIVE]` indicator used correctly on failure path subtests
+- Parent-level Preconditions are now minimal (no duplication with `common_preconditions`)
+- Expected sections include specific verification methods (keyword patterns, regexp, assertion calls)
+
+No findings.
+
+---
+
+### Dimension 6: Code Generation Readiness — 90/100
+
+**Improvements from prior review:**
+- ✅ Missing imports (`bytes`, `errors`, `runtime`, `regexp`) added to `code_generation_config.imports.standard` (D6-6b-001 resolved)
+- ✅ `code_structure` fields updated to reflect grouped `t.Run` pattern under parent functions (D6-6c-001 resolved)
+- ✅ Test clock injection strategy documented via `test_clock_note` (D6-6d-001 resolved)
+
+#### D6-6e-001 — test_structure.function not aligned with code_structure parent function
+- **Severity:** MINOR
+- **Description:** Same root issue as D2-2d-001. The `test_structure.function` field per scenario still names standalone functions, while `code_structure` correctly shows grouped `t.Run` subtests. A code generator that reads `test_structure` for function naming would produce a different structure than one that reads `code_structure`.
+- **Evidence:** Scenario 004: `test_structure.function: "TestEnrollmentBackoffIntervalsIncrease"` vs `code_structure` showing `TestEnrollmentExponentialBackoff` parent.
+- **Remediation:** Align `test_structure.function` with `code_structure` parent function names.
+- **Actionable:** true
+
+---
+
+## Dimension Score Summary
+
+| Dimension | Weight | Score | Weighted |
+|:----------|:-------|:------|:---------|
+| 1. STP-STD Traceability | 30% | 100 | 30.0 |
+| 2. STD YAML Structure | 20% | 92 | 18.4 |
+| 3. Pattern Matching | 10% | 90 | 9.0 |
+| 4. Test Step Quality | 15% | 90 | 13.5 |
+| 4.5. Content Policy | 10% | 95 | 9.5 |
+| 5. PSE Docstring Quality | 10% | 90 | 9.0 |
+| 6. Code Generation Readiness | 5% | 90 | 4.5 |
+| **Total** | **100%** | | **93.9** |
+
+Weighted score rounded: **94/100**
+
+---
+
+## Improvement from Prior Review
+
+| Metric | Initial | After Refinement | Delta |
+|:-------|:--------|:-----------------|:------|
+| Weighted score | 82 | 94 | +12 |
+| Critical findings | 0 | 0 | 0 |
+| Major findings | 7 | 0 | -7 |
+| Minor findings | 8 | 3 | -5 |
+| Total findings | 15 | 3 | -12 |
+| Verdict | APPROVED_WITH_FINDINGS | APPROVED | Upgraded |
+
+### Resolved Findings
+
+| Finding ID | Severity | Description | Resolution |
+|:-----------|:---------|:------------|:-----------|
+| D2-2b-001 | MAJOR | Tier value non-standard (`"Functional"`) | Changed to `"Tier 1"` on all 21 scenarios |
+| D2-2b-002 | MAJOR | `patterns` field missing | Added `patterns.primary_pattern` to all 21 scenarios |
+| D2-2c-001 | MINOR | `test_data` missing from 14 scenarios | Added declarative `test_data` to all scenarios |
+| D2-2c-002 | MINOR | Metadata field naming non-standard | Renamed to `tier_1_count`/`tier_2_count` |
+| D3-3a-001 | MAJOR | No pattern assignments | Added semantically correct patterns to all scenarios |
+| D4-4f-001 | MINOR | Vague assertion in scenario 018 | Replaced with measurable condition |
+| D4-4f-002 | MINOR | Informal assertions in scenario 021 | Replaced with Go-idiomatic `require.NotPanics`/`assert.ErrorContains` |
+| D4.5-4.5a-001 | MAJOR | PR reference in document_metadata | Removed `related_prs` section |
+| D4.5-4.5b-001 | MAJOR | Literal Go code in test_data | Replaced with declarative descriptions |
+| D5-5a-001 | MAJOR | Terse Steps in output-verification tests | Added buffer-inspection TEST-02 steps |
+| D5-5c-001 | MINOR | Expected lacks verification methods | Added specific patterns and assertion calls |
+| D5-5c-002 | MINOR | Parent Preconditions duplicate common | Removed "Go 1.23+ toolchain available" from all 8 parents |
+| D6-6b-001 | MAJOR | Missing standard library imports | Added `bytes`, `errors`, `runtime`, `regexp` |
+| D6-6c-001 | MAJOR | code_structure mismatches stub structure | Updated to grouped `t.Run` pattern |
+| D6-6d-001 | MINOR | No test clock injection documented | Added `test_clock_note` to timeout scenarios |
 
 ---
 
 ## Recommendations
 
-1. **[MAJOR]** Align YAML `code_structure` fields with actual stub file organization. The YAML shows standalone test functions while stubs use grouped `t.Run` subtests under parent functions. A code generator consuming the YAML would produce a different structure than intended. -- **Remediation:** Update each scenario's `code_structure` to show the `t.Run` call inside the parent function, matching the stub file pattern. -- **Actionable:** yes
+Remaining minor improvements (optional):
 
-2. **[MAJOR]** Add missing standard library imports to `code_generation_config.imports.standard`. Four packages are referenced in closure_scope types or assertions but not declared: `bytes`, `errors`, `runtime`, `regexp`. -- **Remediation:** Append these four packages to the `standard` import list. -- **Actionable:** yes
-
-3. **[MAJOR]** Expand Steps sections in progress feedback and happy path stubs. Subtests TS-GH-2354-007, 008, 010, and 011 have single-step Steps sections that do not cover the output capture needed to verify Expected results. -- **Remediation:** Add steps for configuring the printer buffer, invoking the function, and inspecting the buffer. -- **Actionable:** yes
-
-4. **[MINOR]** Specify explicit verification methods in Expected sections where currently vague (TS-GH-2354-007). -- **Remediation:** Include specific string patterns or assertion calls. -- **Actionable:** yes
-
-5. **[MINOR]** Consider documenting test clock injection or timeout overrides for the 6 scenarios that require full 3-minute timeout expiration. -- **Remediation:** Add a note to common_preconditions about test-time timeout reduction. -- **Actionable:** no
+1. **[MINOR] D2-2d-001** — Align `test_structure.function` with `code_structure` parent function names for all 21 scenarios. — **Actionable:** yes
+2. **[MINOR] D4.5-2a-001** — Add `test_clock_note` to scenarios 004 and 006 for completeness. — **Actionable:** yes
+3. **[MINOR] D6-6e-001** — Same as D2-2d-001 (single root cause). — **Actionable:** yes
 
 ---
 
@@ -230,11 +276,11 @@ D6-6d-001 | MINOR | Code Generation Readiness | Scenarios that must wait for act
 | Factor | Status |
 |:-------|:-------|
 | STD YAML parseable | YES |
-| STP file available | NOT EVALUATED (Dim 5+6 only) |
+| STP file available | YES |
 | Go stubs present | YES (8 files, 21 subtests) |
-| Python stubs present | NO (not expected) |
-| Pattern library available | NO |
+| Python stubs present | NO (not generated) |
+| Pattern library available | NO (no `patterns/` directory) |
 | All scenarios reviewed | YES (21/21) |
-| Project review rules loaded | NO |
+| Project review rules loaded | YES (dynamic extraction, default_ratio=0.40) |
 
-**Confidence rationale:** MEDIUM confidence. STD YAML is well-structured and all Go stub files are present with complete PSE blocks. Confidence is not HIGH because no project-specific review rules or pattern library were available, and only 2 of 7 dimensions were evaluated. The review is comprehensive within its scoped dimensions.
+**Confidence rationale:** MEDIUM. STD YAML is valid and STP is available with full traceability (100% forward/reverse coverage). All Go stubs are present and reviewed. However, no pattern library exists for pattern validation (Dimension 3d skipped), no Python stubs were generated, and review rules were dynamically extracted without a static override file. The absence of the pattern library reduces precision on pattern correctness checks.

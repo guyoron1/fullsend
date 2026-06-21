@@ -19,7 +19,6 @@ func TestEnrollmentTimeoutBound(t *testing.T) {
 	    - tier1
 
 	Preconditions:
-	    - Go 1.23+ toolchain available
 	    - forge.FakeClient supports configurable workflow run responses
 	    - enrollment.go timeout and backoff constants accessible for assertions
 	*/

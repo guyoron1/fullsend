@@ -13,15 +13,9 @@ document_metadata:
     file: "outputs/stp/GH-2354/GH-2354_test_plan.md"
     version: "v1"
     sections_covered: "Section III - Requirements-to-Tests Mapping"
-  related_prs:
-    - repo: "fullsend-ai/fullsend"
-      pr_number: 1954
-      url: "https://github.com/fullsend-ai/fullsend/pull/1954"
-      title: "Bounded timeout and exponential backoff for enrollment polling"
-      merged: true
   total_scenarios: 21
-  functional_count: 21
-  e2e_count: 0
+  tier_1_count: 21
+  tier_2_count: 0
   p0_count: 6
   p1_count: 13
   p2_count: 2
@@ -36,11 +30,15 @@ code_generation_config:
   context_init: "context.Background()"
   imports:
     standard:
+      - "bytes"
       - "context"
+      - "errors"
+      - "fmt"
+      - "regexp"
+      - "runtime"
+      - "strings"
       - "testing"
       - "time"
-      - "fmt"
-      - "strings"
     test_framework:
       - path: "github.com/stretchr/testify/assert"
       - path: "github.com/stretchr/testify/require"
@@ -96,9 +94,10 @@ scenarios:
   # ─────────────────────────────────────────────────────────────────
   - scenario_id: "001"
     test_id: "TS-GH-2354-001"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
+    patterns: {primary_pattern: "timeout-bound"}
     requirement_id: "GH-2354"
     requirement_summary: "Enrollment install completes or fails within a bounded, predictable timeout"
 
@@ -141,10 +140,12 @@ scenarios:
       subtest: "completes within timeout bound"
 
     code_structure: |
-      func TestEnrollmentCompletesWithinTimeoutBound(t *testing.T) {
-        // Setup: Configure FakeClient for immediate workflow success
-        // Execute: Call enrollment install
-        // Assert: No error, elapsed < enrollmentWaitTimeout
+      func TestEnrollmentTimeoutBound(t *testing.T) {
+        t.Run("should complete within timeout bound", func(t *testing.T) {
+          // Setup: Configure FakeClient for immediate workflow success
+          // Execute: Call enrollment install
+          // Assert: No error, elapsed < enrollmentWaitTimeout
+        })
       }
 
     specific_preconditions:
@@ -155,16 +156,8 @@ scenarios:
     test_data:
       mock_configurations:
         - name: "immediate_success_client"
-          description: "FakeClient that returns a completed workflow run immediately"
-          setup: |
-            fakeClient := &forge.FakeClient{
-              DispatchWorkflowFn: func(ctx context.Context, owner, repo, workflowFile string, ref string) error {
-                return nil
-              },
-              ListWorkflowRunsFn: func(ctx context.Context, owner, repo, workflowFile string) ([]forge.WorkflowRun, error) {
-                return []forge.WorkflowRun{{ID: 1, Status: "completed", Conclusion: "success", HTMLURL: "https://github.com/org/repo/actions/runs/1"}}, nil
-              },
-            }
+          description: "FakeClient configured to return completed workflow run on first poll with status=completed, conclusion=success, and a valid HTMLURL"
+      test_clock_note: "Use reduced enrollmentWaitTimeout (e.g., 5s) in test setup to avoid real 3-minute waits"
 
     test_steps:
       setup:
@@ -177,7 +170,7 @@ scenarios:
           validation: "Start timestamp captured"
         - step_id: "TEST-02"
           action: "Invoke enrollment install with FakeClient"
-          validation: "Function returns without panic"
+          validation: "Enrollment returns without panic"
         - step_id: "TEST-03"
           action: "Record end time and compute elapsed duration"
           validation: "Elapsed duration is measurable"
@@ -200,9 +193,10 @@ scenarios:
 
   - scenario_id: "002"
     test_id: "TS-GH-2354-002"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
+    patterns: {primary_pattern: "timeout-bound"}
     requirement_id: "GH-2354"
     requirement_summary: "Enrollment install completes or fails within a bounded, predictable timeout"
 
@@ -245,10 +239,12 @@ scenarios:
       subtest: "timeout returns actionable error message"
 
     code_structure: |
-      func TestEnrollmentTimeoutReturnsActionableError(t *testing.T) {
-        // Setup: Configure FakeClient to never return completed workflow
-        // Execute: Call enrollment install (will timeout)
-        // Assert: Error non-nil, error message contains guidance keywords
+      func TestEnrollmentTimeoutBound(t *testing.T) {
+        t.Run("should return actionable error on timeout", func(t *testing.T) {
+          // Setup: Configure FakeClient to never return completed workflow
+          // Execute: Call enrollment install (will timeout)
+          // Assert: Error non-nil, error message contains guidance keywords
+        })
       }
 
     specific_preconditions:
@@ -259,16 +255,8 @@ scenarios:
     test_data:
       mock_configurations:
         - name: "never_complete_client"
-          description: "FakeClient that always returns in_progress workflow runs"
-          setup: |
-            fakeClient := &forge.FakeClient{
-              DispatchWorkflowFn: func(ctx context.Context, owner, repo, workflowFile string, ref string) error {
-                return nil
-              },
-              ListWorkflowRunsFn: func(ctx context.Context, owner, repo, workflowFile string) ([]forge.WorkflowRun, error) {
-                return []forge.WorkflowRun{{ID: 1, Status: "in_progress", Conclusion: ""}}, nil
-              },
-            }
+          description: "FakeClient configured to always return in_progress workflow runs with empty conclusion on every ListWorkflowRuns call; DispatchWorkflow succeeds"
+      test_clock_note: "Use reduced enrollmentWaitTimeout (e.g., 5s) in test setup to avoid real 3-minute waits"
 
     test_steps:
       setup:
@@ -278,7 +266,7 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Invoke enrollment install with never-complete FakeClient"
-          validation: "Function returns (does not hang forever)"
+          validation: "Enrollment returns with error after timeout elapses"
       cleanup: []
 
     assertions:
@@ -298,9 +286,10 @@ scenarios:
 
   - scenario_id: "003"
     test_id: "TS-GH-2354-003"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
+    patterns: {primary_pattern: "timeout-bound"}
     requirement_id: "GH-2354"
     requirement_summary: "Enrollment install completes or fails within a bounded, predictable timeout"
 
@@ -348,10 +337,12 @@ scenarios:
       subtest: "handles slow workflow registration"
 
     code_structure: |
-      func TestEnrollmentSlowWorkflowRegistration(t *testing.T) {
-        // Setup: FakeClient returns empty runs for first N calls, then completed
-        // Execute: Call enrollment install
-        // Assert: No error, completed within timeout
+      func TestEnrollmentTimeoutBound(t *testing.T) {
+        t.Run("should handle slow workflow registration", func(t *testing.T) {
+          // Setup: FakeClient returns empty runs for first N calls, then completed
+          // Execute: Call enrollment install
+          // Assert: No error, completed within timeout
+        })
       }
 
     specific_preconditions:
@@ -362,28 +353,18 @@ scenarios:
     test_data:
       mock_configurations:
         - name: "delayed_registration_client"
-          description: "FakeClient simulating slow GitHub workflow registration"
-          setup: |
-            callCount := 0
-            fakeClient := &forge.FakeClient{
-              ListWorkflowRunsFn: func(ctx context.Context, owner, repo, workflowFile string) ([]forge.WorkflowRun, error) {
-                callCount++
-                if callCount < 4 {
-                  return []forge.WorkflowRun{}, nil
-                }
-                return []forge.WorkflowRun{{ID: 1, Status: "completed", Conclusion: "success", HTMLURL: "https://github.com/org/repo/actions/runs/1"}}, nil
-              },
-            }
+          description: "FakeClient simulating slow GitHub workflow registration; returns empty workflow runs for first 3 ListWorkflowRuns calls, then returns a completed run with status=completed, conclusion=success on call 4+"
+      test_clock_note: "Use reduced enrollmentWaitTimeout (e.g., 5s) in test setup to avoid real 3-minute waits"
 
     test_steps:
       setup:
         - step_id: "SETUP-01"
-          action: "Create FakeClient with delayed registration behavior"
+          action: "Create FakeClient with delayed registration behavior (empty for 3 calls, then completed)"
           validation: "FakeClient returns empty then completed"
       test_execution:
         - step_id: "TEST-01"
-          action: "Invoke enrollment install"
-          validation: "Function returns"
+          action: "Invoke enrollment install with delayed-registration FakeClient"
+          validation: "Enrollment returns successfully after multiple polls"
       cleanup: []
 
     assertions:
@@ -406,9 +387,10 @@ scenarios:
   # ─────────────────────────────────────────────────────────────────
   - scenario_id: "004"
     test_id: "TS-GH-2354-004"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
+    patterns: {primary_pattern: "exponential-backoff"}
     requirement_id: "GH-2354"
     requirement_summary: "Enrollment polling uses exponential backoff to avoid excessive API calls"
 
@@ -454,11 +436,18 @@ scenarios:
       subtest: "polling intervals increase progressively"
 
     code_structure: |
-      func TestEnrollmentBackoffIntervalsIncrease(t *testing.T) {
-        // Setup: FakeClient records call timestamps, completes after N polls
-        // Execute: Call enrollment install
-        // Assert: Intervals between polls are monotonically increasing
+      func TestEnrollmentExponentialBackoff(t *testing.T) {
+        t.Run("should increase wait time between status checks", func(t *testing.T) {
+          // Setup: FakeClient records call timestamps, completes after N polls
+          // Execute: Call enrollment install
+          // Assert: Intervals between polls are monotonically increasing
+        })
       }
+
+    test_data:
+      mock_configurations:
+        - name: "timestamp_recording_client"
+          description: "FakeClient that records the timestamp of each ListWorkflowRuns call into a shared slice, returns in_progress for several polls then completed, enabling interval measurement between consecutive calls"
 
     test_steps:
       setup:
@@ -483,9 +472,10 @@ scenarios:
 
   - scenario_id: "005"
     test_id: "TS-GH-2354-005"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
+    patterns: {primary_pattern: "exponential-backoff"}
     requirement_id: "GH-2354"
     requirement_summary: "Enrollment polling uses exponential backoff to avoid excessive API calls"
 
@@ -532,11 +522,19 @@ scenarios:
       subtest: "polling interval does not exceed maximum"
 
     code_structure: |
-      func TestEnrollmentBackoffCappedAtMax(t *testing.T) {
-        // Setup: FakeClient records timestamps, never completes (timeout)
-        // Execute: Call enrollment install
-        // Assert: All intervals <= enrollmentPollMax
+      func TestEnrollmentExponentialBackoff(t *testing.T) {
+        t.Run("should not exceed maximum poll interval", func(t *testing.T) {
+          // Setup: FakeClient records timestamps, never completes (timeout)
+          // Execute: Call enrollment install
+          // Assert: All intervals <= enrollmentPollMax
+        })
       }
+
+    test_data:
+      mock_configurations:
+        - name: "never_complete_timestamp_client"
+          description: "FakeClient that never returns a completed workflow run and records the timestamp of each ListWorkflowRuns call, allowing enough polls to observe the backoff cap being reached"
+      test_clock_note: "Use reduced enrollmentWaitTimeout (e.g., 5s) in test setup to avoid real 3-minute waits"
 
     test_steps:
       setup:
@@ -561,9 +559,10 @@ scenarios:
 
   - scenario_id: "006"
     test_id: "TS-GH-2354-006"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
+    patterns: {primary_pattern: "exponential-backoff"}
     requirement_id: "GH-2354"
     requirement_summary: "Enrollment polling uses exponential backoff to avoid excessive API calls"
 
@@ -613,11 +612,18 @@ scenarios:
       subtest: "first retry within expected timeframe"
 
     code_structure: |
-      func TestEnrollmentFirstRetryTimely(t *testing.T) {
-        // Setup: FakeClient records dispatch and first poll timestamps
-        // Execute: Call enrollment install
-        // Assert: firstPollTime - dispatchTime <= enrollmentPollInitial + tolerance
+      func TestEnrollmentExponentialBackoff(t *testing.T) {
+        t.Run("should execute first retry within initial interval", func(t *testing.T) {
+          // Setup: FakeClient records dispatch and first poll timestamps
+          // Execute: Call enrollment install
+          // Assert: firstPollTime - dispatchTime <= enrollmentPollInitial + tolerance
+        })
       }
+
+    test_data:
+      mock_configurations:
+        - name: "dispatch_and_poll_timestamp_client"
+          description: "FakeClient that records the timestamp when DispatchWorkflow is called and the timestamp of the first ListWorkflowRuns call, then returns a completed workflow run immediately"
 
     test_steps:
       setup:
@@ -627,7 +633,7 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Invoke enrollment install"
-          validation: "Function returns"
+          validation: "Enrollment returns without error"
       cleanup: []
 
     assertions:
@@ -645,9 +651,10 @@ scenarios:
   # ─────────────────────────────────────────────────────────────────
   - scenario_id: "007"
     test_id: "TS-GH-2354-007"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
+    patterns: {primary_pattern: "progress-feedback"}
     requirement_id: "GH-2354"
     requirement_summary: "Enrollment provides progress feedback during each polling phase"
 
@@ -694,11 +701,18 @@ scenarios:
       subtest: "progress messages emitted during polling"
 
     code_structure: |
-      func TestEnrollmentProgressMessagesDuringPolling(t *testing.T) {
-        // Setup: FakeClient with delayed completion, UI printer with buffer
-        // Execute: Call enrollment install
-        // Assert: Printer buffer contains progress messages
+      func TestEnrollmentProgressFeedback(t *testing.T) {
+        t.Run("should emit progress messages during polling", func(t *testing.T) {
+          // Setup: FakeClient with delayed completion, UI printer with buffer
+          // Execute: Call enrollment install
+          // Assert: Printer buffer contains progress messages
+        })
       }
+
+    test_data:
+      mock_configurations:
+        - name: "delayed_completion_client"
+          description: "FakeClient that returns in_progress workflow status for the first 2 ListWorkflowRuns calls, then returns completed on the 3rd call, giving the polling loop time to emit progress messages"
 
     test_steps:
       setup:
@@ -711,7 +725,10 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Invoke enrollment install"
-          validation: "Function returns"
+          validation: "Enrollment returns without error"
+        - step_id: "TEST-02"
+          action: "Read and inspect UI printer buffer contents"
+          validation: "Printer buffer contains expected output text"
       cleanup: []
 
     assertions:
@@ -726,9 +743,10 @@ scenarios:
 
   - scenario_id: "008"
     test_id: "TS-GH-2354-008"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
+    patterns: {primary_pattern: "progress-feedback"}
     requirement_id: "GH-2354"
     requirement_summary: "Enrollment provides progress feedback during each polling phase"
 
@@ -774,11 +792,18 @@ scenarios:
       subtest: "elapsed time reported in status updates"
 
     code_structure: |
-      func TestEnrollmentElapsedTimeInStatusUpdates(t *testing.T) {
-        // Setup: FakeClient with delayed completion, UI printer with buffer
-        // Execute: Call enrollment install
-        // Assert: Printer output contains elapsed time strings
+      func TestEnrollmentProgressFeedback(t *testing.T) {
+        t.Run("should report elapsed time in status updates", func(t *testing.T) {
+          // Setup: FakeClient with delayed completion, UI printer with buffer
+          // Execute: Call enrollment install
+          // Assert: Printer output contains elapsed time strings
+        })
       }
+
+    test_data:
+      mock_configurations:
+        - name: "delayed_completion_for_elapsed_time"
+          description: "FakeClient that returns in_progress for several polls before completing, allowing the polling loop to emit progress messages containing elapsed time durations"
 
     test_steps:
       setup:
@@ -791,7 +816,10 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Invoke enrollment install"
-          validation: "Function returns"
+          validation: "Enrollment returns without error"
+        - step_id: "TEST-02"
+          action: "Read and inspect UI printer buffer contents"
+          validation: "Printer buffer contains expected output text"
       cleanup: []
 
     assertions:
@@ -809,9 +837,10 @@ scenarios:
   # ─────────────────────────────────────────────────────────────────
   - scenario_id: "009"
     test_id: "TS-GH-2354-009"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
+    patterns: {primary_pattern: "happy-path"}
     requirement_id: "GH-2354"
     requirement_summary: "Enrollment install succeeds within expected time when workflow registers quickly"
 
@@ -852,11 +881,18 @@ scenarios:
       subtest: "fast enrollment completes without delay"
 
     code_structure: |
-      func TestEnrollmentHappyPathFastCompletion(t *testing.T) {
-        // Setup: FakeClient returns completed on first poll
-        // Execute: Call enrollment install, record elapsed
-        // Assert: No error, elapsed < 5s
+      func TestEnrollmentHappyPath(t *testing.T) {
+        t.Run("should complete fast enrollment without delay", func(t *testing.T) {
+          // Setup: FakeClient returns completed on first poll
+          // Execute: Call enrollment install, record elapsed
+          // Assert: No error, elapsed < 5s
+        })
       }
+
+    test_data:
+      mock_configurations:
+        - name: "immediate_success_client"
+          description: "FakeClient that returns a completed workflow run with status=completed and conclusion=success on the very first ListWorkflowRuns call, simulating the fastest possible enrollment"
 
     test_steps:
       setup:
@@ -886,9 +922,10 @@ scenarios:
 
   - scenario_id: "010"
     test_id: "TS-GH-2354-010"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
+    patterns: {primary_pattern: "happy-path"}
     requirement_id: "GH-2354"
     requirement_summary: "Enrollment install succeeds within expected time when workflow registers quickly"
 
@@ -933,11 +970,18 @@ scenarios:
       subtest: "reports success and workflow URL"
 
     code_structure: |
-      func TestEnrollmentReportsWorkflowURL(t *testing.T) {
-        // Setup: FakeClient returns completed run with HTMLURL
-        // Execute: Call enrollment install
-        // Assert: Printer output contains workflow URL
+      func TestEnrollmentHappyPath(t *testing.T) {
+        t.Run("should report success and workflow URL", func(t *testing.T) {
+          // Setup: FakeClient returns completed run with HTMLURL
+          // Execute: Call enrollment install
+          // Assert: Printer output contains workflow URL
+        })
       }
+
+    test_data:
+      mock_configurations:
+        - name: "success_with_url_client"
+          description: "FakeClient that returns a completed workflow run with a valid HTMLURL (e.g., https://github.com/org/repo/actions/runs/12345) on first poll, enabling assertion that the URL appears in printer output"
 
     test_steps:
       setup:
@@ -951,6 +995,9 @@ scenarios:
         - step_id: "TEST-01"
           action: "Invoke enrollment install"
           validation: "Function returns successfully"
+        - step_id: "TEST-02"
+          action: "Read and inspect UI printer buffer contents"
+          validation: "Printer buffer contains expected output text"
       cleanup: []
 
     assertions:
@@ -965,9 +1012,10 @@ scenarios:
 
   - scenario_id: "011"
     test_id: "TS-GH-2354-011"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
+    patterns: {primary_pattern: "happy-path"}
     requirement_id: "GH-2354"
     requirement_summary: "Enrollment install succeeds within expected time when workflow registers quickly"
 
@@ -1012,11 +1060,18 @@ scenarios:
       subtest: "reports reconciliation PRs"
 
     code_structure: |
-      func TestEnrollmentReportsReconciliationPRs(t *testing.T) {
-        // Setup: FakeClient returns completed run + PRs from ListRepoPullRequests
-        // Execute: Call enrollment install
-        // Assert: Printer output contains PR information
+      func TestEnrollmentHappyPath(t *testing.T) {
+        t.Run("should report reconciliation PRs", func(t *testing.T) {
+          // Setup: FakeClient returns completed run + PRs from ListRepoPullRequests
+          // Execute: Call enrollment install
+          // Assert: Printer output contains PR information
+        })
       }
+
+    test_data:
+      mock_configurations:
+        - name: "success_with_prs_client"
+          description: "FakeClient that returns a completed workflow run on first poll and returns one or more reconciliation pull requests from ListRepoPullRequests, each with a title and URL"
 
     test_steps:
       setup:
@@ -1030,6 +1085,9 @@ scenarios:
         - step_id: "TEST-01"
           action: "Invoke enrollment install"
           validation: "Function returns successfully"
+        - step_id: "TEST-02"
+          action: "Read and inspect UI printer buffer contents"
+          validation: "Printer buffer contains expected output text"
       cleanup: []
 
     assertions:
@@ -1047,9 +1105,10 @@ scenarios:
   # ─────────────────────────────────────────────────────────────────
   - scenario_id: "012"
     test_id: "TS-GH-2354-012"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
+    patterns: {primary_pattern: "error-message-quality"}
     requirement_id: "GH-2354"
     requirement_summary: "Enrollment timeout produces actionable guidance for manual recovery"
 
@@ -1090,11 +1149,19 @@ scenarios:
       subtest: "timeout error includes manual check guidance"
 
     code_structure: |
-      func TestEnrollmentTimeoutErrorIncludesManualGuidance(t *testing.T) {
-        // Setup: FakeClient never completes
-        // Execute: Call enrollment install (times out)
-        // Assert: Error contains manual recovery guidance keywords
+      func TestEnrollmentTimeoutErrorQuality(t *testing.T) {
+        t.Run("should include manual check guidance in timeout error", func(t *testing.T) {
+          // Setup: FakeClient never completes
+          // Execute: Call enrollment install (times out)
+          // Assert: Error contains manual recovery guidance keywords
+        })
       }
+
+    test_data:
+      mock_configurations:
+        - name: "never_complete_for_timeout_guidance"
+          description: "FakeClient that always returns in_progress workflow runs, causing enrollment to time out and produce an error message with manual recovery guidance"
+      test_clock_note: "Use reduced enrollmentWaitTimeout (e.g., 5s) in test setup to avoid real 3-minute waits"
 
     test_steps:
       setup:
@@ -1119,9 +1186,10 @@ scenarios:
 
   - scenario_id: "013"
     test_id: "TS-GH-2354-013"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
+    patterns: {primary_pattern: "error-message-quality"}
     requirement_id: "GH-2354"
     requirement_summary: "Enrollment timeout produces actionable guidance for manual recovery"
 
@@ -1161,11 +1229,19 @@ scenarios:
       subtest: "timeout error includes elapsed time"
 
     code_structure: |
-      func TestEnrollmentTimeoutErrorIncludesElapsedTime(t *testing.T) {
-        // Setup: FakeClient never completes
-        // Execute: Call enrollment install (times out)
-        // Assert: Error string matches duration pattern
+      func TestEnrollmentTimeoutErrorQuality(t *testing.T) {
+        t.Run("should include elapsed time in timeout error", func(t *testing.T) {
+          // Setup: FakeClient never completes
+          // Execute: Call enrollment install (times out)
+          // Assert: Error string matches duration pattern
+        })
       }
+
+    test_data:
+      mock_configurations:
+        - name: "never_complete_for_elapsed_time_error"
+          description: "FakeClient that always returns in_progress workflow runs, causing enrollment to time out and produce an error message that includes the elapsed wait duration"
+      test_clock_note: "Use reduced enrollmentWaitTimeout (e.g., 5s) in test setup to avoid real 3-minute waits"
 
     test_steps:
       setup:
@@ -1193,9 +1269,10 @@ scenarios:
   # ─────────────────────────────────────────────────────────────────
   - scenario_id: "014"
     test_id: "TS-GH-2354-014"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
+    patterns: {primary_pattern: "context-cancellation"}
     requirement_id: "GH-2354"
     requirement_summary: "Enrollment handles user interruption gracefully during polling"
 
@@ -1240,11 +1317,18 @@ scenarios:
       subtest: "user interruption stops polling"
 
     code_structure: |
-      func TestEnrollmentInterruptionStopsPolling(t *testing.T) {
-        // Setup: Cancellable context, FakeClient that cancels ctx after first poll
-        // Execute: Call enrollment install
-        // Assert: Returns promptly, error indicates cancellation
+      func TestEnrollmentUserInterruption(t *testing.T) {
+        t.Run("should stop polling on context cancellation", func(t *testing.T) {
+          // Setup: Cancellable context, FakeClient that cancels ctx after first poll
+          // Execute: Call enrollment install
+          // Assert: Returns promptly, error indicates cancellation
+        })
       }
+
+    test_data:
+      mock_configurations:
+        - name: "cancel_on_first_poll_client"
+          description: "FakeClient that calls the context cancel function inside its ListWorkflowRuns handler after the first poll, simulating user Ctrl+C during enrollment polling"
 
     test_steps:
       setup:
@@ -1257,7 +1341,7 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Invoke enrollment install with cancellable context"
-          validation: "Function returns"
+          validation: "Enrollment returns after context is cancelled"
       cleanup: []
 
     assertions:
@@ -1277,9 +1361,10 @@ scenarios:
 
   - scenario_id: "015"
     test_id: "TS-GH-2354-015"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
+    patterns: {primary_pattern: "context-cancellation"}
     requirement_id: "GH-2354"
     requirement_summary: "Enrollment handles user interruption gracefully during polling"
 
@@ -1325,11 +1410,18 @@ scenarios:
       subtest: "interruption treated as non-fatal"
 
     code_structure: |
-      func TestEnrollmentInterruptionIsNonFatal(t *testing.T) {
-        // Setup: Cancellable context, FakeClient triggers cancel
-        // Execute: Call enrollment install
-        // Assert: Error is context.Canceled
+      func TestEnrollmentUserInterruption(t *testing.T) {
+        t.Run("should treat interruption as non-fatal", func(t *testing.T) {
+          // Setup: Cancellable context, FakeClient triggers cancel
+          // Execute: Call enrollment install
+          // Assert: Error is context.Canceled
+        })
       }
+
+    test_data:
+      mock_configurations:
+        - name: "cancel_trigger_client"
+          description: "FakeClient that triggers context cancellation during polling, allowing assertion that the returned error is context.Canceled rather than an unexpected or wrapped error"
 
     test_steps:
       setup:
@@ -1354,9 +1446,10 @@ scenarios:
 
   - scenario_id: "016"
     test_id: "TS-GH-2354-016"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
+    patterns: {primary_pattern: "context-cancellation"}
     requirement_id: "GH-2354"
     requirement_summary: "Enrollment handles user interruption gracefully during polling"
 
@@ -1401,11 +1494,18 @@ scenarios:
       subtest: "clean exit after interruption"
 
     code_structure: |
-      func TestEnrollmentInterruptionNoGoroutineLeak(t *testing.T) {
-        // Setup: Record goroutine count, cancellable context
-        // Execute: Call enrollment install, cancel, wait for return
-        // Assert: Goroutine count stable after return
+      func TestEnrollmentUserInterruption(t *testing.T) {
+        t.Run("should exit cleanly with no goroutine leak", func(t *testing.T) {
+          // Setup: Record goroutine count, cancellable context
+          // Execute: Call enrollment install, cancel, wait for return
+          // Assert: Goroutine count stable after return
+        })
       }
+
+    test_data:
+      mock_configurations:
+        - name: "cancel_for_goroutine_leak_check"
+          description: "FakeClient that triggers context cancellation during polling; used in conjunction with a goroutine count baseline to verify no goroutines are leaked after cancellation"
 
     test_steps:
       setup:
@@ -1418,7 +1518,7 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Invoke enrollment install, cancel context during polling"
-          validation: "Function returns"
+          validation: "Enrollment returns after context is cancelled"
         - step_id: "TEST-02"
           action: "Wait briefly for goroutines to settle"
           validation: "Grace period elapsed"
@@ -1439,9 +1539,10 @@ scenarios:
   # ─────────────────────────────────────────────────────────────────
   - scenario_id: "017"
     test_id: "TS-GH-2354-017"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P2"
     mvp: false
+    patterns: {primary_pattern: "parity-check"}
     requirement_id: "GH-2354"
     requirement_summary: "Enrollment unenrollment workflow uses same bounded timeout and backoff"
 
@@ -1481,11 +1582,19 @@ scenarios:
       subtest: "unenrollment uses bounded timeout"
 
     code_structure: |
-      func TestUnenrollmentBoundedTimeout(t *testing.T) {
-        // Setup: FakeClient never completes
-        // Execute: Call unenrollment
-        // Assert: Returns with timeout error within bound
+      func TestUnenrollmentParity(t *testing.T) {
+        t.Run("should use bounded timeout for unenrollment", func(t *testing.T) {
+          // Setup: FakeClient never completes
+          // Execute: Call unenrollment
+          // Assert: Returns with timeout error within bound
+        })
       }
+
+    test_data:
+      mock_configurations:
+        - name: "never_complete_unenroll_client"
+          description: "FakeClient that always returns in_progress workflow runs for the unenrollment flow, causing it to time out and verifying that the same enrollmentWaitTimeout bound applies"
+      test_clock_note: "Use reduced enrollmentWaitTimeout (e.g., 5s) in test setup to avoid real 3-minute waits"
 
     test_steps:
       setup:
@@ -1510,9 +1619,10 @@ scenarios:
 
   - scenario_id: "018"
     test_id: "TS-GH-2354-018"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P2"
     mvp: false
+    patterns: {primary_pattern: "parity-check"}
     requirement_id: "GH-2354"
     requirement_summary: "Enrollment unenrollment workflow uses same bounded timeout and backoff"
 
@@ -1557,11 +1667,19 @@ scenarios:
       subtest: "unenrollment backoff matches enrollment"
 
     code_structure: |
-      func TestUnenrollmentBackoffMatchesEnrollment(t *testing.T) {
-        // Setup: FakeClient records poll timestamps, never completes
-        // Execute: Call unenrollment
-        // Assert: Intervals match enrollment backoff pattern
+      func TestUnenrollmentParity(t *testing.T) {
+        t.Run("should match enrollment backoff parameters", func(t *testing.T) {
+          // Setup: FakeClient records poll timestamps, never completes
+          // Execute: Call unenrollment
+          // Assert: Intervals match enrollment backoff pattern
+        })
       }
+
+    test_data:
+      mock_configurations:
+        - name: "timestamp_recording_unenroll_client"
+          description: "FakeClient that records the timestamp of each ListWorkflowRuns call during unenrollment and never completes, enabling comparison of poll intervals against enrollment backoff parameters"
+      test_clock_note: "Use reduced enrollmentWaitTimeout (e.g., 5s) in test setup to avoid real 3-minute waits"
 
     test_steps:
       setup:
@@ -1578,7 +1696,7 @@ scenarios:
       - assertion_id: "ASSERT-01"
         priority: "P2"
         description: "Unenrollment poll intervals increase exponentially"
-        condition: "intervals follow exponential backoff pattern"
+        condition: "interval[i+1] >= interval[i] for all i AND max(intervals) <= enrollmentPollMax + tolerance"
         failure_impact: "Unenrollment has different polling behavior than enrollment"
 
     dependencies:
@@ -1589,9 +1707,10 @@ scenarios:
   # ─────────────────────────────────────────────────────────────────
   - scenario_id: "019"
     test_id: "TS-GH-2354-019"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
+    patterns: {primary_pattern: "dispatch-failure"}
     requirement_id: "GH-2354"
     requirement_summary: "Enrollment workflow dispatch failure is reported clearly"
 
@@ -1632,11 +1751,18 @@ scenarios:
       subtest: "dispatch failure returns descriptive error"
 
     code_structure: |
-      func TestEnrollmentDispatchFailureDescriptiveError(t *testing.T) {
-        // Setup: FakeClient.DispatchWorkflow returns specific error
-        // Execute: Call enrollment install
-        // Assert: Error wraps or contains the dispatch error message
+      func TestEnrollmentDispatchFailure(t *testing.T) {
+        t.Run("should return descriptive error on dispatch failure", func(t *testing.T) {
+          // Setup: FakeClient.DispatchWorkflow returns specific error
+          // Execute: Call enrollment install
+          // Assert: Error wraps or contains the dispatch error message
+        })
       }
+
+    test_data:
+      mock_configurations:
+        - name: "dispatch_error_client"
+          description: "FakeClient where DispatchWorkflow returns a specific, descriptive error (e.g., 'workflow file not found: .github/workflows/repo-maintenance.yml') to verify the error message propagates to the caller"
 
     test_steps:
       setup:
@@ -1661,9 +1787,10 @@ scenarios:
 
   - scenario_id: "020"
     test_id: "TS-GH-2354-020"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
+    patterns: {primary_pattern: "dispatch-failure"}
     requirement_id: "GH-2354"
     requirement_summary: "Enrollment workflow dispatch failure is reported clearly"
 
@@ -1709,11 +1836,18 @@ scenarios:
       subtest: "dispatch error does not block install"
 
     code_structure: |
-      func TestEnrollmentDispatchFailureNoBlocking(t *testing.T) {
-        // Setup: FakeClient.DispatchWorkflow fails, track if polling called
-        // Execute: Call enrollment install
-        // Assert: Returns quickly, ListWorkflowRuns never called
+      func TestEnrollmentDispatchFailure(t *testing.T) {
+        t.Run("should not block install on dispatch failure", func(t *testing.T) {
+          // Setup: FakeClient.DispatchWorkflow fails, track if polling called
+          // Execute: Call enrollment install
+          // Assert: Returns quickly, ListWorkflowRuns never called
+        })
       }
+
+    test_data:
+      mock_configurations:
+        - name: "dispatch_error_no_poll_client"
+          description: "FakeClient where DispatchWorkflow returns an error and ListWorkflowRuns sets a boolean flag if called, verifying that the polling loop is never entered after a dispatch failure"
 
     test_steps:
       setup:
@@ -1723,7 +1857,7 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Record start time and invoke enrollment install"
-          validation: "Function returns"
+          validation: "Enrollment returns with dispatch error"
       cleanup: []
 
     assertions:
@@ -1743,9 +1877,10 @@ scenarios:
 
   - scenario_id: "021"
     test_id: "TS-GH-2354-021"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
+    patterns: {primary_pattern: "dispatch-failure"}
     requirement_id: "GH-2354"
     requirement_summary: "Enrollment workflow dispatch failure is reported clearly"
 
@@ -1787,11 +1922,18 @@ scenarios:
       subtest: "dispatch error safe in concurrent context"
 
     code_structure: |
-      func TestEnrollmentDispatchErrorConcurrentSafety(t *testing.T) {
-        // Setup: FakeClient.DispatchWorkflow returns error
-        // Execute: Call enrollment install (with -race detector)
-        // Assert: No panic, error returned cleanly
+      func TestEnrollmentDispatchFailure(t *testing.T) {
+        t.Run("should handle dispatch error safely in concurrent context", func(t *testing.T) {
+          // Setup: FakeClient.DispatchWorkflow returns error
+          // Execute: Call enrollment install (with -race detector)
+          // Assert: No panic, error returned cleanly
+        })
       }
+
+    test_data:
+      mock_configurations:
+        - name: "dispatch_error_concurrent_client"
+          description: "FakeClient where DispatchWorkflow returns a specific error, used with the Go race detector to verify no panics or data races occur when enrollment encounters a dispatch failure"
 
     test_steps:
       setup:
@@ -1808,12 +1950,12 @@ scenarios:
       - assertion_id: "ASSERT-01"
         priority: "P1"
         description: "No panic on dispatch error"
-        condition: "function returns normally"
+        condition: "require.NotPanics(t, func() { enrollmentInstall(...) })"
         failure_impact: "Dispatch error causes panic in concurrent context"
       - assertion_id: "ASSERT-02"
         priority: "P1"
         description: "Error propagated cleanly"
-        condition: "err != nil && err contains dispatch error info"
+        condition: "assert.ErrorContains(t, err, expectedDispatchErrMsg)"
         failure_impact: "Error lost or corrupted in concurrent context"
 
     dependencies:

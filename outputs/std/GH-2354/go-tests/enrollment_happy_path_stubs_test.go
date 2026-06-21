@@ -20,7 +20,6 @@ func TestEnrollmentHappyPath(t *testing.T) {
 	    - tier1
 
 	Preconditions:
-	    - Go 1.23+ toolchain available
 	    - forge.FakeClient returning immediate workflow success
 	    - UI printer with buffer capture available
 	*/
@@ -51,10 +50,11 @@ func TestEnrollmentHappyPath(t *testing.T) {
 
 		Steps:
 		    1. Invoke enrollment install with FakeClient returning workflow URL
+		    2. Read and inspect UI printer buffer contents
 
 		Expected:
-		    - Printer output contains the workflow run URL (https://github.com/...)
-		    - URL is a valid GitHub Actions run URL
+		    - Printer output contains the workflow run URL
+		    - strings.Contains(printerBuf.String(), "https://github.com/") == true
 		*/
 		t.Skip("Phase 1: Design only - awaiting implementation [test_id:TS-GH-2354-010]")
 	})
@@ -68,10 +68,11 @@ func TestEnrollmentHappyPath(t *testing.T) {
 
 		Steps:
 		    1. Invoke enrollment install with FakeClient returning PRs
+		    2. Read and inspect UI printer buffer contents
 
 		Expected:
-		    - Printer output mentions reconciliation PRs
-		    - PR titles or URLs are visible in output
+		    - Printer output contains "PR" or "pull" text referencing reconciliation PRs
+		    - strings.Contains(printerBuf.String(), "PR") || strings.Contains(printerBuf.String(), "pull")
 		*/
 		t.Skip("Phase 1: Design only - awaiting implementation [test_id:TS-GH-2354-011]")
 	})
