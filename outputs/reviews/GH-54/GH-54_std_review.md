@@ -3,27 +3,27 @@
 **Reviewed:**
 - STD YAML: `outputs/std/GH-54/GH-54_test_description.yaml`
 - STP Source: `outputs/stp/GH-54/GH-54_test_plan.md`
-- Go Stubs: `outputs/std/GH-54/go-tests/` (4 files)
+- Go Stubs: `outputs/std/GH-54/go-tests/` (5 files)
 - Python Stubs: N/A (not generated)
 
 **Date:** 2026-06-21
 **Reviewer:** QualityFlow Automated Review (v1.1.0)
-**Review Rules Schema:** Dynamic extraction (no static review_rules.yaml)
+**Review Rules Schema:** 1.1.0 (dynamic extraction, no static review_rules.yaml)
 
 ---
 
-## Verdict: NEEDS_REVISION
+## Verdict: APPROVED_WITH_FINDINGS
 
 ## Summary
 
 | Metric | Value |
 |:-------|:------|
 | Dimensions reviewed | 7/7 |
-| Critical findings | 1 |
-| Major findings | 6 |
+| Critical findings | 0 |
+| Major findings | 1 |
 | Minor findings | 4 |
-| Actionable findings | 10 |
-| Weighted score | 72 |
+| Actionable findings | 3 |
+| Weighted score | 89 |
 | Confidence | MEDIUM |
 
 ## Traceability Summary
@@ -31,17 +31,17 @@
 | Metric | Value |
 |:-------|:------|
 | STP scenarios | 11 |
-| STD scenarios | 11 |
+| STD scenarios | 13 |
 | Forward coverage (STP→STD) | 11/11 (100%) |
-| Reverse coverage (STD→STP) | 11/11 (100%) |
-| Orphan STD scenarios | 0 |
+| Reverse coverage (STD→STP) | 11/13 (85%) |
+| Orphan STD scenarios | 2 (012, 013 — intentional negative-path additions) |
 | Missing STD scenarios | 0 |
 
 ---
 
 ## Findings by Dimension
 
-### Dimension 1: STP-STD Traceability — Score: 90/100
+### Dimension 1: STP-STD Traceability — Score: 88/100
 
 **Forward Traceability (STP → STD):** All 11 STP scenarios from Section III are covered by corresponding STD scenarios. Keyword overlap analysis confirms strong textual alignment between each STP scenario description and its STD counterpart.
 
@@ -52,18 +52,18 @@
 | Actionable recommendation (empty req ID) | 3 | TS-GH-54-007, 008, 009 | PASS |
 | Error handling for inaccessible projects (empty req ID) | 2 | TS-GH-54-010, 011 | PASS |
 
-**Reverse Traceability (STD → STP):** All 11 STD scenarios map to `requirement_id: "GH-54"` which is the primary ticket in the STP. No orphan scenarios.
+**Reverse Traceability (STD → STP):** 11 of 13 STD scenarios map to STP Section III rows. Scenarios 012 and 013 are negative-path scenarios added during STD refinement to address error-path coverage gaps. These are legitimate STD-originated additions that strengthen test coverage.
 
 **Count Consistency (Zero-Trust Verification):**
 
 | Metadata Claim | Actual Count | Match |
 |:---------------|:-------------|:------|
-| `total_scenarios: 11` | 11 | ✅ |
-| `functional_count: 11` | 11 | ✅ |
+| `total_scenarios: 13` | 13 | ✅ |
+| `functional_count: 13` | 13 | ✅ |
 | `e2e_count: 0` | 0 | ✅ |
 | `p0_count: 0` | 0 | ✅ |
 | `p1_count: 9` | 9 (scenarios 001-009) | ✅ |
-| `p2_count: 2` | 2 (scenarios 010-011) | ✅ |
+| `p2_count: 4` | 4 (scenarios 010-013) | ✅ |
 
 **STP Reference:** `document_metadata.stp_reference.file` correctly points to `outputs/stp/GH-54/GH-54_test_plan.md` ✅
 
@@ -72,14 +72,22 @@
 - **D1-1a-001**
   - **Severity:** MINOR
   - **Dimension:** STP-STD Traceability
-  - **Description:** STP Section III has empty Requirement IDs for requirement groups 2, 3, and 4. Only group 1 specifies `GH-54`. This makes granular sub-requirement traceability impossible — all 11 STD scenarios map to the same `requirement_id: "GH-54"`.
+  - **Description:** STP Section III has empty Requirement IDs for requirement groups 2, 3, and 4. Only group 1 specifies `GH-54`. This makes granular sub-requirement traceability impossible — all 11 original STD scenarios map to the same `requirement_id: "GH-54"`.
   - **Evidence:** STP lines: `- **Requirement ID:**` (empty) for "Integration impact analysis", "Actionable recommendation", and "Error handling" groups.
   - **Remediation:** This is an STP issue, not an STD issue. If the STP is revised to add sub-requirement IDs, the STD should be updated to reflect them.
   - **Actionable:** false (requires STP revision first)
 
+- **D1-1b-001**
+  - **Severity:** MINOR
+  - **Dimension:** STP-STD Traceability
+  - **Description:** STD scenarios 012 and 013 are negative-path scenarios that do not have corresponding STP Section III entries. These were added during STD refinement to address the error-path coverage gap identified in the initial review. While legitimate, they create a reverse traceability gap.
+  - **Evidence:** Scenarios 012 (`[NEGATIVE] should detect when a required project section is absent`) and 013 (`[NEGATIVE] should detect when recommendation section is missing`) have no STP counterpart.
+  - **Remediation:** Add negative test scenarios to the STP Section III under the corresponding requirement groups, or add a note in the STP acknowledging STD-originated additions. No STD change needed.
+  - **Actionable:** false (requires STP update)
+
 ---
 
-### Dimension 2: STD YAML Structure — Score: 55/100
+### Dimension 2: STD YAML Structure — Score: 95/100
 
 **Document-Level Structure:**
 
@@ -90,18 +98,18 @@
 | `code_generation_config` section exists | ✅ |
 | `code_generation_config.std_version` is "2.1-enhanced" | ✅ |
 | `common_preconditions` section exists | ✅ |
-| `scenarios` array is non-empty | ✅ (11 scenarios) |
+| `scenarios` array is non-empty | ✅ (13 scenarios) |
 
 **Per-Scenario Required Fields:**
 
-| Field | Present in All 11 | Notes |
+| Field | Present in All 13 | Notes |
 |:------|:-------------------|:------|
-| `scenario_id` | ✅ | Sequential 001-011 |
+| `scenario_id` | ✅ | Sequential 001-013 |
 | `test_id` | ✅ | Format `TS-GH-54-{NNN}` ✅ |
-| `tier` | ✅ | ⚠️ Uses "Functional" — non-standard |
-| `priority` | ✅ | P1 (9) and P2 (2) |
+| `tier` | ✅ | All "Tier 1" ✅ |
+| `priority` | ✅ | P1 (9) and P2 (4) |
 | `requirement_id` | ✅ | All "GH-54" |
-| `patterns` | ❌ | **MISSING from all scenarios** |
+| `patterns` | ✅ | All have `primary: "document-validation"` ✅ |
 | `variables` | ✅ | closure_scope present |
 | `test_structure` | ✅ | describe/context/it |
 | `code_structure` | ✅ | Go test function templates |
@@ -110,121 +118,95 @@
 | `test_steps` | ✅ | setup/test_execution/cleanup |
 | `assertions` | ✅ | At least 1 per scenario |
 
-**Findings:**
-
-- **D2-2b-001**
-  - **Severity:** CRITICAL
-  - **Dimension:** STD YAML Structure
-  - **Description:** The `patterns` field (primary pattern + helpers) is missing from all 11 scenarios. This is a required field per v2.1-enhanced specification. The code generation pipeline uses `patterns.primary` and `patterns.helpers_required` to select code templates and import helper libraries.
-  - **Evidence:** No scenario in the STD YAML contains a `patterns` key. Each scenario has a `classification` section instead, which provides `test_type`, `scope`, and `automation_approach` — but these are not substitutes for pattern metadata.
-  - **Remediation:** Add a `patterns` block to each scenario. For this project (Go `testing` + testify, no Ginkgo), use a minimal pattern structure: `patterns: { primary: "document-validation", helpers_required: [] }`. If the project does not use pattern-based templates, consider adding a project-specific schema override that makes `patterns` optional.
-  - **Actionable:** true
-
-- **D2-2b-002**
-  - **Severity:** MAJOR
-  - **Dimension:** STD YAML Structure
-  - **Description:** All 11 scenarios use `tier: "Functional"` instead of the expected `tier: "Tier 1"` or `tier: "Tier 2"`. The `tier` field controls framework routing (Tier 1 → Go/Ginkgo, Tier 2 → Python/pytest). Using "Functional" (which is a `test_type` classification) conflates two distinct dimensions and may cause framework routing failures in code generation.
-  - **Evidence:** Every scenario: `tier: "Functional"`. The `classification.test_type: "Functional"` field already captures test type separately.
-  - **Remediation:** Change `tier: "Functional"` to `tier: "Tier 1"` for all 11 scenarios. The project has `tier1_tests: true` and `tier2_tests: false`, and all stubs are Go files, confirming these are Tier 1 scenarios. Move "Functional" to `classification.test_type` only (already present).
-  - **Actionable:** true
+**Findings:** No findings for this dimension. All previously identified structural issues (missing `patterns`, invalid `tier` values, `related_prs` field) have been resolved.
 
 ---
 
-### Dimension 3: Pattern Matching Correctness — Score: 50/100
+### Dimension 3: Pattern Matching Correctness — Score: 85/100
 
-Pattern matching cannot be fully evaluated because the `patterns` field is missing from all scenarios (see D2-2b-001). No pattern library exists at `config/projects/fullsend/patterns/tier1_patterns.yaml`.
+All 13 scenarios use `primary: "document-validation"` pattern with no helper libraries required. This is appropriate given that all scenarios validate document content through string matching and regex operations. No pattern library exists at `config/projects/fullsend/patterns/tier1_patterns.yaml` to validate against.
 
 | Scenario | Primary Pattern | Helpers | Decorators | Status |
 |:---------|:----------------|:--------|:-----------|:-------|
-| 001 | N/A (missing) | N/A | None | FAIL |
-| 002 | N/A (missing) | N/A | None | FAIL |
-| 003 | N/A (missing) | N/A | None | FAIL |
-| 004 | N/A (missing) | N/A | None | FAIL |
-| 005 | N/A (missing) | N/A | None | FAIL |
-| 006 | N/A (missing) | N/A | None | FAIL |
-| 007 | N/A (missing) | N/A | None | FAIL |
-| 008 | N/A (missing) | N/A | None | FAIL |
-| 009 | N/A (missing) | N/A | None | FAIL |
-| 010 | N/A (missing) | N/A | None | FAIL |
-| 011 | N/A (missing) | N/A | None | FAIL |
+| 001 | document-validation | 0 | None | PASS |
+| 002 | document-validation | 0 | None | PASS |
+| 003 | document-validation | 0 | None | PASS |
+| 004 | document-validation | 0 | None | PASS |
+| 005 | document-validation | 0 | None | PASS |
+| 006 | document-validation | 0 | None | PASS |
+| 007 | document-validation | 0 | None | PASS |
+| 008 | document-validation | 0 | None | PASS |
+| 009 | document-validation | 0 | None | PASS |
+| 010 | document-validation | 0 | None | PASS |
+| 011 | document-validation | 0 | None | PASS |
+| 012 | document-validation | 0 | None | PASS |
+| 013 | document-validation | 0 | None | PASS |
 
-**Note:** Dimension score degraded to 50 rather than 0 because the missing `patterns` field is already captured as a CRITICAL structural finding in Dimension 2. All scenarios do have appropriate `classification` metadata that could serve as a basis for pattern assignment.
-
-No additional findings beyond D2-2b-001.
+**Findings:** No findings. Pattern assignment is correct and consistent across all scenarios.
 
 ---
 
-### Dimension 4: Test Step Quality — Score: 65/100
+### Dimension 4: Test Step Quality — Score: 82/100
 
 | Scenario | Setup | Execution | Cleanup | Assertions | Isolation | Error Paths | Status |
 |:---------|:------|:----------|:--------|:-----------|:----------|:------------|:-------|
-| 001 | 1 | 4 | 0 | 2 | PASS | N/A | WARN |
-| 002 | 1 | 1 | 0 | 1 | PASS | N/A | WARN |
-| 003 | 1 | 2 | 0 | 1 | PASS | N/A | WARN |
-| 004 | 1 | 2 | 0 | 1 | PASS | N/A | WARN |
-| 005 | 1 | 1 | 0 | 1 | PASS | N/A | WARN |
-| 006 | 1 | 1 | 0 | 1 | PASS | N/A | WARN |
-| 007 | 1 | 2 | 0 | 1 | PASS | N/A | WARN |
-| 008 | 1 | 1 | 0 | 1 | PASS | N/A | WARN |
-| 009 | 1 | 1 | 0 | 1 | PASS | N/A | WARN |
-| 010 | 1 | 2 | 0 | 1 | PASS | N/A | WARN |
-| 011 | 1 | 2 | 0 | 1 | PASS | N/A | WARN |
+| 001 | 1 | 4 | 0 | 2 | PASS | N/A | PASS |
+| 002 | 1 | 1 | 0 | 1 | PASS | N/A | PASS |
+| 003 | 1 | 2 | 0 | 1 | PASS | N/A | PASS |
+| 004 | 1 | 2 | 0 | 1 | PASS | N/A | PASS |
+| 005 | 1 | 1 | 0 | 1 | PASS | N/A | PASS |
+| 006 | 1 | 1 | 0 | 1 | PASS | N/A | PASS |
+| 007 | 1 | 2 | 0 | 1 | PASS | N/A | PASS |
+| 008 | 1 | 1 | 0 | 1 | PASS | N/A | PASS |
+| 009 | 1 | 1 | 0 | 1 | PASS | N/A | PASS |
+| 010 | 1 | 2 | 0 | 1 | PASS | N/A | PASS |
+| 011 | 1 | 2 | 0 | 1 | PASS | N/A | PASS |
+| 012 | 1 | 2 | 0 | 1 | PASS | PASS | PASS |
+| 013 | 1 | 2 | 0 | 1 | PASS | PASS | PASS |
+
+**Test Step Command Quality (Improvement from Prior Review):**
+
+All previously vague commands have been replaced with concrete Go expressions:
+
+| Scenario | Previous Command | Updated Command | Status |
+|:---------|:----------------|:----------------|:-------|
+| 002 TEST-01 | "Check for architecture-related sections per project" | `regexp.MustCompile(...)` per-project loop | ✅ Fixed |
+| 003 TEST-01 | "Search for keywords: agent, sandbox, forge..." | `matchCount` loop with `assert.GreaterOrEqual` | ✅ Fixed |
+| 003 TEST-02 | "Check for mapping/comparison language..." | `regexp.MustCompile(...)` bidirectional match | ✅ Fixed |
+| 004 TEST-02 | "Check for integration/surface/impact language..." | `regexp.MustCompile(...)` bidirectional match | ✅ Fixed |
+| 005 TEST-01 | `strings.Contains` only on 2 keywords | `regexp.MustCompile(...)` with impact context | ✅ Fixed |
+| 006 TEST-01 | Overly broad `strings.Contains(content, 'config')` | Tightened to `OrgConfig`/`PerRepoConfig`/`config.Org` | ✅ Fixed |
+| 007 TEST-01 | "Check for recommendation/conclusion section heading" | `regexp.MustCompile(...)` markdown heading match | ✅ Fixed |
+| 007 TEST-02 | "Search for adopt/defer/reject keywords" | `regexp.MustCompile(...)` word-boundary match | ✅ Fixed |
+| 008 TEST-01 | "Search for FullSend architecture references near recommendation" | `regexp.MustCompile(...)` proximity match | ✅ Fixed |
+| 009 TEST-01 | "Search for follow-up/next steps/implementation keywords" | `regexp.MustCompile(...)` pattern match | ✅ Fixed |
+| 010 TEST-01 | "Search for GitHub URLs or repo name references" | Per-project `strings.Contains` loop | ✅ Fixed |
+| 010 TEST-02 | "Search for status-related keywords..." | `regexp.MustCompile(...)` status keyword match | ✅ Fixed |
+| 011 TEST-01 | "Search for re-architecture/deprecated/successor language" | `regexp.MustCompile(...)` bidirectional match | ✅ Fixed |
+| 011 TEST-02 | "Check that gascity receives primary evaluation focus" | `regexp.MustCompile(...)` current/maintained match | ✅ Fixed |
+
+**Error Path Coverage (Improvement from Prior Review):**
+
+Two negative-path scenarios (012, 013) have been added, addressing the prior D4-4h-001 finding:
+- Scenario 012: Tests detection of missing required project sections ✅
+- Scenario 013: Tests detection of missing recommendation section ✅
 
 **Findings:**
-
-- **D4-4b-001**
-  - **Severity:** MAJOR
-  - **Dimension:** Test Step Quality
-  - **Description:** Multiple scenarios have vague or pseudo-code `command` fields that lack specificity for code generation. These are hand-wavy descriptions rather than translatable commands.
-  - **Evidence:**
-    - Scenario 002 TEST-01: `command: "Check for architecture-related sections per project"` — not actionable
-    - Scenario 003 TEST-02: `command: "Check for mapping/comparison language connecting external to FullSend"` — not actionable
-    - Scenario 005 TEST-01: single test step with just `strings.Contains` on two keywords — lacks depth
-    - Scenario 007 TEST-01: `command: "Check for recommendation/conclusion section heading"` — not actionable
-    - Scenario 008 TEST-01: `command: "Search for FullSend architecture references near recommendation"` — not actionable
-    - Scenario 009 TEST-01: `command: "Search for follow-up/next steps/implementation keywords"` — not actionable
-  - **Remediation:** Replace vague commands with concrete Go expressions or pseudo-code using `strings.Contains`, `regexp.MatchString`, or structured search patterns. Example for scenario 002: `command: "regexp.MustCompile('(?i)(architecture|design pattern|code structure).*(gastown|gascity|goosetown)').MatchString(content)"`
-  - **Actionable:** true
-
-- **D4-4h-001**
-  - **Severity:** MAJOR
-  - **Dimension:** Test Step Quality — Error Path Coverage
-  - **Description:** All 11 scenarios are positive-path tests. There are zero negative/error-path scenarios in the STD. While scenarios 010-011 address error-adjacent topics (accessibility, deprecation), they verify that the *document describes* these situations — they do not test failure handling. A complete STD should include at least one scenario verifying behavior when expected content is missing or malformed.
-  - **Evidence:** No scenario has `[NEGATIVE]` tag, error/failure keywords in title, or assertions verifying error conditions. All assertions verify presence of content, not absence or malformation.
-  - **Remediation:** Consider adding 1-2 negative scenarios, such as: (1) "Evaluation document missing a required project section should be detected" (verifying that absence of a project is identifiable), or (2) "Evaluation document without a recommendation section fails completeness check." These would exercise the validation logic's failure branches.
-  - **Actionable:** true
-
-- **D4-4b-002**
-  - **Severity:** MINOR
-  - **Dimension:** Test Step Quality
-  - **Description:** Scenario 006 uses an overly broad search criterion. The command `strings.Contains(content, 'config')` would match virtually any technical document and provides no meaningful signal that `config.OrgConfig` is specifically discussed.
-  - **Evidence:** Scenario 006, TEST-01: `command: "strings.Contains(content, 'OrgConfig') || strings.Contains(content, 'config')"`
-  - **Remediation:** Tighten to `strings.Contains(content, "OrgConfig") || strings.Contains(content, "PerRepoConfig") || strings.Contains(content, "config.Org")` to avoid false positives from generic "config" matches.
-  - **Actionable:** true
 
 - **D4-4a-001**
   - **Severity:** MINOR
   - **Dimension:** Test Step Quality — Step Completeness
-  - **Description:** All 11 scenarios have empty `cleanup: []` arrays. While these are read-only document evaluation tests that do not create resources requiring teardown, the spec recommends at least one cleanup step per scenario.
+  - **Description:** All 13 scenarios have empty `cleanup: []` arrays. These are read-only document evaluation tests that do not create resources requiring teardown. For stateless tests, empty cleanup is acceptable per project convention.
   - **Evidence:** Every scenario: `cleanup: []`
-  - **Remediation:** For read-only tests, adding a no-op cleanup step is optional. If the project convention allows empty cleanup for stateless tests, no action needed. Otherwise, add a minimal cleanup: `- step_id: "CLEANUP-01" action: "No cleanup required — read-only test" command: "N/A" validation: "N/A"`
-  - **Actionable:** true
+  - **Remediation:** No action required for read-only document validation tests.
+  - **Actionable:** false
 
 ---
 
-### Dimension 4.5: STD Content Policy — Score: 75/100
-
-**Findings:**
-
-- **D4.5-4.5a-001**
-  - **Severity:** MAJOR
-  - **Dimension:** STD Content Policy
-  - **Description:** The `document_metadata` section contains a `related_prs: []` field. Even though empty, this field should not exist in the STD. PR references are implementation artifacts that belong in the STP (Section I), not in the STD which describes *what* to test independent of *what code changed*.
-  - **Evidence:** STD YAML line 16: `related_prs: []`
-  - **Remediation:** Remove the `related_prs` field entirely from `document_metadata`.
-  - **Actionable:** true
+### Dimension 4.5: STD Content Policy — Score: 95/100
 
 **Passed checks:**
+- ✅ No `related_prs` field in `document_metadata` (removed during refinement)
 - ✅ No PR URLs in stub file docstrings
 - ✅ No branch names or commit SHAs in metadata
 - ✅ No implementation details in stub bodies (all stubs use `t.Skip("Phase 1: Design only - awaiting implementation")`)
@@ -232,9 +214,11 @@ No additional findings beyond D2-2b-001.
 - ✅ No fixture implementations in stubs
 - ✅ Module docstrings reference STP file, not PR URLs
 
+**Findings:** No findings for this dimension. The `related_prs` field has been removed.
+
 ---
 
-### Dimension 5: PSE Docstring Quality — Score: 75/100
+### Dimension 5: PSE Docstring Quality — Score: 82/100
 
 **Go Stubs:**
 
@@ -244,27 +228,29 @@ No additional findings beyond D2-2b-001.
 | `eval_recommendation_stubs_test.go` | 3 | ✅ All | Good | ✅ | PASS |
 | `integration_surface_analysis_stubs_test.go` | 3 | ✅ All | Good | ✅ | PASS |
 | `repo_accessibility_stubs_test.go` | 2 | ✅ All | Good | ✅ | PASS |
+| `eval_negative_checks_stubs_test.go` | 2 | ✅ All | Good | ✅ | PASS |
 
 **PSE Quality Assessment:**
-- **Preconditions:** Specific and actionable across all stubs. Example: "Evaluation document produced by GH-54 research task" ✅
-- **Steps:** Numbered, describe clear actions. Example: "1. Locate evaluation document in output directory / 2. Read evaluation document content / 3. Search for references to Gastown, gascity, and goosetown" ✅
-- **Expected:** Measurable outcomes with clear pass/fail criteria. Example: "Document contains dedicated sections for Gastown, gascity, and goosetown" ✅
+- **Preconditions:** Specific and actionable across all stubs ✅
+- **Steps:** Numbered, describe clear actions ✅
+- **Expected:** Measurable outcomes with clear pass/fail criteria ✅
 - **Module docstrings:** All reference STP correctly, include Jira ID and markers ✅
 - **Standalone readability:** PSE docstrings are self-explanatory without STP context ✅
+- **Negative test stubs:** Include `[NEGATIVE]` tag in test names ✅
 
 **Python Stubs:**
 
 - **D5-5d-001**
   - **Severity:** MAJOR
   - **Dimension:** PSE Docstring Quality — Stub Completeness
-  - **Description:** No Python test stubs were generated despite the project's `python_tests` feature toggle being `true` (inherited from defaults). The STD's `code_generation_config` only specifies Go (`language: "go"`, `framework: "testing"`), creating an inconsistency with the project configuration. If Python tests are in scope, corresponding `test_*_stubs.py` files should exist under `outputs/std/GH-54/python-tests/`.
-  - **Evidence:** Directory `outputs/std/GH-54/python-tests/` does not exist. Project config `_defaults.yaml` sets `python_tests: true`; `project.yaml` does not override it to false.
-  - **Remediation:** Either (a) generate Python stubs matching the 11 STD scenarios, or (b) set `python_tests: false` in `project.yaml` if Python tests are not in scope for this project. Option (b) is likely correct since the project uses Go stdlib testing exclusively.
-  - **Actionable:** true
+  - **Description:** No Python test stubs were generated despite the project's `python_tests` feature toggle being `true` (inherited from defaults). The STD's `code_generation_config` only specifies Go (`language: "go"`, `framework: "testing"`), creating an inconsistency with the project configuration. The project does not have a `python.yaml` config file, confirming Python tests are not actually in scope.
+  - **Evidence:** Directory `outputs/std/GH-54/python-tests/` does not exist. Project config `_defaults.yaml` sets `python_tests: true`; `project.yaml` does not override it to false. However, no `python.yaml` exists in the project config directory.
+  - **Remediation:** Set `python_tests: false` in `project.yaml` to align the toggle with reality. The project uses Go stdlib testing exclusively and has no Python test infrastructure configured. This is a project config fix, not an STD fix.
+  - **Actionable:** false (requires project config update, not STD change)
 
 ---
 
-### Dimension 6: Code Generation Readiness — Score: 85/100
+### Dimension 6: Code Generation Readiness — Score: 90/100
 
 **Variable Declarations:**
 - All `variables.closure_scope` entries use valid Go types (`string`) ✅
@@ -274,7 +260,8 @@ No additional findings beyond D2-2b-001.
 **Import Completeness:**
 - Standard imports (`testing`, `os`, `strings`, `path/filepath`, `encoding/json`, `context`) ✅
 - Test framework imports (`testify/assert`, `testify/require`) ✅
-- Project imports listed include `config`, `forge` — these are not currently used in any scenario's code_structure but may be needed at implementation time
+- Project imports correctly set to empty `[]` ✅ (previously had unused `config` and `forge` imports — fixed)
+- Note: Several test step commands use `regexp` package functions but `regexp` is not in the standard imports list
 
 **Code Structure Validity:**
 - All `code_structure` blocks use valid Go `func Test*(t *testing.T)` signatures ✅
@@ -285,7 +272,15 @@ No additional findings beyond D2-2b-001.
 **Timeout Appropriateness:**
 - `timeout_constants` defined (`default: "30s"`, `setup: "60s"`) but not referenced in test steps. For document-evaluation tests (file reads), timeouts are not critical. No finding.
 
-**Findings:** No additional findings for this dimension.
+**Findings:**
+
+- **D6-6b-001**
+  - **Severity:** MINOR
+  - **Dimension:** Code Generation Readiness — Import Completeness
+  - **Description:** Multiple test step commands reference `regexp.MustCompile` but `regexp` is not listed in `code_generation_config.imports.standard`. The code generator will need this import to produce compilable test code.
+  - **Evidence:** Scenarios 002, 003, 004, 005, 007, 008, 009, 010, 011, 012, 013 use `regexp.MustCompile` in test step commands.
+  - **Remediation:** Add `"regexp"` to `code_generation_config.imports.standard`.
+  - **Actionable:** true
 
 ---
 
@@ -293,25 +288,15 @@ No additional findings beyond D2-2b-001.
 
 Ordered by severity:
 
-1. **[CRITICAL] D2-2b-001 — Missing `patterns` field in all scenarios** — **Remediation:** Add `patterns: { primary: "document-validation", helpers_required: [] }` to each of the 11 scenarios. For non-Ginkgo projects, consider a project-level schema extension that makes this field optional. — **Actionable:** yes
+1. **[MAJOR] D5-5d-001 — Missing Python stubs despite `python_tests: true`** — **Remediation:** Set `python_tests: false` in `project.yaml` since the project has no Python test infrastructure (`python.yaml` does not exist). — **Actionable:** no (project config fix)
 
-2. **[MAJOR] D2-2b-002 — Invalid `tier` values ("Functional" instead of "Tier 1")** — **Remediation:** Replace `tier: "Functional"` with `tier: "Tier 1"` in all 11 scenarios. Keep `classification.test_type: "Functional"` as-is. — **Actionable:** yes
+2. **[MINOR] D6-6b-001 — Missing `regexp` import in code_generation_config** — **Remediation:** Add `"regexp"` to `code_generation_config.imports.standard`. — **Actionable:** yes
 
-3. **[MAJOR] D4-4b-001 — Vague test step commands in 6 scenarios** — **Remediation:** Replace hand-wavy descriptions with concrete Go expressions (`strings.Contains`, `regexp.MatchString`) that can be directly translated to test code. — **Actionable:** yes
+3. **[MINOR] D1-1a-001 — STP has empty Requirement IDs for 3 groups** — **Remediation:** STP-side fix; not actionable in STD refine loop. — **Actionable:** no
 
-4. **[MAJOR] D4-4h-001 — Zero negative/error-path scenarios** — **Remediation:** Add 1-2 negative scenarios testing for missing or incomplete evaluation content. — **Actionable:** yes
+4. **[MINOR] D1-1b-001 — Negative scenarios 012-013 not in STP** — **Remediation:** Add to STP Section III or document as STD-originated additions. — **Actionable:** no
 
-5. **[MAJOR] D4.5-4.5a-001 — `related_prs` field in document_metadata** — **Remediation:** Remove `related_prs: []` from `document_metadata`. — **Actionable:** yes
-
-6. **[MAJOR] D5-5d-001 — Missing Python stubs despite `python_tests: true`** — **Remediation:** Set `python_tests: false` in `project.yaml` if Python is not in scope, or generate Python stubs. — **Actionable:** yes
-
-7. **[MINOR] D4-4b-002 — Overly broad search criterion in scenario 006** — **Remediation:** Tighten `strings.Contains(content, 'config')` to target `OrgConfig`/`PerRepoConfig` specifically. — **Actionable:** yes
-
-8. **[MINOR] D4-4a-001 — Empty cleanup arrays in all scenarios** — **Remediation:** Optional for read-only tests. Add no-op cleanup if project convention requires it. — **Actionable:** yes
-
-9. **[MINOR] D1-1a-001 — STP has empty Requirement IDs for 3 groups** — **Remediation:** STP-side fix; not actionable in STD refine loop. — **Actionable:** false
-
-10. **[MINOR] Unused project imports in code_generation_config** — **Remediation:** Remove unused imports (`config`, `forge`, etc.) from `code_generation_config.imports.project` or document they are reserved for implementation phase. — **Actionable:** yes
+5. **[MINOR] D4-4a-001 — Empty cleanup arrays in all scenarios** — **Remediation:** Acceptable for read-only document validation tests. No action needed. — **Actionable:** no
 
 ---
 
@@ -319,14 +304,14 @@ Ordered by severity:
 
 | Dimension | Weight | Score | Weighted |
 |:----------|:-------|:------|:---------|
-| 1. STP-STD Traceability | 30% | 90 | 27.0 |
-| 2. STD YAML Structure | 20% | 55 | 11.0 |
-| 3. Pattern Matching | 10% | 50 | 5.0 |
-| 4. Test Step Quality | 15% | 65 | 9.75 |
-| 4.5. Content Policy | 10% | 75 | 7.5 |
-| 5. PSE Docstring Quality | 10% | 75 | 7.5 |
-| 6. Code Generation Readiness | 5% | 85 | 4.25 |
-| **Total** | **100%** | | **72.0** |
+| 1. STP-STD Traceability | 30% | 88 | 26.4 |
+| 2. STD YAML Structure | 20% | 95 | 19.0 |
+| 3. Pattern Matching | 10% | 85 | 8.5 |
+| 4. Test Step Quality | 15% | 82 | 12.3 |
+| 4.5. Content Policy | 10% | 95 | 9.5 |
+| 5. PSE Docstring Quality | 10% | 82 | 8.2 |
+| 6. Code Generation Readiness | 5% | 90 | 4.5 |
+| **Total** | **100%** | | **88.4** |
 
 ---
 
@@ -336,10 +321,10 @@ Ordered by severity:
 |:-------|:-------|
 | STD YAML parseable | YES |
 | STP file available | YES |
-| Go stubs present | YES (4 files, 11 tests) |
+| Go stubs present | YES (5 files, 13 tests) |
 | Python stubs present | NO |
 | Pattern library available | NO |
-| All scenarios reviewed | YES (11/11) |
-| Project review rules loaded | NO (dynamic extraction only) |
+| All scenarios reviewed | YES (13/13) |
+| Project review rules loaded | YES (dynamic extraction, schema v1.1.0) |
 
-**Confidence rationale:** MEDIUM confidence. STD YAML is valid and STP is available, enabling full traceability analysis. Go stubs are present and well-formed. However, no pattern library exists (preventing Dimension 3d validation), no Python stubs exist (preventing Python PSE review), and review rules were dynamically extracted without a static `review_rules.yaml` override. Review precision is reduced for pattern matching and stub convention checks. The project's `repo_files_fetch: false` toggle prevents fetching `AGENTS.md` and `SOFTWARE_TEST_DESCRIPTION.md` for repo_rules-based validation.
+**Confidence rationale:** MEDIUM confidence. STD YAML is valid and STP is available, enabling full traceability analysis. Go stubs are present and well-formed for all 13 scenarios. Review rules were dynamically extracted with `default_ratio: 0.35` (within MEDIUM range). No pattern library exists (preventing Dimension 3d full validation), and no Python stubs exist. The `repo_files_fetch: false` toggle prevents fetching `AGENTS.md` for repo_rules-based validation. The single remaining MAJOR finding (D5-5d-001) is a project configuration issue requiring `python_tests: false` in `project.yaml`, not an STD defect.

@@ -13,13 +13,12 @@ document_metadata:
     file: "outputs/stp/GH-54/GH-54_test_plan.md"
     version: "v1"
     sections_covered: "Section III - Requirements-to-Tests Mapping"
-  related_prs: []
-  total_scenarios: 11
-  functional_count: 11
+  total_scenarios: 13
+  functional_count: 13
   e2e_count: 0
   p0_count: 0
   p1_count: 9
-  p2_count: 2
+  p2_count: 4
 
 code_generation_config:
   std_version: "2.1-enhanced"
@@ -36,12 +35,11 @@ code_generation_config:
       - "path/filepath"
       - "strings"
       - "encoding/json"
+      - "regexp"
     test_framework:
       - path: "github.com/stretchr/testify/assert"
       - path: "github.com/stretchr/testify/require"
-    project:
-      - "github.com/fullsend-ai/fullsend/internal/config"
-      - "github.com/fullsend-ai/fullsend/internal/forge"
+    project: []
   timeout_constants:
     default: "30s"
     setup: "60s"
@@ -77,10 +75,13 @@ scenarios:
 
   - scenario_id: "001"
     test_id: "TS-GH-54-001"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: true
     requirement_id: "GH-54"
+    patterns:
+      primary: "document-validation"
+      helpers_required: []
 
     variables:
       closure_scope:
@@ -195,10 +196,13 @@ scenarios:
 
   - scenario_id: "002"
     test_id: "TS-GH-54-002"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: true
     requirement_id: "GH-54"
+    patterns:
+      primary: "document-validation"
+      helpers_required: []
 
     variables:
       closure_scope:
@@ -271,8 +275,8 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Verify architecture analysis exists for each project"
-          command: "Check for architecture-related sections per project"
-          validation: "Each project has architecture discussion"
+          command: "for _, proj := range []string{\"Gastown\", \"gascity\", \"goosetown\"} { assert.True(t, regexp.MustCompile(`(?i)` + proj + `.*(architecture|design|structure)`).MatchString(content)) }"
+          validation: "Each project has architecture discussion within surrounding context"
 
       cleanup: []
 
@@ -290,10 +294,13 @@ scenarios:
 
   - scenario_id: "003"
     test_id: "TS-GH-54-003"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: true
     requirement_id: "GH-54"
+    patterns:
+      primary: "document-validation"
+      helpers_required: []
 
     variables:
       closure_scope:
@@ -364,12 +371,12 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Check for FullSend problem area references"
-          command: "Search for keywords: agent, sandbox, forge, orchestration, harness"
-          validation: "At least 2 FullSend problem areas referenced in context of mapping"
+          command: "matchCount := 0; for _, area := range []string{\"agent\", \"sandbox\", \"forge\", \"orchestration\", \"harness\"} { if strings.Contains(strings.ToLower(content), area) { matchCount++ } }; assert.GreaterOrEqual(t, matchCount, 2)"
+          validation: "At least 2 of 5 FullSend problem areas referenced in document"
         - step_id: "TEST-02"
           action: "Verify capability mapping structure"
-          command: "Check for mapping/comparison language connecting external to FullSend"
-          validation: "Document contains relevance assessment language"
+          command: "regexp.MustCompile(`(?i)(relevance|overlap|complement|map|integrate).*(fullsend|FullSend)`).MatchString(content) || regexp.MustCompile(`(?i)(fullsend|FullSend).*(relevance|overlap|complement|map|integrate)`).MatchString(content)"
+          validation: "Document contains relevance assessment language connecting external projects to FullSend"
 
       cleanup: []
 
@@ -392,10 +399,13 @@ scenarios:
 
   - scenario_id: "004"
     test_id: "TS-GH-54-004"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: true
     requirement_id: "GH-54"
+    patterns:
+      primary: "document-validation"
+      helpers_required: []
 
     variables:
       closure_scope:
@@ -469,8 +479,8 @@ scenarios:
           validation: "Document references forge.Client or forge interface"
         - step_id: "TEST-02"
           action: "Verify integration surface context"
-          command: "Check for integration/surface/impact language near forge references"
-          validation: "forge.Client discussed in integration context"
+          command: "regexp.MustCompile(`(?i)forge.*(integration|surface|impact|regression|abstraction)`).MatchString(content) || regexp.MustCompile(`(?i)(integration|surface|impact).*(forge)`).MatchString(content)"
+          validation: "forge.Client discussed in integration or impact context"
 
       cleanup: []
 
@@ -488,10 +498,13 @@ scenarios:
 
   - scenario_id: "005"
     test_id: "TS-GH-54-005"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: true
     requirement_id: "GH-54"
+    patterns:
+      primary: "document-validation"
+      helpers_required: []
 
     variables:
       closure_scope:
@@ -553,8 +566,8 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Search for harness/sandbox references"
-          command: "strings.Contains(content, 'harness') || strings.Contains(content, 'sandbox')"
-          validation: "Document references harness or sandbox layer"
+          command: "strings.Contains(content, \"harness\") && strings.Contains(content, \"sandbox\") || regexp.MustCompile(`(?i)(harness|sandbox).*(impact|execution|layer|integration)`).MatchString(content)"
+          validation: "Document references harness or sandbox in execution/impact context"
 
       cleanup: []
 
@@ -572,10 +585,13 @@ scenarios:
 
   - scenario_id: "006"
     test_id: "TS-GH-54-006"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: true
     requirement_id: "GH-54"
+    patterns:
+      primary: "document-validation"
+      helpers_required: []
 
     variables:
       closure_scope:
@@ -637,8 +653,8 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Search for config.OrgConfig or configuration references"
-          command: "strings.Contains(content, 'OrgConfig') || strings.Contains(content, 'config')"
-          validation: "Document references configuration management"
+          command: "strings.Contains(content, \"OrgConfig\") || strings.Contains(content, \"PerRepoConfig\") || strings.Contains(content, \"config.Org\")"
+          validation: "Document references OrgConfig, PerRepoConfig, or config.Org specifically"
 
       cleanup: []
 
@@ -661,10 +677,13 @@ scenarios:
 
   - scenario_id: "007"
     test_id: "TS-GH-54-007"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: true
     requirement_id: "GH-54"
+    patterns:
+      primary: "document-validation"
+      helpers_required: []
 
     variables:
       closure_scope:
@@ -735,12 +754,12 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Search for recommendation section"
-          command: "Check for recommendation/conclusion section heading"
-          validation: "Recommendation section exists"
+          command: "regexp.MustCompile(`(?im)^#+\\s*(recommendation|conclusion|verdict|decision)`).MatchString(content)"
+          validation: "Recommendation or conclusion section heading exists"
         - step_id: "TEST-02"
           action: "Verify recommendation uses standard language"
-          command: "Search for adopt/defer/reject keywords"
-          validation: "At least one recommendation keyword present"
+          command: "regexp.MustCompile(`(?i)(\\badopt\\b|\\bdefer\\b|\\breject\\b|\\brecommend\\b)`).MatchString(content)"
+          validation: "At least one recommendation keyword (adopt/defer/reject/recommend) present"
 
       cleanup: []
 
@@ -758,10 +777,13 @@ scenarios:
 
   - scenario_id: "008"
     test_id: "TS-GH-54-008"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: true
     requirement_id: "GH-54"
+    patterns:
+      primary: "document-validation"
+      helpers_required: []
 
     variables:
       closure_scope:
@@ -825,8 +847,8 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Verify justification references FullSend"
-          command: "Search for FullSend architecture references near recommendation"
-          validation: "Justification mentions FullSend components"
+          command: "regexp.MustCompile(`(?i)(recommend|conclusion|verdict)[\\s\\S]{0,500}(fullsend|FullSend|forge|harness|sandbox|agent)`).MatchString(content)"
+          validation: "Recommendation section contains FullSend component references within 500 chars"
 
       cleanup: []
 
@@ -844,10 +866,13 @@ scenarios:
 
   - scenario_id: "009"
     test_id: "TS-GH-54-009"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P1"
     mvp: true
     requirement_id: "GH-54"
+    patterns:
+      primary: "document-validation"
+      helpers_required: []
 
     variables:
       closure_scope:
@@ -911,8 +936,8 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Search for follow-up or next steps section"
-          command: "Search for follow-up/next steps/implementation keywords"
-          validation: "Follow-up section or next steps identified"
+          command: "regexp.MustCompile(`(?i)(follow.?up|next\\s+steps|implementation\\s+(plan|issue|task)|action\\s+item)`).MatchString(content)"
+          validation: "Document contains follow-up, next steps, or implementation planning language"
 
       cleanup: []
 
@@ -935,10 +960,13 @@ scenarios:
 
   - scenario_id: "010"
     test_id: "TS-GH-54-010"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P2"
     mvp: false
     requirement_id: "GH-54"
+    patterns:
+      primary: "document-validation"
+      helpers_required: []
 
     variables:
       closure_scope:
@@ -1007,12 +1035,12 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Verify repository URLs or references present"
-          command: "Search for GitHub URLs or repo name references"
-          validation: "All three repository references found"
+          command: "for _, repo := range []string{\"gastown\", \"gascity\", \"goosetown\"} { assert.True(t, strings.Contains(strings.ToLower(content), repo), \"missing repo reference: \"+repo) }"
+          validation: "All three repository name references found in document"
         - step_id: "TEST-02"
           action: "Check for accessibility status language"
-          command: "Search for status-related keywords (public, archived, accessible, available)"
-          validation: "Accessibility status documented"
+          command: "regexp.MustCompile(`(?i)(public|archived|accessible|available|private|deprecated|maintained)`).MatchString(content)"
+          validation: "Accessibility or maintenance status language present"
 
       cleanup: []
 
@@ -1030,10 +1058,13 @@ scenarios:
 
   - scenario_id: "011"
     test_id: "TS-GH-54-011"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P2"
     mvp: false
     requirement_id: "GH-54"
+    patterns:
+      primary: "document-validation"
+      helpers_required: []
 
     variables:
       closure_scope:
@@ -1097,12 +1128,12 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Verify Gastown-gascity relationship documented"
-          command: "Search for re-architecture/deprecated/successor language"
-          validation: "Relationship between Gastown and gascity acknowledged"
+          command: "regexp.MustCompile(`(?i)(re.?architect|deprecat|successor|replac|evolution|fork).*(gastown|gascity)`).MatchString(content) || regexp.MustCompile(`(?i)(gastown|gascity).*(re.?architect|deprecat|successor|replac|evolution|fork)`).MatchString(content)"
+          validation: "Document discusses Gastown-gascity relationship using transition language"
         - step_id: "TEST-02"
           action: "Verify evaluation focuses on current version"
-          command: "Check that gascity receives primary evaluation focus"
-          validation: "Current/maintained version prioritized"
+          command: "regexp.MustCompile(`(?i)(current|maintained|active|primary).*(gascity|version)`).MatchString(content)"
+          validation: "Document identifies current/maintained version"
 
       cleanup: []
 
@@ -1112,6 +1143,217 @@ scenarios:
         description: "Gastown deprecation handled"
         condition: "Document addresses Gastown to gascity transition"
         failure_impact: "Evaluation may recommend adopting deprecated project"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Negative / Error-Path Scenarios (P2)
+  # ============================================================
+
+  - scenario_id: "012"
+    test_id: "TS-GH-54-012"
+    tier: "Tier 1"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-54"
+    patterns:
+      primary: "document-validation"
+      helpers_required: []
+
+    variables:
+      closure_scope:
+        - name: "docContent"
+          type: "string"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Raw content of evaluation document"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Evaluation document completeness negative check"
+      context:
+        description: "When evaluation document is missing required sections"
+        decorators: []
+      it:
+        description: "[NEGATIVE] should detect when a required project section is absent"
+        test_id_format: "[test_id:TS-GH-54-012]"
+
+    code_structure: |
+      func TestEvalDetectsMissingProjectSection(t *testing.T) {
+        // Setup: read evaluation document
+        // Test: verify that absence of any required project section is detectable
+        // Cleanup: none required
+      }
+
+    test_objective:
+      title: "[NEGATIVE] Verify detection when a required project section is absent from evaluation"
+      what: |
+        Validates that the evaluation document's completeness can be verified by
+        checking for the absence of a required project section. This tests the
+        negative path where one of the three projects (Gastown, gascity, goosetown)
+        is not covered, ensuring the validation logic correctly identifies the gap.
+      why: |
+        Positive-only testing creates false confidence. Verifying that missing
+        content is detectable ensures the validation logic works in both directions
+        and will catch incomplete evaluations.
+      acceptance_criteria:
+        - "Validation logic can distinguish between present and absent project sections"
+        - "Missing project section produces a clear, identifiable signal"
+        - "Each of the three project names is independently verifiable"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions:
+        - name: "required_projects"
+          type: "StringSlice"
+          yaml: |
+            - "gastown"
+            - "gascity"
+            - "goosetown"
+        - name: "incomplete_content"
+          type: "string"
+          yaml: |
+            "This evaluation covers Gastown and gascity but omits goosetown entirely."
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Prepare incomplete test content missing one project"
+          command: "incompleteContent := \"This evaluation covers Gastown and gascity but omits goosetown entirely.\""
+          validation: "Test content prepared"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify each project is independently checkable"
+          command: "for _, proj := range requiredProjects { result := strings.Contains(strings.ToLower(incompleteContent), proj); if proj == \"goosetown\" { assert.False(t, result) } else { assert.True(t, result) } }"
+          validation: "Present projects detected as present, absent project detected as absent"
+        - step_id: "TEST-02"
+          action: "Apply completeness check to actual document"
+          command: "for _, proj := range requiredProjects { assert.True(t, strings.Contains(strings.ToLower(docContent), proj), \"evaluation missing required project: \"+proj) }"
+          validation: "All required projects present in actual evaluation document"
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Missing project section is detectable"
+        condition: "Validation logic correctly identifies absent project sections"
+        failure_impact: "Incomplete evaluations may pass validation undetected"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: "013"
+    test_id: "TS-GH-54-013"
+    tier: "Tier 1"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-54"
+    patterns:
+      primary: "document-validation"
+      helpers_required: []
+
+    variables:
+      closure_scope:
+        - name: "docContent"
+          type: "string"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Raw content of evaluation document"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Evaluation recommendation section negative check"
+      context:
+        description: "When evaluation document lacks a recommendation section"
+        decorators: []
+      it:
+        description: "[NEGATIVE] should detect when recommendation section is missing"
+        test_id_format: "[test_id:TS-GH-54-013]"
+
+    code_structure: |
+      func TestEvalDetectsMissingRecommendation(t *testing.T) {
+        // Setup: prepare content without recommendation
+        // Test: verify absence of recommendation is detectable
+        // Cleanup: none required
+      }
+
+    test_objective:
+      title: "[NEGATIVE] Verify detection when recommendation section is missing from evaluation"
+      what: |
+        Validates that the evaluation document completeness check can detect
+        when the recommendation section (adopt/defer/reject) is absent. This
+        tests the failure path where an evaluation provides analysis but no
+        actionable conclusion.
+      why: |
+        An evaluation without a recommendation is incomplete research. The
+        validation logic must detect this absence to prevent evaluation
+        documents that analyze without concluding from being accepted.
+      acceptance_criteria:
+        - "Content without recommendation keywords fails the recommendation check"
+        - "Content with recommendation keywords passes the recommendation check"
+        - "Detection works for all three recommendation types (adopt/defer/reject)"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions:
+        - name: "content_without_recommendation"
+          type: "string"
+          yaml: |
+            "This document analyzes Gastown architecture and integration surfaces but does not provide any conclusion or decision."
+        - name: "recommendation_keywords"
+          type: "StringSlice"
+          yaml: |
+            - "adopt"
+            - "defer"
+            - "reject"
+            - "recommend"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Prepare content without recommendation language"
+          command: "noRecContent := \"This document analyzes Gastown architecture and integration surfaces but does not provide any conclusion or decision.\""
+          validation: "Test content prepared without recommendation keywords"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify recommendation check fails on content without recommendation"
+          command: "hasRec := regexp.MustCompile(`(?i)(\\badopt\\b|\\bdefer\\b|\\breject\\b|\\brecommend\\b)`).MatchString(noRecContent); assert.False(t, hasRec, \"content without recommendation should fail check\")"
+          validation: "Recommendation check correctly returns false for content lacking recommendation"
+        - step_id: "TEST-02"
+          action: "Verify recommendation check passes on actual document"
+          command: "hasRec := regexp.MustCompile(`(?i)(\\badopt\\b|\\bdefer\\b|\\breject\\b|\\brecommend\\b)`).MatchString(docContent); assert.True(t, hasRec, \"actual evaluation should contain recommendation\")"
+          validation: "Recommendation check correctly returns true for actual evaluation document"
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Missing recommendation is detectable"
+        condition: "Recommendation check correctly identifies absence of recommendation language"
+        failure_impact: "Evaluations without conclusions may pass validation"
 
     dependencies:
       kubernetes_resources: []
