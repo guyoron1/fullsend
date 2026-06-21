@@ -1,0 +1,15 @@
+status: success
+jira_id: GH-2354
+file_path: /sandbox/workspace/output/GH-2354_test_plan.md
+test_counts:
+  functional: 21
+  end_to_end: 0
+  total: 21
+validation:
+  total_checks: 18
+  passed: 18
+  failed: 0
+  warnings: 0
+  auto_fixed:
+    - "Converted 'Unit Tests' to '[Functional]' in Section III (unit tests are developer-responsibility, tracked as Functional in STP mapping)"
+    - "Converted 'Functional' to '[Functional]' bracket format in Section III"
