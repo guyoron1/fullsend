@@ -1,0 +1,1691 @@
+---
+# Software Test Description (STD) v2.1-enhanced
+# Generated: 2026-06-21
+# Source: outputs/stp/GH-1230/GH-1230_test_plan.md
+
+document_metadata:
+  std_version: "2.1-enhanced"
+  generated_date: "2026-06-21"
+  jira_issue: "GH-1230"
+  jira_summary: "Run OutputPipeline on Post-Review Before Posting to Forge"
+  source_bugs: []
+  stp_reference:
+    file: "outputs/stp/GH-1230/GH-1230_test_plan.md"
+    version: "v1"
+    sections_covered: "Section III - Requirements-to-Tests Mapping"
+  related_prs:
+    - repo: "fullsend-ai/fullsend"
+      pr_number: 2444
+      url: "https://github.com/fullsend-ai/fullsend/pull/2444"
+      title: "Run OutputPipeline on Post-Review Before Posting to Forge"
+      merged: true
+  owning_sig: "N/A"
+  participating_sigs: []
+  total_scenarios: 26
+  tier_1_count: 0
+  tier_2_count: 0
+  unit_count: 0
+  functional_count: 26
+  e2e_count: 0
+  p0_count: 7
+  p1_count: 13
+  p2_count: 6
+  existing_coverage_count: 0
+  new_count: 26
+  test_strategy_mode: "auto"
+
+code_generation_config:
+  std_version: "2.1-enhanced"
+  framework: "testing"
+  assertion_library: "testify"
+  language: "go"
+  package_name: "cli"
+  imports:
+    standard:
+      - "testing"
+      - "strings"
+    framework:
+      - path: "github.com/stretchr/testify/assert"
+      - path: "github.com/stretchr/testify/require"
+    project:
+      - path: "github.com/fullsend-ai/fullsend/internal/security"
+      - path: "github.com/fullsend-ai/fullsend/internal/forge"
+
+common_preconditions:
+  infrastructure:
+    - name: "Go toolchain"
+      requirement: "Go 1.22+ (per go.mod)"
+      validation: "go version"
+    - name: "CI runner"
+      requirement: "Standard Linux CI runner or macOS developer machine"
+      validation: "uname -a"
+  operators: []
+  cluster_configuration:
+    topology: "N/A"
+    cpu_virtualization: "N/A"
+    storage: "N/A"
+    network: "N/A"
+  rbac_requirements: []
+  dependencies:
+    - name: "security.OutputPipeline"
+      requirement: "Functional and tested (scanner_test.go passes)"
+      validation: "go test ./internal/security/..."
+    - name: "forge.FakeClient"
+      requirement: "Supports all required interface methods for test mocking"
+      validation: "go build ./internal/forge/..."
+    - name: "sanitizeReviewResult function"
+      requirement: "Implemented and compiles"
+      validation: "go build ./cmd/..."
+
+scenarios:
+  # ============================================================
+  # Group 1: Review body sanitization (P0)
+  # Requirement: Review body content is sanitized for leaked secrets
+  # ============================================================
+  - scenario_id: 1
+    test_id: "TS-GH1230-001"
+    test_type: "functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-1230"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify GitHub PAT in review body is redacted"
+      what: |
+        Tests that a GitHub Personal Access Token (ghp_...) embedded in the review
+        body text is detected and replaced with a redaction placeholder by the
+        sanitizeReviewResult function before the content reaches the forge API.
+      why: |
+        GitHub PATs are high-value credentials. If leaked in a public PR comment,
+        they could be used to access repositories, trigger workflows, or exfiltrate
+        code. This is the primary security scenario.
+      acceptance_criteria:
+        - "Review body containing ghp_xxxx... token has the token replaced with [REDACTED]"
+        - "Sanitized output retains all non-secret content unchanged"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with testify"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions:
+        - name: "review_result_with_pat"
+          type: "ReviewResult"
+          yaml: |
+            body: "Found issue: token ghp_ABCDEFghijklmnop1234567890abcdefghijklmn was exposed"
+            action: "comment"
+            findings: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create ReviewResult with GitHub PAT in body"
+          command: "Construct ReviewResult struct with known ghp_ token in body field"
+          validation: "Struct created successfully"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call sanitizeReviewResult on the ReviewResult"
+          command: "result := sanitizeReviewResult(reviewResult)"
+          validation: "Function returns without error"
+        - step_id: "TEST-02"
+          action: "Assert body no longer contains the PAT"
+          command: "assert.NotContains(t, result.Body, \"ghp_\")"
+          validation: "Body does not contain ghp_ prefix"
+        - step_id: "TEST-03"
+          action: "Assert redaction placeholder is present"
+          command: "assert.Contains(t, result.Body, \"[REDACTED]\")"
+          validation: "Redaction marker present in output"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "GitHub PAT is redacted from review body"
+        condition: "result.Body does not contain the original ghp_ token"
+        failure_impact: "Credentials would be leaked in public PR comments"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "Non-secret content preserved"
+        condition: "result.Body retains surrounding text"
+        failure_impact: "Over-redaction would remove useful review content"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 2
+    test_id: "TS-GH1230-002"
+    test_type: "functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-1230"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify multiple secret types redacted from body"
+      what: |
+        Tests that multiple different secret types (GitHub PAT, generic API key patterns)
+        embedded in the same review body are all detected and redacted by sanitization.
+      why: |
+        Real-world agent output may contain multiple leaked credentials of different types.
+        The sanitizer must handle all recognized patterns, not just the first match.
+      acceptance_criteria:
+        - "All recognized secret patterns in the body are replaced with redaction markers"
+        - "Non-secret content between secrets is preserved"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with testify"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions:
+        - name: "review_result_with_multiple_secrets"
+          type: "ReviewResult"
+          yaml: |
+            body: "Token ghp_ABC123secret and key AKIA1234567890EXAMPLE found"
+            action: "comment"
+            findings: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create ReviewResult with multiple secret types in body"
+          command: "Construct ReviewResult with ghp_ token and AWS-style key in body"
+          validation: "Struct created"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call sanitizeReviewResult"
+          command: "result := sanitizeReviewResult(reviewResult)"
+          validation: "No error"
+        - step_id: "TEST-02"
+          action: "Assert no secret patterns remain"
+          command: "assert.NotContains(t, result.Body, \"ghp_\"); assert.NotContains(t, result.Body, \"AKIA\")"
+          validation: "No recognized secret patterns in output"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "All secret types redacted"
+        condition: "No recognized secret patterns remain in sanitized body"
+        failure_impact: "Some credential types would leak"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 3
+    test_id: "TS-GH1230-003"
+    test_type: "functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-1230"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify clean body passes through unchanged"
+      what: |
+        Tests that a review body containing no secrets or sensitive patterns
+        passes through sanitizeReviewResult completely unchanged.
+      why: |
+        Sanitization must not modify legitimate review content. False positives
+        would degrade review quality and erode trust in the tool.
+      acceptance_criteria:
+        - "Body text with no secrets is identical before and after sanitization"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with testify"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions:
+        - name: "review_result_clean"
+          type: "ReviewResult"
+          yaml: |
+            body: "This code looks good. Consider adding error handling on line 42."
+            action: "approve"
+            findings: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create ReviewResult with clean body (no secrets)"
+          command: "Construct ReviewResult with normal review text"
+          validation: "Struct created"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call sanitizeReviewResult"
+          command: "result := sanitizeReviewResult(reviewResult)"
+          validation: "No error"
+        - step_id: "TEST-02"
+          action: "Assert body is unchanged"
+          command: "assert.Equal(t, originalBody, result.Body)"
+          validation: "Body text identical to input"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Clean content passes through unchanged"
+        condition: "result.Body == original body text"
+        failure_impact: "False positive redaction would corrupt review content"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 4
+    test_id: "TS-GH1230-004"
+    test_type: "functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-1230"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify body with partial token pattern not over-redacted"
+      what: |
+        Tests that strings resembling but not matching secret patterns (e.g., short
+        strings starting with ghp_ but too short to be a real token) are not
+        erroneously redacted. This is a negative test for false positives.
+      why: |
+        Over-aggressive redaction would remove legitimate content that happens to
+        contain substrings similar to secret prefixes.
+      acceptance_criteria:
+        - "Partial/invalid token patterns are not redacted"
+        - "Body content is preserved when no valid secrets are present"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with testify"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions:
+        - name: "review_result_partial_token"
+          type: "ReviewResult"
+          yaml: |
+            body: "Variable ghp_short is not a real token"
+            action: "comment"
+            findings: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create ReviewResult with partial/invalid token pattern"
+          command: "Construct ReviewResult with ghp_ prefix but invalid length"
+          validation: "Struct created"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call sanitizeReviewResult"
+          command: "result := sanitizeReviewResult(reviewResult)"
+          validation: "No error"
+        - step_id: "TEST-02"
+          action: "Assert body is not over-redacted"
+          command: "assert.Equal(t, originalBody, result.Body)"
+          validation: "Body unchanged - partial pattern not redacted"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Partial token patterns not over-redacted"
+        condition: "Body with invalid-length token prefix is unchanged"
+        failure_impact: "False positive redaction would corrupt legitimate content"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Group 2: Edge cases in review body sanitization (P2)
+  # ============================================================
+  - scenario_id: 5
+    test_id: "TS-GH1230-005"
+    test_type: "functional"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-1230"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify non-ASCII but non-obfuscation Unicode characters in body pass through unchanged"
+      what: |
+        Tests that legitimate non-ASCII Unicode characters (e.g., CJK characters,
+        emoji, accented letters) in the review body are not incorrectly treated as
+        obfuscation and are preserved unchanged after sanitization.
+      why: |
+        Internationalized review content must not be corrupted by the Unicode
+        normalization step. The normalizer should only strip zero-width and
+        bidirectional override characters, not legitimate Unicode.
+      acceptance_criteria:
+        - "Non-ASCII Unicode (emoji, CJK, accented chars) preserved after sanitization"
+        - "No false-positive Unicode normalization on legitimate characters"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with testify"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions:
+        - name: "review_result_unicode"
+          type: "ReviewResult"
+          yaml: |
+            body: "Review: 良いコード 🎉 résumé naïve"
+            action: "comment"
+            findings: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create ReviewResult with legitimate Unicode in body"
+          command: "Construct ReviewResult with CJK, emoji, accented characters"
+          validation: "Struct created"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call sanitizeReviewResult"
+          command: "result := sanitizeReviewResult(reviewResult)"
+          validation: "No error"
+        - step_id: "TEST-02"
+          action: "Assert Unicode content preserved"
+          command: "assert.Equal(t, originalBody, result.Body)"
+          validation: "Non-obfuscation Unicode unchanged"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Legitimate Unicode preserved"
+        condition: "Non-obfuscation Unicode characters unchanged after sanitization"
+        failure_impact: "Internationalized content would be corrupted"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Group 3: Finding descriptions and remediations (P0)
+  # ============================================================
+  - scenario_id: 6
+    test_id: "TS-GH1230-006"
+    test_type: "functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-1230"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify secret redacted from finding description"
+      what: |
+        Tests that a secret embedded in a Finding's Description field is detected
+        and redacted by sanitizeReviewResult. Findings are individual code review
+        items that get posted as inline comments or review body subsections.
+      why: |
+        Finding descriptions are posted to PRs just like the review body. Secrets
+        in findings would be exposed in the same way as secrets in the body.
+      acceptance_criteria:
+        - "Secret in finding.Description is replaced with redaction marker"
+        - "Non-secret description content is preserved"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with testify"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions:
+        - name: "review_result_finding_desc_secret"
+          type: "ReviewResult"
+          yaml: |
+            body: "Review complete"
+            action: "comment"
+            findings:
+              - description: "Hardcoded token ghp_ABCDEFghijklmnop1234567890abcdefghijklmn found"
+                remediation: "Use environment variables instead"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create ReviewResult with secret in finding description"
+          command: "Construct ReviewResult with ghp_ token in findings[0].Description"
+          validation: "Struct created"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call sanitizeReviewResult"
+          command: "result := sanitizeReviewResult(reviewResult)"
+          validation: "No error"
+        - step_id: "TEST-02"
+          action: "Assert secret redacted from finding description"
+          command: "assert.NotContains(t, result.Findings[0].Description, \"ghp_\")"
+          validation: "Finding description no longer contains secret"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Secret redacted from finding description"
+        condition: "Finding description does not contain ghp_ token"
+        failure_impact: "Secrets would leak via inline PR comments"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 7
+    test_id: "TS-GH1230-007"
+    test_type: "functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-1230"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify secret redacted from finding remediation"
+      what: |
+        Tests that a secret embedded in a Finding's Remediation field is detected
+        and redacted by sanitizeReviewResult.
+      why: |
+        Remediation text is posted to PRs as part of review findings. If a secret
+        appears in suggested fixes, it would be exposed publicly.
+      acceptance_criteria:
+        - "Secret in finding.Remediation is replaced with redaction marker"
+        - "Non-secret remediation content is preserved"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with testify"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions:
+        - name: "review_result_finding_rem_secret"
+          type: "ReviewResult"
+          yaml: |
+            body: "Review complete"
+            action: "comment"
+            findings:
+              - description: "Hardcoded credentials detected"
+                remediation: "Replace ghp_ABCDEFghijklmnop1234567890abcdefghijklmn with env var"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create ReviewResult with secret in finding remediation"
+          command: "Construct ReviewResult with ghp_ token in findings[0].Remediation"
+          validation: "Struct created"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call sanitizeReviewResult"
+          command: "result := sanitizeReviewResult(reviewResult)"
+          validation: "No error"
+        - step_id: "TEST-02"
+          action: "Assert secret redacted from finding remediation"
+          command: "assert.NotContains(t, result.Findings[0].Remediation, \"ghp_\")"
+          validation: "Finding remediation no longer contains secret"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Secret redacted from finding remediation"
+        condition: "Finding remediation does not contain ghp_ token"
+        failure_impact: "Secrets would leak via remediation suggestions in PR comments"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 8
+    test_id: "TS-GH1230-008"
+    test_type: "functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-1230"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify findings without secrets unchanged"
+      what: |
+        Tests that Finding objects with clean description and remediation fields
+        (no secrets) pass through sanitizeReviewResult completely unchanged.
+      why: |
+        The sanitizer must not modify legitimate finding content. Findings contain
+        structured code review information that must be preserved exactly.
+      acceptance_criteria:
+        - "Finding description without secrets is identical after sanitization"
+        - "Finding remediation without secrets is identical after sanitization"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with testify"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions:
+        - name: "review_result_clean_findings"
+          type: "ReviewResult"
+          yaml: |
+            body: "Review complete"
+            action: "approve"
+            findings:
+              - description: "Consider using a constant for this magic number"
+                remediation: "Extract 42 to a named constant like maxRetries"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create ReviewResult with clean findings"
+          command: "Construct ReviewResult with findings containing no secrets"
+          validation: "Struct created"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call sanitizeReviewResult"
+          command: "result := sanitizeReviewResult(reviewResult)"
+          validation: "No error"
+        - step_id: "TEST-02"
+          action: "Assert findings unchanged"
+          command: "assert.Equal(t, original.Findings, result.Findings)"
+          validation: "Finding fields identical to input"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Clean findings preserved"
+        condition: "Finding description and remediation match original"
+        failure_impact: "False positive redaction would corrupt review findings"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Group 4: Zero-width Unicode obfuscation bypass prevention (P2)
+  # ============================================================
+  - scenario_id: 9
+    test_id: "TS-GH1230-009"
+    test_type: "functional"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-1230"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify zero-width char obfuscated token detected"
+      what: |
+        Tests that a GitHub PAT with zero-width characters (U+200B, U+200C, U+200D,
+        U+FEFF) inserted between characters is still detected and redacted after
+        Unicode normalization removes the zero-width characters.
+      why: |
+        Attackers may insert invisible Unicode characters into tokens to bypass
+        regex-based secret detection. The UnicodeNormalizer step must strip these
+        before SecretRedactor runs.
+      acceptance_criteria:
+        - "Token with zero-width chars inserted is redacted after normalization"
+        - "Zero-width characters are stripped before secret detection"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with testify"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions:
+        - name: "review_result_zwc_obfuscated"
+          type: "ReviewResult"
+          yaml: |
+            body: "Token g\u200Bh\u200Bp\u200B_ABCDEFghijklmnop1234567890abcdefghijklmn"
+            action: "comment"
+            findings: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create ReviewResult with zero-width char obfuscated token"
+          command: "Insert U+200B between chars of ghp_ token in body"
+          validation: "Struct created with invisible chars"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call sanitizeReviewResult"
+          command: "result := sanitizeReviewResult(reviewResult)"
+          validation: "No error"
+        - step_id: "TEST-02"
+          action: "Assert obfuscated token is redacted"
+          command: "assert.NotContains(t, result.Body, \"ghp_\")"
+          validation: "Token detected despite obfuscation"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Zero-width obfuscated token detected and redacted"
+        condition: "Token with U+200B insertions is still caught"
+        failure_impact: "Obfuscation bypass would allow secret leakage"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 10
+    test_id: "TS-GH1230-010"
+    test_type: "functional"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-1230"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify bidirectional override obfuscation caught"
+      what: |
+        Tests that a token obfuscated with Unicode bidirectional override characters
+        (U+202A, U+202B, U+202C, U+202D, U+202E) is detected and redacted after
+        normalization.
+      why: |
+        Bidi override characters can visually reorder text, potentially hiding tokens
+        from visual inspection while still being parseable by APIs.
+      acceptance_criteria:
+        - "Token with bidi override chars is redacted after normalization"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with testify"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions:
+        - name: "review_result_bidi_obfuscated"
+          type: "ReviewResult"
+          yaml: |
+            body: "Token \u202Aghp_ABCDEFghijklmnop1234567890abcdefghijklmn\u202C found"
+            action: "comment"
+            findings: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create ReviewResult with bidi override obfuscated token"
+          command: "Wrap ghp_ token with U+202A/U+202C in body"
+          validation: "Struct created"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call sanitizeReviewResult"
+          command: "result := sanitizeReviewResult(reviewResult)"
+          validation: "No error"
+        - step_id: "TEST-02"
+          action: "Assert bidi-obfuscated token is redacted"
+          command: "assert.NotContains(t, result.Body, \"ghp_\")"
+          validation: "Token detected despite bidi obfuscation"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Bidi override obfuscated token detected"
+        condition: "Token wrapped in bidi chars is still caught and redacted"
+        failure_impact: "Bidi obfuscation bypass would allow secret leakage"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 11
+    test_id: "TS-GH1230-011"
+    test_type: "functional"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-1230"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify mixed invisible char injection blocked"
+      what: |
+        Tests that a token with a mix of different invisible Unicode character types
+        (zero-width spaces, zero-width joiners, bidi overrides, byte order marks)
+        injected throughout is still detected and redacted.
+      why: |
+        Sophisticated obfuscation may combine multiple invisible character types.
+        The normalizer must handle all known invisible character classes.
+      acceptance_criteria:
+        - "Token with mixed invisible characters is redacted"
+        - "All invisible character types stripped before detection"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with testify"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions:
+        - name: "review_result_mixed_invisible"
+          type: "ReviewResult"
+          yaml: |
+            body: "Token g\uFEFFh\u200Dp\u202A_ABCDEFghijklmnop1234567890abcdefghijklmn"
+            action: "comment"
+            findings: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create ReviewResult with mixed invisible chars in token"
+          command: "Insert BOM, ZWJ, bidi chars into ghp_ token"
+          validation: "Struct created"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call sanitizeReviewResult"
+          command: "result := sanitizeReviewResult(reviewResult)"
+          validation: "No error"
+        - step_id: "TEST-02"
+          action: "Assert mixed-obfuscated token is redacted"
+          command: "assert.NotContains(t, result.Body, \"ghp_\")"
+          validation: "Token detected despite mixed obfuscation"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Mixed invisible char obfuscation blocked"
+        condition: "Token with mixed invisible chars is caught"
+        failure_impact: "Complex obfuscation would bypass detection"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Group 5: Clean review content passes through (P1)
+  # ============================================================
+  - scenario_id: 12
+    test_id: "TS-GH1230-012"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-1230"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify clean body not modified by sanitization"
+      what: |
+        Tests that a review body with ordinary text, code snippets, and markdown
+        formatting passes through sanitization byte-for-byte unchanged.
+      why: |
+        Review quality depends on exact preservation of formatting, code blocks,
+        and markdown. Sanitization must be a no-op for clean content.
+      acceptance_criteria:
+        - "Clean body is byte-for-byte identical after sanitization"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with testify"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create ReviewResult with rich markdown body (no secrets)"
+          command: "Construct ReviewResult with code blocks, links, formatting"
+          validation: "Struct created"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call sanitizeReviewResult"
+          command: "result := sanitizeReviewResult(reviewResult)"
+          validation: "No error"
+        - step_id: "TEST-02"
+          action: "Assert body unchanged"
+          command: "assert.Equal(t, originalBody, result.Body)"
+          validation: "Body identical"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Clean body preserved exactly"
+        condition: "Body == original body"
+        failure_impact: "Review formatting would be corrupted"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 13
+    test_id: "TS-GH1230-013"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-1230"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify clean findings not modified by sanitization"
+      what: |
+        Tests that findings with clean description and remediation fields
+        pass through sanitization unchanged when no secrets are present.
+      why: |
+        Finding content must be preserved exactly. Any modification to clean
+        findings would indicate a sanitization bug.
+      acceptance_criteria:
+        - "All finding fields identical after sanitization when no secrets present"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with testify"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create ReviewResult with multiple clean findings"
+          command: "Construct ReviewResult with 3+ findings, no secrets"
+          validation: "Struct created"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call sanitizeReviewResult"
+          command: "result := sanitizeReviewResult(reviewResult)"
+          validation: "No error"
+        - step_id: "TEST-02"
+          action: "Assert all findings unchanged"
+          command: "assert.Equal(t, original.Findings, result.Findings)"
+          validation: "Findings array identical"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Clean findings array preserved"
+        condition: "All finding fields match original"
+        failure_impact: "Clean review findings would be corrupted"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Group 6: Mixed empty/non-empty finding fields (P1)
+  # ============================================================
+  - scenario_id: 14
+    test_id: "TS-GH1230-014"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-1230"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify finding with empty description but secret in remediation is sanitized"
+      what: |
+        Tests that when a finding has an empty Description but a Remediation field
+        containing a secret, the secret in Remediation is redacted and the empty
+        Description is preserved.
+      why: |
+        Finding fields are sanitized independently. An empty field must not cause
+        the sanitizer to skip the non-empty sibling field.
+      acceptance_criteria:
+        - "Empty description remains empty"
+        - "Secret in remediation is redacted"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with testify"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create finding with empty description, secret in remediation"
+          command: "findings[0].Description = \"\", findings[0].Remediation = \"use ghp_ABC... instead\""
+          validation: "Struct created"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call sanitizeReviewResult"
+          command: "result := sanitizeReviewResult(reviewResult)"
+          validation: "No error"
+        - step_id: "TEST-02"
+          action: "Assert empty description preserved, secret in remediation redacted"
+          command: "assert.Empty(t, result.Findings[0].Description); assert.NotContains(t, result.Findings[0].Remediation, \"ghp_\")"
+          validation: "Description empty, remediation redacted"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Independent field sanitization"
+        condition: "Empty description preserved; secret in remediation redacted"
+        failure_impact: "Empty field would cause sibling field sanitization to be skipped"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 15
+    test_id: "TS-GH1230-015"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-1230"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify finding with secret in description but empty remediation is sanitized"
+      what: |
+        Tests that when a finding has a Description containing a secret but an
+        empty Remediation, the secret in Description is redacted and the empty
+        Remediation is preserved.
+      why: |
+        Mirror case of scenario 14. Each field must be sanitized independently.
+      acceptance_criteria:
+        - "Secret in description is redacted"
+        - "Empty remediation remains empty"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with testify"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create finding with secret in description, empty remediation"
+          command: "findings[0].Description = \"found ghp_ABC...\", findings[0].Remediation = \"\""
+          validation: "Struct created"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call sanitizeReviewResult"
+          command: "result := sanitizeReviewResult(reviewResult)"
+          validation: "No error"
+        - step_id: "TEST-02"
+          action: "Assert secret in description redacted, empty remediation preserved"
+          command: "assert.NotContains(t, result.Findings[0].Description, \"ghp_\"); assert.Empty(t, result.Findings[0].Remediation)"
+          validation: "Description redacted, remediation empty"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Independent field sanitization (reverse)"
+        condition: "Secret in description redacted; empty remediation preserved"
+        failure_impact: "Empty sibling field would cause description sanitization to be skipped"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 16
+    test_id: "TS-GH1230-016"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-1230"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify finding field preserved when scanner returns empty sanitized result"
+      what: |
+        Tests edge case where the sanitization scanner might return an empty string
+        for a field that originally had content. The original content should be
+        preserved if the scanner returns empty (defensive behavior).
+      why: |
+        A scanner bug that produces empty output should not destroy finding content.
+        This is a defensive edge case test.
+      acceptance_criteria:
+        - "If scanner returns empty for non-empty input, original is preserved (or redaction marker used)"
+        - "Finding content is never silently dropped"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with testify"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create finding where entire content is a secret"
+          command: "findings[0].Description = \"ghp_ABCDEFghijklmnop1234567890abcdefghijklmn\""
+          validation: "Struct created"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call sanitizeReviewResult"
+          command: "result := sanitizeReviewResult(reviewResult)"
+          validation: "No error"
+        - step_id: "TEST-02"
+          action: "Assert field is not empty (redaction marker instead)"
+          command: "assert.NotEmpty(t, result.Findings[0].Description)"
+          validation: "Field contains redaction marker, not empty string"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Scanner empty result handling"
+        condition: "Field not silently dropped; contains redaction marker or original"
+        failure_impact: "Finding content would be silently destroyed"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Group 7: Empty review body handling (P2)
+  # ============================================================
+  - scenario_id: 17
+    test_id: "TS-GH1230-017"
+    test_type: "functional"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-1230"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify empty body skips sanitization scan"
+      what: |
+        Tests that a ReviewResult with an empty body string does not cause
+        errors or unnecessary processing in the sanitization pipeline.
+      why: |
+        Empty body is a valid state (e.g., for approve actions). The sanitizer
+        must handle it gracefully without errors.
+      acceptance_criteria:
+        - "Empty body passes through without error"
+        - "Empty body remains empty after sanitization"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with testify"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create ReviewResult with empty body"
+          command: "ReviewResult{Body: \"\", Action: \"approve\"}"
+          validation: "Struct created"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call sanitizeReviewResult"
+          command: "result := sanitizeReviewResult(reviewResult)"
+          validation: "No error"
+        - step_id: "TEST-02"
+          action: "Assert body still empty"
+          command: "assert.Empty(t, result.Body)"
+          validation: "Body is empty string"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Empty body handled gracefully"
+        condition: "Empty body remains empty, no error"
+        failure_impact: "Empty body would cause panic or error"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 18
+    test_id: "TS-GH1230-018"
+    test_type: "functional"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-1230"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify failure action with empty body succeeds"
+      what: |
+        Tests that the failure action flow works correctly when the review body
+        is empty, ensuring sanitization does not interfere with posting failure
+        results.
+      why: |
+        Failure actions may have empty bodies if the failure is communicated
+        solely through the action type. Sanitization must not break this flow.
+      acceptance_criteria:
+        - "Failure action with empty body posts successfully via FakeClient"
+        - "No sanitization errors on empty body"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with testify"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create ReviewResult with failure action and empty body"
+          command: "ReviewResult{Body: \"\", Action: \"failure\"}"
+          validation: "Struct created"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call sanitizeReviewResult then post via FakeClient"
+          command: "result := sanitizeReviewResult(reviewResult); client.PostReview(result)"
+          validation: "No error from sanitization or posting"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Failure action with empty body succeeds"
+        condition: "No errors from sanitization or posting pipeline"
+        failure_impact: "Failure reporting would break when body is empty"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Group 8: Posted review content secret-free (P1)
+  # ============================================================
+  - scenario_id: 19
+    test_id: "TS-GH1230-019"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-1230"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify posted PR comment does not contain secrets when review body had secrets"
+      what: |
+        End-to-end test that creates a ReviewResult with secrets in the body,
+        runs it through the full post-review flow with FakeClient, and verifies
+        the content posted to the forge API does not contain secrets.
+      why: |
+        This validates the integration between sanitizeReviewResult and the forge
+        posting code path, ensuring secrets are caught before reaching the API.
+      acceptance_criteria:
+        - "FakeClient received content does not contain any secret patterns"
+        - "Content posted to forge API is sanitized"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with testify and FakeClient"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create ReviewResult with secrets in body"
+          command: "Construct ReviewResult with ghp_ token"
+          validation: "Struct created"
+        - step_id: "SETUP-02"
+          action: "Set up FakeClient to capture posted content"
+          command: "client := &forge.FakeClient{}"
+          validation: "FakeClient ready"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run full post-review flow"
+          command: "postReview(client, reviewResult)"
+          validation: "No error"
+        - step_id: "TEST-02"
+          action: "Assert posted content is secret-free"
+          command: "assert.NotContains(t, client.PostedBody, \"ghp_\")"
+          validation: "Posted content sanitized"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Posted PR comment is secret-free"
+        condition: "FakeClient captured content has no secret patterns"
+        failure_impact: "Secrets would be posted to public PR comments"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 20
+    test_id: "TS-GH1230-020"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-1230"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify formal review findings posted to PR do not contain secrets"
+      what: |
+        End-to-end test for the formal review path (request-changes/approve with
+        findings). Verifies finding descriptions and remediations posted to the
+        forge are secret-free.
+      why: |
+        Formal reviews post finding details as structured data. Each field must
+        be sanitized before reaching the forge API.
+      acceptance_criteria:
+        - "All finding descriptions posted to forge are secret-free"
+        - "All finding remediations posted to forge are secret-free"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with testify and FakeClient"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create ReviewResult with secrets in finding fields"
+          command: "Construct ReviewResult with secrets in findings[].Description and Remediation"
+          validation: "Struct created"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run full post-review flow"
+          command: "postReview(client, reviewResult)"
+          validation: "No error"
+        - step_id: "TEST-02"
+          action: "Assert all posted findings are secret-free"
+          command: "for _, f := range client.PostedFindings { assert.NotContains(t, f.Description, \"ghp_\") }"
+          validation: "All posted findings sanitized"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Posted findings are secret-free"
+        condition: "All finding fields in FakeClient are sanitized"
+        failure_impact: "Secrets would leak via PR review findings"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 21
+    test_id: "TS-GH1230-021"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-1230"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify review posted via sticky comment has secrets redacted from body"
+      what: |
+        Tests that when a review is posted via the sticky comment mechanism
+        (updating an existing comment rather than creating a new one), the
+        body content is sanitized before the update.
+      why: |
+        Sticky comments are an alternative posting path. Both new-comment and
+        update-comment paths must sanitize content.
+      acceptance_criteria:
+        - "Sticky comment body is sanitized before update"
+        - "FakeClient update call receives secret-free content"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with testify and FakeClient"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create ReviewResult with secrets, configure for sticky comment"
+          command: "Construct ReviewResult with ghp_ token, action triggering sticky post"
+          validation: "Struct created"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run post-review flow (sticky path)"
+          command: "postReview(client, reviewResult) — triggers sticky.Post"
+          validation: "No error"
+        - step_id: "TEST-02"
+          action: "Assert sticky comment content is secret-free"
+          command: "assert.NotContains(t, client.StickyBody, \"ghp_\")"
+          validation: "Sticky comment sanitized"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Sticky comment body sanitized"
+        condition: "Sticky comment body has no secret patterns"
+        failure_impact: "Secrets would leak via sticky comment updates"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Group 9: Existing post-review functionality regression (P1)
+  # ============================================================
+  - scenario_id: 22
+    test_id: "TS-GH1230-022"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-1230"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify approve flow works with sanitization"
+      what: |
+        Tests that the approve action flow (posting an approval review to the forge)
+        continues to work correctly after the addition of the sanitization step.
+      why: |
+        Sanitization must not break existing functionality. The approve flow is
+        the most common positive review path.
+      acceptance_criteria:
+        - "Approve flow completes without error"
+        - "FakeClient receives approve action"
+        - "Review body is preserved (no secrets to redact)"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with testify and FakeClient"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create ReviewResult with approve action and clean body"
+          command: "ReviewResult{Body: \"LGTM\", Action: \"approve\"}"
+          validation: "Struct created"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run post-review flow"
+          command: "postReview(client, reviewResult)"
+          validation: "No error"
+        - step_id: "TEST-02"
+          action: "Assert approve was posted correctly"
+          command: "assert.Equal(t, \"approve\", client.LastAction)"
+          validation: "Approve action posted"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Approve flow not broken by sanitization"
+        condition: "Approve action completes successfully"
+        failure_impact: "Review approvals would fail"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 23
+    test_id: "TS-GH1230-023"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-1230"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify request-changes flow works with sanitization"
+      what: |
+        Tests that the request-changes action flow continues to work correctly
+        after sanitization is added.
+      why: |
+        Request-changes is the primary negative review path. It must continue
+        to function with sanitization in the pipeline.
+      acceptance_criteria:
+        - "Request-changes flow completes without error"
+        - "FakeClient receives request-changes action with sanitized content"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with testify and FakeClient"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create ReviewResult with request-changes action"
+          command: "ReviewResult{Body: \"Please fix\", Action: \"request-changes\", Findings: [...]}"
+          validation: "Struct created"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run post-review flow"
+          command: "postReview(client, reviewResult)"
+          validation: "No error"
+        - step_id: "TEST-02"
+          action: "Assert request-changes was posted correctly"
+          command: "assert.Equal(t, \"request-changes\", client.LastAction)"
+          validation: "Request-changes action posted"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Request-changes flow not broken"
+        condition: "Request-changes action completes successfully"
+        failure_impact: "Change requests would fail to post"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 24
+    test_id: "TS-GH1230-024"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-1230"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify comment flow works with sanitization"
+      what: |
+        Tests that the comment action flow (posting a non-approving, non-rejecting
+        comment) continues to work correctly after sanitization.
+      why: |
+        Comment is a neutral review action. It must not be broken by the
+        sanitization addition.
+      acceptance_criteria:
+        - "Comment flow completes without error"
+        - "FakeClient receives comment action"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with testify and FakeClient"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create ReviewResult with comment action"
+          command: "ReviewResult{Body: \"Some observations\", Action: \"comment\"}"
+          validation: "Struct created"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run post-review flow"
+          command: "postReview(client, reviewResult)"
+          validation: "No error"
+        - step_id: "TEST-02"
+          action: "Assert comment was posted correctly"
+          command: "assert.Equal(t, \"comment\", client.LastAction)"
+          validation: "Comment action posted"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Comment flow not broken"
+        condition: "Comment action completes successfully"
+        failure_impact: "Neutral comments would fail to post"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 25
+    test_id: "TS-GH1230-025"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-1230"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify failure flow works with sanitization"
+      what: |
+        Tests that the failure action flow (posting a failure result when the
+        review agent encounters an error) continues to work with sanitization.
+      why: |
+        Failure results may contain error messages that look like credentials
+        or contain stack traces. Sanitization must not break the failure path.
+      acceptance_criteria:
+        - "Failure flow completes without error"
+        - "FakeClient receives failure action"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with testify and FakeClient"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create ReviewResult with failure action"
+          command: "ReviewResult{Body: \"Agent failed: timeout\", Action: \"failure\"}"
+          validation: "Struct created"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run post-review flow"
+          command: "postReview(client, reviewResult)"
+          validation: "No error"
+        - step_id: "TEST-02"
+          action: "Assert failure was posted correctly"
+          command: "assert.Equal(t, \"failure\", client.LastAction)"
+          validation: "Failure action posted"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Failure flow not broken"
+        condition: "Failure action completes successfully"
+        failure_impact: "Error reporting would fail silently"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 26
+    test_id: "TS-GH1230-026"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-1230"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify stale-head detection unaffected"
+      what: |
+        Tests that the stale-head detection mechanism (detecting when the PR
+        head has changed since review started) continues to function correctly
+        after sanitization is added to the pipeline.
+      why: |
+        Stale-head detection is a separate concern from sanitization. The addition
+        of sanitization must not interfere with head SHA comparison logic.
+      acceptance_criteria:
+        - "Stale-head detection correctly identifies when head has changed"
+        - "Sanitization does not modify or interfere with head SHA comparison"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with testify and FakeClient"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create ReviewResult and configure FakeClient with stale head"
+          command: "Set client.HeadSHA to differ from review.HeadSHA"
+          validation: "Stale-head condition configured"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run post-review flow"
+          command: "postReview(client, reviewResult)"
+          validation: "Returns stale-head error or skips posting"
+        - step_id: "TEST-02"
+          action: "Assert stale-head detected"
+          command: "assert.True(t, isStaleHead) or assert.ErrorContains(t, err, \"stale\")"
+          validation: "Stale-head correctly detected"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Stale-head detection works with sanitization"
+        condition: "Stale-head correctly detected when head SHA differs"
+        failure_impact: "Reviews could be posted to outdated PR versions"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
