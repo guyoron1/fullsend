@@ -14,12 +14,12 @@ document_metadata:
     version: "v1"
     sections_covered: "Section III - Requirements-to-Tests Mapping"
   related_prs: []
-  total_scenarios: 4
-  functional_count: 4
-  e2e_count: 0
+  total_scenarios: 5
+  tier_1_count: 5
+  tier_2_count: 0
   p0_count: 0
   p1_count: 0
-  p2_count: 4
+  p2_count: 5
 
 code_generation_config:
   std_version: "2.1-enhanced"
@@ -78,7 +78,7 @@ common_preconditions:
 scenarios:
   - scenario_id: "001"
     test_id: "TS-GH-57-001"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P2"
     mvp: false
     requirement_id: "GH-57"
@@ -92,7 +92,8 @@ scenarios:
         - name: "file_helpers"
           functions: ["FileExists", "ReadFileContent", "CountMatches"]
           purpose: "Validate research output file existence and content structure"
-      decorators: []
+      decorators:
+        - "tier1"
 
     variables:
       closure_scope:
@@ -181,17 +182,17 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Verify research summary document exists"
-          command: "Check file existence at expected path"
+          command: "require.FileExists(t, researchDocPath); stat, _ := os.Stat(researchDocPath); require.Greater(t, stat.Size(), int64(0))"
           validation: "File exists and is non-empty"
 
         - step_id: "TEST-02"
           action: "Parse document for applicable insights"
-          command: "Read document content and count distinct insight sections"
-          validation: "At least 3 distinct insights are identified"
+          command: "docContent = ReadFileContent(researchDocPath); insightCount = CountMatches(docContent, `(?m)^##\\s+Insight|^\\d+\\.\\s+\\[`)"
+          validation: "assert.GreaterOrEqual(t, insightCount, 3)"
 
         - step_id: "TEST-03"
           action: "Verify insights reference the source article"
-          command: "Check each insight contains reference to latent.space article concepts"
+          command: "assert.Contains(t, docContent, \"latent.space\") or assert.Contains(t, docContent, \"Are Code Reviews Dead\")"
           validation: "Each insight traces back to article content"
 
       cleanup: []
@@ -217,7 +218,7 @@ scenarios:
 
   - scenario_id: "002"
     test_id: "TS-GH-57-002"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P2"
     mvp: false
     requirement_id: "GH-57"
@@ -231,7 +232,8 @@ scenarios:
         - name: "content_helpers"
           functions: ["ContainsComponentReference", "ExtractInsights"]
           purpose: "Validate insights reference specific FullSend components"
-      decorators: []
+      decorators:
+        - "tier1"
 
     variables:
       closure_scope:
@@ -362,7 +364,7 @@ scenarios:
 
   - scenario_id: "003"
     test_id: "TS-GH-57-003"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P2"
     mvp: false
     requirement_id: "GH-57"
@@ -376,7 +378,8 @@ scenarios:
         - name: "github_helpers"
           functions: ["ListIssuesByLabel", "IssueReferencesParent"]
           purpose: "Validate follow-up GitHub issues are filed"
-      decorators: []
+      decorators:
+        - "tier1"
 
     variables:
       closure_scope:
@@ -465,22 +468,22 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "List follow-up issues referencing GH-57"
-          command: "gh issue list --repo fullsend-ai/fullsend --search 'GH-57' --json number,title,body"
-          validation: "Issue list retrieved successfully"
+          command: "out, err := exec.Command(\"gh\", \"issue\", \"list\", \"--repo\", \"fullsend-ai/fullsend\", \"--search\", \"GH-57\", \"--json\", \"number,title,body\").Output()"
+          validation: "require.NoError(t, err); followUpIssues = parseIssueJSON(out)"
 
         - step_id: "TEST-02"
           action: "Verify issue count matches recommendation count"
-          command: "Compare follow-up issue count with actionable recommendation count"
+          command: "assert.GreaterOrEqual(t, len(followUpIssues), insightCount)"
           validation: "At least one issue per actionable recommendation"
 
         - step_id: "TEST-03"
           action: "Verify each issue references GH-57"
-          command: "Check issue body or title contains reference to GH-57"
+          command: "for _, issue := range followUpIssues { assert.Contains(t, issue.Title+issue.Body, \"GH-57\") }"
           validation: "All follow-up issues trace back to GH-57"
 
         - step_id: "TEST-04"
           action: "Verify each issue describes a specific recommendation"
-          command: "Check issue body contains substantive description of the recommended change"
+          command: "for _, issue := range followUpIssues { assert.Greater(t, len(issue.Body), 50) }"
           validation: "Issues are not empty stubs — each describes a concrete change"
 
       cleanup: []
@@ -512,7 +515,7 @@ scenarios:
 
   - scenario_id: "004"
     test_id: "TS-GH-57-004"
-    tier: "Functional"
+    tier: "Tier 1"
     priority: "P2"
     mvp: false
     requirement_id: "GH-57"
@@ -526,7 +529,8 @@ scenarios:
         - name: "content_helpers"
           functions: ["ExtractRecommendations", "CheckDuplicateCapability"]
           purpose: "Validate recommendations don't duplicate existing FullSend capabilities"
-      decorators: []
+      decorators:
+        - "tier1"
 
     variables:
       closure_scope:
@@ -654,6 +658,149 @@ scenarios:
         description: "Enhancement recommendations acknowledge existing features"
         condition: "Recommendations touching existing capabilities explicitly note the existing feature and describe the enhancement"
         failure_impact: "Unclear whether recommendation is for a new feature or an enhancement to existing functionality"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: "005"
+    test_id: "TS-GH-57-005"
+    tier: "Tier 1"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-57"
+
+    patterns:
+      primary: "boundary-validation"
+      secondary:
+        - "threshold-check"
+        - "negative-content-validation"
+      helpers_required:
+        - name: "file_helpers"
+          functions: ["ReadFileContent", "CountMatches"]
+          purpose: "Validate boundary condition when fewer than 3 insights are present"
+      decorators:
+        - "tier1"
+
+    variables:
+      closure_scope:
+        - name: "researchDocPath"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "TestExecution"]
+          comment: "Path to the research summary document"
+        - name: "docContent"
+          type: "string"
+          initialized_in: "TestExecution"
+          used_in: ["TestExecution"]
+          comment: "Content of the research summary document"
+        - name: "insightCount"
+          type: "int"
+          initialized_in: "TestExecution"
+          used_in: ["TestExecution"]
+          comment: "Number of applicable insights found in document"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "GH-57 Research Output Validation"
+        decorators: []
+      context:
+        description: "[NEGATIVE] Research summary with fewer than 3 insights fails quality gate"
+        decorators: []
+      it:
+        description: "should reject a research summary that contains fewer than 3 applicable insights"
+        test_id_format: "[test_id:TS-GH-57-005]"
+
+    code_structure: |
+      func TestResearchSummaryRejectsInsufficientInsights(t *testing.T) {
+        // Setup: create a minimal research document with only 1-2 insights
+        // Test: run the insight count validation against the threshold
+        // Validate: validation correctly rejects documents below the 3-insight minimum
+      }
+
+    test_objective:
+      title: "Verify research summary quality gate rejects documents with fewer than 3 insights"
+      what: |
+        Tests the boundary condition of the 3-insight minimum threshold defined
+        in the acceptance criteria. A research summary containing fewer than 3
+        applicable insights should be flagged as insufficient, ensuring the
+        quality gate is effective at preventing low-effort research outputs.
+      why: |
+        Without testing the boundary condition, the insight count threshold
+        in TS-GH-57-001 could silently accept documents with 0, 1, or 2 insights
+        due to implementation errors. This negative test verifies the threshold
+        logic works correctly at the boundary.
+      acceptance_criteria:
+        - "A document with 0 insights is rejected by the quality gate"
+        - "A document with 1 or 2 insights is rejected by the quality gate"
+        - "The rejection message clearly states the minimum threshold of 3"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with boundary condition validation"
+
+    specific_preconditions:
+      - name: "Quality gate function available"
+        requirement: "Insight count validation logic is testable in isolation"
+        validation: "CountMatches helper function is available"
+
+    test_data:
+      resource_definitions:
+        - name: "insufficient_doc"
+          type: "Markdown document (test fixture)"
+          yaml: |
+            # Research Summary: Are Code Reviews Dead?
+            ## Source: latent.space article
+            ## Applicable Insights:
+            1. Single insight only
+               - Description: One finding from the article
+               - Applicability to FullSend: Limited
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create test fixture with fewer than 3 insights"
+          command: "insufficientDoc := createTempDoc(t, 2) // fixture with only 2 insight sections"
+          validation: "Test fixture created with known insight count < 3"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Count insights in insufficient document"
+          command: "insightCount = CountMatches(docContent, insightPattern)"
+          validation: "assert.Less(t, insightCount, 3)"
+
+        - step_id: "TEST-02"
+          action: "Verify quality gate rejects insufficient document"
+          command: "assert.False(t, meetsInsightThreshold(insightCount, 3))"
+          validation: "Quality gate correctly rejects document with < 3 insights"
+
+        - step_id: "TEST-03"
+          action: "Verify boundary at exactly 2 insights"
+          command: "assert.False(t, meetsInsightThreshold(2, 3))"
+          validation: "Boundary: 2 insights is rejected (below threshold of 3)"
+
+        - step_id: "TEST-04"
+          action: "Verify boundary at exactly 3 insights"
+          command: "assert.True(t, meetsInsightThreshold(3, 3))"
+          validation: "Boundary: 3 insights is accepted (meets threshold)"
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "[NEGATIVE] Insufficient insights rejected"
+        condition: "Document with fewer than 3 insights fails the quality gate validation"
+        failure_impact: "Quality gate does not enforce minimum insight threshold — low-quality research may pass"
+
+      - assertion_id: "ASSERT-02"
+        priority: "P2"
+        description: "Boundary condition at threshold is correct"
+        condition: "Document with exactly 3 insights passes; document with exactly 2 insights fails"
+        failure_impact: "Off-by-one error in threshold logic could accept or reject documents incorrectly"
 
     dependencies:
       kubernetes_resources: []
