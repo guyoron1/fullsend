@@ -2,21 +2,23 @@ status: success
 jira_id: GH-1230
 verdict: APPROVED_WITH_FINDINGS
 confidence: LOW
-weighted_score: 79
+weighted_score: 86
 findings:
   critical: 0
-  major: 5
-  minor: 6
-  actionable: 9
-  total: 11
-reviewed: outputs/stp/GH-1230/GH-1230_test_plan.md
-report: GH-1230_stp_review.md
+  major: 2
+  minor: 5
+  actionable: 7
+  total: 7
+artifacts_reviewed:
+  std_yaml: true
+  go_stubs: true
+  python_stubs: false
+  stp_available: true
 dimension_scores:
-  rule_compliance: 85
-  requirement_coverage: 80
-  scenario_quality: 75
-  risk_accuracy: 80
-  scope_boundary: 90
-  strategy: 70
-  metadata: 40
-scope_downgrade: false
+  traceability: 100
+  yaml_structure: 75
+  pattern_matching: 70
+  step_quality: 88
+  content_policy: 80
+  pse_quality: 90
+  codegen_readiness: 70
