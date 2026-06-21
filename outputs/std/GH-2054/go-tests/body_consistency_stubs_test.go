@@ -27,14 +27,14 @@ func TestEnsureBodyFindingsConsistency(t *testing.T) {
 	// Group 1: Body replaced when verdict contradicts summary (P0)
 	// =====================================================================
 
-	t.Run("replaces contradictory body when verdict is request_changes with critical findings", func(t *testing.T) {
+	t.Run("replaces contradictory body when verdict is request-changes with critical findings", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		[test_id:TS-GH-2054-001]
 
 		Preconditions:
 		    - ReviewResult with body containing "No findings"
-		    - Action set to "request_changes"
+		    - Action set to "request-changes"
 		    - Findings array contains critical-severity findings
 
 		Steps:
@@ -42,8 +42,8 @@ func TestEnsureBodyFindingsConsistency(t *testing.T) {
 
 		Expected:
 		    - Function returns true indicating body was replaced
-		    - Returned body contains critical finding descriptions
-		    - Returned body differs from original "No findings" text
+		    - result.Body contains critical finding descriptions
+		    - result.Body differs from original "No findings" text
 		*/
 	})
 
@@ -65,21 +65,26 @@ func TestEnsureBodyFindingsConsistency(t *testing.T) {
 		*/
 	})
 
-	t.Run("logs warning when body is patched", func(t *testing.T) {
+	t.Run("result.Body mutated in place after replacement", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		[test_id:TS-GH-2054-003]
 
 		Preconditions:
-		    - ReviewResult with contradictory body and critical findings
-		    - Log output capture mechanism in place
+		    - ReviewResult with body containing "No findings"
+		    - Action set to "request-changes"
+		    - Findings array contains critical-severity findings
+		    - Original body text captured before function call
 
 		Steps:
-		    1. Call ensureBodyFindingsConsistency with the contradictory result
+		    1. Snapshot originalBody := result.Body
+		    2. Call ensureBodyFindingsConsistency with the contradictory ReviewResult
 
 		Expected:
-		    - Warning-level log message is emitted
-		    - Log message indicates body-findings inconsistency was detected
+		    - Function returns true indicating body was replaced
+		    - result.Body differs from originalBody
+		    - result.Body is non-empty
+		    - result.Body contains synthesized content from the findings array
 		*/
 	})
 
@@ -89,7 +94,7 @@ func TestEnsureBodyFindingsConsistency(t *testing.T) {
 		[test_id:TS-GH-2054-004]
 
 		Preconditions:
-		    - ReviewResult with action "request_changes"
+		    - ReviewResult with action "request-changes"
 		    - Findings array is empty
 
 		Steps:
@@ -113,7 +118,7 @@ func TestEnsureBodyFindingsConsistency(t *testing.T) {
 		Preconditions:
 		    - ReviewResult with body text referencing "logic-error"
 		    - Findings contain a finding with category "logic-error"
-		    - Action is "request_changes"
+		    - Action is "request-changes"
 
 		Steps:
 		    1. Call ensureBodyFindingsConsistency with the consistent result
@@ -132,7 +137,7 @@ func TestEnsureBodyFindingsConsistency(t *testing.T) {
 		Preconditions:
 		    - ReviewResult with body containing "Logic-Error" (mixed case)
 		    - Findings contain finding with category "logic-error" (lowercase)
-		    - Action is "request_changes"
+		    - Action is "request-changes"
 
 		Steps:
 		    1. Call ensureBodyFindingsConsistency with the mixed-case result
@@ -151,7 +156,7 @@ func TestEnsureBodyFindingsConsistency(t *testing.T) {
 		Preconditions:
 		    - ReviewResult with body mentioning generic "error"
 		    - Findings contain finding with category "logic-error"
-		    - Action is "request_changes"
+		    - Action is "request-changes"
 
 		Steps:
 		    1. Call ensureBodyFindingsConsistency with the partial-match result
@@ -214,7 +219,7 @@ func TestEnsureBodyFindingsConsistency(t *testing.T) {
 		[test_id:TS-GH-2054-014]
 
 		Preconditions:
-		    - ReviewResult with action "request_changes"
+		    - ReviewResult with action "request-changes"
 		    - All findings have severity "low"
 		    - Body says "No findings"
 
@@ -233,7 +238,7 @@ func TestEnsureBodyFindingsConsistency(t *testing.T) {
 		[test_id:TS-GH-2054-015]
 
 		Preconditions:
-		    - ReviewResult with action "request_changes"
+		    - ReviewResult with action "request-changes"
 		    - Findings have mix of "low" and "medium" severity only
 		    - No critical or high findings present
 
@@ -283,9 +288,9 @@ func TestEnsureBodyFindingsConsistency(t *testing.T) {
 		    1. Call ensureBodyFindingsConsistency with the reject-action result
 
 		Expected:
-		    - Returned body contains all critical finding descriptions
-		    - Returned body contains all high finding descriptions
-		    - Body format identical to request_changes replacement
+		    - result.Body contains all critical finding descriptions
+		    - result.Body contains all high finding descriptions
+		    - Body format identical to request-changes replacement
 		*/
 	})
 
@@ -310,20 +315,21 @@ func TestEnsureBodyFindingsConsistency(t *testing.T) {
 		*/
 	})
 
-	t.Run("empty findings array returns false", func(t *testing.T) {
+	t.Run("unknown action value returns false", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		[test_id:TS-GH-2054-022]
 
 		Preconditions:
-		    - ReviewResult with action "request_changes"
-		    - Findings array is explicitly empty (non-nil, zero length)
+		    - ReviewResult with action "unknown"
+		    - Body says "No findings"
+		    - Critical findings present in findings array
 
 		Steps:
-		    1. Call ensureBodyFindingsConsistency with empty-findings result
+		    1. Call ensureBodyFindingsConsistency with the unknown-action result
 
 		Expected:
-		    - Function returns false (no findings to synthesize from)
+		    - Function returns false (unknown action is not a blocking verdict)
 		    - Body is not modified
 		*/
 	})

@@ -12,18 +12,18 @@
 
 ---
 
-## Verdict: NEEDS_REVISION
+## Verdict: APPROVED
 
 ## Summary
 
 | Metric | Value |
 |:-------|:------|
 | Dimensions reviewed | 7/7 |
-| Critical findings | 2 |
-| Major findings | 3 |
+| Critical findings | 0 |
+| Major findings | 0 |
 | Minor findings | 2 |
-| Actionable findings | 5 |
-| Weighted score | 73 |
+| Actionable findings | 2 |
+| Weighted score | 93 |
 | Confidence | MEDIUM |
 
 ## Traceability Summary
@@ -41,19 +41,26 @@
 
 ## Findings by Dimension
 
-### Dimension 1: STP-STD Traceability  —  Score: 92/100
+### Dimension 1: STP-STD Traceability  --  Score: 95/100
 
 #### 1a. Forward Traceability (STP -> STD)
 
-All 22 STP scenarios from Section III map to corresponding STD scenarios. Requirement IDs match (`GH-2054` throughout). Scenario titles match with high keyword overlap (>80% for all pairs).
+All 22 STP scenarios from Section III map to corresponding STD scenarios. Requirement IDs
+match (`GH-2054` throughout). Scenario titles match with high keyword overlap (>80% for
+all pairs).
 
-**PASS** — Full forward coverage.
+**PASS** -- Full forward coverage.
 
 #### 1b. Reverse Traceability (STD -> STP)
 
 All 22 STD scenarios trace back to STP Section III entries. No orphan scenarios.
 
-**PASS** — Full reverse coverage.
+Scenario 22 (TS-GH-2054-022) was replaced from a duplicate "empty findings" test to
+"unknown action value returns false". This is a valid edge case noted in the STP's
+Section III Group 8 ("Edge cases handled safely") and aligns with the reviewer's
+previous recommendation to add a distinct edge case. Traceability is maintained.
+
+**PASS** -- Full reverse coverage.
 
 #### 1c. Count Consistency
 
@@ -67,41 +74,26 @@ All 22 STD scenarios trace back to STP Section III entries. No orphan scenarios.
 | `tier_1_count` | 0 | 0 | PASS |
 | `tier_2_count` | 0 | 0 | PASS |
 
-**PASS** — All counts verified.
+**PASS** -- All counts verified.
 
 #### 1d. STP Reference
 
-`document_metadata.stp_reference.file` = `outputs/stp/GH-2054/GH-2054_test_plan.md` — file exists and is valid.
+`document_metadata.stp_reference.file` = `outputs/stp/GH-2054/GH-2054_test_plan.md` --
+file exists and is valid.
 
 **PASS**
 
 #### 1e. Duplicate Scenario Detection
 
-- **Finding D1-1e-001:** Scenarios 4 (TS-GH-2054-004, P0) and 22 (TS-GH-2054-022, P2) test
-  identical behavior: "empty findings array returns false". Both construct a `ReviewResult`
-  with `request_changes` action and empty findings, then assert `replaced == false`.
+Previous duplicate (scenarios 4 and 22) has been resolved. Scenario 22 now tests a
+distinct edge case ("unknown action value returns false") instead of duplicating
+scenario 4's "empty findings array" test.
 
-```
-finding_id: D1-1e-001
-severity: MAJOR
-dimension: STP-STD Traceability
-description: >
-  Scenarios 4 and 22 are functional duplicates. Both test ensureBodyFindingsConsistency
-  with empty findings and a blocking verdict, asserting false return. The only difference
-  is priority (P0 vs P2) and slight wording variation.
-evidence: >
-  Scenario 4: "no replacement when findings array is empty" — Action: request_changes, Findings: []
-  Scenario 22: "empty findings array returns false" — Action: request_changes, Findings: []ReviewFinding{}
-remediation: >
-  Remove scenario 22 (TS-GH-2054-022) and keep scenario 4 (TS-GH-2054-004) as the
-  authoritative test for this behavior. Update total_scenarios to 21 and p2_count to 1.
-  Add a distinct edge case in its place (e.g., findings with unknown/empty severity string).
-actionable: true
-```
+**PASS** -- No duplicate scenarios detected.
 
 ---
 
-### Dimension 2: STD YAML Structure  —  Score: 55/100
+### Dimension 2: STD YAML Structure  --  Score: 92/100
 
 #### 2a. Document-Level Structure
 
@@ -111,7 +103,7 @@ actionable: true
 - [x] `common_preconditions` present
 - [x] `scenarios` array present and non-empty
 
-**PASS** — Document-level structure valid.
+**PASS** -- Document-level structure valid.
 
 #### 2b. Per-Scenario Required Fields
 
@@ -119,128 +111,72 @@ All 22 scenarios have: `scenario_id`, `test_id`, `priority`, `requirement_id`,
 `test_objective` (with title/what/why/acceptance_criteria), `variables`, `test_structure`,
 `test_steps`, `assertions`. Test IDs follow `TS-GH-2054-NNN` format correctly.
 
-Fields `tier`, `patterns`, `code_structure`, `test_data` are absent. For an auto-detected
-project using Go stdlib `testing` (not Ginkgo), these tier/pattern fields are not applicable.
 The STD uses `test_type: "unit"` instead of `tier`, and `test_structure` instead of
 `code_structure`, which is the correct adaptation for auto mode. **No finding raised.**
 
-#### 2c. Critical: Function Signature Mismatch in Variables and Commands
+**PASS**
 
-- **Finding D2-2c-001 (CRITICAL):**
+#### 2c. Function Signature Consistency
 
-```
-finding_id: D2-2c-001
-severity: CRITICAL
-dimension: STD YAML Structure
-description: >
-  The STD models ensureBodyFindingsConsistency as returning (bool, string) — i.e.,
-  "replaced, newBody := ensureBodyFindingsConsistency(result)". The actual function
-  signature is: func ensureBodyFindingsConsistency(result *ReviewResult) bool.
-  It returns ONLY a bool and mutates result.Body in place via the pointer receiver.
-  This affects scenarios 1, 20, and 21 directly (which reference newBody as a return
-  value), and conceptually affects ALL scenarios that call this function.
-evidence: >
-  STD Scenario 1 test_steps.TEST-02: 'replaced, newBody := ensureBodyFindingsConsistency(result)'
-  STD Scenario 1 variables: declares 'newBody' (type: string) as a separate return value.
-  STD Scenario 20 test_steps.TEST-01: '_, newBody := ensureBodyFindingsConsistency(result)'
-  Actual source (internal/cli/postreview.go:524):
-    func ensureBodyFindingsConsistency(result *ReviewResult) bool
-  Actual mutation (line 560): result.Body = synthesizeReviewBody(result.Findings)
-remediation: >
-  1. Remove 'newBody' from variables.closure_scope in scenarios 1, 20, 21.
-  2. Change all test_steps commands from 'replaced, newBody := ...' to 'replaced := ensureBodyFindingsConsistency(result)'.
-  3. Change assertions referencing newBody to reference result.Body instead.
-  4. Update acceptance_criteria in scenario 1 to say "result.Body contains the critical finding descriptions".
-  5. Update scenario 20 to verify result.Body, not a second return value.
-actionable: true
-```
+Previously CRITICAL finding D2-2c-001 has been fully resolved:
+- `newBody` variable removed from all scenarios
+- All commands use `replaced := ensureBodyFindingsConsistency(result)` (single return)
+- Assertions reference `result.Body` for mutated body content
+- Acceptance criteria updated to reference `result.Body`
+
+**PASS** -- Function signature matches source code.
+
+#### 2d. Test Structure Type
+
+Previously MINOR finding D6-6c-001 has been resolved:
+- All 22 scenarios use `test_structure.type: "subtest"` with `parent_function` and
+  `subtest_name` fields
+- Parent functions match stub file organization: `TestEnsureBodyFindingsConsistency`
+  and `TestSynthesizeReviewBody`
+
+**PASS** -- Test structure accurately reflects stub organization.
 
 ---
 
-### Dimension 3: Pattern Matching Correctness  —  Score: 70/100 (N/A adjusted)
+### Dimension 3: Pattern Matching Correctness  --  Score: 70/100 (N/A adjusted)
 
 Pattern matching is not applicable for this auto-detected project (no pattern library,
 no tier classification, no Ginkgo decorators). The STD correctly omits pattern-related
-fields. No `tier1_patterns.yaml` exists for this project.
+fields.
 
-**N/A** — Scored at 70 (neutral default for missing dimension).
+**N/A** -- Scored at 70 (neutral default for missing dimension).
 
 ---
 
-### Dimension 4: Test Step Quality  —  Score: 50/100
+### Dimension 4: Test Step Quality  --  Score: 90/100
 
 #### 4a. Step Completeness
 
 | Metric | Count | Status |
 |:-------|:------|:-------|
-| Scenarios with setup steps | 20/22 | PASS (scenarios 21 has empty setup, intentional for nil test) |
+| Scenarios with setup steps | 21/22 | PASS (scenario 21 has empty setup, intentional for nil test) |
 | Scenarios with execution steps | 22/22 | PASS |
 | Scenarios with cleanup | 0/22 | PASS (unit tests, no resources to clean up) |
 
-#### 4b. Step Quality — CRITICAL Finding
+#### 4b. Step Quality
 
-- **Finding D4-4b-001 (CRITICAL):**
+Previously CRITICAL finding D4-4b-001 has been fully resolved:
+- Scenario 3 no longer tests caller-level logging
+- Scenario 3 now tests `result.Body` in-place mutation, which is the function's
+  actual behavior
+- Test steps are concrete: snapshot originalBody, call function, assert mutation
 
-```
-finding_id: D4-4b-001
-severity: CRITICAL
-dimension: Test Step Quality
-description: >
-  Scenario 3 (TS-GH-2054-003) tests "warning logged when body is patched" at the
-  ensureBodyFindingsConsistency function level. However, this function does NOT
-  perform any logging. The warning is emitted by the CALLER at
-  internal/cli/postreview.go:95:
-    if patched := ensureBodyFindingsConsistency(&parsed); patched {
-      printer.StepWarn("Review body was inconsistent with findings — synthesized body from structured findings")
-    }
-  The function under test has no logging responsibility. Testing log output at
-  this unit requires testing the caller (the postReview command handler), not the
-  ensureBodyFindingsConsistency function.
-evidence: >
-  STD Scenario 3 test_objective.what: "Tests that when ensureBodyFindingsConsistency
-  detects and patches a contradictory body, a warning-level log message is emitted"
-  Actual source: ensureBodyFindingsConsistency (lines 524-562) contains zero log calls.
-  Warning is at line 95 in the calling function.
-remediation: >
-  Option A (preferred): Remove scenario 3 entirely. The warning log is a side effect
-  of the caller, not the function under test. Replace with a scenario that tests the
-  function's actual behavior (e.g., verifying result.Body mutation is correct).
-  Option B: Rewrite scenario 3 to test at the caller level (postReview handler),
-  but this changes the unit boundary significantly and may require integration-level setup.
-  Update total_scenarios, p0_count, and stub files accordingly.
-actionable: true
-```
+Previously MAJOR finding D4-4b-002 has been fully resolved:
+- All action values now use `request-changes` (hyphen) matching the actual
+  `ReviewResult.Action` field format
+- No instances of `request_changes` (underscore) remain
 
-- **Finding D4-4b-002 (MAJOR):**
-
-```
-finding_id: D4-4b-002
-severity: MAJOR
-dimension: Test Step Quality
-description: >
-  The STD consistently uses action value "request_changes" (underscore) throughout
-  all scenarios, but the actual ReviewResult.Action field uses "request-changes"
-  (hyphen). The reviewActionToEvent function at line 182 matches on
-  case "request-changes", not "request_changes". Tests constructed with
-  Action: "request_changes" would NOT map to REQUEST_CHANGES and would fall
-  through to the default case (returning false), causing all blocking-verdict
-  tests to produce incorrect results.
-evidence: >
-  STD Scenario 4 command: 'Construct ReviewResult with Action: "request_changes"'
-  STD Scenario 14 command: 'Create ReviewResult with request_changes action'
-  Actual source (line 160): Action string `json:"action"` // "approve", "request-changes", "comment", "reject", "failure"
-  Actual source (line 182): case "request-changes": return "REQUEST_CHANGES", true
-remediation: >
-  Replace all occurrences of "request_changes" with "request-changes" in test_steps
-  commands, acceptance_criteria, and assertion conditions across scenarios
-  1, 4, 9-15, 19-22. This is a global find-and-replace operation.
-actionable: true
-```
+**PASS**
 
 #### 4f. Assertion Quality
 
-Assertions are generally well-described with specific conditions and failure_impact
-fields. Priority assignments are appropriate (P0 for core behavior, P1 for pass-through,
+Assertions are well-described with specific conditions and failure_impact fields.
+Priority assignments are appropriate (P0 for core behavior, P1 for pass-through,
 P2 for edge cases).
 
 **PASS**
@@ -248,43 +184,44 @@ P2 for edge cases).
 #### 4h. Error Path and Edge Case Coverage
 
 The STD covers:
-- Positive paths: contradictory body replacement (scenarios 1-2, 5-8)
+- Positive paths: contradictory body replacement (scenarios 1-3, 5-8)
 - Negative/pass-through: consistent body, non-blocking verdicts, low-severity (scenarios 9-15)
-- Edge cases: nil input, empty findings (scenarios 21-22)
+- Edge cases: nil input, unknown action (scenarios 21-22)
 - Alias handling: reject action (scenarios 19-20)
 
-Good coverage of both positive and negative paths. The only gap is no scenario testing
-an unknown/unrecognized action value (e.g., `Action: "unknown"`), but this is minor.
+- **Finding D4-4h-001 (MINOR):**
 
-**PASS with note**
+```
+finding_id: D4-4h-001
+severity: MINOR
+dimension: Test Step Quality
+description: >
+  Scenario 11 (TS-GH-2054-011, partial category match) has an assertion
+  condition that is implementation-dependent: "Function behaves according
+  to its matching strategy (substring or token)". While the test objective
+  acknowledges this ambiguity, the assertion should ideally state the
+  expected behavior definitively once the matching strategy is confirmed.
+evidence: >
+  Scenario 11 assertion ASSERT-01 condition: "Function behaves according
+  to its matching strategy (substring or token)"
+remediation: >
+  After confirming the actual matching strategy from the source code
+  (substring-based per strings.Contains usage), update the assertion
+  to state the definitive expected behavior.
+actionable: true
+```
 
 ---
 
-### Dimension 4.5: STD Content Policy  —  Score: 80/100
+### Dimension 4.5: STD Content Policy  --  Score: 95/100
 
 #### 4.5a. Banned Content
 
-- **Finding D4.5-4.5a-001 (MAJOR):**
+Previously MAJOR finding D4.5-4.5a-001 has been resolved:
+- `related_prs` field is now an empty array `[]`
+- No PR URLs, branch names, or commit SHAs in metadata
 
-```
-finding_id: D4.5-4.5a-001
-severity: MAJOR
-dimension: STD Content Policy
-description: >
-  The STD YAML document_metadata contains a related_prs section referencing
-  PR #2189 with a full GitHub URL. Per content policy, PR URLs are implementation
-  artifacts that belong in the STP (which references them in Section I.3),
-  not in the STD. The STD describes what to test, not what code changed.
-evidence: >
-  document_metadata.related_prs:
-    - repo: "fullsend-ai/fullsend"
-      pr_number: 2189
-      url: "https://github.com/fullsend-ai/fullsend/pull/2189"
-remediation: >
-  Remove the entire related_prs block from document_metadata. The STP already
-  references PR #2189 in Section I.3.
-actionable: true
-```
+**PASS**
 
 #### 4.5b. No Implementation Details in Stubs
 
@@ -302,7 +239,7 @@ pure unit tests requiring only the Go toolchain."
 
 ---
 
-### Dimension 5: PSE Docstring Quality  —  Score: 90/100
+### Dimension 5: PSE Docstring Quality  --  Score: 93/100
 
 #### 5a. Go Stubs
 
@@ -310,60 +247,76 @@ pure unit tests requiring only the Go toolchain."
 
 | Check | Status |
 |:------|:-------|
-| Module-level comment references STP | PASS — `STP Reference: outputs/stp/GH-2054/GH-2054_test_plan.md` |
-| Module-level comment references Jira | PASS — `Jira: GH-2054` |
-| All stubs have PSE blocks | PASS — all 14 subtests have Preconditions/Steps/Expected |
-| Test IDs in docstrings | PASS — all use `[test_id:TS-GH-2054-NNN]` format |
-| Package declaration | PASS — `package cli` (same-package convention) |
+| Module-level comment references STP | PASS -- `STP Reference: outputs/stp/GH-2054/GH-2054_test_plan.md` |
+| Module-level comment references Jira | PASS -- `Jira: GH-2054` |
+| All stubs have PSE blocks | PASS -- all 14 subtests have Preconditions/Steps/Expected |
+| Test IDs in docstrings | PASS -- all use `[test_id:TS-GH-2054-NNN]` format |
+| Package declaration | PASS -- `package cli` (same-package convention) |
 | No PR URLs in stubs | PASS |
+| Action names use hyphen format | PASS -- all use `request-changes` |
+
+Previously MINOR finding D5-5a-001 has been resolved:
+- All PSE Preconditions and Expected blocks now use `request-changes` (hyphen)
 
 PSE Quality Spot-Check:
 
-- **Preconditions:** Specific and concrete. Example (TS-001): "ReviewResult with body containing 'No findings', Action set to 'request_changes', Findings array contains critical-severity findings" — Good specificity.
-- **Steps:** Actionable and numbered. Example (TS-001): "1. Call ensureBodyFindingsConsistency with the contradictory ReviewResult" — Clear.
-- **Expected:** Measurable outcomes. Example (TS-001): "Function returns true indicating body was replaced, Returned body contains critical finding descriptions" — Good.
-
-- **Finding D5-5a-001 (MINOR):**
-
-```
-finding_id: D5-5a-001
-severity: MINOR
-dimension: PSE Docstring Quality
-description: >
-  PSE Preconditions in stubs referencing ensureBodyFindingsConsistency use
-  "request_changes" (underscore) matching the STD YAML's incorrect action name.
-  When the action name is corrected per D4-4b-002, stubs must also be updated.
-evidence: >
-  body_consistency_stubs_test.go line 91: 'Action set to "request_changes"'
-  body_consistency_stubs_test.go line 219: 'Action "request_changes"'
-remediation: >
-  Update all PSE Preconditions and Expected blocks to use "request-changes" (hyphen)
-  once the STD YAML is corrected.
-actionable: true
-```
+- **Preconditions:** Specific and concrete. Example (TS-003): "ReviewResult with body
+  containing 'No findings', Action set to 'request-changes', Findings array contains
+  critical-severity findings, Original body text captured before function call" -- Good specificity.
+- **Steps:** Actionable and numbered. Example (TS-003): "1. Snapshot originalBody := result.Body,
+  2. Call ensureBodyFindingsConsistency with the contradictory ReviewResult" -- Clear.
+- **Expected:** Measurable outcomes. Example (TS-003): "result.Body differs from originalBody,
+  result.Body is non-empty, result.Body contains synthesized content from the findings array" -- Good.
 
 **File: `synthesize_body_stubs_test.go`** (7 test stubs)
 
 | Check | Status |
 |:------|:-------|
 | Module-level comment references STP | PASS |
-| All stubs have PSE blocks | PASS — all 7 subtests have Preconditions/Steps/Expected |
+| All stubs have PSE blocks | PASS -- all 7 subtests have Preconditions/Steps/Expected |
 | Test IDs in docstrings | PASS |
-| PSE quality | PASS — specific, actionable, measurable |
+| PSE quality | PASS -- specific, actionable, measurable |
 
-**PASS overall** — PSE quality is strong across both files.
+- **Finding D5-5a-002 (MINOR):**
+
+```
+finding_id: D5-5a-002
+severity: MINOR
+dimension: PSE Docstring Quality
+description: >
+  Scenario 2 (TS-GH-2054-002) tests synthesizeReviewBody but its stub is
+  located in body_consistency_stubs_test.go under the
+  TestEnsureBodyFindingsConsistency parent function, rather than in
+  synthesize_body_stubs_test.go under TestSynthesizeReviewBody. The STD YAML
+  also places it under parent_function TestEnsureBodyFindingsConsistency.
+  While functionally harmless (both test the same module), this grouping
+  is inconsistent with the file naming convention.
+evidence: >
+  STD Scenario 2 test_structure.parent_function = "TestEnsureBodyFindingsConsistency"
+  But scenario 2 tests synthesizeReviewBody, which has its own parent function
+  and stub file.
+remediation: >
+  Move scenario 2's stub to synthesize_body_stubs_test.go and update
+  parent_function to TestSynthesizeReviewBody. This is a minor organizational
+  improvement.
+actionable: true
+```
+
+**PASS overall** -- PSE quality is strong across both files.
 
 ---
 
-### Dimension 6: Code Generation Readiness  —  Score: 55/100
+### Dimension 6: Code Generation Readiness  --  Score: 92/100
 
 #### 6a. Variable Declarations
 
-- **Related to D2-2c-001:** Scenarios 1, 20 declare `newBody` (type: `string`) as a variable
-  initialized from the function's return value. Since the function only returns `bool`,
-  code generation would produce uncompilable Go code (`replaced, newBody := ensureBodyFindingsConsistency(result)` — too many variables on LHS).
+Previously blocked by CRITICAL finding D2-2c-001 (function signature mismatch).
+Now resolved:
+- All variable declarations use valid Go types
+- No `newBody` return value references remain
+- `result.Body` is used for asserting mutation via pointer receiver
 
-**FAIL** — blocked by the function signature mismatch (CRITICAL finding D2-2c-001).
+**PASS**
 
 #### 6b. Import Completeness
 
@@ -372,44 +325,24 @@ standard: [testing, strings]
 framework: [github.com/stretchr/testify/assert, github.com/stretchr/testify/require]
 ```
 
-- `testing` — needed for `*testing.T` ✓
-- `strings` — needed for `strings.Contains`, `strings.Index` in scenarios 5, 10 ✓
-- `testify/assert` — used throughout ✓
-- `testify/require` — available for fatal assertions ✓
+- `testing` -- needed for `*testing.T` and subtests
+- `strings` -- needed for `strings.Index` in scenario 5
+- `testify/assert` -- used throughout
+- `testify/require` -- available for fatal assertions
 
-**PASS** — Imports are complete for the described tests.
+**PASS** -- Imports are complete for the described tests.
 
 #### 6c. Code Structure Validity
 
-Test structure uses `type: "single"` with `function_name` for each scenario. This maps
-cleanly to Go's `func TestXxx(t *testing.T)` pattern. The stubs correctly implement this
-as subtests within parent test functions using `t.Run()`.
+All 22 scenarios use `type: "subtest"` with `parent_function` and `subtest_name`.
+This maps cleanly to Go's `t.Run()` subtest pattern and matches the actual stub
+file organization.
 
-- **Finding D6-6c-001 (MINOR):**
-
-```
-finding_id: D6-6c-001
-severity: MINOR
-dimension: Code Generation Readiness
-description: >
-  STD YAML declares test_structure.type as "single" with individual function_names,
-  but the actual stub files organize tests as subtests within parent functions
-  (TestEnsureBodyFindingsConsistency and TestSynthesizeReviewBody) using t.Run().
-  The STD structure implies standalone top-level functions, but the stub grouping
-  is actually better practice. This mismatch could confuse code generators.
-evidence: >
-  STD Scenario 1: test_structure.function_name = "TestEnsureBodyFindingsConsistency_ReplacesContradictoryBody"
-  Stub: t.Run("replaces contradictory body...", func(t *testing.T) {...}) inside TestEnsureBodyFindingsConsistency
-remediation: >
-  Update test_structure to use type: "subtest" with parent_function and subtest_name
-  fields to accurately reflect the stub file organization. This prevents code generators
-  from creating 22 top-level test functions instead of 2 parent functions with subtests.
-actionable: true
-```
+**PASS**
 
 #### 6d. Timeout Appropriateness
 
-No timeouts referenced — appropriate for pure unit tests with no I/O or network calls.
+No timeouts referenced -- appropriate for pure unit tests with no I/O or network calls.
 
 **PASS**
 
@@ -419,19 +352,27 @@ No timeouts referenced — appropriate for pure unit tests with no I/O or networ
 
 Ordered by severity:
 
-1. **[CRITICAL] D2-2c-001 — Function signature mismatch** — `ensureBodyFindingsConsistency` returns `bool`, not `(bool, string)`. All scenarios must use `result.Body` to access the replaced body, not a second return value. — **Remediation:** Remove `newBody` variable from scenarios 1, 20, 21. Change commands to `replaced := ensureBodyFindingsConsistency(result)` and assert against `result.Body`. — **Actionable:** yes
+1. **[MINOR] D4-4h-001 -- Ambiguous assertion in scenario 11** -- Scenario 11's assertion
+   condition references "matching strategy" ambiguously. -- **Remediation:** Confirm
+   matching strategy from source and make assertion definitive. -- **Actionable:** yes
 
-2. **[CRITICAL] D4-4b-001 — Scenario 3 tests wrong unit** — The warning log is emitted by the caller, not by `ensureBodyFindingsConsistency`. This scenario cannot be implemented as described. — **Remediation:** Remove scenario 3 or rewrite to test an actual function behavior (e.g., verify `result.Body` content after mutation). — **Actionable:** yes
+2. **[MINOR] D5-5a-002 -- Scenario 2 parent function grouping** -- Scenario 2 tests
+   `synthesizeReviewBody` but is grouped under `TestEnsureBodyFindingsConsistency`. --
+   **Remediation:** Move to `TestSynthesizeReviewBody` parent. -- **Actionable:** yes
 
-3. **[MAJOR] D4-4b-002 — Action name format wrong** — STD uses `request_changes` (underscore) but code uses `request-changes` (hyphen). Tests would silently pass-through to the wrong code path. — **Remediation:** Global replace `request_changes` with `request-changes` in STD YAML and stub PSE docstrings. — **Actionable:** yes
+---
 
-4. **[MAJOR] D1-1e-001 — Duplicate scenarios 4 and 22** — Both test empty findings returning false with identical setup. — **Remediation:** Remove scenario 22, keep scenario 4. Replace with a distinct edge case. — **Actionable:** yes
+## Previously Resolved Findings
 
-5. **[MAJOR] D4.5-4.5a-001 — PR URLs in STD metadata** — `related_prs` block belongs in STP, not STD. — **Remediation:** Remove `related_prs` from `document_metadata`. — **Actionable:** yes
-
-6. **[MINOR] D5-5a-001 — Stub PSE action names** — Must be updated alongside D4-4b-002. — **Actionable:** yes (cascading fix)
-
-7. **[MINOR] D6-6c-001 — Test structure type mismatch** — STD says "single" but stubs use subtests. — **Remediation:** Update `test_structure.type` to "subtest" with parent function reference. — **Actionable:** yes
+| Finding | Severity | Resolution |
+|:--------|:---------|:-----------|
+| D2-2c-001 | CRITICAL | Function signature fixed: `replaced := ensureBodyFindingsConsistency(result)`, `result.Body` for mutations |
+| D4-4b-001 | CRITICAL | Scenario 3 rewritten: tests `result.Body` in-place mutation instead of caller logging |
+| D4-4b-002 | MAJOR | All action values changed from `request_changes` to `request-changes` |
+| D1-1e-001 | MAJOR | Scenario 22 replaced: duplicate "empty findings" -> distinct "unknown action value" |
+| D4.5-4.5a-001 | MAJOR | `related_prs` content removed from metadata |
+| D5-5a-001 | MINOR | Stub PSE action names updated to `request-changes` |
+| D6-6c-001 | MINOR | All test_structure types changed from "single" to "subtest" with parent_function |
 
 ---
 
@@ -451,5 +392,5 @@ Ordered by severity:
 full traceability review. Go stubs are present for PSE quality review. However, no
 project-specific review rules or pattern library are available (auto-detected project),
 so pattern matching and project-specific convention checks run on generic defaults only.
-The critical findings were identified through source code cross-referencing, which provides
-high confidence in their accuracy.
+All previously identified critical and major findings have been resolved. Remaining
+findings are minor organizational improvements.

@@ -13,12 +13,7 @@ document_metadata:
     file: "outputs/stp/GH-2054/GH-2054_test_plan.md"
     version: "v1"
     sections_covered: "Section III - Requirements-to-Tests Mapping"
-  related_prs:
-    - repo: "fullsend-ai/fullsend"
-      pr_number: 2189
-      url: "https://github.com/fullsend-ai/fullsend/pull/2189"
-      title: "Fix review agent summary comment body-verdict inconsistency"
-      merged: true
+  related_prs: []
   owning_sig: "N/A"
   participating_sigs: []
   total_scenarios: 22
@@ -94,9 +89,9 @@ scenarios:
         with a blocking verdict and critical inline findings is misleading and
         undermines trust in the review agent.
       acceptance_criteria:
-        - "ensureBodyFindingsConsistency returns true when body says 'No findings' and verdict is request_changes with critical findings"
-        - "The returned body is non-empty and differs from the original"
-        - "The returned body contains the critical finding descriptions"
+        - "ensureBodyFindingsConsistency returns true when body says 'No findings' and verdict is request-changes with critical findings"
+        - "result.Body is non-empty and differs from the original"
+        - "result.Body contains the critical finding descriptions"
 
     variables:
       closure_scope:
@@ -110,35 +105,31 @@ scenarios:
           initialized_in: "test"
           used_in: ["test"]
           comment: "Whether body was replaced"
-        - name: "newBody"
-          type: "string"
-          initialized_in: "test"
-          used_in: ["test"]
-          comment: "The replacement body content"
 
     test_structure:
-      type: "single"
-      function_name: "TestEnsureBodyFindingsConsistency_ReplacesContradictoryBody"
+      type: "subtest"
+      parent_function: "TestEnsureBodyFindingsConsistency"
+      subtest_name: "replaces contradictory body when verdict is request-changes with critical findings"
 
     test_steps:
       setup:
         - step_id: "SETUP-01"
-          action: "Create ReviewResult with 'No findings' body, request_changes action, and critical findings"
+          action: "Create ReviewResult with 'No findings' body, request-changes action, and critical findings"
           command: "Construct ReviewResult struct literal"
           validation: "Struct is valid and non-nil"
       test_execution:
         - step_id: "TEST-01"
           action: "Call ensureBodyFindingsConsistency with the contradictory result"
-          command: "replaced, newBody := ensureBodyFindingsConsistency(result)"
+          command: "replaced := ensureBodyFindingsConsistency(result)"
           validation: "Function returns without error"
         - step_id: "TEST-02"
           action: "Verify function returns true indicating replacement occurred"
           command: "assert.True(t, replaced)"
           validation: "replaced is true"
         - step_id: "TEST-03"
-          action: "Verify new body contains critical finding descriptions"
-          command: "assert.Contains(t, newBody, findingDescription)"
-          validation: "Finding description present in new body"
+          action: "Verify result.Body contains critical finding descriptions"
+          command: "assert.Contains(t, result.Body, findingDescription)"
+          validation: "Finding description present in result.Body"
       cleanup: []
 
     assertions:
@@ -149,8 +140,8 @@ scenarios:
         failure_impact: "Contradictory bodies would reach PR reviewers"
       - assertion_id: "ASSERT-02"
         priority: "P0"
-        description: "New body contains critical finding information"
-        condition: "newBody contains finding descriptions"
+        description: "result.Body contains critical finding information"
+        condition: "result.Body contains finding descriptions"
         failure_impact: "Replacement body would be empty or missing findings"
 
     dependencies:
@@ -195,8 +186,9 @@ scenarios:
           comment: "Synthesized body output"
 
     test_structure:
-      type: "single"
-      function_name: "TestSynthesizeReviewBody_ContainsAllCriticalHighFindings"
+      type: "subtest"
+      parent_function: "TestEnsureBodyFindingsConsistency"
+      subtest_name: "synthesized body contains all critical and high findings"
 
     test_steps:
       setup:
@@ -245,18 +237,21 @@ scenarios:
     coverage_status: "NEW"
 
     test_objective:
-      title: "Verify warning logged when body is patched"
+      title: "Verify result.Body mutated in place after replacement"
       what: |
-        Tests that when ensureBodyFindingsConsistency detects and patches a
-        contradictory body, a warning-level log message is emitted recording
-        the original body and the replacement action.
+        Tests that when ensureBodyFindingsConsistency detects a contradictory
+        body and returns true, the result.Body field is mutated in place to
+        contain the synthesized content. The original "No findings" text must
+        be fully replaced via pointer mutation.
       why: |
-        Observability is critical for debugging the review agent. When the
-        safety net activates, operators need to know it happened so they can
-        investigate the root cause (why the body was wrong in the first place).
+        The function modifies result.Body through the pointer receiver rather
+        than returning a new body string. Callers rely on the in-place mutation
+        to read the corrected body. If the mutation fails silently, the caller
+        would post the original contradictory body.
       acceptance_criteria:
-        - "A warning log is emitted when body replacement occurs"
-        - "The log message indicates the safety net was triggered"
+        - "result.Body differs from the original 'No findings' text after replacement"
+        - "result.Body is non-empty after replacement"
+        - "result.Body contains synthesized content from the findings array"
 
     variables:
       closure_scope:
@@ -264,40 +259,50 @@ scenarios:
           type: "*ReviewResult"
           initialized_in: "test"
           used_in: ["test"]
-          comment: "Review result triggering replacement"
-        - name: "logOutput"
+          comment: "Review result with contradictory body and findings"
+        - name: "originalBody"
           type: "string"
           initialized_in: "test"
           used_in: ["test"]
-          comment: "Captured log output"
+          comment: "Snapshot of original body text before mutation"
+        - name: "replaced"
+          type: "bool"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Whether body was replaced"
 
     test_structure:
-      type: "single"
-      function_name: "TestEnsureBodyFindingsConsistency_LogsWarningOnPatch"
+      type: "subtest"
+      parent_function: "TestEnsureBodyFindingsConsistency"
+      subtest_name: "result.Body mutated in place after replacement"
 
     test_steps:
       setup:
         - step_id: "SETUP-01"
-          action: "Create contradictory ReviewResult and capture log output"
-          command: "Set up log capture and construct contradictory ReviewResult"
-          validation: "Log capture initialized"
+          action: "Create contradictory ReviewResult and snapshot original body"
+          command: "Construct ReviewResult with contradictory body; originalBody := result.Body"
+          validation: "originalBody captured before function call"
       test_execution:
         - step_id: "TEST-01"
           action: "Call ensureBodyFindingsConsistency with contradictory result"
-          command: "ensureBodyFindingsConsistency(result)"
-          validation: "Function executes without panic"
+          command: "replaced := ensureBodyFindingsConsistency(result)"
+          validation: "Function returns true"
         - step_id: "TEST-02"
-          action: "Verify warning log was emitted"
-          command: "assert.Contains(t, logOutput, expectedWarningText)"
-          validation: "Warning text found in log output"
+          action: "Verify result.Body differs from original"
+          command: "assert.NotEqual(t, originalBody, result.Body)"
+          validation: "Body was mutated in place"
+        - step_id: "TEST-03"
+          action: "Verify result.Body is non-empty"
+          command: "assert.NotEmpty(t, result.Body)"
+          validation: "Mutated body is not empty"
       cleanup: []
 
     assertions:
       - assertion_id: "ASSERT-01"
         priority: "P0"
-        description: "Warning log emitted on body replacement"
-        condition: "Log output contains warning about body-findings inconsistency"
-        failure_impact: "Silent safety-net activation hinders debugging"
+        description: "result.Body is mutated in place by the function"
+        condition: "result.Body != originalBody and result.Body is non-empty"
+        failure_impact: "Caller reads stale contradictory body despite replacement flag"
 
     dependencies:
       kubernetes_resources: []
@@ -316,11 +321,11 @@ scenarios:
       title: "Verify no replacement when findings array is empty"
       what: |
         Tests that ensureBodyFindingsConsistency returns false (no replacement)
-        when the verdict is request_changes but the findings array is empty.
+        when the verdict is request-changes but the findings array is empty.
         An empty findings array means no inline findings were posted, so
         there is no contradiction to fix.
       why: |
-        The consistency check must not falsely trigger. A request_changes
+        The consistency check must not falsely trigger. A request-changes
         verdict with no findings is valid (the reviewer may have added
         comments without structured findings). Replacing the body in this
         case would destroy valid content.
@@ -342,19 +347,20 @@ scenarios:
           comment: "Whether body was replaced"
 
     test_structure:
-      type: "single"
-      function_name: "TestEnsureBodyFindingsConsistency_NoReplacementEmptyFindings"
+      type: "subtest"
+      parent_function: "TestEnsureBodyFindingsConsistency"
+      subtest_name: "no replacement when findings array is empty"
 
     test_steps:
       setup:
         - step_id: "SETUP-01"
-          action: "Create ReviewResult with request_changes action and empty findings array"
-          command: "Construct ReviewResult with Action: 'request_changes', Findings: []"
+          action: "Create ReviewResult with request-changes action and empty findings array"
+          command: "Construct ReviewResult with Action: 'request-changes', Findings: []"
           validation: "Result has empty findings array"
       test_execution:
         - step_id: "TEST-01"
           action: "Call ensureBodyFindingsConsistency"
-          command: "replaced, _ := ensureBodyFindingsConsistency(result)"
+          command: "replaced := ensureBodyFindingsConsistency(result)"
           validation: "Function returns without error"
         - step_id: "TEST-02"
           action: "Verify no replacement occurred"
@@ -416,8 +422,9 @@ scenarios:
           comment: "Synthesized body output"
 
     test_structure:
-      type: "single"
-      function_name: "TestSynthesizeReviewBody_SeverityOrder"
+      type: "subtest"
+      parent_function: "TestSynthesizeReviewBody"
+      subtest_name: "severity sections ordered critical to info"
 
     test_steps:
       setup:
@@ -483,8 +490,9 @@ scenarios:
           comment: "Synthesized body output"
 
     test_structure:
-      type: "single"
-      function_name: "TestSynthesizeReviewBody_OnlyPopulatedSections"
+      type: "subtest"
+      parent_function: "TestSynthesizeReviewBody"
+      subtest_name: "only populated severity sections rendered"
 
     test_steps:
       setup:
@@ -564,8 +572,9 @@ scenarios:
           comment: "Synthesized body output"
 
     test_structure:
-      type: "single"
-      function_name: "TestSynthesizeReviewBody_IncludesRemediation"
+      type: "subtest"
+      parent_function: "TestSynthesizeReviewBody"
+      subtest_name: "remediation text included when present"
 
     test_steps:
       setup:
@@ -633,8 +642,9 @@ scenarios:
           comment: "Synthesized body output"
 
     test_structure:
-      type: "single"
-      function_name: "TestSynthesizeReviewBody_MatchesExpectedFormat"
+      type: "subtest"
+      parent_function: "TestSynthesizeReviewBody"
+      subtest_name: "body format matches pr-review skill template"
 
     test_steps:
       setup:
@@ -706,8 +716,9 @@ scenarios:
           comment: "Review result with consistent body"
 
     test_structure:
-      type: "single"
-      function_name: "TestEnsureBodyFindingsConsistency_NoReplacementWhenCategoryPresent"
+      type: "subtest"
+      parent_function: "TestEnsureBodyFindingsConsistency"
+      subtest_name: "no replacement when category already present in body"
 
     test_steps:
       setup:
@@ -718,7 +729,7 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Call ensureBodyFindingsConsistency"
-          command: "replaced, _ := ensureBodyFindingsConsistency(result)"
+          command: "replaced := ensureBodyFindingsConsistency(result)"
           validation: "Returns false"
       cleanup: []
 
@@ -765,8 +776,9 @@ scenarios:
           comment: "Review result with mixed-case category references"
 
     test_structure:
-      type: "single"
-      function_name: "TestEnsureBodyFindingsConsistency_CaseInsensitiveCategoryMatch"
+      type: "subtest"
+      parent_function: "TestEnsureBodyFindingsConsistency"
+      subtest_name: "case-insensitive category matching"
 
     test_steps:
       setup:
@@ -777,7 +789,7 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Call ensureBodyFindingsConsistency"
-          command: "replaced, _ := ensureBodyFindingsConsistency(result)"
+          command: "replaced := ensureBodyFindingsConsistency(result)"
           validation: "Returns false (no replacement needed)"
       cleanup: []
 
@@ -825,8 +837,9 @@ scenarios:
           comment: "Review result testing partial match behavior"
 
     test_structure:
-      type: "single"
-      function_name: "TestEnsureBodyFindingsConsistency_PartialMatchNoFalsePositive"
+      type: "subtest"
+      parent_function: "TestEnsureBodyFindingsConsistency"
+      subtest_name: "partial category match does not false-positive"
 
     test_steps:
       setup:
@@ -837,7 +850,7 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Call ensureBodyFindingsConsistency"
-          command: "replaced, _ := ensureBodyFindingsConsistency(result)"
+          command: "replaced := ensureBodyFindingsConsistency(result)"
           validation: "Behavior matches implementation's matching strategy"
       cleanup: []
 
@@ -888,8 +901,9 @@ scenarios:
           comment: "Review result with approve action"
 
     test_structure:
-      type: "single"
-      function_name: "TestEnsureBodyFindingsConsistency_NoReplacementForApprove"
+      type: "subtest"
+      parent_function: "TestEnsureBodyFindingsConsistency"
+      subtest_name: "no replacement for approve action"
 
     test_steps:
       setup:
@@ -900,7 +914,7 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Call ensureBodyFindingsConsistency"
-          command: "replaced, _ := ensureBodyFindingsConsistency(result)"
+          command: "replaced := ensureBodyFindingsConsistency(result)"
           validation: "Returns false"
       cleanup: []
 
@@ -945,8 +959,9 @@ scenarios:
           comment: "Review result with comment action"
 
     test_structure:
-      type: "single"
-      function_name: "TestEnsureBodyFindingsConsistency_NoReplacementForComment"
+      type: "subtest"
+      parent_function: "TestEnsureBodyFindingsConsistency"
+      subtest_name: "no replacement for comment action"
 
     test_steps:
       setup:
@@ -957,7 +972,7 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Call ensureBodyFindingsConsistency"
-          command: "replaced, _ := ensureBodyFindingsConsistency(result)"
+          command: "replaced := ensureBodyFindingsConsistency(result)"
           validation: "Returns false"
       cleanup: []
 
@@ -990,7 +1005,7 @@ scenarios:
       title: "Verify no replacement with only low-severity findings"
       what: |
         Tests that ensureBodyFindingsConsistency returns false when the
-        verdict is request_changes but all findings are low severity.
+        verdict is request-changes but all findings are low severity.
       why: |
         The consistency check is designed to catch contradictions involving
         critical/high findings. Low-severity findings may be intentionally
@@ -1008,19 +1023,20 @@ scenarios:
           comment: "Review result with only low-severity findings"
 
     test_structure:
-      type: "single"
-      function_name: "TestEnsureBodyFindingsConsistency_NoReplacementLowOnly"
+      type: "subtest"
+      parent_function: "TestEnsureBodyFindingsConsistency"
+      subtest_name: "no replacement with only low-severity findings"
 
     test_steps:
       setup:
         - step_id: "SETUP-01"
-          action: "Create ReviewResult with request_changes action and only low findings"
+          action: "Create ReviewResult with request-changes action and only low findings"
           command: "Construct result with findings all having Severity: 'low'"
           validation: "No critical or high findings"
       test_execution:
         - step_id: "TEST-01"
           action: "Call ensureBodyFindingsConsistency"
-          command: "replaced, _ := ensureBodyFindingsConsistency(result)"
+          command: "replaced := ensureBodyFindingsConsistency(result)"
           validation: "Returns false"
       cleanup: []
 
@@ -1065,8 +1081,9 @@ scenarios:
           comment: "Review result with low and medium findings"
 
     test_structure:
-      type: "single"
-      function_name: "TestEnsureBodyFindingsConsistency_NoReplacementLowMedium"
+      type: "subtest"
+      parent_function: "TestEnsureBodyFindingsConsistency"
+      subtest_name: "no replacement with mixed low and medium findings"
 
     test_steps:
       setup:
@@ -1077,7 +1094,7 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Call ensureBodyFindingsConsistency"
-          command: "replaced, _ := ensureBodyFindingsConsistency(result)"
+          command: "replaced := ensureBodyFindingsConsistency(result)"
           validation: "Returns false"
       cleanup: []
 
@@ -1133,8 +1150,9 @@ scenarios:
           comment: "Synthesized body output"
 
     test_structure:
-      type: "single"
-      function_name: "TestSynthesizeReviewBody_FileAndLineInBackticks"
+      type: "subtest"
+      parent_function: "TestSynthesizeReviewBody"
+      subtest_name: "file and line rendered in backtick block"
 
     test_steps:
       setup:
@@ -1201,8 +1219,9 @@ scenarios:
           comment: "Synthesized body output"
 
     test_structure:
-      type: "single"
-      function_name: "TestSynthesizeReviewBody_NoFileOmitsLocationBlock"
+      type: "subtest"
+      parent_function: "TestSynthesizeReviewBody"
+      subtest_name: "findings without file omit location block"
 
     test_steps:
       setup:
@@ -1273,8 +1292,9 @@ scenarios:
           comment: "Synthesized body output"
 
     test_structure:
-      type: "single"
-      function_name: "TestSynthesizeReviewBody_FileWithoutLine"
+      type: "subtest"
+      parent_function: "TestSynthesizeReviewBody"
+      subtest_name: "file without line number renders correctly"
 
     test_steps:
       setup:
@@ -1322,10 +1342,10 @@ scenarios:
       title: "Verify reject action triggers body replacement"
       what: |
         Tests that ensureBodyFindingsConsistency treats the "reject" action
-        the same as "request_changes" — both are blocking verdicts that
+        the same as "request-changes" — both are blocking verdicts that
         should trigger the consistency check.
       why: |
-        The "reject" action is an alias for request_changes used in some
+        The "reject" action is an alias for request-changes used in some
         review configurations. The safety net must handle both action names
         to prevent contradictory summaries regardless of which alias is used.
       acceptance_criteria:
@@ -1346,8 +1366,9 @@ scenarios:
           comment: "Whether body was replaced"
 
     test_structure:
-      type: "single"
-      function_name: "TestEnsureBodyFindingsConsistency_RejectActionTriggersReplacement"
+      type: "subtest"
+      parent_function: "TestEnsureBodyFindingsConsistency"
+      subtest_name: "reject action triggers body replacement"
 
     test_steps:
       setup:
@@ -1358,7 +1379,7 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Call ensureBodyFindingsConsistency"
-          command: "replaced, _ := ensureBodyFindingsConsistency(result)"
+          command: "replaced := ensureBodyFindingsConsistency(result)"
           validation: "Returns true"
       cleanup: []
 
@@ -1387,14 +1408,14 @@ scenarios:
       what: |
         Tests that when the reject action triggers body replacement, the
         resulting body contains all critical/high findings, identical to
-        what would be produced for request_changes.
+        what would be produced for request-changes.
       why: |
         The replacement body must be complete regardless of which action
         alias triggered it. Reviewers expect the same quality of summary
-        for both reject and request_changes.
+        for both reject and request-changes.
       acceptance_criteria:
         - "Replacement body contains all critical/high findings"
-        - "Body format identical to request_changes replacement"
+        - "Body format identical to request-changes replacement"
 
     variables:
       closure_scope:
@@ -1403,15 +1424,16 @@ scenarios:
           initialized_in: "test"
           used_in: ["test"]
           comment: "Review result with reject action"
-        - name: "newBody"
-          type: "string"
+        - name: "replaced"
+          type: "bool"
           initialized_in: "test"
           used_in: ["test"]
-          comment: "Replacement body content"
+          comment: "Whether body was replaced"
 
     test_structure:
-      type: "single"
-      function_name: "TestEnsureBodyFindingsConsistency_RejectBodyContainsFindings"
+      type: "subtest"
+      parent_function: "TestEnsureBodyFindingsConsistency"
+      subtest_name: "reject body contains synthesized findings"
 
     test_steps:
       setup:
@@ -1422,19 +1444,19 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Call ensureBodyFindingsConsistency"
-          command: "_, newBody := ensureBodyFindingsConsistency(result)"
-          validation: "Non-empty body returned"
+          command: "replaced := ensureBodyFindingsConsistency(result)"
+          validation: "Returns true"
         - step_id: "TEST-02"
-          action: "Verify findings in replacement body"
-          command: "assert.Contains(t, newBody, finding.Description) for each critical/high finding"
-          validation: "All critical/high findings present"
+          action: "Verify findings in result.Body"
+          command: "assert.Contains(t, result.Body, finding.Description) for each critical/high finding"
+          validation: "All critical/high findings present in result.Body"
       cleanup: []
 
     assertions:
       - assertion_id: "ASSERT-01"
         priority: "P1"
         description: "Reject replacement body contains all critical/high findings"
-        condition: "newBody contains all critical and high finding descriptions"
+        condition: "result.Body contains all critical and high finding descriptions"
         failure_impact: "Reject-triggered replacements produce incomplete summaries"
 
     dependencies:
@@ -1477,15 +1499,16 @@ scenarios:
           comment: "Whether body was replaced"
 
     test_structure:
-      type: "single"
-      function_name: "TestEnsureBodyFindingsConsistency_NilResultNoPanic"
+      type: "subtest"
+      parent_function: "TestEnsureBodyFindingsConsistency"
+      subtest_name: "nil result returns false without panic"
 
     test_steps:
       setup: []
       test_execution:
         - step_id: "TEST-01"
           action: "Call ensureBodyFindingsConsistency with nil result"
-          command: "replaced, _ := ensureBodyFindingsConsistency(nil)"
+          command: "replaced := ensureBodyFindingsConsistency(nil)"
           validation: "No panic occurs"
         - step_id: "TEST-02"
           action: "Verify returns false"
@@ -1514,18 +1537,18 @@ scenarios:
     coverage_status: "NEW"
 
     test_objective:
-      title: "Verify empty findings array returns false"
+      title: "Verify unknown action value returns false"
       what: |
         Tests that ensureBodyFindingsConsistency returns false when the
-        ReviewResult has an explicitly empty (non-nil) findings array,
-        even with a blocking verdict.
+        ReviewResult has an unrecognized action value (e.g., "unknown"),
+        even if the body is contradictory and critical findings exist.
       why: |
-        An empty findings array with a blocking verdict means the reviewer
-        used comments or a general body without structured findings.
-        The consistency check should not activate since there is no
-        structured data to synthesize from.
+        Defensive programming — if a new action type is introduced or
+        a malformed action string appears, the consistency check should
+        default to not replacing the body rather than risking data loss
+        on an action it does not understand.
       acceptance_criteria:
-        - "Returns false with empty findings array"
+        - "Returns false with unknown action value"
         - "Body is not modified"
 
     variables:
@@ -1534,7 +1557,7 @@ scenarios:
           type: "*ReviewResult"
           initialized_in: "test"
           used_in: ["test"]
-          comment: "Review result with empty findings"
+          comment: "Review result with unknown action value"
         - name: "replaced"
           type: "bool"
           initialized_in: "test"
@@ -1542,28 +1565,29 @@ scenarios:
           comment: "Whether body was replaced"
 
     test_structure:
-      type: "single"
-      function_name: "TestEnsureBodyFindingsConsistency_EmptyFindingsReturnsFalse"
+      type: "subtest"
+      parent_function: "TestEnsureBodyFindingsConsistency"
+      subtest_name: "unknown action value returns false"
 
     test_steps:
       setup:
         - step_id: "SETUP-01"
-          action: "Create ReviewResult with blocking verdict and empty findings"
-          command: "Construct result with Action: 'request_changes', Findings: []ReviewFinding{}"
-          validation: "Findings array is empty but non-nil"
+          action: "Create ReviewResult with unknown action and contradictory body"
+          command: "Construct result with Action: 'unknown', body: 'No findings', critical findings present"
+          validation: "Action is not a recognized value"
       test_execution:
         - step_id: "TEST-01"
           action: "Call ensureBodyFindingsConsistency"
-          command: "replaced, _ := ensureBodyFindingsConsistency(result)"
+          command: "replaced := ensureBodyFindingsConsistency(result)"
           validation: "Returns false"
       cleanup: []
 
     assertions:
       - assertion_id: "ASSERT-01"
         priority: "P2"
-        description: "Empty findings array returns false"
+        description: "Unknown action value returns false"
         condition: "replaced == false"
-        failure_impact: "Empty findings trigger synthesis producing empty body"
+        failure_impact: "Unrecognized actions trigger body replacement risking data loss"
 
     dependencies:
       kubernetes_resources: []
