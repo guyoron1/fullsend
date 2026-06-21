@@ -1,0 +1,17 @@
+status: success
+jira_id: GH-2247
+std_source: outputs/std/GH-2247/GH-2247_test_description.yaml
+languages:
+  - language: go
+    framework: testing
+    files:
+      - helpers_test.go
+      - shim_drift_detection_test.go
+      - sentinel_preservation_test.go
+      - header_preservation_test.go
+      - injection_guard_test.go
+      - pre_sentinel_migration_test.go
+      - full_reconciliation_test.go
+    test_count: 23
+total_test_count: 23
+lsp_patterns_used: false
