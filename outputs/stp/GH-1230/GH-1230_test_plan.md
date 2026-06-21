@@ -5,7 +5,7 @@
 ### Metadata & Tracking
 
 - **Enhancement:** [GH-1230](https://github.com/fullsend-ai/fullsend/issues/1230)
-- **Feature Tracking:** [PR #69 (mirror of upstream #2444)](https://github.com/guyoron1/fullsend/pull/69)
+- **Feature Tracking:** [PR #2444](https://github.com/fullsend-ai/fullsend/pull/2444)
 - **Epic Tracking:** Security — Output Sanitization
 - **QE Owner:** TBD
 - **Owning SIG:** N/A
@@ -15,7 +15,7 @@
 
 ### Feature Overview
 
-This security fix adds output sanitization to the `post-review` CLI command by calling `security.OutputPipeline().Scan()` on the review body and all finding fields (description and remediation) before they are posted to the GitHub API via the forge interface. The `OutputPipeline` chains a `UnicodeNormalizer` (which strips zero-width and invisible characters) followed by a `SecretRedactor` (which redacts API keys, tokens, and credentials), preventing credential and PII leaks in public PR review comments. This extends an existing pattern already used in `run.go` (output file scanning) and `scan.go` to the post-review code path.
+This security fix ensures review agent output is sanitized for leaked secrets and obfuscated tokens before being posted to PR comments via the forge API. It applies the existing output sanitization pipeline to the `post-review` CLI command, covering the review body and all finding fields (description and remediation). This closes a gap where the `post-review` code path was the only output channel not already protected by sanitization.
 
 ---
 
@@ -23,25 +23,25 @@ This security fix adds output sanitization to the `post-review` CLI command by c
 
 #### I.1 — Requirement & User Story Review Checklist
 
-- [ ] **Reviewed the relevant requirements.**
+- [x] **Reviewed the relevant requirements.**
   - GH-1230 describes a security gap: review agent output was posted to the forge API without secret redaction, risking credential leaks in public PR comments.
   - The fix introduces `sanitizeReviewResult()` which applies the existing `security.OutputPipeline()` to all user-visible text fields before posting.
 
-- [ ] **Confirmed clear user stories and understood. Understand the value and customer use cases.**
+- [x] **Confirmed clear user stories and understood. Understand the value and customer use cases.**
   - As a repository owner, I need review agent output to be sanitized so that leaked secrets in agent-generated text are never posted to public PR comments.
   - The user value is preventing accidental credential exposure in automated review comments.
 
-- [ ] **Confirmed requirements are **testable and unambiguous**.**
+- [x] **Confirmed requirements are **testable and unambiguous**.**
   - Requirements are testable: inject known secret patterns into ReviewResult fields and verify they are redacted after sanitization.
   - The boundary is clear: sanitization occurs between `parseReviewResult` and the forge API calls.
 
-- [ ] **Ensured acceptance criteria are **defined clearly**.**
+- [x] **Ensured acceptance criteria are **defined clearly**.**
   - AC1: GitHub PATs and API keys in review body are redacted before posting.
   - AC2: Secrets in finding description and remediation fields are redacted.
   - AC3: Zero-width Unicode obfuscation of tokens is detected and redacted.
   - AC4: Clean content without secrets passes through unchanged.
 
-- [ ] **Confirmed coverage for NFRs.**
+- [x] **Confirmed coverage for NFRs.**
   - Performance: Sanitization adds negligible latency (regex-based string scanning on small text).
   - Security: This IS the security NFR — ensuring no secrets leak through review output.
 
@@ -53,19 +53,19 @@ This security fix adds output sanitization to the `post-review` CLI command by c
 
 #### I.3 — Technology and Design Review
 
-- [ ] **Developer handoff completed: architecture and design reviewed.**
+- [x] **Developer handoff completed: architecture and design reviewed.**
   - The implementation follows the established `OutputPipeline` pattern already used in `run.go` and `scan.go`. The `sanitizeReviewResult` function is a pure function operating on `ReviewResult` structs.
 
-- [ ] **Technology challenges and mitigations identified.**
+- [x] **Technology challenges and mitigations identified.**
   - No new technology challenges. Reuses existing `security.OutputPipeline()` infrastructure (`UnicodeNormalizer` + `SecretRedactor`).
 
-- [ ] **Test environment needs identified.**
+- [x] **Test environment needs identified.**
   - No special environment needed. All tests use `forge.FakeClient` and in-memory structs.
 
-- [ ] **API extensions or changes reviewed.**
+- [x] **API extensions or changes reviewed.**
   - No API changes. The `ReviewResult` struct is unchanged. Sanitization is an internal processing step before existing forge API calls.
 
-- [ ] **Topology and deployment considerations reviewed.**
+- [x] **Topology and deployment considerations reviewed.**
   - N/A — this is a CLI-side processing change with no deployment topology impact.
 
 ### Section II — Test Planning
@@ -104,7 +104,7 @@ This test plan covers the sanitization of review output in the `post-review` CLI
 **Non-Functional:**
 
 - [ ] **Performance Testing**
-  - N/A — Regex-based string scanning on small text bodies; no performance concern.
+  - N/A — Regex-based string scanning on small text bodies; no performance concern. For typical review sizes (<10KB), sanitization adds negligible latency. If extremely large reviews (>100KB) become common, performance impact should be revisited.
 - [ ] **Scale Testing**
   - N/A — Single review at a time, no scale dimension.
 - [x] **Security Testing**
@@ -130,16 +130,7 @@ This test plan covers the sanitization of review output in the `post-review` CLI
 
 #### II.3 — Test Environment
 
-- **Cluster Topology:** N/A — No cluster required. All tests run in-process.
-- **Platform Version:** Go 1.22+ (per go.mod)
-- **CPU Virtualization:** N/A
-- **Compute:** Standard CI runner
-- **Special Hardware:** None
-- **Storage:** N/A
-- **Network:** N/A
-- **Operators:** N/A
-- **Platform:** Linux (CI), macOS (dev)
-- **Special Configs:** None
+No special environment needed. All tests are in-process Go unit tests that run on any standard CI runner (Linux) or developer machine (macOS). Requires Go 1.22+ (per go.mod). No cluster, special hardware, network, or storage requirements.
 
 #### II.3.1 — Testing Tools & Frameworks
 
@@ -156,37 +147,37 @@ No new or special tools required. Standard Go testing with testify assertions.
 - [ ] **Timeline**
   - Specific Risk: None — tests are straightforward unit tests.
   - Mitigation: N/A
-  - Status: [ ] Low risk
+  - Status: [x] Low risk
 
 - [ ] **Coverage**
   - Specific Risk: Novel secret patterns not covered by existing `SecretRedactor` regex may pass through.
   - Mitigation: The `SecretRedactor` pattern library is maintained separately and expanded over time.
-  - Status: [ ] Accepted — pattern coverage is out of scope for this STP.
+  - Status: [x] Accepted — pattern coverage is out of scope for this STP.
 
 - [ ] **Environment**
   - Specific Risk: None — no special environment needed.
   - Mitigation: N/A
-  - Status: [ ] Low risk
+  - Status: [x] Low risk
 
 - [ ] **Untestable**
   - Specific Risk: Actual GitHub API posting behavior cannot be tested without integration tests.
   - Mitigation: The `forge.FakeClient` mock verifies the sanitized content reaches the correct API call points.
-  - Status: [ ] Mitigated
+  - Status: [x] Mitigated
 
 - [ ] **Resources**
   - Specific Risk: None.
   - Mitigation: N/A
-  - Status: [ ] Low risk
+  - Status: [x] Low risk
 
 - [ ] **Dependencies**
   - Specific Risk: Changes to `security.OutputPipeline()` behavior could affect sanitization outcomes.
   - Mitigation: `security` package has its own test suite; any behavioral changes would be caught there.
-  - Status: [ ] Mitigated
+  - Status: [x] Mitigated
 
 - [ ] **Other**
   - Specific Risk: None identified.
   - Mitigation: N/A
-  - Status: [ ] Low risk
+  - Status: [x] Low risk
 
 ---
 
@@ -203,6 +194,15 @@ No new or special tools required. Standard Go testing with testify assertions.
   - Verify body with partial token pattern not over-redacted (negative)
 - **Tier:** Functional
 - **Priority:** P0
+
+---
+
+- **Requirement ID:** GH-1230
+- **Requirement Summary:** Edge cases in review body sanitization
+- **Test Scenarios:**
+  - Verify non-ASCII but non-obfuscation Unicode characters in body pass through unchanged (negative)
+- **Tier:** Functional
+- **Priority:** P2
 
 ---
 
@@ -224,7 +224,7 @@ No new or special tools required. Standard Go testing with testify assertions.
   - Verify bidirectional override obfuscation caught (positive)
   - Verify mixed invisible char injection blocked (negative)
 - **Tier:** Functional
-- **Priority:** P0
+- **Priority:** P2
 
 ---
 
@@ -239,21 +239,32 @@ No new or special tools required. Standard Go testing with testify assertions.
 ---
 
 - **Requirement ID:** GH-1230
-- **Requirement Summary:** Empty review body is handled correctly by sanitization
+- **Requirement Summary:** Mixed empty/non-empty finding fields are sanitized independently
 - **Test Scenarios:**
-  - Verify empty body skips sanitization scan (positive)
-  - Verify failure action with empty body succeeds (positive)
+  - Verify finding with empty description but non-empty remediation containing a secret is correctly sanitized (positive)
+  - Verify finding with non-empty description containing a secret but empty remediation is correctly sanitized (positive)
+  - Verify finding field is preserved when scanner returns empty sanitized result (edge case)
 - **Tier:** Functional
 - **Priority:** P1
 
 ---
 
 - **Requirement ID:** GH-1230
-- **Requirement Summary:** Sanitization ordering in post-review pipeline
+- **Requirement Summary:** Empty review body is handled correctly by sanitization
 - **Test Scenarios:**
-  - Verify sanitization runs before forge API call (positive)
-  - Verify sanitized content reaches sticky.Post (positive)
-  - Verify sanitized findings reach submitFormalReview (positive)
+  - Verify empty body skips sanitization scan (positive)
+  - Verify failure action with empty body succeeds (positive)
+- **Tier:** Functional
+- **Priority:** P2
+
+---
+
+- **Requirement ID:** GH-1230
+- **Requirement Summary:** Posted review content does not contain secrets regardless of input
+- **Test Scenarios:**
+  - Verify posted PR comment does not contain secrets when review body had secrets (positive)
+  - Verify formal review findings posted to PR do not contain secrets (positive)
+  - Verify review posted via sticky comment has secrets redacted from body (positive)
 - **Tier:** Functional
 - **Priority:** P1
 
