@@ -1,0 +1,29 @@
+status: success
+jira_id: GH-1230
+std_source: outputs/std/GH-1230/GH-1230_test_description.yaml
+languages:
+  - language: go
+    framework: testing
+    assertion_library: testify
+    package: cli
+    files:
+      - sanitize_review_body_test.go
+      - sanitize_findings_test.go
+      - unicode_obfuscation_test.go
+      - clean_content_passthrough_test.go
+      - empty_body_handling_test.go
+      - posted_content_sanitized_test.go
+      - regression_post_review_test.go
+    test_count: 26
+total_test_count: 26
+lsp_patterns_used: false
+project_context:
+  project_id: auto-detected
+  config_dir: null
+  discovery:
+    language: go
+    framework: testing
+    assertion_library: testify
+    package_convention: same-package
+build_verified: true
+all_tests_passing: true
