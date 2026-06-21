@@ -15,7 +15,7 @@
 
 ### **Feature Overview**
 
-This feature enforces the `is_authorized` authorization check (OWNER, MEMBER, or COLLABORATOR association) on all agent slash commands (`/fs-triage`, `/fs-code`, `/fs-review`) and automatic PR event triggers (`pull_request_target.opened/synchronize/ready_for_review`) in the dispatch routing logic. Previously, only `/fs-fix`, `/fs-retro`, and `/fs-prioritize` were gated. Auto-triage on `issues.opened/edited` is intentionally left ungated to preserve the drive-by bug reporter workflow. The change is documented in ADR 0051 and implemented in both per-repo (`reusable-dispatch.yml`) and per-org scaffold (`dispatch.yml`) workflow files.
+This feature enforces a comment author authorization check (OWNER, MEMBER, or COLLABORATOR association) on all agent slash commands (`/fs-triage`, `/fs-code`, `/fs-review`) and a PR actor authorization check on automatic PR event triggers (`pull_request_target.opened/synchronize/ready_for_review`) in the dispatch routing logic. Previously, only `/fs-fix`, `/fs-retro`, and `/fs-prioritize` were gated. Auto-triage on `issues.opened/edited` is intentionally left ungated to preserve the drive-by bug reporter workflow. The change is documented in ADR 0051 and implemented in both per-repo (`reusable-dispatch.yml`) and per-org scaffold (`dispatch.yml`) workflow files.
 
 ---
 
@@ -26,26 +26,26 @@ technology, and testability before formal test planning.
 
 #### **1. Requirement & User Story Review Checklist**
 
-- [ ] **Review Requirements**
+- [x] **Review Requirements**
   - Reviewed the relevant requirements.
   - GH-1662 clearly defines which dispatch paths are ungated and the security/cost risks.
   - ADR 0051 documents the architectural decision and rationale for each path.
-- [ ] **Understand Value and Customer Use Cases**
+- [x] **Understand Value and Customer Use Cases**
   - Confirmed clear user stories and understood.
   - Understand the difference between community and product requirements.
   - **What is the value of the feature for customers**.
   - Ensured requirements contain relevant **customer use cases**.
   - Closes a cost-exposure and abuse-surface gap where any GitHub user could trigger inference runs via ungated slash commands on public repos.
   - Preserves auto-triage for external contributors (key value prop for drive-by bug reporters).
-- [ ] **Testability**
+- [x] **Testability**
   - Confirmed requirements are **testable and unambiguous**.
   - Authorization behavior is directly testable via dispatch routing — each slash command and event trigger either sets STAGE or does not based on association.
   - The `is_event_actor_authorized` shell function is independently testable with specific input values.
-- [ ] **Acceptance Criteria**
+- [x] **Acceptance Criteria**
   - Ensured acceptance criteria are **defined clearly** (clear user stories; product requirements clearly defined in Jira).
   - Issue body specifies four design questions the ADR must address: auto-triage carve-out, bot-to-bot preservation, unauthorized feedback, and per-repo configurability interaction.
   - All four are addressed in ADR 0051.
-- [ ] **Non-Functional Requirements (NFRs)**
+- [x] **Non-Functional Requirements (NFRs)**
   - Confirmed coverage for NFRs, including Performance, Security, Usability, Downtime, Connectivity, Monitoring (alerts/metrics), Scalability, Portability (e.g., cloud support), and Docs.
   - Security is the primary NFR — authorization gates prevent unauthorized inference cost and reduce prompt injection attack surface.
   - Usability NFR: unauthorized users should receive visible feedback when slash commands are rejected.
@@ -58,20 +58,20 @@ technology, and testability before formal test planning.
 
 #### **3. Technology and Design Review**
 
-- [ ] **Developer Handoff/QE Kickoff**
+- [x] **Developer Handoff/QE Kickoff**
   - A meeting where Dev/Arch walked QE through the design, architecture, and implementation details. **Critical for identifying untestable aspects early.**
   - PR #1688 authored by fullsend-ai-coder agent; ADR 0051 provides full design context.
-- [ ] **Technology Challenges**
+- [x] **Technology Challenges**
   - Identified potential testing challenges related to the underlying technology.
   - Testing dispatch routing requires simulating GitHub webhook events with specific `author_association` values — may require workflow-level integration tests or shell function unit tests.
-- [ ] **Test Environment Needs**
+- [x] **Test Environment Needs**
   - Determined necessary **test environment setups and tools**.
   - Tests require GitHub Actions environment or equivalent to validate dispatch routing behavior.
   - Shell function unit tests can run in any bash environment.
-- [ ] **API Extensions**
+- [x] **API Extensions**
   - Reviewed new or modified APIs and their impact on testing.
   - New `PR_AUTHOR_ASSOC` environment variable plumbed from `github.event.pull_request.author_association`. New `is_event_actor_authorized()` shell helper function.
-- [ ] **Topology Considerations**
+- [x] **Topology Considerations**
   - Evaluated multi-cluster, network topology, and architectural impacts.
   - No topology impact — changes are in workflow dispatch routing only.
 
@@ -81,7 +81,7 @@ This STP serves as the **overall roadmap for testing**, detailing the scope, app
 
 #### **1. Scope of Testing**
 
-Testing covers the authorization enforcement on all agent dispatch paths in both per-repo (`reusable-dispatch.yml`) and per-org scaffold (`dispatch.yml`) workflow files. This includes verifying that `/fs-triage`, `/fs-code`, and `/fs-review` slash commands require `is_authorized`, that PR event triggers use `is_event_actor_authorized`, that `issues.opened/edited` auto-triage remains ungated, and that bot-to-bot label handoffs are unaffected.
+Testing covers the authorization enforcement on all agent dispatch paths in both per-repo (`reusable-dispatch.yml`) and per-org scaffold (`dispatch.yml`) workflow files. This includes verifying that `/fs-triage`, `/fs-code`, and `/fs-review` slash commands require comment author authorization, that PR event triggers use actor authorization, that `issues.opened/edited` auto-triage remains ungated, and that bot-to-bot label handoffs are unaffected.
 
 **Testing Goals**
 
@@ -95,7 +95,7 @@ Testing covers the authorization enforcement on all agent dispatch paths in both
 
 **Quality Goals:**
 
-- **P1:** Verify `is_event_actor_authorized` correctly handles all association types including edge cases (empty string, unexpected values).
+- **P1:** Verify the PR actor authorization check correctly handles all association types including edge cases (empty string, unexpected values).
 - **P1:** Verify per-repo and per-org dispatch templates have consistent authorization behavior.
 
 **Integration Goals:**
@@ -134,8 +134,8 @@ Testing covers the authorization enforcement on all agent dispatch paths in both
 
 **Integration & Compatibility**
 
-- [ ] **Compatibility Testing** — Ensures feature works across supported platforms, versions, and configurations
-  - *Details:* Verify both per-repo and per-org dispatch templates are consistent.
+- [x] **Compatibility Testing** — Ensures feature works across supported platforms, versions, and configurations
+  - *Details:* Verify per-repo (`reusable-dispatch.yml`) and per-org scaffold (`dispatch.yml`) templates have identical authorization behavior for all dispatch paths.
 - [ ] **Upgrade Testing** — Validates upgrade paths from previous versions, data migration, and configuration preservation
   - *Details:* N/A — workflow file changes are deployed atomically via scaffold install.
 - [ ] **Dependencies** — Blocked by deliverables from other components/products
@@ -163,9 +163,7 @@ Testing covers the authorization enforcement on all agent dispatch paths in both
 
 #### **3.1. Testing Tools & Frameworks**
 
-- **Test Framework:** Go `testing` + testify (existing)
-- **CI/CD:** GitHub Actions (existing)
-- **Other Tools:** bash/shell for `is_event_actor_authorized` unit tests
+- **Other Tools:** bash/shell for actor authorization function unit tests
 
 #### **4. Entry Criteria**
 
@@ -186,8 +184,8 @@ The following conditions must be met before testing can begin:
   - Risk: Integration testing of actual GitHub webhook dispatch requires real GitHub events, which are difficult to simulate in unit tests.
   - Mitigation: Use scaffold content tests (`TestDispatchWorkflowContent`) for structural validation; manual or e2e tests for runtime behavior.
 - [ ] **Test Environment**
-  - Risk: Testing authorization requires GitHub users with specific association levels in a test org.
-  - Mitigation: Use existing fullsend test org with pre-configured user roles.
+  - Risk: Test org may not have users with all required association levels (OWNER, MEMBER, COLLABORATOR, CONTRIBUTOR, NONE) pre-configured.
+  - Mitigation: Create dedicated test users with each association level before test execution begins.
 - [ ] **Untestable Aspects**
   - Risk: Cannot directly unit-test GitHub Actions `run:` blocks — they execute in the Actions runtime.
   - Mitigation: Extract testable shell functions; validate workflow content via string assertions in Go tests.
@@ -254,13 +252,13 @@ This section links requirements to test coverage, enabling reviewers to verify a
   - *Priority:* P1
 
 - **[GH-1662]** -- Authorized users can invoke all slash commands successfully
-  - *Test Scenario:* Verify OWNER can invoke all slash commands
+  - *Test Scenario:* Verify OWNER can invoke /fs-triage, /fs-code, /fs-review, /fs-fix, /fs-retro, and /fs-prioritize
   - *Tier:* End-to-End
   - *Priority:* P1
-  - *Test Scenario:* Verify MEMBER can invoke all slash commands
+  - *Test Scenario:* Verify MEMBER can invoke /fs-triage, /fs-code, /fs-review, /fs-fix, /fs-retro, and /fs-prioritize
   - *Tier:* End-to-End
   - *Priority:* P1
-  - *Test Scenario:* Verify COLLABORATOR can invoke all slash commands
+  - *Test Scenario:* Verify COLLABORATOR can invoke /fs-triage, /fs-code, /fs-review, /fs-fix, /fs-retro, and /fs-prioritize
   - *Tier:* End-to-End
   - *Priority:* P1
 
@@ -270,6 +268,17 @@ This section links requirements to test coverage, enabling reviewers to verify a
   - *Priority:* P1
   - *Test Scenario:* Verify per-org scaffold dispatch has identical auth gates
   - *Tier:* Unit Tests
+  - *Priority:* P1
+
+- **[GH-1662]** -- Previously gated commands remain correctly gated after dispatch changes
+  - *Test Scenario:* Verify /fs-fix still requires authorization after dispatch routing changes
+  - *Tier:* Functional
+  - *Priority:* P1
+  - *Test Scenario:* Verify /fs-retro still requires authorization after dispatch routing changes
+  - *Tier:* Functional
+  - *Priority:* P1
+  - *Test Scenario:* Verify /fs-prioritize still requires authorization after dispatch routing changes
+  - *Tier:* Functional
   - *Priority:* P1
 
 - **[GH-1662]** -- Unauthorized slash command attempts produce visible feedback
@@ -302,7 +311,7 @@ This Software Test Plan requires approval from the following stakeholders:
 
 * **Reviewers:**
   - @ascerra
-  - [QE Lead / @github-username]
+  - TBD
 * **Approvers:**
-  - [Engineering Manager / @github-username]
-  - [QE Lead / @github-username]
+  - TBD
+  - TBD
