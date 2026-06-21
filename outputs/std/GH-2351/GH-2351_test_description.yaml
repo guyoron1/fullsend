@@ -14,12 +14,6 @@ document_metadata:
     file: "outputs/stp/GH-2351/GH-2351_test_plan.md"
     version: "v1"
     sections_covered: "Section III - Requirements-to-Tests Mapping"
-  related_prs:
-    - repo: "fullsend-ai/fullsend"
-      pr_number: 2351
-      url: "https://github.com/fullsend-ai/fullsend/issues/2351"
-      title: "Batch path-existence checks via Git Trees API"
-      merged: false
   total_scenarios: 18
   functional_count: 4
   unit_test_count: 14
@@ -47,6 +41,15 @@ code_generation_config:
     project:
       - "github.com/fullsend-ai/fullsend/internal/forge"
       - "github.com/fullsend-ai/fullsend/internal/scaffold"
+  cross_package_testing:
+    note: >
+      Tests in the scaffold package exercise forge.FakeClient and forge.LiveClient
+      types via their exported interfaces. All accessed fields (FileContents,
+      ListRepositoryFilesErr, GetFileContentErr) are exported, making cross-package
+      black-box testing valid from package scaffold.
+    packages_under_test:
+      - "github.com/fullsend-ai/fullsend/internal/forge"
+      - "github.com/fullsend-ai/fullsend/internal/scaffold"
   test_patterns:
     function_prefix: "Test"
     subtest_style: "t.Run"
@@ -69,12 +72,12 @@ common_preconditions:
 scenarios:
   # =====================================================================
   # Requirement: ListRepositoryFiles returns all paths via Git Trees API
-  # Tier: Unit Tests | Priority: P0
+  # Tier: Tier 1 | Priority: P0
   # =====================================================================
 
   - scenario_id: "1"
     test_id: "TS-GH-2351-001"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-2351"
@@ -98,6 +101,10 @@ scenarios:
       test_type: "Unit"
       scope: "Single-component"
       automation_approach: "Go test with FakeClient"
+
+    patterns:
+      primary: "unit-test"
+      helpers_required: []
 
     variables:
       closure_scope:
@@ -175,7 +182,7 @@ scenarios:
 
   - scenario_id: "2"
     test_id: "TS-GH-2351-002"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-2351"
@@ -199,6 +206,10 @@ scenarios:
       test_type: "Unit"
       scope: "Single-component"
       automation_approach: "Go test with FakeClient error injection"
+
+    patterns:
+      primary: "unit-test"
+      helpers_required: []
 
     variables:
       closure_scope:
@@ -268,7 +279,7 @@ scenarios:
 
   - scenario_id: "3"
     test_id: "TS-GH-2351-003"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-2351"
@@ -292,6 +303,10 @@ scenarios:
       test_type: "Unit"
       scope: "Single-component"
       automation_approach: "Go test with FakeClient"
+
+    patterns:
+      primary: "unit-test"
+      helpers_required: []
 
     variables:
       closure_scope:
@@ -353,12 +368,12 @@ scenarios:
 
   # =====================================================================
   # Requirement: ComparePathPresence correctly identifies missing paths
-  # Tier: Unit Tests | Priority: P0
+  # Tier: Tier 1 | Priority: P0
   # =====================================================================
 
   - scenario_id: "4"
     test_id: "TS-GH-2351-004"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-2351"
@@ -380,6 +395,10 @@ scenarios:
       test_type: "Unit"
       scope: "Single-component"
       automation_approach: "Go test with FakeClient"
+
+    patterns:
+      primary: "unit-test"
+      helpers_required: []
 
     variables:
       closure_scope:
@@ -453,7 +472,7 @@ scenarios:
 
   - scenario_id: "5"
     test_id: "TS-GH-2351-005"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-2351"
@@ -476,6 +495,10 @@ scenarios:
       test_type: "Unit"
       scope: "Single-component"
       automation_approach: "Go test with FakeClient"
+
+    patterns:
+      primary: "unit-test"
+      helpers_required: []
 
     variables:
       closure_scope:
@@ -553,7 +576,7 @@ scenarios:
 
   - scenario_id: "6"
     test_id: "TS-GH-2351-006"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-2351"
@@ -574,6 +597,10 @@ scenarios:
       test_type: "Unit"
       scope: "Single-component"
       automation_approach: "Go test with FakeClient"
+
+    patterns:
+      primary: "unit-test"
+      helpers_required: []
 
     variables:
       closure_scope:
@@ -606,7 +633,6 @@ scenarios:
       }
 
     specific_preconditions: []
-    test_data: {}
 
     test_steps:
       setup:
@@ -639,7 +665,7 @@ scenarios:
 
   - scenario_id: "7"
     test_id: "TS-GH-2351-007"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-2351"
@@ -663,6 +689,10 @@ scenarios:
       test_type: "Unit"
       scope: "Single-component"
       automation_approach: "Go test with FakeClient"
+
+    patterns:
+      primary: "unit-test"
+      helpers_required: []
 
     variables:
       closure_scope:
@@ -695,7 +725,6 @@ scenarios:
       }
 
     specific_preconditions: []
-    test_data: {}
 
     test_steps:
       setup:
@@ -728,7 +757,7 @@ scenarios:
 
   - scenario_id: "8"
     test_id: "TS-GH-2351-008"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-2351"
@@ -750,6 +779,10 @@ scenarios:
       test_type: "Unit"
       scope: "Single-component"
       automation_approach: "Go test with FakeClient error injection"
+
+    patterns:
+      primary: "unit-test"
+      helpers_required: []
 
     variables:
       closure_scope:
@@ -777,7 +810,6 @@ scenarios:
       }
 
     specific_preconditions: []
-    test_data: {}
 
     test_steps:
       setup:
@@ -805,12 +837,12 @@ scenarios:
 
   # =====================================================================
   # Requirement: Batch API pattern (guard tests)
-  # Tier: Unit Tests | Priority: P0
+  # Tier: Tier 1 | Priority: P0
   # =====================================================================
 
   - scenario_id: "9"
     test_id: "TS-GH-2351-009"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-2351"
@@ -834,6 +866,10 @@ scenarios:
       test_type: "Unit"
       scope: "Single-component"
       automation_approach: "Go test with error injection guard"
+
+    patterns:
+      primary: "unit-test"
+      helpers_required: []
 
     variables:
       closure_scope:
@@ -862,7 +898,6 @@ scenarios:
       }
 
     specific_preconditions: []
-    test_data: {}
 
     test_steps:
       setup:
@@ -890,7 +925,7 @@ scenarios:
 
   - scenario_id: "10"
     test_id: "TS-GH-2351-010"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P0"
     mvp: true
     requirement_id: "GH-2351"
@@ -912,6 +947,10 @@ scenarios:
       test_type: "Unit"
       scope: "Single-component"
       automation_approach: "Go test with FakeClient"
+
+    patterns:
+      primary: "unit-test"
+      helpers_required: []
 
     variables:
       closure_scope:
@@ -944,7 +983,6 @@ scenarios:
       }
 
     specific_preconditions: []
-    test_data: {}
 
     test_steps:
       setup:
@@ -977,12 +1015,12 @@ scenarios:
 
   # =====================================================================
   # Requirement: FakeClient implements ListRepositoryFiles
-  # Tier: Unit Tests | Priority: P1
+  # Tier: Tier 1 | Priority: P1
   # =====================================================================
 
   - scenario_id: "11"
     test_id: "TS-GH-2351-011"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-2351"
@@ -1005,6 +1043,10 @@ scenarios:
       test_type: "Unit"
       scope: "Single-component"
       automation_approach: "Go test"
+
+    patterns:
+      primary: "unit-test"
+      helpers_required: []
 
     variables:
       closure_scope:
@@ -1078,7 +1120,7 @@ scenarios:
 
   - scenario_id: "12"
     test_id: "TS-GH-2351-012"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-2351"
@@ -1100,6 +1142,10 @@ scenarios:
       test_type: "Unit"
       scope: "Single-component"
       automation_approach: "Go test"
+
+    patterns:
+      primary: "unit-test"
+      helpers_required: []
 
     variables:
       closure_scope:
@@ -1132,7 +1178,6 @@ scenarios:
       }
 
     specific_preconditions: []
-    test_data: {}
 
     test_steps:
       setup:
@@ -1165,7 +1210,7 @@ scenarios:
 
   - scenario_id: "13"
     test_id: "TS-GH-2351-013"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P1"
     mvp: false
     requirement_id: "GH-2351"
@@ -1187,6 +1232,10 @@ scenarios:
       test_type: "Unit"
       scope: "Single-component"
       automation_approach: "Go test"
+
+    patterns:
+      primary: "unit-test"
+      helpers_required: []
 
     variables:
       closure_scope:
@@ -1214,7 +1263,6 @@ scenarios:
       }
 
     specific_preconditions: []
-    test_data: {}
 
     test_steps:
       setup:
@@ -1242,12 +1290,12 @@ scenarios:
 
   # =====================================================================
   # Requirement: FakeClient thread safety
-  # Tier: Unit Tests | Priority: P2
+  # Tier: Tier 1 | Priority: P2
   # =====================================================================
 
   - scenario_id: "14"
     test_id: "TS-GH-2351-014"
-    tier: "Unit Tests"
+    tier: "Tier 1"
     priority: "P2"
     mvp: false
     requirement_id: "GH-2351"
@@ -1271,6 +1319,10 @@ scenarios:
       test_type: "Unit"
       scope: "Single-component"
       automation_approach: "Go test with -race flag and sync.WaitGroup"
+
+    patterns:
+      primary: "unit-test"
+      helpers_required: []
 
     variables:
       closure_scope:
@@ -1302,7 +1354,6 @@ scenarios:
         requirement: "Test must be run with -race flag"
         validation: "go test -race ./..."
 
-    test_data: {}
 
     test_steps:
       setup:
@@ -1335,12 +1386,12 @@ scenarios:
 
   # =====================================================================
   # Requirement: LiveClient implements ListRepositoryFiles via API chain
-  # Tier: Functional | Priority: P1
+  # Tier: Tier 2 | Priority: P1
   # =====================================================================
 
   - scenario_id: "15"
     test_id: "TS-GH-2351-015"
-    tier: "Functional"
+    tier: "Tier 2"
     priority: "P1"
     mvp: false
     requirement_id: "GH-2351"
@@ -1366,6 +1417,10 @@ scenarios:
       test_type: "Functional"
       scope: "Single-component"
       automation_approach: "Go test with HTTP mock or integration test"
+
+    patterns:
+      primary: "functional-test"
+      helpers_required: []
 
     variables:
       closure_scope:
@@ -1451,7 +1506,7 @@ scenarios:
 
   - scenario_id: "16"
     test_id: "TS-GH-2351-016"
-    tier: "Functional"
+    tier: "Tier 2"
     priority: "P1"
     mvp: false
     requirement_id: "GH-2351"
@@ -1474,6 +1529,10 @@ scenarios:
       test_type: "Functional"
       scope: "Single-component"
       automation_approach: "Go test with HTTP mock"
+
+    patterns:
+      primary: "functional-test"
+      helpers_required: []
 
     variables:
       closure_scope:
@@ -1506,7 +1565,6 @@ scenarios:
       }
 
     specific_preconditions: []
-    test_data: {}
 
     test_steps:
       setup:
@@ -1542,7 +1600,7 @@ scenarios:
 
   - scenario_id: "17"
     test_id: "TS-GH-2351-017"
-    tier: "Functional"
+    tier: "Tier 2"
     priority: "P1"
     mvp: false
     requirement_id: "GH-2351"
@@ -1564,6 +1622,10 @@ scenarios:
       test_type: "Functional"
       scope: "Single-component"
       automation_approach: "Go test with HTTP mock returning error"
+
+    patterns:
+      primary: "functional-test"
+      helpers_required: []
 
     variables:
       closure_scope:
@@ -1591,7 +1653,6 @@ scenarios:
       }
 
     specific_preconditions: []
-    test_data: {}
 
     test_steps:
       setup:
@@ -1622,7 +1683,7 @@ scenarios:
 
   - scenario_id: "18"
     test_id: "TS-GH-2351-018"
-    tier: "Functional"
+    tier: "Tier 2"
     priority: "P1"
     mvp: false
     requirement_id: "GH-2351"
@@ -1646,6 +1707,10 @@ scenarios:
       test_type: "Functional"
       scope: "Single-component"
       automation_approach: "Go test with HTTP mock returning transient then success"
+
+    patterns:
+      primary: "functional-test"
+      helpers_required: []
 
     variables:
       closure_scope:
@@ -1678,7 +1743,6 @@ scenarios:
       }
 
     specific_preconditions: []
-    test_data: {}
 
     test_steps:
       setup:

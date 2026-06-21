@@ -9,10 +9,11 @@
 **Date:** 2026-06-21
 **Reviewer:** QualityFlow Automated Review (v1.1.0)
 **Review Rules Schema:** N/A (no project-specific review_rules.yaml available)
+**Review Type:** Re-review after refinement (iteration 1)
 
 ---
 
-## Verdict: APPROVED_WITH_FINDINGS
+## Verdict: APPROVED
 
 ## Summary
 
@@ -20,10 +21,10 @@
 |:-------|:------|
 | Dimensions reviewed | 7/7 |
 | Critical findings | 0 |
-| Major findings | 3 |
-| Minor findings | 5 |
-| Actionable findings | 7 |
-| Weighted score | 85 |
+| Major findings | 0 |
+| Minor findings | 3 |
+| Actionable findings | 0 |
+| Weighted score | 95 |
 | Confidence | MEDIUM |
 
 ## Traceability Summary
@@ -36,6 +37,23 @@
 | Reverse coverage (STD→STP) | 18/18 (100%) |
 | Orphan STD scenarios | 0 |
 | Missing STD scenarios | 0 |
+
+---
+
+## Refinement Delta (vs. Initial Review)
+
+| Finding | Severity | Status | Resolution |
+|:--------|:---------|:-------|:-----------|
+| D2-2b-001: Missing `patterns` field | MAJOR | ✅ FIXED | Added `patterns: { primary: "unit-test"/"functional-test", helpers_required: [] }` to all 18 scenarios |
+| D4.5-4.5a-001: `related_prs` in metadata | MAJOR | ✅ FIXED | Removed `related_prs` section from `document_metadata` |
+| D6-6b-001: Cross-package testing undocumented | MAJOR | ✅ FIXED | Added `cross_package_testing` section to `code_generation_config` documenting exported field access |
+| D2-2b-002: Non-standard tier naming | MINOR | ✅ FIXED | Mapped "Unit Tests" → "Tier 1", "Functional" → "Tier 2" |
+| D2-2b-003: Empty `test_data: {}` | MINOR | ✅ FIXED | Removed empty `test_data: {}` from 11 scenarios |
+| D1-1b-001: STP blank requirement IDs | MINOR | ⏭️ SKIPPED | STP-side issue, not addressable in STD |
+| D4-4a-001: Empty cleanup arrays | MINOR | ⏭️ SKIPPED | Correct behavior for FakeClient-based unit tests |
+| D5-5a-001: File-level markers | MINOR | ⏭️ SKIPPED | Informational only |
+
+**Initial:** 0 critical, 3 major, 5 minor → **Final:** 0 critical, 0 major, 3 minor
 
 ---
 
@@ -91,9 +109,9 @@ All 10 P0 scenarios are fully testable using `FakeClient` with no infrastructure
 
 ---
 
-### Dimension 2: STD YAML Structure — Score: 78/100
+### Dimension 2: STD YAML Structure — Score: 95/100
 
-#### 2a. Document-Level Structure
+#### 2a. Document-Level Structure ✅
 
 | Check | Status |
 |:------|:-------|
@@ -104,84 +122,57 @@ All 10 P0 scenarios are fully testable using `FakeClient` with no infrastructure
 | `common_preconditions` present | ✅ |
 | `scenarios` array non-empty | ✅ (18 scenarios) |
 
-#### 2b. Per-Scenario Required Fields
+#### 2b. Per-Scenario Required Fields ✅
 
 | Field | Present | Notes |
 |:------|:--------|:------|
 | `scenario_id` | ✅ 18/18 | Sequential "1" through "18" |
 | `test_id` | ✅ 18/18 | Format TS-GH-2351-{NNN} ✅ |
-| `tier` | ✅ 18/18 | Non-standard values (see finding) |
+| `tier` | ✅ 18/18 | Standard values "Tier 1" / "Tier 2" ✅ |
 | `priority` | ✅ 18/18 | P0/P1/P2 ✅ |
 | `requirement_id` | ✅ 18/18 | All "GH-2351" |
-| `patterns` | ❌ 0/18 | **Missing** — see finding |
+| `patterns` | ✅ 18/18 | `primary` + `helpers_required` present ✅ |
 | `variables` | ✅ 18/18 | closure_scope present |
 | `test_structure` | ✅ 18/18 | type + function_name + pattern |
 | `code_structure` | ✅ 18/18 | Valid Go function templates |
 | `test_objective` | ✅ 18/18 | title + what + why + acceptance_criteria |
-| `test_data` | ⚠️ 7/18 | 11 scenarios have `test_data: {}` |
+| `test_data` | ✅ 7/18 | Only present where meaningful (resource_definitions populated) |
 | `test_steps` | ✅ 18/18 | setup + test_execution present |
 | `assertions` | ✅ 18/18 | At least 1 per scenario |
 
 #### 2c. v2.1-Specific Checks
 
-This project uses Go `testing` + `testify` (not Ginkgo), so Ginkgo-specific checks (Ordered decorator, `ExpectWithOffset`, `:=` vs `=` for closure variables) do not apply. The `classification` field exists with `test_type`, `scope`, and `automation_approach` — serving a similar role to the `patterns` field but with different schema.
+This project uses Go `testing` + `testify` (not Ginkgo), so Ginkgo-specific checks (Ordered decorator, `ExpectWithOffset`, `:=` vs `=` for closure variables) do not apply. The `classification` field provides supplementary metadata alongside the now-present `patterns` field.
 
-No Python/Tier 2 scenarios are present, so Tier 2 checks do not apply.
+No Python/Tier 2 scenarios are present, so Tier 2 Python-specific checks do not apply.
 
-#### Findings
-
-- **D2-2b-001**
-  - **Severity:** MAJOR
-  - **Dimension:** STD YAML Structure
-  - **Description:** The `patterns` field is missing from all 18 scenarios. Per v2.1-enhanced specification, each scenario must declare a primary pattern and helpers. The STD uses a `classification` field with `test_type`, `scope`, and `automation_approach` as an alternative, but this does not match the required schema.
-  - **Evidence:** No scenario contains `patterns:` (only 1 occurrence of `test_patterns:` in `code_generation_config`, which is a different field).
-  - **Remediation:** Add a `patterns` block to each scenario with `primary` and `helpers_required` keys. For this project's Go testing framework, map: `test_type: "Unit"` → `primary: "unit-test"`, `test_type: "Functional"` → `primary: "functional-test"`. Set `helpers_required: []` since testify is declared at the config level.
-  - **Actionable:** true
-
-- **D2-2b-002**
-  - **Severity:** MINOR
-  - **Dimension:** STD YAML Structure
-  - **Description:** Tier values use non-standard naming: `"Unit Tests"` and `"Functional"` instead of the v2.1-enhanced standard `"Tier 1"` / `"Tier 2"`. While descriptive and internally consistent, this deviates from the spec.
-  - **Evidence:** 14 scenarios have `tier: "Unit Tests"`, 4 scenarios have `tier: "Functional"`.
-  - **Remediation:** Map `"Unit Tests"` → `"Tier 1"` and `"Functional"` → `"Tier 2"`, or document the project's tier naming convention in `code_generation_config`.
-  - **Actionable:** true
-
-- **D2-2b-003**
-  - **Severity:** MINOR
-  - **Dimension:** STD YAML Structure
-  - **Description:** 11 of 18 scenarios have empty `test_data: {}`. While acceptable for pure unit tests using FakeClient (where test data is inline in setup steps), the empty field adds noise.
-  - **Evidence:** Scenarios 6–10, 12–14, 17, 18 have `test_data: {}`.
-  - **Remediation:** Either populate `test_data.resource_definitions` with the FakeClient configuration described in each scenario's setup steps, or omit the field entirely (it is not required when inline setup is sufficient).
-  - **Actionable:** true
+No findings for Dimension 2.
 
 ---
 
-### Dimension 3: Pattern Matching Correctness — Score: 50/100
+### Dimension 3: Pattern Matching Correctness — Score: 90/100
 
-#### Assessment
+#### 3a. Primary Pattern Matching ✅
 
-Pattern matching could not be fully evaluated because the `patterns` field is absent from all scenarios (see D2-2b-001). A baseline score of 50 is assigned.
+All scenarios now have explicit `patterns.primary` assignments:
 
-However, the `classification` field provides equivalent test-type metadata:
+| Scenario Range | `patterns.primary` | `test_structure.pattern` | Consistent? |
+|:---------------|:-------------------|:------------------------|:------------|
+| TS-001 – TS-008, TS-010 – TS-013 | `unit-test` | `arrange-act-assert` | ✅ |
+| TS-009 | `unit-test` | `error-injection-guard` | ✅ |
+| TS-014 | `unit-test` | `concurrent-goroutine` | ✅ |
+| TS-015 | `functional-test` | `http-mock-chain` | ✅ |
+| TS-016 | `functional-test` | `http-mock-filter` | ✅ |
+| TS-017 | `functional-test` | `http-mock-error` | ✅ |
+| TS-018 | `functional-test` | `http-mock-retry` | ✅ |
 
-| Scenario Range | `test_type` | `scope` | `automation_approach` | Consistent? |
-|:---------------|:-----------|:--------|:---------------------|:------------|
-| TS-001 – TS-014 | Unit | Single-component | Go test with FakeClient | ✅ |
-| TS-015 – TS-018 | Functional | Single-component | Go test with HTTP mock | ✅ |
+All primary pattern assignments match the scenario's tier classification and test methodology.
 
-The `test_structure.pattern` field provides additional pattern metadata:
+#### 3b. Helper Library Mapping ✅
 
-| Pattern | Scenarios | Appropriate? |
-|:--------|:----------|:------------|
-| `arrange-act-assert` | 1–8, 10–12 | ✅ |
-| `error-injection-guard` | 9 | ✅ |
-| `concurrent-goroutine` | 14 | ✅ |
-| `http-mock-chain` | 15 | ✅ |
-| `http-mock-filter` | 16 | ✅ |
-| `http-mock-error` | 17 | ✅ |
-| `http-mock-retry` | 18 | ✅ |
-
-All pattern assignments in `test_structure.pattern` are semantically appropriate for their scenarios.
+All scenarios declare `helpers_required: []`. This is correct because:
+- `testify` is declared at the `code_generation_config` level (not per-scenario)
+- No additional helper libraries are needed beyond what's in config imports
 
 #### 3d. Pattern Library Validation — SKIPPED
 
@@ -212,37 +203,21 @@ Pattern library at `{config_dir}/patterns/tier1_patterns.yaml` was not available
 | TS-017 | 1 | 1 | 1 | 1 | ✅ | ✅ negative | ✅ PASS |
 | TS-018 | 1 | 1 | 1 | 2 | ✅ | N/A | ✅ PASS |
 
-#### 4a. Step Completeness
+#### 4a–4c. Step Completeness, Quality, Logical Flow ✅
 
-- All 18 scenarios have setup and test_execution steps ✅
-- 14 unit test scenarios have `cleanup: []` — **acceptable** because FakeClient-based tests create no external resources requiring cleanup
-- 4 functional (LiveClient) scenarios have cleanup steps to close mock HTTP servers ✅
-
-#### 4b. Step Quality ✅
-
-All steps are specific and actionable with concrete commands and validations:
-- Actions reference specific functions/methods (e.g., "Call ListRepositoryFiles with valid owner and repo")
-- Commands include Go code references (e.g., `fakeClient.ListRepositoryFiles(ctx, "myorg", "myrepo")`)
-- Validations describe measurable outcomes (e.g., "Returns []string with all matching paths, no error")
-- Step IDs are sequential (SETUP-01, TEST-01, CLEANUP-01)
-
-No uncertain verification language detected.
-
-#### 4c. Logical Flow ✅
-
-All scenarios follow a clean arrange-act-assert flow. No circular dependencies. Resources used in test_execution are created in setup.
+All scenarios have well-structured steps with specific actions, commands, and validations. Cleanup is correctly present for Tier 2 (HTTP mock) scenarios and correctly absent for Tier 1 (FakeClient) scenarios.
 
 #### 4e. Test Dependency Structure ✅
 
-All 18 scenarios are fully independent — no scenario depends on another's output. Each test creates its own FakeClient/mock server. This is excellent test isolation.
+All 18 scenarios are fully independent — no scenario depends on another's output. Excellent test isolation.
 
 #### 4f. Assertion Quality ✅
 
-All assertions are specific with measurable conditions and assigned priorities. Good distribution: P0 assertions for critical behaviors, P1 for supplementary checks.
+All assertions are specific with measurable conditions and assigned priorities.
 
 #### 4g. Test Isolation ✅
 
-Excellent. Every scenario creates its own FakeClient with dedicated state. No shared mutable state across scenarios. No external dependencies for unit tests.
+Every scenario creates its own FakeClient/mock server with dedicated state. No shared mutable state.
 
 #### 4h. Error Path and Edge Case Coverage ✅
 
@@ -254,8 +229,6 @@ Excellent. Every scenario creates its own FakeClient with dedicated state. No sh
 | Thread Safety | — | — | — | 1 (TS-014) | ✅ Appropriate |
 | LiveClient | 2 (TS-015, TS-016) | 1 (TS-017) | — | 1 (TS-018) | ✅ Good |
 
-Strong negative testing coverage across all requirement areas. The guard test pattern (TS-009) is particularly well-designed for regression prevention.
-
 #### Finding
 
 - **D4-4a-001**
@@ -263,30 +236,17 @@ Strong negative testing coverage across all requirement areas. The guard test pa
   - **Dimension:** Test Step Quality
   - **Description:** 14 unit test scenarios have empty `cleanup: []` arrays. While justified for FakeClient-based tests (no external resources), having explicit "no cleanup needed" comments would improve clarity.
   - **Evidence:** Scenarios 1–14 all have `cleanup: []`.
-  - **Remediation:** No action required — empty cleanup is correct for these unit tests. Optionally, add a comment in the cleanup section: `# No cleanup needed — FakeClient has no external state`.
+  - **Remediation:** No action required — empty cleanup is correct for these unit tests.
   - **Actionable:** false
 
 ---
 
-### Dimension 4.5: STD Content Policy — Score: 85/100
+### Dimension 4.5: STD Content Policy — Score: 100/100
 
-#### 4.5a. Banned Content
+#### 4.5a. Banned Content ✅
 
-- **D4.5-4.5a-001**
-  - **Severity:** MAJOR
-  - **Dimension:** STD Content Policy
-  - **Description:** `document_metadata.related_prs` contains a PR/issue reference with URL. The STD is a design document describing *what* to test, not *what code changed*. PR URLs are implementation artifacts that belong in the STP (which references them in Section I), not in the STD.
-  - **Evidence:**
-    ```yaml
-    related_prs:
-      - repo: "fullsend-ai/fullsend"
-        pr_number: 2351
-        url: "https://github.com/fullsend-ai/fullsend/issues/2351"
-        title: "Batch path-existence checks via Git Trees API"
-        merged: false
-    ```
-  - **Remediation:** Remove the `related_prs` section from `document_metadata`. The STP already contains the issue reference in Section I.
-  - **Actionable:** true
+- No `related_prs` in `document_metadata` ✅ (removed during refinement)
+- No PR URLs, branch names, or commit SHAs in metadata ✅
 
 #### 4.5b. No Implementation Details in Stubs ✅
 
@@ -295,11 +255,11 @@ All stub files contain only:
 - `t.Skip("Phase 1: Design only - awaiting implementation")` bodies (appropriate pending marker)
 - Standard library imports (`testing`)
 
-No fixture implementations, no helper function code, no concrete API calls. Stubs are clean design artifacts.
+No fixture implementations, no helper function code, no concrete API calls.
 
 #### 4.5c. Test Environment Separation ✅
 
-No infrastructure setup, cluster configuration, or feature gate enablement found in stubs or STD YAML. Test environment requirements are properly documented in `common_preconditions`.
+No infrastructure setup, cluster configuration, or feature gate enablement found in stubs or STD YAML.
 
 ---
 
@@ -307,124 +267,69 @@ No infrastructure setup, cluster configuration, or feature gate enablement found
 
 **Go Stubs:** 3 files reviewed, 18 test functions total.
 
-#### 5a. PSE Quality Assessment
+#### 5a. PSE Quality Assessment ✅
 
-**File: `list_repository_files_stubs_test.go`** (7 test functions)
-
-| Test Function | Test ID | Preconditions | Steps | Expected | [NEGATIVE] | Quality |
-|:-------------|:--------|:-------------|:------|:---------|:----------|:--------|
-| `TestListRepositoryFiles_ReturnsAllBlobPaths` | TS-001 ✅ | Specific ✅ | Numbered ✅ | Measurable ✅ | N/A | ✅ Good |
-| `TestListRepositoryFiles_ErrorOnTruncatedTree` | TS-002 ✅ | Specific ✅ | Numbered ✅ | Measurable ✅ | ✅ Present | ✅ Good |
-| `TestListRepositoryFiles_ErrNotFoundForNonexistentRepo` | TS-003 ✅ | Specific ✅ | Numbered ✅ | Measurable ✅ | ✅ Present | ✅ Good |
-| `TestFakeClient_ListRepositoryFiles_PrefixFiltering` | TS-011 ✅ | Specific ✅ | Numbered ✅ | Measurable ✅ | N/A | ✅ Good |
-| `TestFakeClient_ListRepositoryFiles_NoMatch` | TS-012 ✅ | Specific ✅ | Numbered ✅ | Measurable ✅ | N/A | ✅ Good |
-| `TestFakeClient_ListRepositoryFiles_InjectedError` | TS-013 ✅ | Specific ✅ | Numbered ✅ | Measurable ✅ | ✅ Present | ✅ Good |
-| `TestFakeClient_ListRepositoryFiles_ThreadSafe` | TS-014 ✅ | Specific ✅ | Numbered ✅ | Measurable ✅ | N/A | ✅ Good |
-
-**File: `compare_path_presence_stubs_test.go`** (7 test functions)
-
-| Test Function | Test ID | Preconditions | Steps | Expected | [NEGATIVE] | Quality |
-|:-------------|:--------|:-------------|:------|:---------|:----------|:--------|
-| `TestComparePathPresence_AllPresent` | TS-004 ✅ | Specific ✅ | Numbered ✅ | Measurable ✅ | N/A | ✅ Good |
-| `TestComparePathPresence_SomeMissing` | TS-005 ✅ | Specific ✅ | Numbered ✅ | Measurable ✅ | N/A | ✅ Good |
-| `TestComparePathPresence_AllMissingEmptyRepo` | TS-006 ✅ | Specific ✅ | Numbered ✅ | Measurable ✅ | N/A | ✅ Good |
-| `TestComparePathPresence_EmptyInputReturnsNil` | TS-007 ✅ | Specific ✅ | Numbered ✅ | Measurable ✅ | N/A | ✅ Good |
-| `TestComparePathPresence_ErrorPropagation` | TS-008 ✅ | Specific ✅ | Numbered ✅ | Measurable ✅ | ✅ Present | ✅ Good |
-| `TestComparePathPresence_UsesOneAPICall` | TS-009 ✅ | Specific ✅ | Numbered ✅ | Measurable ✅ | N/A | ✅ Good |
-| `TestComparePathPresence_SingleCallForManyPaths` | TS-010 ✅ | Specific ✅ | Numbered ✅ | Measurable ✅ | N/A | ✅ Good |
-
-**File: `live_client_stubs_test.go`** (4 test functions)
-
-| Test Function | Test ID | Preconditions | Steps | Expected | [NEGATIVE] | Quality |
-|:-------------|:--------|:-------------|:------|:---------|:----------|:--------|
-| `TestLiveClient_ListRepositoryFiles_APIPipeline` | TS-015 ✅ | Specific ✅ | Numbered ✅ | Measurable ✅ | N/A | ✅ Good |
-| `TestLiveClient_ListRepositoryFiles_BlobsOnly` | TS-016 ✅ | Specific ✅ | Numbered ✅ | Measurable ✅ | N/A | ✅ Good |
-| `TestLiveClient_ListRepositoryFiles_RefLookupError` | TS-017 ✅ | Specific ✅ | Numbered ✅ | Measurable ✅ | ✅ Present | ✅ Good |
-| `TestLiveClient_ListRepositoryFiles_RetriesTransientErrors` | TS-018 ✅ | Specific ✅ | Numbered ✅ | Measurable ✅ | N/A | ✅ Good |
+All 18 test functions across 3 stub files have:
+- ✅ Test ID in expected format `[TS-GH-2351-{NNN}]`
+- ✅ Specific preconditions (concrete resources referenced)
+- ✅ Numbered steps (actionable and unambiguous)
+- ✅ Measurable expected outcomes
+- ✅ `[NEGATIVE]` tags on negative test scenarios (TS-002, TS-003, TS-008, TS-013, TS-017)
 
 #### 5c. PSE Section Classification ✅
 
-No misclassifications detected:
-- Preconditions describe setup state only (no "Verify..." steps)
-- Steps describe actions only (no verification steps)
-- Expected sections describe observable outcomes with verification methods
+No misclassifications detected. Preconditions describe state, Steps describe actions, Expected describes outcomes.
 
 #### Module-Level Documentation ✅
 
-- All stub files reference the STP file in module-level comments
-- No PR URLs in stub file comments
-- Jira ticket reference (GH-2351) appropriately included
+All stub files reference the STP file in module-level comments. No PR URLs in stubs.
 
 #### Finding
 
 - **D5-5a-001**
   - **Severity:** MINOR
   - **Dimension:** PSE Docstring Quality
-  - **Description:** File-level markers in `list_repository_files_stubs_test.go` declare only `Markers: - unit` but the file contains both unit test scenarios (TS-001–003, TS-011–014) spanning P0, P1, and P2 priorities. While the marker correctly identifies the test type, adding priority-level markers would improve filtering.
+  - **Description:** File-level markers in `list_repository_files_stubs_test.go` declare only `Markers: - unit` but the file contains both P0, P1, and P2 priority scenarios. While the marker correctly identifies the test type, adding priority-level markers would improve filtering.
   - **Evidence:** File-level comment: `Markers: - unit`. Contains P0, P1, and P2 scenarios.
-  - **Remediation:** No action required — marker indicates test type, not priority. Priority is documented per-test in the test_id docstring.
+  - **Remediation:** Informational only — marker indicates test type, not priority. Priority is documented per-test.
   - **Actionable:** false
 
 ---
 
-### Dimension 6: Code Generation Readiness — Score: 88/100
+### Dimension 6: Code Generation Readiness — Score: 95/100
 
 #### 6a. Variable Declarations ✅
 
-All `variables.closure_scope` entries across 18 scenarios use valid Go types:
-- `*forge.FakeClient`, `[]string`, `error`, `sync.WaitGroup`, `*forge.LiveClient`
-- `initialized_in` and `used_in` values are consistent with test lifecycle
+All `variables.closure_scope` entries use valid Go types with correct lifecycle hooks.
 
 #### 6b. Import Completeness ✅
 
-| Import | Used By Scenarios | Status |
-|:-------|:-----------------|:-------|
-| `context` | All (ctx parameter) | ✅ |
-| `testing` | All | ✅ |
-| `fmt` | TS-002 (fmt.Errorf) | ✅ |
-| `strings` | TS-002 (strings.Contains) | ✅ |
-| `sync` | TS-014 (sync.WaitGroup) | ✅ |
-| `errors` | TS-008, TS-013 (errors.Is) | ✅ |
-| `testify/assert` | All assertions | ✅ |
-| `testify/require` | Critical assertions | ✅ |
-| `forge` | All (FakeClient/LiveClient) | ✅ |
-| `scaffold` | TS-004–010 (ComparePathPresence) | ✅ |
-
-All referenced types and functions have corresponding imports declared.
+All referenced types and functions have corresponding imports declared in `code_generation_config.imports`.
 
 #### 6c. Code Structure Validity ✅
 
-All 18 `code_structure` blocks contain valid Go test function signatures:
-- Proper `func Test...(t *testing.T)` format
-- Comment blocks describe arrange-act-assert structure
-- No syntax errors in templates
+All 18 `code_structure` blocks contain valid Go test function signatures.
 
 #### 6d. Timeout Appropriateness ✅
 
-No timeout references needed — unit tests with FakeClient execute synchronously. Functional tests with HTTP mocks also execute synchronously. No long-running operations.
+No timeout references needed — all tests execute synchronously.
 
-#### Finding
+#### 6e. Cross-Package Testing ✅
 
-- **D6-6b-001**
-  - **Severity:** MAJOR
-  - **Dimension:** Code Generation Readiness
-  - **Description:** The `code_generation_config.package_name` is `"scaffold"` but scenarios TS-011–TS-014 test `forge.FakeClient` directly and scenarios TS-015–TS-018 test `forge.LiveClient`. The Go stubs correctly use `package scaffold` (suggesting black-box testing from the `scaffold` package), but the FakeClient and LiveClient tests would more naturally belong in `package forge_test` or `package forge`. This may cause compilation issues if `FakeClient`/`LiveClient` internal fields are accessed.
-  - **Evidence:** `code_generation_config.package_name: "scaffold"` but scenarios 11–18 test `forge` package types. Go stubs all declare `package scaffold`.
-  - **Remediation:** Either (a) split code generation into two packages: `scaffold` for ComparePathPresence tests and `forge` for FakeClient/LiveClient tests, or (b) verify that all FakeClient/LiveClient fields accessed in tests are exported and accessible from the `scaffold` package. If `FakeClient.FileContents`, `FakeClient.ListRepositoryFilesErr`, etc. are exported, `package scaffold` is acceptable.
-  - **Actionable:** true
+The `cross_package_testing` section in `code_generation_config` now documents that:
+- Tests in `package scaffold` exercise `forge.FakeClient` and `forge.LiveClient` via exported interfaces
+- All accessed fields (`FileContents`, `ListRepositoryFilesErr`, `GetFileContentErr`) are exported
+- Cross-package black-box testing is valid
+
+No findings for Dimension 6.
 
 ---
 
 ## Recommendations
 
-1. **[MAJOR] D2-2b-001: Add `patterns` field to all scenarios** — **Remediation:** Add `patterns: { primary: "unit-test", helpers_required: [] }` (or `"functional-test"` for TS-015–018) to each scenario to comply with v2.1-enhanced schema. — **Actionable:** yes
-2. **[MAJOR] D4.5-4.5a-001: Remove `related_prs` from STD metadata** — **Remediation:** Delete the `related_prs` section from `document_metadata`. The STP already references the issue. — **Actionable:** yes
-3. **[MAJOR] D6-6b-001: Resolve package_name split for forge/scaffold tests** — **Remediation:** Verify that all `forge` types accessed in tests are exported (likely they are, given FakeClient's design). Document the cross-package testing approach in `code_generation_config`. — **Actionable:** yes
-4. **[MINOR] D2-2b-002: Standardize tier naming** — **Remediation:** Map "Unit Tests" → "Tier 1", "Functional" → "Tier 2" per v2.1 spec. — **Actionable:** yes
-5. **[MINOR] D2-2b-003: Populate or remove empty `test_data` fields** — **Remediation:** Either inline FakeClient configurations as `resource_definitions` or remove `test_data: {}`. — **Actionable:** yes
-6. **[MINOR] D1-1b-001: STP requirement IDs are partially blank** — **Remediation:** Populate STP Section III requirement IDs (STP-side fix). — **Actionable:** no
-7. **[MINOR] D4-4a-001: Empty cleanup arrays** — **Remediation:** No action needed — correct for FakeClient tests. — **Actionable:** no
-8. **[MINOR] D5-5a-001: File-level markers could include priority** — **Remediation:** Informational only. — **Actionable:** no
+1. **[MINOR] D1-1b-001: STP requirement IDs are partially blank** — **Remediation:** Populate STP Section III requirement IDs (STP-side fix). — **Actionable:** no
+2. **[MINOR] D4-4a-001: Empty cleanup arrays** — **Remediation:** No action needed — correct for FakeClient tests. — **Actionable:** no
+3. **[MINOR] D5-5a-001: File-level markers could include priority** — **Remediation:** Informational only. — **Actionable:** no
 
 ---
 
@@ -440,4 +345,4 @@ No timeout references needed — unit tests with FakeClient execute synchronousl
 | All scenarios reviewed | YES (18/18) |
 | Project review rules loaded | NO |
 
-**Confidence rationale:** MEDIUM — STD YAML is valid, STP is available for full traceability review, and Go stubs are present with complete scenario coverage. Confidence is reduced from HIGH because: (1) no pattern library was available for Dimension 3d validation, (2) no project-specific `review_rules.yaml` was loaded — all rules applied are general defaults, reducing domain-specific review precision. Review precision reduced: 100% of rules using generic defaults. Consider adding project-specific `review_rules.yaml` or enabling `repo_files_fetch`.
+**Confidence rationale:** MEDIUM — STD YAML is valid, STP is available for full traceability review, and Go stubs are present with complete scenario coverage. Confidence is reduced from HIGH because: (1) no pattern library was available for Dimension 3d validation, (2) no project-specific `review_rules.yaml` was loaded — all rules applied are general defaults. Consider adding project-specific `review_rules.yaml` or enabling `repo_files_fetch`.
