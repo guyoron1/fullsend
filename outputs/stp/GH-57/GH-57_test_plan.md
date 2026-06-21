@@ -6,7 +6,7 @@
 
 - **Enhancement:** [GH-57](https://github.com/fullsend-ai/fullsend/issues/57)
 - **Feature Tracking:** [GH-57](https://github.com/fullsend-ai/fullsend/issues/57)
-- **Epic Tracking:** [GH-50](https://github.com/fullsend-ai/fullsend/issues/50) (BACKLOG.md extraction)
+- **Parent Issue:** [GH-50](https://github.com/fullsend-ai/fullsend/issues/50) (originating task --- backlog extraction, not a feature epic)
 - **QE Owner:** Unassigned
 - **Owning SIG:** N/A
 - **Participating SIGs:** N/A
@@ -33,7 +33,11 @@ GH-57 is a research task to review the latent.space article "[Are Code Reviews D
   - Testability is low for the research deliverable itself
   - Any resulting code changes would require separate STPs
 - [ ] **Ensured acceptance criteria are **defined clearly**.** -- No formal acceptance criteria are defined in the issue.
-  - Recommended: add acceptance criteria such as "summary of 3+ applicable insights documented"
+  - **⚠ PREREQUISITE:** Acceptance criteria should be added to GH-57 before the research task begins
+  - **Proposed acceptance criteria:**
+    1. Summary document produced with 3+ applicable insights
+    2. Each insight references a specific FullSend component (harness, skills, dispatch, pr-review agent, etc.)
+    3. Follow-up GitHub issues filed for each actionable recommendation
   - Current state: open-ended research with no defined done criteria
 - [ ] **Confirmed coverage for NFRs.** -- No non-functional requirements apply to this research task.
   - No performance, security, or scalability considerations for a documentation deliverable
@@ -80,8 +84,9 @@ This STP covers the research task GH-57. Since no code changes are involved, the
 
 **Functional:**
 
-- [ ] **Functional Testing** -- Applicable: N. No functional changes to test.
-  - Research task produces documentation, not testable code
+- [x] **Functional Testing** -- Applicable: Y. Documentation validation --- verify research output meets quality expectations. No code functional testing applies.
+  - Scenarios verify research deliverable quality against implicit acceptance criteria
+  - 3 documentation validation scenarios defined in Section III
 - [ ] **Automation Testing** -- Applicable: N. No automated tests applicable.
   - No code changes to gate with automated tests
 - [ ] **Regression Testing** -- Applicable: N. No code changes that could introduce regressions.
@@ -137,7 +142,7 @@ No new or special tools required beyond standard FullSend testing infrastructure
   - *Status:* [ ] Open
 - [ ] **Coverage**
   - *Risk:* No formal acceptance criteria means completeness is subjective
-  - *Mitigation:* Define minimum deliverable (e.g., summary document with 3+ insights)
+  - *Mitigation:* Define minimum deliverable (e.g., summary document with 3+ insights). **Prerequisite:** add proposed acceptance criteria to GH-57 (see Section I.1) before research begins
   - *Status:* [ ] Open
 - [ ] **Environment**
   - *Risk:* External article URL may become unavailable
@@ -174,7 +179,8 @@ This section maps validated requirements to test scenarios. Because GH-57 is a r
   - Verify research summary document is produced with applicable insights (positive)
   - Verify insights reference specific FullSend components where applicable (positive)
   - Verify follow-up issues are filed for actionable recommendations (positive)
-- **Tier:** Functional
+  - Verify research output does not include recommendations that duplicate existing FullSend capabilities (negative)
+- **Tier:** [Functional]
 - **Priority:** P2
 
 **Coverage Summary:**
@@ -185,8 +191,9 @@ This section maps validated requirements to test scenarios. Because GH-57 is a r
 | Validated requirements | 1 |
 | Rejected requirements | 0 |
 | Functional scenarios | 3 |
+| Negative scenarios | 1 |
 | End-to-End scenarios | 0 |
-| Total test scenarios | 3 |
+| Total test scenarios | 4 |
 
 **Rejected Requirements:** None. The validation gate ("Would removing FullSend's core orchestration make this test meaningless?") was applied. The research task is specific to improving FullSend's review capabilities, so it passes the scope check, though with minimal testable surface area.
 
