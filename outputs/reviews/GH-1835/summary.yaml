@@ -1,0 +1,22 @@
+status: success
+jira_id: GH-1835
+verdict: APPROVED_WITH_FINDINGS
+confidence: LOW
+weighted_score: 95
+findings:
+  critical: 0
+  major: 2
+  minor: 4
+  actionable: 5
+  total: 6
+reviewed: outputs/stp/GH-1835/GH-1835_test_plan.md
+report: outputs/reviews/GH-1835/GH-1835_stp_review.md
+dimension_scores:
+  rule_compliance: 94
+  requirement_coverage: 100
+  scenario_quality: 90
+  risk_accuracy: 100
+  scope_boundary: 100
+  strategy: 70
+  metadata: 95
+scope_downgrade: false
