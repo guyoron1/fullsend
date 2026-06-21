@@ -1,0 +1,1120 @@
+---
+# Software Test Description (STD) — GH-54
+# Generated: 2026-06-21
+# Source: outputs/stp/GH-54/GH-54_test_plan.md
+
+document_metadata:
+  std_version: "2.1-enhanced"
+  generated_date: "2026-06-21"
+  jira_issue: "GH-54"
+  jira_summary: "Explore Gastown and Evaluate Relevance to FullSend"
+  source_bugs: []
+  stp_reference:
+    file: "outputs/stp/GH-54/GH-54_test_plan.md"
+    version: "v1"
+    sections_covered: "Section III - Requirements-to-Tests Mapping"
+  related_prs: []
+  total_scenarios: 11
+  functional_count: 11
+  e2e_count: 0
+  p0_count: 0
+  p1_count: 9
+  p2_count: 2
+
+code_generation_config:
+  std_version: "2.1-enhanced"
+  framework: "testing"
+  assertion_library: "testify"
+  language: "go"
+  package_name: "tests"
+  context_init: "context.Background()"
+  imports:
+    standard:
+      - "context"
+      - "testing"
+      - "os"
+      - "path/filepath"
+      - "strings"
+      - "encoding/json"
+    test_framework:
+      - path: "github.com/stretchr/testify/assert"
+      - path: "github.com/stretchr/testify/require"
+    project:
+      - "github.com/fullsend-ai/fullsend/internal/config"
+      - "github.com/fullsend-ai/fullsend/internal/forge"
+  timeout_constants:
+    default: "30s"
+    setup: "60s"
+  helper_library_imports: []
+
+common_preconditions:
+  infrastructure:
+    - name: "GitHub Actions runner"
+      requirement: "Standard GitHub Actions runner with internet access"
+      validation: "gh auth status"
+    - name: "Go toolchain"
+      requirement: "Go 1.23+"
+      validation: "go version"
+    - name: "GitHub CLI"
+      requirement: "gh CLI authenticated with repo access"
+      validation: "gh auth status"
+  operators: []
+  cluster_configuration:
+    topology: "None"
+    cpu_features: "Standard"
+    storage: "Standard runner disk"
+    network: "Internet access to GitHub repositories (Gastown, gascity, goosetown)"
+  rbac_requirements:
+    - permission: "read on public GitHub repositories"
+      scope: "GitHub API"
+      validation: "gh api repos/steveyegge/gastown --jq '.full_name'"
+
+scenarios:
+  # ============================================================
+  # Requirement: Evaluation document covers Gastown architecture
+  #              and FullSend relevance (GH-54, P1)
+  # ============================================================
+
+  - scenario_id: "001"
+    test_id: "TS-GH-54-001"
+    tier: "Functional"
+    priority: "P1"
+    mvp: true
+    requirement_id: "GH-54"
+
+    variables:
+      closure_scope:
+        - name: "evalDocPath"
+          type: "string"
+          initialized_in: "TestSetup"
+          used_in: ["TestSetup", "Test"]
+          comment: "Path to evaluation document"
+        - name: "docContent"
+          type: "string"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Raw content of evaluation document"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Gastown evaluation document completeness"
+      context:
+        description: "When evaluation document is produced"
+        decorators: []
+      it:
+        description: "should cover all three projects (Gastown, gascity, goosetown)"
+        test_id_format: "[test_id:TS-GH-54-001]"
+
+    code_structure: |
+      func TestEvalDocCoversAllProjects(t *testing.T) {
+        // Setup: locate evaluation document
+        // Test: verify document references all three projects
+        // Cleanup: none required
+      }
+
+    test_objective:
+      title: "Verify evaluation document exists and covers all three projects (Gastown, gascity, goosetown)"
+      what: |
+        Validates that the evaluation deliverable exists as a document artifact and
+        contains substantive coverage of all three related projects: Gastown (original),
+        gascity (re-architecture), and goosetown (community fork). Each project must
+        be referenced by name with dedicated analysis sections.
+      why: |
+        The core purpose of GH-54 is to evaluate three related projects for FullSend
+        relevance. An incomplete evaluation that omits any project would fail the
+        research objective and produce gaps in the architectural decision record.
+      acceptance_criteria:
+        - "Evaluation document file exists at expected output path"
+        - "Document contains dedicated sections for Gastown, gascity, and goosetown"
+        - "Each project section contains at least a description and relevance assessment"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+
+    specific_preconditions:
+      - name: "Evaluation document"
+        requirement: "Evaluation document produced by GH-54 research task"
+        validation: "File exists at expected path"
+
+    test_data:
+      resource_definitions:
+        - name: "expected_projects"
+          type: "StringSlice"
+          yaml: |
+            - "gastown"
+            - "gascity"
+            - "goosetown"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Locate evaluation document in output directory"
+          command: "filepath.Glob(outputDir + '/*evaluation*')"
+          validation: "At least one file matches the evaluation document pattern"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Read evaluation document content"
+          command: "os.ReadFile(evalDocPath)"
+          validation: "File is readable and non-empty"
+        - step_id: "TEST-02"
+          action: "Verify document references Gastown"
+          command: "strings.Contains(content, 'gastown') or strings.Contains(content, 'Gastown')"
+          validation: "Document contains Gastown references"
+        - step_id: "TEST-03"
+          action: "Verify document references gascity"
+          command: "strings.Contains(content, 'gascity') or strings.Contains(content, 'gascity')"
+          validation: "Document contains gascity references"
+        - step_id: "TEST-04"
+          action: "Verify document references goosetown"
+          command: "strings.Contains(content, 'goosetown') or strings.Contains(content, 'goosetown')"
+          validation: "Document contains goosetown references"
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Evaluation document exists"
+        condition: "File exists at expected output path"
+        failure_impact: "Research task deliverable missing entirely"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "All three projects covered"
+        condition: "Document references Gastown, gascity, and goosetown"
+        failure_impact: "Incomplete evaluation missing key projects"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "gh CLI"
+      scenario_specific_rbac: []
+
+  - scenario_id: "002"
+    test_id: "TS-GH-54-002"
+    tier: "Functional"
+    priority: "P1"
+    mvp: true
+    requirement_id: "GH-54"
+
+    variables:
+      closure_scope:
+        - name: "docContent"
+          type: "string"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Raw content of evaluation document"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Gastown evaluation architecture analysis"
+      context:
+        description: "When evaluation document is reviewed for architecture content"
+        decorators: []
+      it:
+        description: "should include architecture analysis for each project"
+        test_id_format: "[test_id:TS-GH-54-002]"
+
+    code_structure: |
+      func TestEvalIncludesArchitectureAnalysis(t *testing.T) {
+        // Setup: read evaluation document
+        // Test: verify architecture analysis sections exist for each project
+        // Cleanup: none required
+      }
+
+    test_objective:
+      title: "Verify evaluation includes architecture analysis for each project"
+      what: |
+        Validates that the evaluation document contains architecture analysis for each
+        of the three projects. Architecture analysis should cover code structure,
+        design patterns, and technical approach used by each project.
+      why: |
+        Architecture analysis is essential for assessing compatibility with FullSend's
+        own architecture. Without understanding how each project is structured,
+        an adoption decision cannot be well-informed.
+      acceptance_criteria:
+        - "Document contains architecture analysis section for Gastown"
+        - "Document contains architecture analysis section for gascity"
+        - "Document contains architecture analysis section for goosetown"
+        - "Each analysis discusses code structure or design patterns"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+
+    specific_preconditions:
+      - name: "Evaluation document with architecture content"
+        requirement: "Evaluation document produced with architecture sections"
+        validation: "Document contains architecture-related keywords"
+
+    test_data:
+      resource_definitions:
+        - name: "architecture_keywords"
+          type: "StringSlice"
+          yaml: |
+            - "architecture"
+            - "design"
+            - "structure"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Read evaluation document"
+          command: "os.ReadFile(evalDocPath)"
+          validation: "Document content loaded successfully"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify architecture analysis exists for each project"
+          command: "Check for architecture-related sections per project"
+          validation: "Each project has architecture discussion"
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Architecture analysis present for all projects"
+        condition: "Document contains architecture analysis for Gastown, gascity, goosetown"
+        failure_impact: "Evaluation lacks technical depth needed for adoption decision"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: "003"
+    test_id: "TS-GH-54-003"
+    tier: "Functional"
+    priority: "P1"
+    mvp: true
+    requirement_id: "GH-54"
+
+    variables:
+      closure_scope:
+        - name: "docContent"
+          type: "string"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Raw content of evaluation document"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Gastown capability mapping to FullSend"
+      context:
+        description: "When evaluation maps capabilities to problem areas"
+        decorators: []
+      it:
+        description: "should map Gastown capabilities to FullSend problem areas"
+        test_id_format: "[test_id:TS-GH-54-003]"
+
+    code_structure: |
+      func TestEvalMapsCapabilitiesToFullSend(t *testing.T) {
+        // Setup: read evaluation document
+        // Test: verify mapping of capabilities to FullSend problem areas
+        // Cleanup: none required
+      }
+
+    test_objective:
+      title: "Verify evaluation maps Gastown capabilities to FullSend problem areas"
+      what: |
+        Validates that the evaluation document maps capabilities and features from
+        the Gastown ecosystem to FullSend's known problem areas, including agent
+        orchestration, sandbox execution, and forge platform abstraction.
+      why: |
+        The primary value of this research is determining relevance to FullSend.
+        A capability mapping ensures the evaluation is actionable, connecting
+        external project features to concrete FullSend needs.
+      acceptance_criteria:
+        - "Document maps external capabilities to FullSend problem areas"
+        - "FullSend problem areas referenced include agent orchestration, sandbox, or forge"
+        - "Mapping includes assessment of overlap or complementarity"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions:
+        - name: "fullsend_problem_areas"
+          type: "StringSlice"
+          yaml: |
+            - "agent"
+            - "sandbox"
+            - "forge"
+            - "orchestration"
+            - "harness"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Read evaluation document"
+          command: "os.ReadFile(evalDocPath)"
+          validation: "Document content loaded"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Check for FullSend problem area references"
+          command: "Search for keywords: agent, sandbox, forge, orchestration, harness"
+          validation: "At least 2 FullSend problem areas referenced in context of mapping"
+        - step_id: "TEST-02"
+          action: "Verify capability mapping structure"
+          command: "Check for mapping/comparison language connecting external to FullSend"
+          validation: "Document contains relevance assessment language"
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Capability mapping to FullSend exists"
+        condition: "Document maps Gastown capabilities to FullSend problem areas"
+        failure_impact: "Evaluation has no actionable relevance assessment"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Requirement: Integration impact analysis identifies
+  #              regression-sensitive FullSend surfaces (P1)
+  # ============================================================
+
+  - scenario_id: "004"
+    test_id: "TS-GH-54-004"
+    tier: "Functional"
+    priority: "P1"
+    mvp: true
+    requirement_id: "GH-54"
+
+    variables:
+      closure_scope:
+        - name: "docContent"
+          type: "string"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Raw content of evaluation document"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "forge.Client integration surface identification"
+      context:
+        description: "When evaluation analyzes FullSend integration surfaces"
+        decorators: []
+      it:
+        description: "should identify forge.Client interface as primary integration surface"
+        test_id_format: "[test_id:TS-GH-54-004]"
+
+    code_structure: |
+      func TestEvalIdentifiesForgeClient(t *testing.T) {
+        // Setup: read evaluation document
+        // Test: verify forge.Client identified as integration surface
+        // Cleanup: none required
+      }
+
+    test_objective:
+      title: "Verify evaluation identifies forge.Client interface as primary integration surface"
+      what: |
+        Validates that the evaluation document identifies the forge.Client interface
+        as the primary integration surface in FullSend's codebase. The STP's LSP
+        analysis found 115 references across 36 files, making it the highest-impact
+        integration point for any external project adoption.
+      why: |
+        forge.Client is the most referenced interface in FullSend's platform
+        abstraction layer. Any integration that touches this surface would have
+        the widest regression blast radius. Identifying it is critical for
+        accurate impact assessment.
+      acceptance_criteria:
+        - "Document references forge.Client as an integration surface"
+        - "Document acknowledges the scope of forge.Client usage across the codebase"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions:
+        - name: "forge_client_keywords"
+          type: "StringSlice"
+          yaml: |
+            - "forge.Client"
+            - "forge"
+            - "platform abstraction"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Read evaluation document"
+          command: "os.ReadFile(evalDocPath)"
+          validation: "Document content loaded"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Search for forge.Client references"
+          command: "strings.Contains(content, 'forge.Client') || strings.Contains(content, 'forge')"
+          validation: "Document references forge.Client or forge interface"
+        - step_id: "TEST-02"
+          action: "Verify integration surface context"
+          command: "Check for integration/surface/impact language near forge references"
+          validation: "forge.Client discussed in integration context"
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "forge.Client identified as integration surface"
+        condition: "Document references forge.Client as primary integration point"
+        failure_impact: "Highest-impact integration surface not identified in evaluation"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: "005"
+    test_id: "TS-GH-54-005"
+    tier: "Functional"
+    priority: "P1"
+    mvp: true
+    requirement_id: "GH-54"
+
+    variables:
+      closure_scope:
+        - name: "docContent"
+          type: "string"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Raw content of evaluation document"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Harness/sandbox execution layer impact"
+      context:
+        description: "When evaluation assesses sandbox integration impact"
+        decorators: []
+      it:
+        description: "should assess impact on harness/sandbox execution layer"
+        test_id_format: "[test_id:TS-GH-54-005]"
+
+    code_structure: |
+      func TestEvalAssessesHarnessSandboxImpact(t *testing.T) {
+        // Setup: read evaluation document
+        // Test: verify harness/sandbox impact assessment
+        // Cleanup: none required
+      }
+
+    test_objective:
+      title: "Verify evaluation assesses impact on harness/sandbox execution layer"
+      what: |
+        Validates that the evaluation document assesses the potential impact on
+        FullSend's harness.Harness struct and sandbox execution layer. This layer
+        controls sandbox configuration and agent execution environment.
+      why: |
+        The harness/sandbox execution layer is a core FullSend component. Any
+        integration affecting this layer could disrupt agent execution reliability.
+        Impact assessment ensures regression testing scope is understood.
+      acceptance_criteria:
+        - "Document references harness or sandbox execution layer"
+        - "Document assesses potential impact on sandbox configuration"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Read evaluation document"
+          command: "os.ReadFile(evalDocPath)"
+          validation: "Document content loaded"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Search for harness/sandbox references"
+          command: "strings.Contains(content, 'harness') || strings.Contains(content, 'sandbox')"
+          validation: "Document references harness or sandbox layer"
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Harness/sandbox impact assessed"
+        condition: "Document discusses impact on harness/sandbox execution layer"
+        failure_impact: "Core execution layer impact not evaluated"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: "006"
+    test_id: "TS-GH-54-006"
+    tier: "Functional"
+    priority: "P1"
+    mvp: true
+    requirement_id: "GH-54"
+
+    variables:
+      closure_scope:
+        - name: "docContent"
+          type: "string"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Raw content of evaluation document"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "config.OrgConfig integration impact"
+      context:
+        description: "When evaluation documents configuration changes"
+        decorators: []
+      it:
+        description: "should document potential config.OrgConfig changes"
+        test_id_format: "[test_id:TS-GH-54-006]"
+
+    code_structure: |
+      func TestEvalDocumentsOrgConfigChanges(t *testing.T) {
+        // Setup: read evaluation document
+        // Test: verify config.OrgConfig impact documented
+        // Cleanup: none required
+      }
+
+    test_objective:
+      title: "Verify evaluation documents potential config.OrgConfig changes"
+      what: |
+        Validates that the evaluation document addresses potential changes to
+        config.OrgConfig and PerRepoConfig if Gastown concepts are adopted.
+        These configuration structures control org-level and per-repo settings.
+      why: |
+        Configuration management is a cross-cutting concern. Changes to OrgConfig
+        affect all organizations using FullSend. Documenting potential config changes
+        ensures migration and compatibility risks are identified early.
+      acceptance_criteria:
+        - "Document references config.OrgConfig or configuration management"
+        - "Document discusses potential configuration changes from integration"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Read evaluation document"
+          command: "os.ReadFile(evalDocPath)"
+          validation: "Document content loaded"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Search for config.OrgConfig or configuration references"
+          command: "strings.Contains(content, 'OrgConfig') || strings.Contains(content, 'config')"
+          validation: "Document references configuration management"
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "config.OrgConfig impact documented"
+        condition: "Document discusses potential configuration changes"
+        failure_impact: "Configuration migration risks not identified"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Requirement: Evaluation produces actionable recommendation
+  #              with supporting evidence (P1)
+  # ============================================================
+
+  - scenario_id: "007"
+    test_id: "TS-GH-54-007"
+    tier: "Functional"
+    priority: "P1"
+    mvp: true
+    requirement_id: "GH-54"
+
+    variables:
+      closure_scope:
+        - name: "docContent"
+          type: "string"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Raw content of evaluation document"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Evaluation recommendation"
+      context:
+        description: "When evaluation concludes with a recommendation"
+        decorators: []
+      it:
+        description: "should conclude with adopt/defer/reject recommendation"
+        test_id_format: "[test_id:TS-GH-54-007]"
+
+    code_structure: |
+      func TestEvalHasRecommendation(t *testing.T) {
+        // Setup: read evaluation document
+        // Test: verify adopt/defer/reject recommendation exists
+        // Cleanup: none required
+      }
+
+    test_objective:
+      title: "Verify evaluation concludes with adopt/defer/reject recommendation"
+      what: |
+        Validates that the evaluation document contains a clear recommendation
+        using one of the standard decision categories: adopt (integrate now),
+        defer (revisit later), or reject (not suitable). The recommendation must
+        be explicit and unambiguous.
+      why: |
+        A research evaluation without a clear recommendation fails to provide
+        actionable guidance. The adopt/defer/reject framework ensures the
+        evaluation leads to a concrete decision.
+      acceptance_criteria:
+        - "Document contains a recommendation section"
+        - "Recommendation uses adopt, defer, or reject language"
+        - "Recommendation is clearly stated, not buried in analysis"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions:
+        - name: "recommendation_keywords"
+          type: "StringSlice"
+          yaml: |
+            - "adopt"
+            - "defer"
+            - "reject"
+            - "recommend"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Read evaluation document"
+          command: "os.ReadFile(evalDocPath)"
+          validation: "Document content loaded"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Search for recommendation section"
+          command: "Check for recommendation/conclusion section heading"
+          validation: "Recommendation section exists"
+        - step_id: "TEST-02"
+          action: "Verify recommendation uses standard language"
+          command: "Search for adopt/defer/reject keywords"
+          validation: "At least one recommendation keyword present"
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Recommendation exists"
+        condition: "Document contains explicit adopt/defer/reject recommendation"
+        failure_impact: "Evaluation lacks actionable conclusion"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: "008"
+    test_id: "TS-GH-54-008"
+    tier: "Functional"
+    priority: "P1"
+    mvp: true
+    requirement_id: "GH-54"
+
+    variables:
+      closure_scope:
+        - name: "docContent"
+          type: "string"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Raw content of evaluation document"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Recommendation justification"
+      context:
+        description: "When recommendation references FullSend architecture"
+        decorators: []
+      it:
+        description: "should include justification referencing FullSend architecture"
+        test_id_format: "[test_id:TS-GH-54-008]"
+
+    code_structure: |
+      func TestRecommendationHasJustification(t *testing.T) {
+        // Setup: read evaluation document
+        // Test: verify justification references FullSend architecture
+        // Cleanup: none required
+      }
+
+    test_objective:
+      title: "Verify recommendation includes justification referencing FullSend architecture"
+      what: |
+        Validates that the recommendation is supported by justification that
+        specifically references FullSend's architecture, components, or problem
+        areas. The justification should explain why the recommendation is appropriate
+        given FullSend's specific technical context.
+      why: |
+        A recommendation without FullSend-specific justification is generic and
+        unconvincing. Grounding the decision in FullSend's architecture ensures
+        the evaluation was thorough and the recommendation is well-reasoned.
+      acceptance_criteria:
+        - "Recommendation section contains justification"
+        - "Justification references FullSend components or architecture"
+        - "Justification connects external project features to FullSend needs"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Read evaluation document"
+          command: "os.ReadFile(evalDocPath)"
+          validation: "Document content loaded"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify justification references FullSend"
+          command: "Search for FullSend architecture references near recommendation"
+          validation: "Justification mentions FullSend components"
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Justification references FullSend architecture"
+        condition: "Recommendation justification mentions FullSend components or architecture"
+        failure_impact: "Recommendation lacks FullSend-specific grounding"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: "009"
+    test_id: "TS-GH-54-009"
+    tier: "Functional"
+    priority: "P1"
+    mvp: true
+    requirement_id: "GH-54"
+
+    variables:
+      closure_scope:
+        - name: "docContent"
+          type: "string"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Raw content of evaluation document"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Follow-up issue identification"
+      context:
+        description: "When evaluation recommends adoption"
+        decorators: []
+      it:
+        description: "should identify follow-up implementation issues if adoption recommended"
+        test_id_format: "[test_id:TS-GH-54-009]"
+
+    code_structure: |
+      func TestEvalIdentifiesFollowUpIssues(t *testing.T) {
+        // Setup: read evaluation document
+        // Test: verify follow-up issues identified if adoption recommended
+        // Cleanup: none required
+      }
+
+    test_objective:
+      title: "Verify evaluation identifies follow-up implementation issues if adoption recommended"
+      what: |
+        Validates that the evaluation document identifies concrete follow-up
+        implementation issues or next steps if the recommendation is to adopt
+        or explore further. This ensures the evaluation transitions smoothly
+        from research to implementation planning.
+      why: |
+        Research without follow-up actions risks becoming shelf-ware. Identifying
+        specific implementation issues ensures continuity between evaluation
+        and execution, with clear ownership and scope for next steps.
+      acceptance_criteria:
+        - "Document identifies follow-up actions or implementation issues"
+        - "Follow-up items are specific enough to be filed as issues"
+        - "If recommendation is reject, document explains why no follow-up needed"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Read evaluation document"
+          command: "os.ReadFile(evalDocPath)"
+          validation: "Document content loaded"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Search for follow-up or next steps section"
+          command: "Search for follow-up/next steps/implementation keywords"
+          validation: "Follow-up section or next steps identified"
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Follow-up issues identified"
+        condition: "Document contains follow-up actions or explains their absence"
+        failure_impact: "Research findings may not transition to implementation"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Requirement: Error handling for inaccessible or deprecated
+  #              external projects (P2)
+  # ============================================================
+
+  - scenario_id: "010"
+    test_id: "TS-GH-54-010"
+    tier: "Functional"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-54"
+
+    variables:
+      closure_scope:
+        - name: "docContent"
+          type: "string"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Raw content of evaluation document"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Repository accessibility documentation"
+      context:
+        description: "When evaluation documents repository status"
+        decorators: []
+      it:
+        description: "should document repository accessibility status for all three projects"
+        test_id_format: "[test_id:TS-GH-54-010]"
+
+    code_structure: |
+      func TestEvalDocumentsRepoAccessibility(t *testing.T) {
+        // Setup: read evaluation document
+        // Test: verify accessibility status documented for all repos
+        // Cleanup: none required
+      }
+
+    test_objective:
+      title: "Verify evaluation documents repository accessibility status for all three projects"
+      what: |
+        Validates that the evaluation document records the accessibility status
+        of all three repositories (Gastown, gascity, goosetown) at the time of
+        evaluation. This includes whether repos are public, archived, or unavailable.
+      why: |
+        External repositories can change status (archived, deleted, made private)
+        at any time. Documenting accessibility status provides a snapshot for
+        future reference and identifies potential blockers for adoption.
+      acceptance_criteria:
+        - "Document records accessibility status for each repository"
+        - "Status includes whether repo is public, archived, or unavailable"
+        - "Repository URLs or references are provided"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions:
+        - name: "expected_repos"
+          type: "StringSlice"
+          yaml: |
+            - "steveyegge/gastown"
+            - "gascity"
+            - "aaif-goose/goosetown"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Read evaluation document"
+          command: "os.ReadFile(evalDocPath)"
+          validation: "Document content loaded"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify repository URLs or references present"
+          command: "Search for GitHub URLs or repo name references"
+          validation: "All three repository references found"
+        - step_id: "TEST-02"
+          action: "Check for accessibility status language"
+          command: "Search for status-related keywords (public, archived, accessible, available)"
+          validation: "Accessibility status documented"
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Repository accessibility documented"
+        condition: "All three repos have accessibility status recorded"
+        failure_impact: "Missing baseline for future availability assessment"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: "011"
+    test_id: "TS-GH-54-011"
+    tier: "Functional"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-54"
+
+    variables:
+      closure_scope:
+        - name: "docContent"
+          type: "string"
+          initialized_in: "Test"
+          used_in: ["Test"]
+          comment: "Raw content of evaluation document"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "Gastown deprecation handling"
+      context:
+        description: "When original Gastown is deprecated in favor of gascity"
+        decorators: []
+      it:
+        description: "should handle case where original Gastown is deprecated in favor of gascity"
+        test_id_format: "[test_id:TS-GH-54-011]"
+
+    code_structure: |
+      func TestEvalHandlesGastownDeprecation(t *testing.T) {
+        // Setup: read evaluation document
+        // Test: verify deprecation/re-architecture relationship documented
+        // Cleanup: none required
+      }
+
+    test_objective:
+      title: "Verify evaluation handles case where original Gastown is deprecated in favor of gascity"
+      what: |
+        Validates that the evaluation document addresses the relationship between
+        Gastown (original) and gascity (re-architecture), documenting whether
+        the original project is deprecated and how the evaluation accounts for
+        this transition.
+      why: |
+        Evaluating a deprecated project without acknowledging its successor would
+        produce misleading recommendations. Understanding the Gastown-to-gascity
+        transition is essential for accurate relevance assessment.
+      acceptance_criteria:
+        - "Document acknowledges Gastown to gascity re-architecture"
+        - "Document explains which version(s) are current/maintained"
+        - "Evaluation focuses on the current/maintained version for adoption assessment"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Read evaluation document"
+          command: "os.ReadFile(evalDocPath)"
+          validation: "Document content loaded"
+
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify Gastown-gascity relationship documented"
+          command: "Search for re-architecture/deprecated/successor language"
+          validation: "Relationship between Gastown and gascity acknowledged"
+        - step_id: "TEST-02"
+          action: "Verify evaluation focuses on current version"
+          command: "Check that gascity receives primary evaluation focus"
+          validation: "Current/maintained version prioritized"
+
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Gastown deprecation handled"
+        condition: "Document addresses Gastown to gascity transition"
+        failure_impact: "Evaluation may recommend adopting deprecated project"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+---
