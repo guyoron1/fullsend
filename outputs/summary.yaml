@@ -1,0 +1,12 @@
+status: success
+jira_id: GH-2247
+file_path: /sandbox/workspace/output/GH-2247_test_plan.md
+test_counts:
+  unit_tests: 14
+  functional: 3
+  e2e: 0
+  total: 17
+validation:
+  checks: 15
+  passed: 15
+  failed: 0
