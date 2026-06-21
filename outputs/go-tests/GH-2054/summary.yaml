@@ -1,0 +1,12 @@
+status: success
+jira_id: GH-2054
+std_source: outputs/std/GH-2054/GH-2054_test_description.yaml
+languages:
+  - language: go
+    framework: testing
+    files:
+      - body_consistency_test.go
+      - synthesize_body_test.go
+    test_count: 22
+total_test_count: 22
+lsp_patterns_used: false
