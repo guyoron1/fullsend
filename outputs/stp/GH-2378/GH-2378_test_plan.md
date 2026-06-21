@@ -4,11 +4,11 @@
 
 ### **Metadata & Tracking**
 
-- **Enhancement:** [GH-2378](https://github.com/fullsend-ai/fullsend/issues/2378)
+- **Enhancement:** N/A — bug fix
 - **Feature Tracking:** [GH-2378](https://github.com/fullsend-ai/fullsend/issues/2378)
-- **Epic Tracking:** [GH-2378](https://github.com/fullsend-ai/fullsend/issues/2378)
+- **Epic Tracking:** N/A — no parent epic
 - **QE Owner:** Unassigned
-- **Owning SIG:** N/A
+- **Owning SIG:** Runner
 - **Participating SIGs:** N/A
 
 **Document Conventions:** Priority levels follow P0 (critical) > P1 (important) > P2 (edge case). Test tiers: Functional (single-feature isolation), End-to-End (multi-feature workflow).
@@ -23,16 +23,16 @@ When a code agent run terminates due to an API error (e.g., 429 RESOURCE_EXHAUST
 
 #### **I.1 - Requirement & User Story Review Checklist**
 
-- [ ] **Reviewed the relevant requirements.** -- Confirmed the requirement is clear: the status comment must accurately reflect agent outcome when no PR is created.
+- [x] **Reviewed the relevant requirements.** -- Confirmed the requirement is clear: the status comment must accurately reflect agent outcome when no PR is created.
   - GH-2378 describes the gap between agent session failure (`is_error: true`) and the misleading "Success" status comment.
-  - PR #2375 is the related manual fix by a confused human; PR #2381 is the automated fix under test.
-- [ ] **Confirmed clear user stories and understood. Understand the value and customer use cases.** -- The primary user is a developer who invokes `/fs-code` and relies on the status comment as their main signal of outcome.
+  - [PR #2375](https://github.com/fullsend-ai/fullsend/pull/2375) is the related manual fix by a confused human; [PR #2381](https://github.com/fullsend-ai/fullsend/pull/2381) is the automated fix under test.
+- [x] **Confirmed clear user stories and understood. Understand the value and customer use cases.** -- The primary user is a developer who invokes `/fs-code` and relies on the status comment as their main signal of outcome.
   - When it says "Success" but no PR appears, the user wastes time investigating or retrying blindly.
-- [ ] **Confirmed requirements are **testable and unambiguous**.** -- The validation criteria are concrete and testable: status comment must say "Failed" on agent error, "Success" on actual success, and intentional no-ops must remain unaffected.
+- [x] **Confirmed requirements are **testable and unambiguous**.** -- The validation criteria are concrete and testable: status comment must say "Failed" on agent error, "Success" on actual success, and intentional no-ops must remain unaffected.
   - Exit code propagation is deterministic and observable via environment variable.
-- [ ] **Ensured acceptance criteria are **defined clearly**.** -- Four acceptance criteria specified in the issue body are verifiable.
+- [x] **Ensured acceptance criteria are **defined clearly**.** -- Four acceptance criteria specified in the issue body are verifiable.
   - (1) Status comment says "Failed" on error, (2) includes failure reason, (3) normal success unaffected, (4) intentional no-change unaffected.
-- [ ] **Confirmed coverage for NFRs.** -- Non-functional requirements considered.
+- [x] **Confirmed coverage for NFRs.** -- Non-functional requirements considered.
   - No performance, security, or scalability impact — changes are confined to exit-code propagation and conditional string formatting in shell scripts.
 
 #### **I.2 - Known Limitations**
@@ -42,15 +42,15 @@ When a code agent run terminates due to an API error (e.g., 429 RESOURCE_EXHAUST
 
 #### **I.3 - Technology and Design Review**
 
-- [ ] **Developer handoff completed.** -- PR #2381 provides clear description of root cause (variable scope ordering in Go defers) and the fix approach.
+- [x] **Developer handoff completed.** -- [PR #2381](https://github.com/fullsend-ai/fullsend/pull/2381) provides clear description of root cause (variable scope ordering in Go defers) and the fix approach.
   - Root cause: `lastExitCode` was declared after the post-script defer closure, making it invisible to the closure.
-- [ ] **Technology challenges reviewed.** -- No new technologies introduced.
+- [x] **Technology challenges reviewed.** -- No new technologies introduced.
   - The fix uses standard Go variable scoping and shell environment variables.
-- [ ] **Test environment needs assessed.** -- Shell-based tests in `post-code-test.sh` are self-contained; Go unit tests exist for `runAgent`.
+- [x] **Test environment needs assessed.** -- Shell-based tests in `post-code-test.sh` are self-contained; Go unit tests exist for `runAgent`.
   - 13 existing test functions exercise `runAgent` (confirmed via LSP `incomingCalls`).
-- [ ] **API extensions reviewed.** -- One new environment variable interface: `AGENT_EXIT_CODE` passed from Go runner to post-script.
+- [x] **API extensions reviewed.** -- One new environment variable interface: `AGENT_EXIT_CODE` passed from Go runner to post-script.
   - This is an internal interface, not user-facing API.
-- [ ] **Topology and deployment considerations reviewed.** -- No topology impact; the change runs within the existing sandbox execution model.
+- [x] **Topology and deployment considerations reviewed.** -- No topology impact; the change runs within the existing sandbox execution model.
 
 ---
 
@@ -134,7 +134,7 @@ No new or special tools required. Standard Go testing framework and bash shell t
 
 #### **II.4 - Entry Criteria**
 
-- [ ] PR #2381 is merged or branch `agent/2378-status-comment-agent-error` is available for testing
+- [ ] [PR #2381](https://github.com/fullsend-ai/fullsend/pull/2381) is merged or branch `agent/2378-status-comment-agent-error` is available for testing
 - [ ] Go module dependencies are resolved (`go mod download`)
 - [ ] Shell test file `post-code-test.sh` is executable
 - [ ] `AGENT_EXIT_CODE` environment variable is supported by the runner (run.go change deployed)
@@ -143,7 +143,7 @@ No new or special tools required. Standard Go testing framework and bash shell t
 
 - [ ] **Timeline**
   - *Risk:* Low — fix is small (3 files, ~123 additions) and well-scoped
-  - *Mitigation:* Shell tests already included in PR #2381
+  - *Mitigation:* Shell tests already included in [PR #2381](https://github.com/fullsend-ai/fullsend/pull/2381)
   - *Status:* [ ] Resolved
 - [ ] **Coverage**
   - *Risk:* Medium — agents that exit 0 but fail internally (JSONL `is_error: true` without non-zero exit) will still report success
@@ -176,8 +176,8 @@ No new or special tools required. Standard Go testing framework and bash shell t
 
 #### **III.1 - Requirements-to-Tests Mapping**
 
-- **[GH-2378]** -- Agent exit code is propagated from Go runner to post-script via AGENT_EXIT_CODE environment variable
-  - *Test Scenario:* Verify AGENT_EXIT_CODE env var is set on post-script command [Functional]
+- **[GH-2378]** -- Agent exit status is propagated from Go runner to post-processing pipeline
+  - *Test Scenario:* Verify agent exit status is propagated to post-processing pipeline [Functional]
   - *Priority:* P0
   - *Evidence:* LSP analysis — `runAgent` (run.go:120) sets `AGENT_EXIT_CODE` via `fmt.Sprintf` at line 543; `lastExitCode` moved before defer at line 516
 
@@ -187,7 +187,7 @@ No new or special tools required. Standard Go testing framework and bash shell t
   - *Test Scenario:* Verify noop exit when agent exit code is zero and no feature branch exists [Functional]
   - *Priority:* P0
   - *Test Scenario:* Verify error on detached HEAD with non-zero exit code [Functional]
-  - *Priority:* P1
+  - *Priority:* P2
   - *Evidence:* post-code.sh lines 116-120 — new `AGENT_EXIT_CODE` check in branch validation section
 
 - **[GH-2378]** -- Status comment reports failure when agent errors on feature branch with no changed files
