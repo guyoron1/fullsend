@@ -165,12 +165,45 @@ jobs:
             fi
           fi
 
+          # Fallback: upstream issue number from conventional commit title.
+          # Mirrored upstream PRs use titles like "fix(#1835): ..." or "feat(#2096): ..."
+          # where #N is the upstream issue number, not the fork PR number.
+          if [[ -z "${JIRA_TICKET}" ]]; then
+            if [[ -z "${PR_TITLE:-}" ]]; then
+              PR_TITLE=$(gh api "repos/${{ github.repository }}/pulls/${PR_NUMBER}" --jq '.title' 2>/dev/null || true)
+            fi
+            if [[ -n "${PR_TITLE}" ]]; then
+              UPSTREAM_ISSUE=$(printf '%s\n' "${PR_TITLE}" | grep -oE '\(#[0-9]+\)' | head -1 | grep -oE '[0-9]+' || true)
+              if [[ -n "${UPSTREAM_ISSUE}" && "${UPSTREAM_ISSUE}" != "${PR_NUMBER}" ]]; then
+                JIRA_TICKET="GH-${UPSTREAM_ISSUE}"
+                echo "issue_source=github" >> "${GITHUB_OUTPUT}"
+                echo "issue_number=${UPSTREAM_ISSUE}" >> "${GITHUB_OUTPUT}"
+                echo "::notice::Upstream issue #${UPSTREAM_ISSUE} from PR title → ticket ${JIRA_TICKET}"
+              fi
+            fi
+          fi
+
+          # Fallback: upstream issue number from mirror branch name.
+          # Mirror branches use the pattern "mirror/{upstream_pr}-{issue}-{slug}".
+          if [[ -z "${JIRA_TICKET}" ]]; then
+            HEAD_REF="${{ steps.pr-info.outputs.head_ref }}"
+            if [[ "${HEAD_REF}" =~ ^mirror/[0-9]+-([0-9]+)- ]]; then
+              UPSTREAM_ISSUE="${BASH_REMATCH[1]}"
+              if [[ -n "${UPSTREAM_ISSUE}" && "${UPSTREAM_ISSUE}" != "${PR_NUMBER}" ]]; then
+                JIRA_TICKET="GH-${UPSTREAM_ISSUE}"
+                echo "issue_source=github" >> "${GITHUB_OUTPUT}"
+                echo "issue_number=${UPSTREAM_ISSUE}" >> "${GITHUB_OUTPUT}"
+                echo "::notice::Upstream issue #${UPSTREAM_ISSUE} from branch name → ticket ${JIRA_TICKET}"
+              fi
+            fi
+          fi
+
           # Last resort: use the PR number itself as the ticket.
           if [[ -z "${JIRA_TICKET}" ]]; then
             JIRA_TICKET="GH-${PR_NUMBER}"
             echo "issue_source=github" >> "${GITHUB_OUTPUT}"
             echo "issue_number=${PR_NUMBER}" >> "${GITHUB_OUTPUT}"
-            echo "::notice::No linked Issue found — using PR number as ticket: ${JIRA_TICKET}"
+            echo "::warning::No linked Issue found — using PR number as ticket: ${JIRA_TICKET}. This may analyze the wrong issue if the fork has issues with the same number."
           fi
 
           # Set issue_source to jira if not already set to github.
