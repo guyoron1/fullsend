@@ -1,0 +1,1032 @@
+---
+# Software Test Description (STD) - v2.1-enhanced
+# Generated from STP: outputs/stp/GH-2432/GH-2432_test_plan.md
+# Jira: GH-2432 - Retry PR Merge on 409 "Head Branch Out of Date"
+
+document_metadata:
+  std_version: "2.1-enhanced"
+  generated_date: "2026-06-21"
+  jira_issue: "GH-2432"
+  jira_summary: "Retry PR Merge on 409 'Head Branch Out of Date'"
+  source_bugs: []
+  stp_reference:
+    file: "outputs/stp/GH-2432/GH-2432_test_plan.md"
+    version: "v1"
+    sections_covered: "Section III - Requirements-to-Tests Mapping"
+  related_prs:
+    - repo: "fullsend-ai/fullsend"
+      pr_number: 2434
+      url: "https://github.com/fullsend-ai/fullsend/pull/2434"
+      title: "Retry PR merge on 409 (embed retry in MergeChangeProposal)"
+      merged: false
+    - repo: "fullsend-ai/fullsend"
+      pr_number: 2435
+      url: "https://github.com/fullsend-ai/fullsend/pull/2435"
+      title: "Add UpdatePullRequestBranch interface method"
+      merged: true
+  owning_sig: "N/A"
+  participating_sigs: []
+  total_scenarios: 13
+  tier_1_count: 0
+  tier_2_count: 0
+  unit_count: 0
+  functional_count: 10
+  e2e_count: 3
+  p0_count: 4
+  p1_count: 6
+  p2_count: 3
+  existing_coverage_count: 0
+  new_count: 13
+  test_strategy_mode: "auto"
+
+code_generation_config:
+  std_version: "2.1-enhanced"
+  framework: "testing"
+  assertion_library: "testify"
+  language: "go"
+  package_name: "github"
+  imports:
+    standard:
+      - "context"
+      - "fmt"
+      - "net/http"
+      - "net/http/httptest"
+      - "testing"
+      - "time"
+    framework:
+      - path: "github.com/stretchr/testify/assert"
+      - path: "github.com/stretchr/testify/require"
+    project:
+      - path: "github.com/fullsend-ai/fullsend/internal/forge/github"
+
+common_preconditions:
+  infrastructure:
+    - name: "Go toolchain"
+      requirement: "Go 1.26+"
+      validation: "go version"
+    - name: "Test dependencies"
+      requirement: "testify assertion library"
+      validation: "go list -m github.com/stretchr/testify"
+  environment:
+    - name: "Unit tests"
+      requirement: "No external dependencies; httptest mock servers used"
+      validation: "go test ./internal/forge/github/ -run TestMerge -v"
+    - name: "E2E tests"
+      requirement: "GitHub org (halfsend) with test repos and valid GH_TOKEN"
+      validation: "echo $GH_TOKEN | wc -c"
+  cluster_configuration:
+    topology: "N/A"
+    cpu_virtualization: "N/A"
+    storage: "N/A"
+    network: "GitHub API access required for E2E tests"
+
+scenarios:
+  # ============================================================
+  # FUNCTIONAL SCENARIOS (P0) - Core 409 retry logic
+  # ============================================================
+
+  - scenario_id: 1
+    test_id: "TS-GH-2432-001"
+    test_type: "functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-2432"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify merge succeeds after 409 with branch update"
+      what: |
+        Tests that MergeChangeProposal detects a 409 "Head branch out of date"
+        response, calls the update-branch API to sync the PR branch, waits for
+        the branch to update, and then successfully retries the merge.
+      why: |
+        This is the core fix for the flaky E2E failure. Without retry logic,
+        concurrent reconcile workflow pushes cause enrollment PR merges to fail
+        intermittently, breaking CI reliability.
+      acceptance_criteria:
+        - "MergeChangeProposal returns nil error when first attempt returns 409 and retry succeeds"
+        - "Update-branch API is called between the failed merge and the retry"
+        - "The merge PUT request is sent at least twice"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with httptest mock server"
+
+    specific_preconditions: []
+
+    test_data:
+      mock_responses:
+        - name: "first_merge_attempt"
+          status_code: 409
+          body: '{"message": "Head branch was modified. Review and try the merge again."}'
+        - name: "update_branch"
+          status_code: 202
+          body: '{"message": "Updating pull request branch."}'
+        - name: "retry_merge_attempt"
+          status_code: 200
+          body: '{"merged": true, "message": "Pull Request successfully merged"}'
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create httptest server with sequenced responses"
+          command: "httptest.NewServer with handler returning 409 then 200 for merge, 202 for update-branch"
+          validation: "Server starts and URL is accessible"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call MergeChangeProposal with PR number"
+          command: "client.MergeChangeProposal(ctx, prNumber)"
+          validation: "Returns nil error"
+        - step_id: "TEST-02"
+          action: "Verify update-branch was called"
+          command: "Assert update-branch endpoint received PUT request"
+          validation: "Request count for update-branch is 1"
+        - step_id: "TEST-03"
+          action: "Verify merge was retried"
+          command: "Assert merge endpoint received 2 PUT requests"
+          validation: "Total merge request count is 2"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close httptest server"
+          command: "server.Close()"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "MergeChangeProposal returns no error after successful retry"
+        condition: "err == nil"
+        failure_impact: "Core retry logic is broken; 409 errors will still fail merges"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "Update-branch API was invoked between attempts"
+        condition: "updateBranchCallCount == 1"
+        failure_impact: "Retry without branch update will likely fail again with same 409"
+
+    dependencies:
+      external_tools:
+        - "net/http/httptest (stdlib)"
+
+  - scenario_id: 2
+    test_id: "TS-GH-2432-002"
+    test_type: "functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-2432"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify update-branch called before retry"
+      what: |
+        Validates the ordering guarantee: after receiving a 409 on merge,
+        MergeChangeProposal must call the update-branch API before attempting
+        the next merge. This ensures the PR branch is synced with the base.
+      why: |
+        Retrying merge without updating the branch would result in the same 409
+        error. The update-branch call is the critical step that resolves the
+        out-of-date condition.
+      acceptance_criteria:
+        - "PUT /repos/{owner}/{repo}/pulls/{number}/update-branch is called after 409"
+        - "The update-branch request occurs before the second merge attempt"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with httptest mock server and request ordering tracking"
+
+    specific_preconditions: []
+
+    test_data:
+      mock_responses:
+        - name: "merge_409"
+          status_code: 409
+          body: '{"message": "Head branch was modified."}'
+        - name: "update_branch_success"
+          status_code: 202
+          body: '{"message": "Updating pull request branch."}'
+        - name: "merge_success"
+          status_code: 200
+          body: '{"merged": true}'
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create httptest server that records request order"
+          command: "httptest.NewServer with request log capturing URL path and method"
+          validation: "Server captures requests in order"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call MergeChangeProposal"
+          command: "client.MergeChangeProposal(ctx, prNumber)"
+          validation: "Returns nil error"
+        - step_id: "TEST-02"
+          action: "Inspect request log for ordering"
+          command: "Assert request[0]=PUT merge, request[1]=PUT update-branch, request[2]=PUT merge"
+          validation: "Update-branch call is between the two merge attempts"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close httptest server"
+          command: "server.Close()"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Update-branch request precedes retry merge request"
+        condition: "requestLog indexOf(update-branch) < requestLog indexOf(second merge)"
+        failure_impact: "Merge retry may fail if branch not updated first"
+
+    dependencies:
+      external_tools:
+        - "net/http/httptest (stdlib)"
+
+  - scenario_id: 3
+    test_id: "TS-GH-2432-003"
+    test_type: "functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-2432"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify merge error for update-branch failure"
+      what: |
+        Tests that when the update-branch API call itself fails (e.g., returns
+        a non-2xx status), MergeChangeProposal returns a descriptive error
+        rather than silently retrying with a stale branch.
+      why: |
+        If the update-branch API is unavailable or returns an error, continuing
+        to retry merge would be futile. The error must be surfaced so the caller
+        can handle it appropriately.
+      acceptance_criteria:
+        - "MergeChangeProposal returns an error when update-branch fails"
+        - "Error message indicates the update-branch failure"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with httptest mock server"
+
+    specific_preconditions: []
+
+    test_data:
+      mock_responses:
+        - name: "merge_409"
+          status_code: 409
+          body: '{"message": "Head branch was modified."}'
+        - name: "update_branch_failure"
+          status_code: 500
+          body: '{"message": "Internal server error"}'
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create httptest server returning 409 for merge and 500 for update-branch"
+          command: "httptest.NewServer with appropriate handler"
+          validation: "Server configured"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call MergeChangeProposal"
+          command: "client.MergeChangeProposal(ctx, prNumber)"
+          validation: "Returns non-nil error"
+        - step_id: "TEST-02"
+          action: "Verify error message content"
+          command: "assert.ErrorContains(t, err, expectedMessage)"
+          validation: "Error references update-branch failure"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close httptest server"
+          command: "server.Close()"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Error returned when update-branch API fails"
+        condition: "err != nil"
+        failure_impact: "Silent failure could lead to infinite retry loop or confusing errors"
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "Error message describes update-branch failure"
+        condition: "err.Error() contains update-branch context"
+        failure_impact: "Debugging difficulty if error message is generic"
+
+    dependencies:
+      external_tools:
+        - "net/http/httptest (stdlib)"
+
+  - scenario_id: 10
+    test_id: "TS-GH-2432-010"
+    test_type: "functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-2432"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify successful merge on first attempt"
+      what: |
+        Regression guard test: validates that the happy-path merge (no 409 conflict)
+        continues to work with no behavioral change. MergeChangeProposal should
+        return success immediately without calling update-branch or retrying.
+      why: |
+        The retry logic must not introduce regressions in the common case where
+        merge succeeds on the first attempt. This is the most frequent code path.
+      acceptance_criteria:
+        - "MergeChangeProposal returns nil error on 200 response"
+        - "Update-branch API is NOT called"
+        - "Only one merge request is sent"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with httptest mock server"
+
+    specific_preconditions: []
+
+    test_data:
+      mock_responses:
+        - name: "merge_success"
+          status_code: 200
+          body: '{"merged": true, "message": "Pull Request successfully merged"}'
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create httptest server returning 200 for merge"
+          command: "httptest.NewServer returning immediate success"
+          validation: "Server configured"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call MergeChangeProposal"
+          command: "client.MergeChangeProposal(ctx, prNumber)"
+          validation: "Returns nil error"
+        - step_id: "TEST-02"
+          action: "Verify no update-branch call"
+          command: "Assert update-branch endpoint received 0 requests"
+          validation: "updateBranchCallCount == 0"
+        - step_id: "TEST-03"
+          action: "Verify single merge attempt"
+          command: "Assert merge endpoint received exactly 1 request"
+          validation: "mergeCallCount == 1"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close httptest server"
+          command: "server.Close()"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Merge succeeds on first attempt without retry"
+        condition: "err == nil && mergeCallCount == 1"
+        failure_impact: "Regression in happy-path merge behavior"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "Update-branch is not invoked when merge succeeds"
+        condition: "updateBranchCallCount == 0"
+        failure_impact: "Unnecessary API calls slow down merge and waste rate limit"
+
+    dependencies:
+      external_tools:
+        - "net/http/httptest (stdlib)"
+
+  # ============================================================
+  # FUNCTIONAL SCENARIOS (P1) - Error handling and exhaustion
+  # ============================================================
+
+  - scenario_id: 4
+    test_id: "TS-GH-2432-004"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-2432"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify 422 error returned without retry"
+      what: |
+        Tests that non-409 HTTP errors (e.g., 422 Unprocessable Entity) from the
+        merge API are returned immediately to the caller without triggering the
+        retry loop or calling update-branch.
+      why: |
+        Only 409 errors indicate an out-of-date branch. Other errors (validation
+        failures, permission issues) should not trigger retry logic as they would
+        fail repeatedly with the same result.
+      acceptance_criteria:
+        - "MergeChangeProposal returns error on 422 response"
+        - "No retry attempt is made"
+        - "Update-branch API is not called"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with httptest mock server"
+
+    specific_preconditions: []
+
+    test_data:
+      mock_responses:
+        - name: "merge_422"
+          status_code: 422
+          body: '{"message": "Pull Request is not mergeable"}'
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create httptest server returning 422 for merge"
+          command: "httptest.NewServer with 422 handler"
+          validation: "Server configured"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call MergeChangeProposal"
+          command: "client.MergeChangeProposal(ctx, prNumber)"
+          validation: "Returns non-nil error"
+        - step_id: "TEST-02"
+          action: "Verify no retry or update-branch calls"
+          command: "Assert mergeCallCount == 1 and updateBranchCallCount == 0"
+          validation: "Only one merge request sent, no update-branch"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close httptest server"
+          command: "server.Close()"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Non-409 error returned immediately"
+        condition: "err != nil"
+        failure_impact: "Non-retryable errors would be retried wastefully"
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "No retry attempt for non-409 errors"
+        condition: "mergeCallCount == 1"
+        failure_impact: "Wasted API calls and delayed error reporting"
+
+    dependencies:
+      external_tools:
+        - "net/http/httptest (stdlib)"
+
+  - scenario_id: 5
+    test_id: "TS-GH-2432-005"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-2432"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify update-branch not called on non-409"
+      what: |
+        Explicitly validates that the update-branch API endpoint is never contacted
+        when the merge fails with a non-409 status code. This is a negative test
+        ensuring the 409-specific code path is properly guarded.
+      why: |
+        Calling update-branch on non-409 errors would be incorrect behavior and
+        could mask the actual error condition from the caller.
+      acceptance_criteria:
+        - "Update-branch endpoint receives zero requests when merge returns 422"
+        - "Error is propagated from the original merge failure"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with httptest mock server"
+
+    specific_preconditions: []
+
+    test_data:
+      mock_responses:
+        - name: "merge_422"
+          status_code: 422
+          body: '{"message": "Pull Request is not mergeable"}'
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create httptest server with request counter for update-branch"
+          command: "httptest.NewServer tracking update-branch calls"
+          validation: "Server with call counters configured"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call MergeChangeProposal"
+          command: "client.MergeChangeProposal(ctx, prNumber)"
+          validation: "Returns error"
+        - step_id: "TEST-02"
+          action: "Verify zero update-branch calls"
+          command: "assert.Equal(t, 0, updateBranchCallCount)"
+          validation: "updateBranchCallCount is 0"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close httptest server"
+          command: "server.Close()"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Update-branch not invoked for non-409 errors"
+        condition: "updateBranchCallCount == 0"
+        failure_impact: "Incorrect API calls on non-retryable errors"
+
+    dependencies:
+      external_tools:
+        - "net/http/httptest (stdlib)"
+
+  - scenario_id: 6
+    test_id: "TS-GH-2432-006"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-2432"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify exhaustion after 3 failed retries"
+      what: |
+        Tests that after receiving 409 on all 3 retry attempts (with successful
+        update-branch calls in between), MergeChangeProposal gives up and returns
+        an error indicating retry exhaustion.
+      why: |
+        Unbounded retries could hang indefinitely. The 3-attempt limit ensures
+        the operation fails cleanly within a bounded time (max ~9 seconds) and
+        surfaces the persistent conflict to the caller.
+      acceptance_criteria:
+        - "MergeChangeProposal returns error after 3 failed attempts"
+        - "Exactly 3 merge attempts are made"
+        - "Update-branch is called before each retry"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with httptest mock server"
+
+    specific_preconditions: []
+
+    test_data:
+      mock_responses:
+        - name: "merge_409_always"
+          status_code: 409
+          body: '{"message": "Head branch was modified."}'
+          repeat: 3
+        - name: "update_branch_success"
+          status_code: 202
+          body: '{"message": "Updating pull request branch."}'
+          repeat: 3
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create httptest server always returning 409 for merge and 202 for update-branch"
+          command: "httptest.NewServer with persistent 409 response"
+          validation: "Server configured"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call MergeChangeProposal"
+          command: "client.MergeChangeProposal(ctx, prNumber)"
+          validation: "Returns non-nil error"
+        - step_id: "TEST-02"
+          action: "Verify exactly 3 merge attempts"
+          command: "assert.Equal(t, 3, mergeCallCount)"
+          validation: "mergeCallCount == 3"
+        - step_id: "TEST-03"
+          action: "Verify update-branch called before each retry"
+          command: "assert.Equal(t, 3, updateBranchCallCount)"
+          validation: "updateBranchCallCount matches retry count"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close httptest server"
+          command: "server.Close()"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Error returned after retry exhaustion"
+        condition: "err != nil"
+        failure_impact: "Infinite retry loop on persistent 409"
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "Exactly 3 merge attempts made"
+        condition: "mergeCallCount == 3"
+        failure_impact: "Wrong number of retries violates bounded retry contract"
+
+    dependencies:
+      external_tools:
+        - "net/http/httptest (stdlib)"
+
+  - scenario_id: 7
+    test_id: "TS-GH-2432-007"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-2432"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify error message includes attempt count"
+      what: |
+        Validates that the error message returned after retry exhaustion includes
+        the number of attempts made, making it clear the retry logic was engaged
+        and how many times it tried.
+      why: |
+        Descriptive error messages are essential for debugging CI failures.
+        Knowing the attempt count helps distinguish between "never retried"
+        and "retried N times and still failed" scenarios.
+      acceptance_criteria:
+        - "Error message contains the attempt count (e.g., '3')"
+        - "Error message references the 409 status or out-of-date condition"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with httptest mock server"
+
+    specific_preconditions: []
+
+    test_data:
+      mock_responses:
+        - name: "merge_409_always"
+          status_code: 409
+          body: '{"message": "Head branch was modified."}'
+          repeat: 3
+        - name: "update_branch_success"
+          status_code: 202
+          body: '{"message": "Updating pull request branch."}'
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create httptest server always returning 409"
+          command: "httptest.NewServer with persistent 409"
+          validation: "Server configured"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call MergeChangeProposal and capture error"
+          command: "err := client.MergeChangeProposal(ctx, prNumber)"
+          validation: "Returns non-nil error"
+        - step_id: "TEST-02"
+          action: "Inspect error message for attempt count"
+          command: 'assert.Contains(t, err.Error(), "3")'
+          validation: "Error message includes attempt count"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close httptest server"
+          command: "server.Close()"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Error message includes attempt count"
+        condition: 'err.Error() contains "3" or attempt count indicator'
+        failure_impact: "Poor debuggability of merge failures in CI logs"
+
+    dependencies:
+      external_tools:
+        - "net/http/httptest (stdlib)"
+
+  # ============================================================
+  # FUNCTIONAL SCENARIOS (P2) - Context cancellation
+  # ============================================================
+
+  - scenario_id: 8
+    test_id: "TS-GH-2432-008"
+    test_type: "functional"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-2432"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify cancelled context aborts retry"
+      what: |
+        Tests that when the context is cancelled during the retry wait period
+        (between update-branch and the next merge attempt), MergeChangeProposal
+        stops retrying and returns promptly.
+      why: |
+        Context cancellation support ensures the retry loop respects timeouts
+        and shutdown signals. Without this, a cancelled operation could block
+        for up to 9 seconds waiting for retries to complete.
+      acceptance_criteria:
+        - "MergeChangeProposal returns within a short time after context cancellation"
+        - "No additional merge attempts after cancellation"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with context.WithCancel and httptest"
+
+    specific_preconditions: []
+
+    test_data:
+      mock_responses:
+        - name: "merge_409"
+          status_code: 409
+          body: '{"message": "Head branch was modified."}'
+        - name: "update_branch_success"
+          status_code: 202
+          body: '{"message": "Updating pull request branch."}'
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create context with cancel function"
+          command: "ctx, cancel := context.WithCancel(context.Background())"
+          validation: "Cancellable context created"
+        - step_id: "SETUP-02"
+          action: "Create httptest server that cancels context after first 409"
+          command: "Handler calls cancel() after responding with 409"
+          validation: "Server configured to trigger cancellation"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call MergeChangeProposal with cancellable context"
+          command: "client.MergeChangeProposal(ctx, prNumber)"
+          validation: "Returns error promptly"
+        - step_id: "TEST-02"
+          action: "Verify function returned quickly"
+          command: "Assert total duration < 5 seconds"
+          validation: "Did not block for full retry timeout"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close httptest server"
+          command: "server.Close()"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Function returns promptly after context cancellation"
+        condition: "duration < 5s"
+        failure_impact: "Cancelled operations could hang for up to 9 seconds"
+
+    dependencies:
+      external_tools:
+        - "net/http/httptest (stdlib)"
+
+  - scenario_id: 9
+    test_id: "TS-GH-2432-009"
+    test_type: "functional"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-2432"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify context error returned on cancellation"
+      what: |
+        Validates that when the context is cancelled during the retry wait,
+        the returned error wraps or is the context error (context.Canceled),
+        allowing the caller to distinguish cancellation from merge failure.
+      why: |
+        Callers need to differentiate between "merge failed after retries"
+        and "operation was cancelled." This enables proper error handling
+        and logging upstream.
+      acceptance_criteria:
+        - "Returned error is or wraps context.Canceled"
+        - "Error is distinguishable from a merge failure error"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with context.WithCancel"
+
+    specific_preconditions: []
+
+    test_data:
+      mock_responses:
+        - name: "merge_409"
+          status_code: 409
+          body: '{"message": "Head branch was modified."}'
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create cancellable context and httptest server"
+          command: "ctx, cancel := context.WithCancel(context.Background()); cancel after 409"
+          validation: "Context and server configured"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call MergeChangeProposal"
+          command: "err := client.MergeChangeProposal(ctx, prNumber)"
+          validation: "Returns non-nil error"
+        - step_id: "TEST-02"
+          action: "Verify error is context.Canceled"
+          command: "assert.ErrorIs(t, err, context.Canceled)"
+          validation: "Error wraps context.Canceled"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Close httptest server"
+          command: "server.Close()"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Error wraps context.Canceled"
+        condition: "errors.Is(err, context.Canceled)"
+        failure_impact: "Caller cannot distinguish cancellation from merge failure"
+
+    dependencies:
+      external_tools:
+        - "net/http/httptest (stdlib)"
+
+  # ============================================================
+  # END-TO-END SCENARIOS - Integration tests
+  # ============================================================
+
+  - scenario_id: 11
+    test_id: "TS-GH-2432-011"
+    test_type: "e2e"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-2432"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify enrollment install merges PR reliably"
+      what: |
+        E2E test validating that the full enrollment install flow completes
+        successfully, including the PR merge step, even when the reconcile
+        workflow pushes to the default branch concurrently.
+      why: |
+        This is the original failure scenario from GH-2432. The E2E test
+        (TestAdminInstallUninstall) must pass reliably with the retry fix
+        applied.
+      acceptance_criteria:
+        - "TestAdminInstallUninstall enrollment phase completes without merge errors"
+        - "Enrollment PR is merged successfully"
+
+    classification:
+      test_type: "E2E"
+      scope: "Multi-component"
+      automation_approach: "Go E2E test with real GitHub API"
+
+    specific_preconditions:
+      - name: "halfsend GitHub org"
+        requirement: "Test org with repos configured for enrollment testing"
+        validation: "gh api orgs/halfsend"
+      - name: "GH_TOKEN"
+        requirement: "Valid GitHub token with repo and org admin permissions"
+        validation: "gh auth status"
+
+    test_data:
+      environment:
+        - name: "test_org"
+          value: "halfsend"
+        - name: "test_repo"
+          value: "Configured in E2E test fixtures"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Ensure halfsend org and test repos are available"
+          command: "gh api orgs/halfsend"
+          validation: "Org accessible"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run admin install E2E test"
+          command: "go test ./e2e/admin/ -run TestAdminInstallUninstall -v -timeout 10m"
+          validation: "Test passes; enrollment PR merged"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Uninstall cleans up automatically in test"
+          command: "Handled by test teardown"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Enrollment PR merge completes without 409 error"
+        condition: "Test passes without merge-related errors"
+        failure_impact: "Enrollment flow is still flaky despite the fix"
+
+    dependencies:
+      external_tools:
+        - "GitHub API"
+        - "halfsend org"
+
+  - scenario_id: 12
+    test_id: "TS-GH-2432-012"
+    test_type: "e2e"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-2432"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify retry handles reconcile workflow race"
+      what: |
+        Validates that the retry mechanism handles the specific race condition
+        where the reconcile workflow pushes to the default branch between PR
+        creation and merge, causing the PR's base to fall behind.
+      why: |
+        This is the exact scenario that triggered GH-2432. The reconcile
+        workflow is asynchronous and can push at any time, so the merge
+        must be resilient to this timing.
+      acceptance_criteria:
+        - "Merge succeeds even when reconcile workflow pushes during the merge window"
+        - "Retry is transparent to the caller (no manual intervention needed)"
+
+    classification:
+      test_type: "E2E"
+      scope: "Multi-component"
+      automation_approach: "Go E2E test with real GitHub API"
+
+    specific_preconditions:
+      - name: "Active reconcile workflow"
+        requirement: "Reconcile workflow configured and running on test repo"
+        validation: "gh workflow list --repo halfsend/test-repo"
+
+    test_data:
+      environment:
+        - name: "test_org"
+          value: "halfsend"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Ensure reconcile workflow is active on test repo"
+          command: "Verify workflow is configured"
+          validation: "Workflow exists and is enabled"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run enrollment E2E test with logging"
+          command: "go test ./e2e/admin/ -run TestAdminInstallUninstall -v -timeout 10m"
+          validation: "Test passes; check logs for retry activity"
+        - step_id: "TEST-02"
+          action: "Review test output for retry indicators"
+          command: "Check logs for update-branch calls or retry messages"
+          validation: "Retry mechanism engaged if 409 occurred"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Test teardown handles cleanup"
+          command: "Handled by test"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Merge completes despite concurrent base branch updates"
+        condition: "E2E test passes"
+        failure_impact: "Race condition still causes flaky failures"
+
+    dependencies:
+      external_tools:
+        - "GitHub API"
+        - "GitHub Actions (reconcile workflow)"
+
+  - scenario_id: 13
+    test_id: "TS-GH-2432-013"
+    test_type: "e2e"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-2432"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify uninstall merges removal PR reliably"
+      what: |
+        E2E test validating that the uninstall flow's removal PR merge also
+        benefits from the retry logic, ensuring it succeeds even when the
+        base branch is updated concurrently.
+      why: |
+        While GH-2432 was triggered by the enrollment PR, the same race
+        condition can affect the uninstall removal PR. Both code paths
+        use MergeChangeProposal and should benefit from the retry fix.
+      acceptance_criteria:
+        - "Uninstall removal PR merges successfully"
+        - "No 409-related failures during uninstall"
+
+    classification:
+      test_type: "E2E"
+      scope: "Multi-component"
+      automation_approach: "Go E2E test with real GitHub API"
+
+    specific_preconditions:
+      - name: "Previous enrollment completed"
+        requirement: "Must run after successful enrollment install"
+        validation: "Enrollment state exists in test repo"
+
+    test_data:
+      environment:
+        - name: "test_org"
+          value: "halfsend"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Complete enrollment install first"
+          command: "Run install phase of TestAdminInstallUninstall"
+          validation: "Install phase passes"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run uninstall phase"
+          command: "Uninstall phase of TestAdminInstallUninstall"
+          validation: "Removal PR merged successfully"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Verify clean state after uninstall"
+          command: "Check test repo for removed enrollment artifacts"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Uninstall removal PR merges without 409 errors"
+        condition: "Uninstall phase passes"
+        failure_impact: "Uninstall flow is also vulnerable to the 409 race"
+
+    dependencies:
+      external_tools:
+        - "GitHub API"
+        - "halfsend org"

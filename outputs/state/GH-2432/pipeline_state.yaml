@@ -1,0 +1,72 @@
+# Pipeline State v1
+version: 1
+ticket_id: "GH-2432"
+project_id: "auto-detected"
+display_name: "pr-repo"
+created: "2026-06-21T00:00:00Z"
+updated: "2026-06-21T00:01:00Z"
+
+phases:
+  stp:
+    status: completed
+    started: "2026-06-21T00:00:00Z"
+    completed: "2026-06-21T00:00:00Z"
+    output: "outputs/stp/GH-2432/GH-2432_test_plan.md"
+    output_checksum: "sha256:82b9886b08c8d4b177089161ff7b065a5bd019bfa0cde07cc84881634ab7d766"
+    skills_used: []
+    error: null
+
+  stp_review:
+    status: skipped
+    started: null
+    completed: null
+    output: null
+    verdict: null
+    findings: null
+    error: "Auto-detected project — no formal approval infrastructure"
+
+  stp_refine:
+    status: skipped
+    started: null
+    completed: null
+    output: null
+    iterations: null
+    final_verdict: null
+    findings: null
+    error: null
+
+  std:
+    status: completed
+    started: "2026-06-21T00:00:00Z"
+    completed: "2026-06-21T00:01:00Z"
+    output: "outputs/std/GH-2432/GH-2432_test_description.yaml"
+    output_checksum: "sha256:dce1a23c84d1509373acea1101686a279eb36bf7b0240728d8120e2ce03c6c2a"
+    stp_checksum_at_generation: "sha256:82b9886b08c8d4b177089161ff7b065a5bd019bfa0cde07cc84881634ab7d766"
+    scenario_counts:
+      total: 13
+      functional: 10
+      e2e: 3
+    stubs:
+      go: "outputs/std/GH-2432/go-tests/"
+    error: null
+
+  std_review:
+    status: pending
+    verdict: null
+    findings: null
+    error: null
+
+  go_codegen:
+    status: pending
+    output: null
+    error: null
+
+  python_codegen:
+    status: pending
+    output: null
+    error: null
+
+  cluster_tests:
+    status: pending
+    output: null
+    error: null
