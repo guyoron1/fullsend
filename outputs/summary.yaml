@@ -1,25 +1,22 @@
 status: success
 jira_id: GH-2054
-file_path: /sandbox/workspace/output/GH-2054_test_plan.md
-test_counts:
-  unit_tests: 10
-  functional: 5
-  total: 15
-pr_analyzed:
-  - number: 2189
-    title: "fix(#2054): synthesize review body when findings contradict summary"
-    state: OPEN
-    files_changed: 3
-  - number: 2055
-    title: "fix(#2054): patch review summary when body contradicts findings"
-    state: CLOSED
-    files_changed: 2
-lsp_analysis:
-  calls_made: 7
-  files_analyzed:
-    - internal/cli/postreview.go
-  key_findings:
-    - "ensureBodyFindingsConsistency called from newPostReviewCmd (line 94) — single production caller"
-    - "synthesizeReviewBody called from ensureBodyFindingsConsistency (line 560) — internal only"
-    - "reviewActionToEvent shared with submitFormalReview (line 300) — regression risk"
-    - "sticky.Post receives patched body transparently at line 132"
+verdict: APPROVED_WITH_FINDINGS
+confidence: MEDIUM
+weighted_score: 89
+findings:
+  critical: 0
+  major: 3
+  minor: 5
+  actionable: 7
+  total: 8
+reviewed: outputs/stp/GH-2054/GH-2054_test_plan.md
+report: outputs/reviews/GH-2054/GH-2054_stp_review.md
+dimension_scores:
+  rule_compliance: 86
+  requirement_coverage: 90
+  scenario_quality: 88
+  risk_accuracy: 85
+  scope_boundary: 95
+  strategy: 95
+  metadata: 90
+scope_downgrade: false
