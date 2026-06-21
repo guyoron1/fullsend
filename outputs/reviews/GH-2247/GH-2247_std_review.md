@@ -1,4 +1,4 @@
-# STD Review Report: GH-2247
+# STD Review Report: GH-2247 (Re-Review)
 
 **Reviewed:**
 - STD YAML: `outputs/std/GH-2247/GH-2247_test_description.yaml`
@@ -8,23 +8,38 @@
 
 **Date:** 2026-06-21
 **Reviewer:** QualityFlow Automated Review (v1.1.0)
+**Review Type:** Re-review after revision
 **Review Rules Schema:** N/A (dynamic extraction, no static review_rules.yaml)
 
 ---
 
-## Verdict: NEEDS_REVISION
+## Verdict: APPROVED_WITH_FINDINGS
 
 ## Summary
 
 | Metric | Value |
 |:-------|:------|
 | Dimensions reviewed | 7/7 |
-| Critical findings | 1 |
-| Major findings | 3 |
-| Minor findings | 3 |
-| Actionable findings | 7 |
-| Weighted score | 79/100 |
-| Confidence | MEDIUM |
+| Critical findings | 0 |
+| Major findings | 0 |
+| Minor findings | 6 |
+| Actionable findings | 4 |
+| Weighted score | 93/100 |
+| Confidence | HIGH |
+
+## Previous Review Resolution
+
+All previously identified CRITICAL and MAJOR issues have been verified as resolved:
+
+| # | Finding ID | Severity | Description | Status |
+|:--|:-----------|:---------|:------------|:-------|
+| 1 | D1-1c-001 | CRITICAL | `p1_count` was 10, should be 11 | **FIXED** -- now `p1_count: 11` |
+| 2 | D2-2b-001 | MAJOR | `patterns` field missing from all 23 scenarios | **FIXED** -- all 23 now have `patterns.primary` |
+| 3 | D2-2b-002 | MAJOR | `variables.closure_scope` missing from 17 scenarios | **FIXED** -- all 23 now have `variables.closure_scope` |
+| 4 | D4.5-4.5a-001 | MAJOR | `related_prs` in `document_metadata` | **FIXED** -- section removed |
+| 5 | D2-2b-003 | MINOR | Tier names non-standard ("Unit Tests"/"Functional") | **FIXED** -- now "Tier 1"/"Tier 2" |
+| 6 | D5-5c-001 | MINOR | PSE Expected mixing primary/secondary assertions | Carried forward (stubs not modified) |
+| 7 | D4-4f-001 | MINOR | Assertion P1 for observability | Not actionable -- carried forward |
 
 ## Traceability Summary
 
@@ -32,8 +47,8 @@
 |:-------|:------|
 | STP scenarios | 23 |
 | STD scenarios | 23 |
-| Forward coverage (STP→STD) | 23/23 (100%) |
-| Reverse coverage (STD→STP) | 23/23 (100%) |
+| Forward coverage (STP->STD) | 23/23 (100%) |
+| Reverse coverage (STD->STP) | 23/23 (100%) |
 | Orphan STD scenarios | 0 |
 | Missing STD scenarios | 0 |
 
@@ -41,9 +56,9 @@
 
 ## Findings by Dimension
 
-### Dimension 1: STP-STD Traceability (Weight: 30% — Score: 90/100)
+### Dimension 1: STP-STD Traceability (Weight: 30% -- Score: 98/100)
 
-#### 1a. Forward Traceability (STP → STD)
+#### 1a. Forward Traceability (STP -> STD)
 
 All 23 STP scenarios in Section III have corresponding STD scenarios. Full bidirectional mapping:
 
@@ -56,9 +71,9 @@ All 23 STP scenarios in Section III have corresponding STD scenarios. Full bidir
 | 3.5 Pre-sentinel migration | 16, 17, 18 | TS-017 through TS-019 | 3/3 (100%) |
 | 3.6 No bogus PRs | 19, 20, 21, 22 | TS-020 through TS-023 | 4/4 (100%) |
 
-All requirement_ids are set to `GH-2247` which matches the STP ticket. Scenario text has strong keyword overlap (>80%) with STP scenario descriptions. No orphan or missing scenarios.
+All `requirement_id` fields are set to `GH-2247` matching the STP ticket. Scenario text has strong keyword overlap (>80%) with STP scenario descriptions. No orphan or missing scenarios.
 
-#### 1b. Reverse Traceability (STD → STP)
+#### 1b. Reverse Traceability (STD -> STP)
 
 All 23 STD scenarios map back to STP Section III rows. No orphan STD scenarios.
 
@@ -70,30 +85,28 @@ All 23 STD scenarios map back to STP Section III rows. No orphan STD scenarios.
 | `functional_count` | 4 | 4 | PASS |
 | `unit_test_count` | 19 | 19 | PASS |
 | `p0_count` | 11 | 11 | PASS |
-| `p1_count` | 10 | **11** | **FAIL** |
+| `p1_count` | 11 | 11 | PASS |
 | `p2_count` | 1 | 1 | PASS |
 
-**Finding D1-1c-001:**
-
-- **finding_id:** D1-1c-001
-- **severity:** CRITICAL
-- **dimension:** STP-STD Traceability
-- **description:** `document_metadata.p1_count` declares 10 but actual count of P1-priority scenarios is 11. The declared counts sum to 22 (11+10+1) but total_scenarios is 23, confirming an off-by-one error.
-- **evidence:** Actual P1 scenarios: 2, 4, 5, 5a, 8, 9, 10, 13, 15, 21, 22 = 11 scenarios. Metadata line: `p1_count: 10`
-- **remediation:** Change `p1_count: 10` to `p1_count: 11` in document_metadata.
-- **actionable:** true
+Priority breakdown verified:
+- P0 (11): scenarios 1, 3, 6, 7, 12, 14, 16, 17, 18, 19, 20
+- P1 (11): scenarios 2, 4, 5, 5a, 8, 9, 10, 13, 15, 21, 22
+- P2 (1): scenario 11
+- Sum: 11 + 11 + 1 = 23 = total_scenarios. PASS.
 
 #### 1d. STP Reference
 
-`stp_reference.file: "outputs/stp/GH-2247/GH-2247_test_plan.md"` — file exists and matches expected pattern. PASS.
+`stp_reference.file: "outputs/stp/GH-2247/GH-2247_test_plan.md"` -- file exists and matches. PASS.
 
 #### 1e. Priority-Testability Consistency
 
 All P0 scenarios describe fully testable assertions using mock infrastructure. No P0 scenario is documented as untestable or deferred. PASS.
 
+No findings in this dimension.
+
 ---
 
-### Dimension 2: STD YAML Structure (Weight: 20% — Score: 60/100)
+### Dimension 2: STD YAML Structure (Weight: 20% -- Score: 90/100)
 
 #### 2a. Document-Level Structure
 
@@ -113,186 +126,156 @@ All P0 scenarios describe fully testable assertions using mock infrastructure. N
 |:------|:--------------------|:------|
 | `scenario_id` | YES | Sequential with one non-numeric "5a" |
 | `test_id` | YES | All follow TS-GH-2247-NNN format |
-| `tier` | YES | Values: "Unit Tests" / "Functional" |
+| `tier` | YES | Values: "Tier 1" / "Tier 2" |
 | `priority` | YES | P0/P1/P2 |
 | `requirement_id` | YES | All "GH-2247" |
 | `test_objective` | YES | All have title, what, why, acceptance_criteria |
 | `test_steps` | YES | All have setup, test_execution, cleanup |
 | `assertions` | YES | At least 1 per scenario |
-| `patterns` | **NO — missing from all 23** | See finding D2-2b-001 |
-| `variables` | **NO — missing from 17/23** | See finding D2-2b-002 |
+| `patterns` | YES | All have `primary` pattern |
+| `variables` | YES | All have `closure_scope` |
 | `test_structure` | YES | All have type, function, subtest |
 | `code_structure` | YES | All have Go code template |
-| `test_data` | Partial (8/23) | Only drift detection scenarios have test_data |
+| `test_data` | Partial (2/23) | Only scenarios 1-2 have `content_fixtures` |
 
-**Finding D2-2b-001:**
+#### 2c. v2.1-Specific Checks
+
+This project uses Go `testing` framework (not Ginkgo), so Ginkgo-specific checks do not apply.
+
+- No `:=` vs `=` issues in code_structure templates: PASS
+- All scenarios with setup have corresponding cleanup steps: PASS
+
+**Finding D2-2b-001 (new):**
 
 - **finding_id:** D2-2b-001
-- **severity:** MAJOR
+- **severity:** MINOR
 - **dimension:** STD YAML Structure
-- **description:** The `patterns` field is missing from all 23 scenarios. Per v2.1-enhanced spec, each scenario should declare a primary pattern and helpers_required. This field is used by the code generator for template selection.
-- **evidence:** No scenario contains a `patterns:` key. The STD uses `test_type: "Positive"/"Negative"/"Edge Case"` which is a different concept.
-- **remediation:** Add a `patterns` block to each scenario with at minimum `primary: "custom"` since this project does not have a pattern library. For bash script testing scenarios, a pattern like `script-function-test` or `mock-cli-integration` would be appropriate.
-- **actionable:** true
+- **description:** The metadata fields `unit_test_count` and `functional_count` retain the old STP naming convention ("Unit Tests" / "Functional") in their field names, while the scenario `tier` values have been updated to "Tier 1" / "Tier 2". The field names are stable identifiers and the data values are correct (19 + 4 = 23), so this is a cosmetic inconsistency only.
+- **evidence:** `document_metadata.unit_test_count: 19` and `document_metadata.functional_count: 4` -- field names reference old tier terminology.
+- **remediation:** Consider renaming to `tier1_count` and `tier2_count` in a future schema revision. No immediate action required.
+- **actionable:** false
 
-**Finding D2-2b-002:**
+**Finding D2-2b-002 (new):**
 
 - **finding_id:** D2-2b-002
-- **severity:** MAJOR
+- **severity:** MINOR
 - **dimension:** STD YAML Structure
-- **description:** The `variables` field with `closure_scope` is missing from 17 of 23 scenarios (scenarios 6-22). Only scenarios 1-5 and 5a declare closure scope variables. The v2.1-enhanced spec requires this field for code generation.
-- **evidence:** Scenarios 6 through 22 have no `variables:` key. These scenarios test sentinel preservation, header preservation, injection guard, pre-sentinel migration, and full reconciliation — all of which would logically require test variables for content fixtures.
-- **remediation:** Add `variables.closure_scope` to each missing scenario. At minimum, declare the key test fixture variables (e.g., `remoteContent`, `templateContent`, `blobOutput`) with type, initialized_in, and used_in fields.
+- **description:** The `test_data` field with `content_fixtures` is present only on scenarios 1 and 2. Other scenarios that reference specific content (e.g., scenario 9 with license headers, scenario 12 with injection payloads) describe fixtures only in prose within `test_steps`. Acceptable for Phase 1 stubs.
+- **evidence:** Only scenarios 1-2 have `test_data.content_fixtures`. Scenarios 9, 10, 12, 14, etc. describe fixture content only in step prose.
+- **remediation:** Consider adding `test_data` blocks to scenarios with well-defined content fixtures during Phase 2 implementation. Not blocking.
 - **actionable:** true
 
-**Finding D2-2b-003:**
+**Finding D2-2b-003 (new):**
 
 - **finding_id:** D2-2b-003
 - **severity:** MINOR
 - **dimension:** STD YAML Structure
-- **description:** Tier values use non-standard names "Unit Tests" and "Functional" instead of the spec-defined "Tier 1" and "Tier 2". While internally consistent with the STP, this diverges from the v2.1-enhanced specification.
-- **evidence:** 19 scenarios use `tier: "Unit Tests"`, 4 scenarios use `tier: "Functional"`.
-- **remediation:** Consider mapping to standard tier names or documenting the project-specific tier naming convention in the project config. Not blocking since the STP uses the same terminology.
+- **description:** The `specific_preconditions` field appears only on scenario 1. Other scenarios document preconditions within `test_steps.setup` and PSE docstrings. This is acceptable but inconsistent.
+- **evidence:** Only scenario 1 has `specific_preconditions`. Remaining 22 scenarios omit it.
+- **remediation:** Either add `specific_preconditions` to all scenarios or remove from scenario 1 for consistency. Low priority.
 - **actionable:** true
 
-#### 2c. v2.1-Specific Checks
+---
 
-This project uses Go `testing` framework (not Ginkgo), so Ginkgo-specific checks (Ordered decorator, ExpectWithOffset, BeforeAll) do not apply. No Tier 2 / Python scenarios exist.
+### Dimension 3: Pattern Matching Correctness (Weight: 10% -- Score: 95/100)
 
-- No `:=` vs `=` issues in code_structure templates (templates use comment pseudocode)
-- All scenarios with setup have corresponding cleanup steps: PASS
+#### 3a. Pattern Assignment
+
+All 23 scenarios now have `patterns.primary` values. Pattern distribution:
+
+| Pattern Name | Scenarios | Count | Assessment |
+|:-------------|:----------|:------|:-----------|
+| `base64-text-comparison` | 1, 2, 3, 4, 5, 5a | 6 | Correct -- all relate to drift detection via decoded text comparison |
+| `sentinel-invariant` | 6, 7, 8 | 3 | Correct -- all verify sentinel line presence in output blobs |
+| `header-preservation` | 9, 10, 11 | 3 | Correct -- all verify user header content survives updates |
+| `injection-guard` | 12, 13, 14, 15 | 4 | Correct -- all verify injection prevention behavior |
+| `pre-sentinel-migration` | 16, 17, 18 | 3 | Correct -- all verify legacy shim migration |
+| `mock-cli-integration` | 19, 20, 21, 22 | 4 | Correct -- all are end-to-end with mocked CLI tools |
+
+Patterns align 1:1 with STP requirement sections (3.1-3.6). Pattern names are descriptive and communicate the test domain clearly.
+
+#### 3b. Pattern Library Validation
+
+No pattern library exists for this project (`repo_files_fetch: false`). Custom pattern names are used, which is acceptable. The pattern names are self-documenting and internally consistent.
+
+No findings in this dimension.
 
 ---
 
-### Dimension 3: Pattern Matching Correctness (Weight: 10% — Score: 50/100)
-
-#### 3a–3c. Pattern, Helper, and Decorator Assessment
-
-No `patterns` field exists in any scenario (see D2-2b-001). Pattern matching correctness cannot be evaluated. The project does not maintain a pattern library (`patterns/tier1_patterns.yaml` not found).
-
-#### 3d. Pattern Library Validation
-
-Skipped — no pattern library available at `config/projects/fullsend/patterns/`.
-
-**Assessment:** This dimension scores 50/100 (neutral) due to complete absence of pattern metadata. The STD compensates with well-structured `test_type`, `test_structure`, and `code_structure` fields that provide equivalent guidance for code generation.
-
----
-
-### Dimension 4: Test Step Quality (Weight: 15% — Score: 92/100)
+### Dimension 4: Test Step Quality (Weight: 15% -- Score: 95/100)
 
 #### 4a. Step Completeness
 
-| Scenario | Setup Steps | Execution Steps | Cleanup Steps | Status |
-|:---------|:------------|:----------------|:--------------|:-------|
-| 1 | 4 | 1 | 1 | PASS |
-| 2 | 2 | 1 | 1 | PASS |
-| 3 | 1 | 1 | 1 | PASS |
-| 4 | 1 | 1 | 1 | PASS |
-| 5 | 1 | 1 | 1 | PASS |
-| 5a | 2 | 1 | 1 | PASS |
-| 6 | 1 | 2 | 1 | PASS |
-| 7 | 1 | 2 | 1 | PASS |
-| 8 | 1 | 1 | 1 | PASS |
-| 9 | 1 | 1 | 1 | PASS |
-| 10 | 1 | 1 | 1 | PASS |
-| 11 | 1 | 1 | 1 | PASS |
-| 12 | 1 | 1 | 1 | PASS |
-| 13 | 1 | 1 | 1 | PASS |
-| 14 | 1 | 1 | 1 | PASS |
-| 15 | 1 | 1 | 1 | PASS |
-| 16 | 1 | 1 | 1 | PASS |
-| 17 | 1 | 2 | 1 | PASS |
-| 18 | 1 | 2 | 1 | PASS |
-| 19 | 3 | 2 | 1 | PASS |
-| 20 | 2 | 3 | 1 | PASS |
-| 21 | 1 | 2 | 1 | PASS |
-| 22 | 2 | 2 | 1 | PASS |
+All 23 scenarios have:
+- `test_steps.setup` with 1-4 steps
+- `test_steps.test_execution` with 1-3 steps
+- `test_steps.cleanup` with exactly 1 step (rm -rf $TMPDIR)
 
-All scenarios have setup, test_execution, and cleanup. PASS.
+PASS.
 
 #### 4b. Step Quality
 
-Steps are specific and actionable throughout. Actions describe concrete operations ("Create temp directory and mock binaries", "Prepare template content base64-encoded", "Run drift comparison between template and remote"). Validations describe expected outcomes. Step IDs are sequential (SETUP-01, TEST-01, CLEANUP-01). PASS.
-
-#### 4b.2. Abstraction Level
-
-Steps use appropriate user-observable/tool-level language ("Run drift comparison", "Generate update blob via shim_with_header_b64()"). No inappropriate internal component references. PASS.
+Steps are specific and actionable throughout. Actions describe concrete operations. Validations describe expected outcomes. Step IDs are sequential (SETUP-01, TEST-01, CLEANUP-01). PASS.
 
 #### 4c. Logical Flow
 
-Setup creates resources (mock binaries, test content) before test execution uses them. Cleanup removes temp directories. No circular dependencies. PASS.
+Setup creates resources before test execution uses them. Cleanup removes temp directories. No circular dependencies. PASS.
 
-#### 4d. Upgrade Test Structure
+#### 4d. Test Dependency Structure
 
-No upgrade scenarios present. N/A.
+Scenarios within each test function are independent -- each sets up its own fixtures and cleans up. No cross-scenario dependencies. PASS.
 
-#### 4e. Test Dependency Structure
+#### 4e. Assertion Quality
 
-Scenarios within each test function (e.g., TestShimDriftDetection subtests) are independent — each sets up its own fixtures and cleans up. No cross-scenario dependencies. PASS.
+All assertions have specific descriptions, measurable conditions, failure_impact descriptions, and assigned priorities. Good mix of P0 and P1 assertions. Each scenario has 1-4 assertions. PASS.
 
-#### 4f. Assertion Quality
+#### 4f. Test Isolation
 
-All assertions have specific descriptions, measurable conditions, and assigned priorities. Good mix of P0 and P1 assertions. Each scenario has 1-3 assertions. PASS.
+All scenarios are self-contained with independent temp directories and mock binaries. No shared mutable state. PASS.
 
-**Finding D4-4f-001:**
-
-- **finding_id:** D4-4f-001
-- **severity:** MINOR
-- **dimension:** Test Step Quality
-- **description:** Scenario 19 (TS-GH-2247-020) has 3 assertions all at mixed P0/P1 priority which is appropriate, but the third assertion (ASSERT-03, "Up-to-date status logged") at P1 tests observability rather than correctness. This is appropriate but worth noting.
-- **evidence:** Scenario 19 ASSERT-03: `"Script output contains 'up-to-date' or 'current' for each repo"` at P1.
-- **remediation:** No change needed. The P1 priority correctly reflects the lower criticality of log output verification.
-- **actionable:** false
-
-#### 4g. Test Isolation
-
-All scenarios are self-contained. Each creates its own temp directory, mock binaries, and test content in setup. No shared mutable state between scenarios. Common_preconditions describe infrastructure requirements (Bash 4.4+, base64, jq) without assuming prior test execution. PASS.
-
-#### 4h. Error Path and Edge Case Coverage
+#### 4g. Error Path and Edge Case Coverage
 
 | Requirement | Positive | Negative | Edge Case | Assessment |
 |:------------|:---------|:---------|:----------|:-----------|
-| 3.1 Drift detection | 5 | 0 | 1 | Adequate — drift detection is comparison logic, not error handling |
-| 3.2 Sentinel preservation | 3 | 0 | 0 | Adequate — sentinel presence is a positive invariant check |
-| 3.3 Header preservation | 2 | 0 | 1 | Adequate — blank header edge case covered |
-| 3.4 Injection guard | 1 | 2 | 1 | Good — explicit negative tests for rejection + edge case |
-| 3.5 Pre-sentinel migration | 2 | 1 | 0 | Good — content duplication negative test |
-| 3.6 No bogus PRs | 3 | 1 | 0 | Good — explicit negative for no-blob-when-current |
+| 3.1 Drift detection | 5 | 0 | 1 | Adequate |
+| 3.2 Sentinel preservation | 3 | 0 | 0 | Adequate |
+| 3.3 Header preservation | 2 | 0 | 1 | Adequate |
+| 3.4 Injection guard | 1 | 2 | 1 | Good |
+| 3.5 Pre-sentinel migration | 2 | 1 | 0 | Good |
+| 3.6 No bogus PRs | 3 | 1 | 0 | Good |
 
-Overall error path coverage is appropriate for the nature of these tests (bash script string comparison and content manipulation).
+No findings in this dimension.
 
 ---
 
-### Dimension 4.5: STD Content Policy (Weight: 10% — Score: 75/100)
+### Dimension 4.5: STD Content Policy (Weight: 10% -- Score: 100/100)
 
-#### 4.5a. Banned Content in STD YAML
+#### 4.5a. Banned Content
 
-**Finding D4.5-4.5a-001:**
+| Check | Result |
+|:------|:-------|
+| `related_prs` in document_metadata | REMOVED (previously MAJOR) |
+| Hardcoded secrets / tokens | None found |
+| Real API keys | None found |
+| PII / real email addresses | None found |
+| Production URLs in test data | None found (all mocked) |
+| Profanity / inappropriate content | None found |
 
-- **finding_id:** D4.5-4.5a-001
-- **severity:** MAJOR
-- **dimension:** STD Content Policy
-- **description:** `document_metadata.related_prs` contains PR URLs which are implementation artifacts that belong in the STP, not in the STD. The STD describes *what* to test, not *what code changed*. The STP already references these PRs in Section 1.4 (Linked Issues).
-- **evidence:** Lines 16-26 of STD YAML contain `related_prs` with PR #66 and PR #2101 URLs: `"https://github.com/fullsend-ai/fullsend/pull/66"` and `"https://github.com/fullsend-ai/fullsend/pull/2101"`.
-- **remediation:** Remove the `related_prs` section from `document_metadata`. The STP already contains these references in Section 1.4 and the `stp_reference` field provides the link back to the STP.
-- **actionable:** true
+PASS.
 
 #### 4.5b. No Implementation Details in Stubs
 
-All stub files contain only:
-- PSE docstrings (Preconditions/Steps/Expected)
-- `t.Skip("Phase 1: Design only - awaiting implementation")` as pending marker
-- Standard library imports (`"testing"` only)
-
-No implementation code, fixture implementations, or concrete API calls in stubs. PASS.
+All stub files contain only PSE docstrings and `t.Skip()` markers. No implementation code. PASS.
 
 #### 4.5c. Test Environment Separation
 
-No infrastructure provisioning, cluster setup, or feature gate enablement in stubs. All stubs describe test logic only. PASS.
+No infrastructure provisioning in stubs. PASS.
+
+No findings in this dimension.
 
 ---
 
-### Dimension 5: PSE Docstring Quality (Weight: 10% — Score: 88/100)
+### Dimension 5: PSE Docstring Quality (Weight: 10% -- Score: 90/100)
 
 #### 5a. Go Stubs
 
@@ -305,68 +288,58 @@ No infrastructure provisioning, cluster setup, or feature gate enablement in stu
 | pre_sentinel_migration_stubs_test.go | 3 | 3/3 | Good |
 | full_reconciliation_stubs_test.go | 4 | 4/4 | Good |
 
-**All 23 subtests have PSE docstrings.** Quality assessment:
+All 23 subtests have PSE docstrings with Preconditions, Steps, and Expected sections.
 
-**Preconditions:** Specific and concrete across all stubs. Examples:
-- GOOD: "Template content base64-encoded without trailing newline" (TS-001)
-- GOOD: "Remote shim with 6+ line comment header above sentinel" (TS-011)
-- GOOD: "Mock gh configured with 4 repos in different states" (TS-023)
-
-**Steps:** Numbered and actionable. Examples:
-- GOOD: "1. Run drift comparison between template and remote content" (TS-001)
-- GOOD: "1. Generate migration blob via shim_with_header_b64()" (TS-018)
-
-**Expected:** Measurable outcomes. Examples:
-- GOOD: "Content is not flagged as stale" (TS-001)
-- GOOD: "'name:' appears exactly once in decoded blob" (TS-018)
-- GOOD: "No update branches created for any repo" (TS-020)
-
-**Additional checks:**
+**Structural quality checks:**
 - All test names include test_id in `[test_id:TS-GH-2247-NNN]` format: PASS
-- Module-level comments reference STP file: PASS
+- Module-level comments reference STP file and Jira ticket: PASS
+- `[NEGATIVE]` tags present on appropriate stubs (TS-013, TS-015, TS-018, TS-022): PASS
 - No PR URLs in stub docstrings: PASS
-- [NEGATIVE] tags present where appropriate (TS-013, TS-015, TS-018, TS-022): PASS
+- Package: `scaffold_test` -- consistent across all 6 files: PASS
+- Import: only `"testing"` -- appropriate for stubs: PASS
 
-**Finding D5-5c-001:**
+**Finding D5-5a-001 (carried forward):**
 
-- **finding_id:** D5-5c-001
+- **finding_id:** D5-5a-001
 - **severity:** MINOR
 - **dimension:** PSE Docstring Quality
-- **description:** Some PSE docstrings combine steps and expected results in the "Expected" section. For example, TS-020 Expected includes both outcome verification ("No update branches created") and observability ("Script output contains 'up-to-date'"). While both are valid expected results, separating primary assertions from secondary observations would improve clarity.
-- **evidence:** TS-020 Expected lists 3 items mixing primary assertions (no branches, no PRs) with observability (log output). TS-023 Expected similarly mixes 4 items across different concern levels.
-- **remediation:** Consider separating Expected items into primary (ASSERT-P0) and secondary (ASSERT-P1) groups within the PSE, matching the assertion priorities in the STD YAML.
+- **description:** Some PSE Expected sections in functional test stubs (TS-020, TS-023) combine primary assertions with observability checks without priority differentiation. This is a clarity concern, not a correctness issue. Stubs were not modified in this revision.
+- **evidence:** TS-020 Expected lists 3 items mixing P0 assertions (no branches, no PRs) with P1 observability (log output). TS-023 Expected mixes 4 items across priority levels.
+- **remediation:** Consider separating Expected items by assertion priority during Phase 2 implementation.
+- **actionable:** true
+
+**Finding D5-5a-002 (new):**
+
+- **finding_id:** D5-5a-002
+- **severity:** MINOR
+- **dimension:** PSE Docstring Quality
+- **description:** Go stub files do not include `//go:build e2e` build tag directives, though the STD specifies `build_tags: ["e2e"]` in `code_generation_config`. This means stubs will be discovered during normal `go test` runs (though they skip immediately). Acceptable for Phase 1.
+- **evidence:** No `//go:build` directive in any of the 6 stub files. STD line 48: `build_tags: ["e2e"]`.
+- **remediation:** Add build tag when implementing stubs in Phase 2.
 - **actionable:** true
 
 #### 5b. Python Stubs
 
-N/A — no Python stubs generated. This is consistent with the project configuration (`python_tests` toggle not explicitly set to true in project.yaml, and the STD targets Go `testing` framework).
+N/A -- not in scope.
 
-#### 5d. Stub Completeness
+#### 5c. Stub Completeness
 
-| STD Requirement Group | Expected Stub | Actual Stub | Status |
-|:----------------------|:--------------|:------------|:-------|
-| Shim drift detection (1-5a) | shim_drift_detection_stubs_test.go | Present (6 subtests) | PASS |
-| Sentinel preservation (6-8) | sentinel_preservation_stubs_test.go | Present (3 subtests) | PASS |
-| Header preservation (9-11) | header_preservation_stubs_test.go | Present (3 subtests) | PASS |
-| Injection guard (12-15) | injection_guard_stubs_test.go | Present (4 subtests) | PASS |
-| Pre-sentinel migration (16-18) | pre_sentinel_migration_stubs_test.go | Present (3 subtests) | PASS |
-| Full reconciliation (19-22) | full_reconciliation_stubs_test.go | Present (4 subtests) | PASS |
-
-All 23 STD scenarios have corresponding stub subtests. PASS.
+All 23 STD scenarios have corresponding stub subtests across 6 files. 6 parent test functions match 6 requirement groups. PASS.
 
 ---
 
-### Dimension 6: Code Generation Readiness (Weight: 5% — Score: 82/100)
+### Dimension 6: Code Generation Readiness (Weight: 5% -- Score: 92/100)
 
 #### 6a. Variable Declarations
 
-For the 6 scenarios with `variables.closure_scope`:
-- Variable names are valid Go identifiers: PASS
-- Types are valid Go types (`string`): PASS
-- `initialized_in` references valid hooks (`setup`): PASS
-- `used_in` references valid hooks (`setup`, `test`): PASS
+All 23 scenarios now have `variables.closure_scope` with:
+- `name`: valid Go identifiers
+- `type`: valid Go types (all `string`)
+- `initialized_in`: valid lifecycle stages (`setup` or `test`)
+- `used_in`: valid stage lists
+- `comment`: purpose descriptions
 
-17 scenarios without variables — code generator will need to infer variables from test_steps context. See D2-2b-002.
+PASS.
 
 #### 6b. Import Completeness
 
@@ -375,37 +348,53 @@ For the 6 scenarios with `variables.closure_scope`:
 - Test framework: testify/assert, testify/require
 - Project: github.com/fullsend-ai/fullsend/internal/scaffold
 
-The imports are comprehensive for the scenario types (bash script testing with mock binaries). The `os/exec` import supports running bash scripts, `encoding/base64` supports content encoding tests. PASS.
+Comprehensive for the scenario types. PASS.
 
 #### 6c. Code Structure Validity
 
-All 23 scenarios have `code_structure` fields with valid Go test function templates:
-- Proper `func TestXxx(t *testing.T)` or `t.Run(...)` structure
-- Consistent with `testing` framework (not Ginkgo)
-- Comment pseudocode describes setup/execute/assert flow
-- PASS
+All 23 scenarios have `code_structure` fields with valid Go test function templates using `t.Run()` subtests with setup/execute/assert comment markers. Consistent with Go `testing` framework. PASS.
 
-#### 6d. Timeout Appropriateness
+#### 6d. Test Structure
 
-No explicit timeout constants referenced in test steps. For bash script unit tests with mock binaries, this is appropriate — operations are local string comparisons and mock CLI calls with negligible latency. The functional tests (19-22) run full script execution but with mocked external calls, so standard Go test timeouts apply. PASS.
+All 23 scenarios declare `test_structure` with `type: "single"`, parent `function`, and `subtest` name matching Go stub conventions. PASS.
+
+No findings in this dimension.
 
 ---
 
-## Recommendations
+## Finding Summary
 
-1. **[CRITICAL]** `p1_count` metadata mismatch: declared 10 but actual is 11. — **Remediation:** Change `p1_count: 10` to `p1_count: 11` on line ~31 of the STD YAML. — **Actionable:** yes
+| ID | Severity | Dimension | Description | Actionable |
+|:---|:---------|:----------|:------------|:-----------|
+| D2-2b-001 | MINOR | YAML Structure | Field names `unit_test_count`/`functional_count` use old naming convention | No |
+| D2-2b-002 | MINOR | YAML Structure | `test_data` field inconsistently present (2/23 scenarios) | Yes |
+| D2-2b-003 | MINOR | YAML Structure | `specific_preconditions` only on scenario 1 | Yes |
+| D5-5a-001 | MINOR | PSE Quality | PSE Expected mixes primary/secondary assertions (carried forward) | Yes |
+| D5-5a-002 | MINOR | PSE Quality | Build tags not present in stub files (acceptable Phase 1) | Yes |
+| -- | MINOR | PSE Quality | Import list gap between config and stubs (informational, not tracked) | No |
 
-2. **[MAJOR]** `patterns` field missing from all 23 scenarios. — **Remediation:** Add `patterns: { primary: "script-function-test" }` (or equivalent) to each scenario. Since no pattern library exists, use descriptive custom pattern IDs that communicate the test domain (e.g., `"base64-comparison"`, `"sentinel-preservation"`, `"injection-guard"`). — **Actionable:** yes
+---
 
-3. **[MAJOR]** `variables.closure_scope` missing from 17 of 23 scenarios. — **Remediation:** Add `variables.closure_scope` to scenarios 6-22 declaring the key test fixture variables used in each scenario's test_steps (e.g., remoteContent, blobOutput, templateContent). — **Actionable:** yes
+## Verdict Rationale
 
-4. **[MAJOR]** `related_prs` in `document_metadata` violates STD content policy. — **Remediation:** Remove the `related_prs` section (lines 16-26). The STP already contains these PR references in Section 1.4 (Linked Issues). — **Actionable:** yes
+| Criterion | Threshold | Actual | Result |
+|:----------|:----------|:-------|:-------|
+| Critical findings | 0 for APPROVED | 0 | PASS |
+| Major findings | 0 for APPROVED | 0 | PASS |
+| Minor findings | N/A (informational) | 6 | NOTED |
 
-5. **[MINOR]** Tier values use non-standard names ("Unit Tests", "Functional") instead of spec-defined "Tier 1" / "Tier 2". — **Remediation:** Consider mapping to standard tier names or adding a project config field documenting the convention. — **Actionable:** yes
+**APPROVED_WITH_FINDINGS** -- The STD passes all critical quality gates. All previously identified CRITICAL (1) and MAJOR (3) issues have been resolved and verified. The remaining 6 MINOR findings are cosmetic or Phase-1-appropriate gaps that do not block test implementation. The STD demonstrates:
 
-6. **[MINOR]** PSE Expected sections in functional test stubs (TS-020, TS-023) mix primary assertions with observability checks without priority differentiation. — **Remediation:** Group Expected items by assertion priority to improve implementation clarity. — **Actionable:** yes
+- 100% bidirectional traceability (23/23 scenarios)
+- Correct metadata counts (p0: 11, p1: 11, p2: 1, total: 23)
+- All v2.1-enhanced required fields present on all scenarios
+- Well-structured patterns aligned 1:1 with STP requirement sections
+- Complete setup/execute/cleanup steps with validation on all scenarios
+- 23 Go stub subtests with PSE docstrings matching STD exactly
+- No content policy violations
+- Full code generation readiness with variables, imports, and code structures
 
-7. **[MINOR]** Assertion P1 priority for log output verification (scenario 19 ASSERT-03) is appropriate but could be documented as an "observability" assertion category. — **Remediation:** No action required; priority is correct. — **Actionable:** false
+The STD is ready for Phase 2 (test implementation).
 
 ---
 
@@ -417,10 +406,9 @@ No explicit timeout constants referenced in test steps. For bash script unit tes
 | STP file available | YES |
 | Go stubs present | YES (6 files, 23 subtests) |
 | Python stubs present | NO (not in scope) |
-| Pattern library available | NO |
+| Pattern library available | NO (custom patterns used) |
 | All scenarios reviewed | YES (23/23) |
-| Project review rules loaded | NO (dynamic extraction, no static file) |
+| Previous findings re-verified | YES (7/7 checked) |
+| Project review rules loaded | NO (dynamic extraction) |
 
-**Confidence rationale:** MEDIUM confidence. The STD YAML is well-formed and the STP is available for full traceability review. Go stubs are present and complete. However, no pattern library exists for Dimension 3 validation, and review rules were dynamically extracted without a static override file. The project uses Go `testing` framework (not Ginkgo), so several v2.1-enhanced checks (Ordered decorator, BeforeAll structure, ExpectWithOffset) are not applicable. Review precision is reduced for pattern matching but adequate for all other dimensions.
-
-**Review precision note:** Review rules were dynamically extracted from project config files. No `review_rules.yaml` static override exists. No `repo_rules` were fetched (`repo_files_fetch: false`). Pattern-specific validation (Dimension 3) operated at reduced precision.
+**Confidence: HIGH.** All artifacts are available and complete. Previous findings were individually verified against the updated STD. Pattern matching operated with custom patterns (no library) which is appropriate for this project. Go stubs were verified for structural completeness and PSE quality.
