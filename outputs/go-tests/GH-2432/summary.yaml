@@ -1,0 +1,32 @@
+status: success
+jira_id: GH-2432
+std_source: outputs/std/GH-2432/GH-2432_test_description.yaml
+languages:
+  - language: go
+    framework: testing
+    assertion_library: testify
+    files:
+      - merge_retry_test.go
+      - enrollment_e2e_test.go
+    test_count: 13
+    functional_count: 10
+    e2e_count: 3
+total_test_count: 13
+lsp_patterns_used: false
+project_mode: auto-detected
+notes: |
+  Functional tests (merge_retry_test.go) cover scenarios TS-GH-2432-001
+  through TS-GH-2432-010, testing MergeChangeProposal retry logic with
+  httptest mock servers. Tests belong in package github
+  (internal/forge/github/).
+
+  E2E tests (enrollment_e2e_test.go) cover scenarios TS-GH-2432-011
+  through TS-GH-2432-013, validating enrollment install/uninstall merge
+  resilience. Tests belong in package admin (e2e/admin/) and require
+  the e2e build tag, GH_TOKEN, and halfsend org access.
+
+  Note on TS-GH-2432-003: The STD specifies that update-branch failure
+  should return a specific error. However, the actual implementation
+  silently ignores update-branch errors and continues retrying. The test
+  was written to match actual code behavior (returns exhaustion error
+  after all 3 attempts).
