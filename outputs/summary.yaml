@@ -1,22 +1,24 @@
 status: success
 jira_id: GH-2096
-verdict: APPROVED_WITH_FINDINGS
+verdict: NEEDS_REVISION
 confidence: LOW
-weighted_score: 78
+weighted_score: 58
 findings:
-  critical: 0
-  major: 5
-  minor: 6
-  actionable: 9
-  total: 11
-reviewed: outputs/stp/GH-2096/GH-2096_test_plan.md
-report: outputs/GH-2096_stp_review.md
+  critical: 3
+  major: 8
+  minor: 5
+  actionable: 15
+  total: 16
+artifacts_reviewed:
+  std_yaml: true
+  go_stubs: true
+  python_stubs: false
+  stp_available: true
 dimension_scores:
-  rule_compliance: 82
-  requirement_coverage: 75
-  scenario_quality: 85
-  risk_accuracy: 80
-  scope_boundary: 90
-  strategy: 70
-  metadata: 40
-scope_downgrade: false
+  traceability: 83
+  yaml_structure: 45
+  pattern_matching: 0
+  step_quality: 68
+  content_policy: 55
+  pse_quality: 72
+  codegen_readiness: 40
