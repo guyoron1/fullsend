@@ -1,0 +1,23 @@
+status: success
+jira_id: GH-58
+std_source: outputs/std/GH-58/GH-58_test_description.yaml
+languages:
+  - language: go
+    framework: testing
+    files:
+      - data_consistency_guard_test.go
+      - enrollment_operations_test.go
+      - config_source_test.go
+      - error_handling_test.go
+      - e2e_enrollment_test.go
+    test_count: 16
+total_test_count: 16
+lsp_patterns_used: false
+notes:
+  - "All 15 Tier 1 scenarios implemented across 4 test files"
+  - "1 Tier 2 scenario (TS-GH-58-016) implemented in e2e_enrollment_test.go"
+  - "Tests use exported gcf.NewFakeGCFClient with functional options for mock setup"
+  - "Build tag: //go:build e2e"
+  - "Package: tests (external test package)"
+  - "No python tests generated (tier2_tests disabled, no python.yaml config)"
+  - "Source repo not available for LSP analysis; tests derived from STD + source code review"
