@@ -1,6 +1,6 @@
 # Test Plan
 
-## **Batch Path-Existence Checks via Git Trees API - Quality Engineering Plan**
+## **Vendor Analyze: Batch Path-Existence Checks via Git Trees API - Quality Engineering Plan**
 
 ### **Metadata & Tracking**
 
@@ -8,7 +8,7 @@
 - **Feature Tracking:** [GH-2351](https://github.com/fullsend-ai/fullsend/issues/2351)
 - **Epic Tracking:** GH-2351 (standalone)
 - **QE Owner(s):** TBD
-- **Owning SIG:** N/A
+- **Owning SIG:** component/install
 - **Participating SIGs:** N/A
 
 **Document Conventions (if applicable):** N/A
@@ -110,8 +110,8 @@ Testing covers the new `ListRepositoryFiles` method on the `forge.Client` interf
 
 **Non-Functional**
 
-- [ ] **Performance Testing** -- Validates feature performance meets requirements (latency, throughput, resource usage)
-  - *Details:* The primary purpose of this change is performance improvement (O(N) to O(1) API calls). Performance is validated architecturally via the API-call-count guard test rather than benchmarks.
+- **Performance Testing** -- Validates feature performance meets requirements (latency, throughput, resource usage)
+  - *Details:* Not applicable — the performance improvement is architectural (O(N) to O(1) API calls) and is validated through the functional guard test `TestComparePathPresence_UsesOneAPICall`. No latency/throughput benchmarks are required. The guard test is covered under Functional Testing and Regression Testing above.
 - [ ] **Scale Testing** -- Validates feature behavior under increased load and at production-like scale
   - *Details:* Not applicable. Scale benefit is inherent in the O(1) API call design.
 - [ ] **Security Testing** -- Verifies security requirements, RBAC, authentication, authorization, and vulnerability scanning
@@ -152,11 +152,7 @@ Testing covers the new `ListRepositoryFiles` method on the `forge.Client` interf
 
 #### **3.1. Testing Tools & Frameworks**
 
-No new or special tools required. Standard Go testing infrastructure:
-
-- **Test Framework:** `testing` (stdlib) + `testify` (assert/require)
-- **CI/CD:** Standard `go test` pipeline
-- **Other Tools:** None
+Standard Go testing infrastructure (no special tools required).
 
 #### **4. Entry Criteria**
 
