@@ -5,8 +5,8 @@
 ### **Metadata & Tracking**
 
 - **Enhancement(s):** [GH-2354](https://github.com/fullsend-ai/fullsend/issues/2354)
-- **Feature Tracking:** [GH-2354](https://github.com/fullsend-ai/fullsend/issues/2354)
-- **Epic Tracking:** GH-2354
+- **Feature Tracking:** N/A (standalone issue)
+- **Epic Tracking:** N/A (standalone issue)
 - **QE Owner(s):** TBD
 - **Owning SIG:** N/A
 - **Participating SIGs:** None
@@ -48,7 +48,7 @@ technology, and testability before formal test planning.
 
 #### **2. Known Limitations**
 
-- The current implementation already has bounded timeout (`enrollmentWaitTimeout = 3 min`) and exponential backoff (`enrollmentPollInitial = 2s`, `enrollmentPollMax = 15s`). The issue references the previous state (PR #1954) where additional serial waits compounded the total.
+- The bounded timeout (`enrollmentWaitTimeout = 3 min`) and exponential backoff (`enrollmentPollInitial = 2s`, `enrollmentPollMax = 15s`) were introduced in PR #1954. This STP provides regression test coverage to ensure these safeguards are not inadvertently weakened or removed in future changes, and validates that the current behavior meets the requirements described in GH-2354.
 - Actual GitHub workflow registration latency is outside FullSend's control; tests can only validate timeout behavior, not real registration speed.
 - No `--no-wait` flag exists yet to dispatch and return immediately without polling.
 
@@ -76,7 +76,7 @@ This STP serves as the **overall roadmap for testing**, detailing the scope, app
 
 #### **1. Scope of Testing**
 
-Testing will validate that the enrollment install and uninstall flows in `EnrollmentLayer` complete or fail within bounded, predictable timeouts, use exponential backoff for polling, provide progress feedback, handle context cancellation gracefully, and produce actionable error messages on timeout or dispatch failure.
+Testing will validate that the enrollment install and uninstall flows complete or fail within bounded, predictable timeouts, use exponential backoff for polling, provide progress feedback, handle user interruption gracefully, and produce actionable error messages on timeout or dispatch failure.
 
 **Testing Goals**
 
@@ -86,7 +86,7 @@ Testing will validate that the enrollment install and uninstall flows in `Enroll
 - **P0:** Verify happy-path enrollment completes without regression when workflow registers quickly
 - **P1:** Verify exponential backoff polling behavior (interval doubling, cap at maximum)
 - **P1:** Verify progress messages are emitted with elapsed time during polling phases
-- **P1:** Verify context cancellation terminates polling gracefully as non-fatal
+- **P1:** Verify user interruption (Ctrl+C) stops enrollment cleanly without error
 
 **Quality Goals**
 
@@ -102,13 +102,14 @@ Testing will validate that the enrollment install and uninstall flows in `Enroll
 - [ ] GitHub Actions workflow registration latency -- *Rationale:* Platform-level concern managed by GitHub, not FullSend -- *PM/Lead Agreement:* TBD
 - [ ] GitHub API rate limiting during polling -- *Rationale:* Infrastructure-level concern; FullSend relies on standard GitHub API behavior -- *PM/Lead Agreement:* TBD
 - [ ] `--no-wait` flag implementation -- *Rationale:* Suggested improvement not yet implemented; out of scope for current testing -- *PM/Lead Agreement:* TBD
+- [ ] Admin CLI dispatch timeout behavior -- *Rationale:* `admin.go` uses `DispatchWorkflow` but enrollment timeout constants are scoped to the enrollment layer; admin dispatch has its own timeout semantics -- *PM/Lead Agreement:* TBD
 
 #### **2. Test Strategy**
 
 **Functional**
 
 - [ ] **Functional Testing** -- Validates that the feature works according to specified requirements and user stories
-  - *Details:* Applicable. Core testing of timeout bounds, backoff behavior, progress output, context cancellation, and error reporting using `forge.FakeClient` mocks.
+  - *Details:* Applicable. Core testing of timeout bounds, backoff behavior, progress output, user interruption handling, and error reporting using `forge.FakeClient` mocks.
 - [ ] **Automation Testing** -- Confirms test automation plan is in place for CI and regression coverage (all tests are expected to be automated)
   - *Details:* Applicable. All tests are Go unit/functional tests runnable via `go test ./internal/layers/...` in CI.
 - [ ] **Regression Testing** -- Verifies that new changes do not break existing functionality
@@ -158,9 +159,7 @@ Testing will validate that the enrollment install and uninstall flows in `Enroll
 
 #### **3.1. Testing Tools & Frameworks**
 
-- **Test Framework:** Standard Go testing + testify (existing)
-- **CI/CD:** Standard (no new tools)
-- **Other Tools:** None
+No additional tools required beyond the project's standard test infrastructure.
 
 #### **4. Entry Criteria**
 
@@ -179,21 +178,12 @@ The following conditions must be met before testing can begin:
 - [ ] **Test Coverage**
   - Risk: Time-dependent tests may not fully exercise real-world slow registration scenarios
   - Mitigation: Use `forge.FakeClient` with configurable delays to simulate slow responses without real-time waits
-- [ ] **Test Environment**
-  - Risk: N/A. All tests run locally with mocked dependencies
-  - Mitigation: N/A
 - [ ] **Untestable Aspects**
   - Risk: Actual GitHub workflow registration latency cannot be controlled in tests
   - Mitigation: Tests validate timeout and backoff behavior independent of real GitHub API latency
-- [ ] **Resource Constraints**
-  - Risk: N/A. Tests require only standard CI resources
-  - Mitigation: N/A
 - [ ] **Dependencies**
   - Risk: Changes to `forge.Client` interface could break test mocks
   - Mitigation: `forge.FakeClient` is maintained alongside the interface; compile-time checks ensure compatibility
-- [ ] **Other**
-  - Risk: N/A
-  - Mitigation: N/A
 
 ---
 
@@ -219,17 +209,17 @@ This section links requirements to test coverage, enabling reviewers to verify a
   - *Priority:* P0
 
 - **[GH-2354]** -- Enrollment polling uses exponential backoff to avoid excessive API calls
-  - *Test Scenario:* Verify polling interval doubles each iteration
+  - *Test Scenario:* Verify wait time between status updates increases progressively
   - *Test Type:* [Functional]
   - *Priority:* P1
 
 - **[GH-2354]** -- Enrollment polling uses exponential backoff to avoid excessive API calls
-  - *Test Scenario:* Verify polling interval caps at maximum
+  - *Test Scenario:* Verify retry wait time does not exceed maximum bound
   - *Test Type:* [Functional]
   - *Priority:* P1
 
 - **[GH-2354]** -- Enrollment polling uses exponential backoff to avoid excessive API calls
-  - *Test Scenario:* Verify initial interval matches configured value
+  - *Test Scenario:* Verify first retry occurs within expected timeframe
   - *Test Type:* [Functional]
   - *Priority:* P1
 
@@ -268,18 +258,18 @@ This section links requirements to test coverage, enabling reviewers to verify a
   - *Test Type:* [Functional]
   - *Priority:* P1
 
-- **[GH-2354]** -- Enrollment handles context cancellation gracefully during polling
-  - *Test Scenario:* Verify cancelled context terminates polling
+- **[GH-2354]** -- Enrollment handles user interruption gracefully during polling
+  - *Test Scenario:* Verify user interruption stops enrollment polling
   - *Test Type:* [Functional]
   - *Priority:* P1
 
-- **[GH-2354]** -- Enrollment handles context cancellation gracefully during polling
-  - *Test Scenario:* Verify cancellation treated as non-fatal
+- **[GH-2354]** -- Enrollment handles user interruption gracefully during polling
+  - *Test Scenario:* Verify interruption treated as non-fatal
   - *Test Type:* [Functional]
   - *Priority:* P1
 
-- **[GH-2354]** -- Enrollment handles context cancellation gracefully during polling
-  - *Test Scenario:* Verify no resource leak on cancellation
+- **[GH-2354]** -- Enrollment handles user interruption gracefully during polling
+  - *Test Scenario:* Verify CLI exits cleanly after interruption with no hanging processes
   - *Test Type:* [Functional]
   - *Priority:* P1
 
