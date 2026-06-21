@@ -4,7 +4,7 @@
 # Generated: 2026-06-21
 
 document_metadata:
-  std_version: "2.1-enhanced"
+  std_version: "2.0-unit"
   generated_date: "2026-06-21"
   jira_issue: "GH-2351"
   jira_summary: "Vendor Analyze: Batch Path-Existence Checks via Git Trees API"
@@ -30,27 +30,45 @@ document_metadata:
   test_strategy_mode: "auto"
 
 code_generation_config:
-  std_version: "2.1-enhanced"
+  std_version: "2.0-unit"
   framework: "testing"
   assertion_library: "testify"
   language: "go"
   package_name: "scaffold"
   imports:
-    standard:
+    standard_base:
       - "context"
       - "testing"
-      - "sort"
-      - "fmt"
     framework:
       - path: "github.com/stretchr/testify/assert"
         alias: ""
       - path: "github.com/stretchr/testify/require"
         alias: ""
     project:
-      - path: "github.com/fullsend-ai/fullsend/internal/scaffold"
-        alias: ""
       - path: "github.com/fullsend-ai/fullsend/internal/forge"
         alias: ""
+    per_file:
+      compare_path_presence_stubs_test.go:
+        additional_standard: ["sort"]
+        additional_project:
+          - path: "github.com/fullsend-ai/fullsend/internal/scaffold"
+            alias: ""
+      list_repository_files_stubs_test.go:
+        additional_standard: []
+        additional_project: []
+      fake_client_stubs_test.go:
+        additional_standard: ["errors"]
+        additional_project: []
+      edge_cases_stubs_test.go:
+        additional_standard: ["errors", "sync"]
+        additional_project:
+          - path: "github.com/fullsend-ai/fullsend/internal/scaffold"
+            alias: ""
+      interface_compliance_stubs_test.go:
+        additional_standard: []
+        additional_project:
+          - path: "github.com/fullsend-ai/fullsend/internal/forge/github"
+            alias: ""
 
 common_preconditions:
   infrastructure:
@@ -83,6 +101,7 @@ scenarios:
     mvp: true
     requirement_id: "GH-2351"
     coverage_status: "NEW"
+    target_package: "scaffold"
 
     test_objective:
       title: "Verify ComparePathPresence returns correct missing paths"
@@ -116,8 +135,8 @@ scenarios:
           type: "forge.FakeClient"
           yaml: |
             FileContents:
-              "owner/repo/path/a.txt": "content-a"
-              "owner/repo/path/b.txt": "content-b"
+              "owner/repo/path/a.txt": []byte("content-a")
+              "owner/repo/path/b.txt": []byte("content-b")
             # Expected paths to check: ["path/a.txt", "path/b.txt", "path/c.txt"]
             # Expected missing: ["path/c.txt"]
 
@@ -127,9 +146,9 @@ scenarios:
           action: "Create FakeClient with known file paths"
           command: |
             client := &forge.FakeClient{
-                FileContents: map[string]string{
-                    "owner/repo/path/a.txt": "content-a",
-                    "owner/repo/path/b.txt": "content-b",
+                FileContents: map[string][]byte{
+                    "owner/repo/path/a.txt": []byte("content-a"),
+                    "owner/repo/path/b.txt": []byte("content-b"),
                 },
             }
           validation: "FakeClient created successfully"
@@ -168,6 +187,7 @@ scenarios:
     mvp: true
     requirement_id: "GH-2351"
     coverage_status: "NEW"
+    target_package: "scaffold"
 
     test_objective:
       title: "Verify all paths reported present when all exist"
@@ -199,8 +219,8 @@ scenarios:
           type: "forge.FakeClient"
           yaml: |
             FileContents:
-              "owner/repo/path/a.txt": "content-a"
-              "owner/repo/path/b.txt": "content-b"
+              "owner/repo/path/a.txt": []byte("content-a")
+              "owner/repo/path/b.txt": []byte("content-b")
             # Expected paths: ["path/a.txt", "path/b.txt"]
             # Expected missing: [] (empty)
 
@@ -210,9 +230,9 @@ scenarios:
           action: "Create FakeClient with all expected paths"
           command: |
             client := &forge.FakeClient{
-                FileContents: map[string]string{
-                    "owner/repo/path/a.txt": "content-a",
-                    "owner/repo/path/b.txt": "content-b",
+                FileContents: map[string][]byte{
+                    "owner/repo/path/a.txt": []byte("content-a"),
+                    "owner/repo/path/b.txt": []byte("content-b"),
                 },
             }
           validation: "FakeClient created"
@@ -251,6 +271,7 @@ scenarios:
     mvp: true
     requirement_id: "GH-2351"
     coverage_status: "NEW"
+    target_package: "scaffold"
 
     test_objective:
       title: "Verify sorted missing paths when some absent"
@@ -282,7 +303,7 @@ scenarios:
           type: "forge.FakeClient"
           yaml: |
             FileContents:
-              "owner/repo/path/b.txt": "content-b"
+              "owner/repo/path/b.txt": []byte("content-b")
             # Expected paths: ["path/c.txt", "path/a.txt", "path/b.txt"]
             # Expected missing (sorted): ["path/a.txt", "path/c.txt"]
 
@@ -292,8 +313,8 @@ scenarios:
           action: "Create FakeClient with subset of paths"
           command: |
             client := &forge.FakeClient{
-                FileContents: map[string]string{
-                    "owner/repo/path/b.txt": "content-b",
+                FileContents: map[string][]byte{
+                    "owner/repo/path/b.txt": []byte("content-b"),
                 },
             }
           validation: "FakeClient created"
@@ -332,6 +353,7 @@ scenarios:
     mvp: true
     requirement_id: "GH-2351"
     coverage_status: "NEW"
+    target_package: "scaffold"
 
     test_objective:
       title: "Verify GetFileContent is never called by ComparePathPresence"
@@ -355,8 +377,8 @@ scenarios:
       automation_approach: "Go stdlib testing + testify"
 
     specific_preconditions:
-      - name: "FakeClient with GetFileContent error injection"
-        requirement: "FakeClient.GetFileContentErr set to a sentinel error"
+      - name: "FakeClient with Errors map entry for GetFileContent"
+        requirement: "FakeClient Errors map contains 'GetFileContent' key with sentinel error"
         validation: "N/A"
 
     test_data:
@@ -365,8 +387,9 @@ scenarios:
           type: "forge.FakeClient"
           yaml: |
             FileContents:
-              "owner/repo/path/a.txt": "content-a"
-            GetFileContentErr: fmt.Errorf("GetFileContent must not be called")
+              "owner/repo/path/a.txt": []byte("content-a")
+            Errors:
+              GetFileContent: "GetFileContent must not be called"
             # If ComparePathPresence calls GetFileContent, it will receive this error
 
     test_steps:
@@ -375,10 +398,12 @@ scenarios:
           action: "Create FakeClient with GetFileContent error injection"
           command: |
             client := &forge.FakeClient{
-                FileContents: map[string]string{
-                    "owner/repo/path/a.txt": "content-a",
+                FileContents: map[string][]byte{
+                    "owner/repo/path/a.txt": []byte("content-a"),
                 },
-                GetFileContentErr: fmt.Errorf("GetFileContent must not be called"),
+                Errors: map[string]error{
+                    "GetFileContent": errors.New("GetFileContent must not be called"),
+                },
             }
           validation: "FakeClient created with error injection"
 
@@ -416,6 +441,7 @@ scenarios:
     mvp: true
     requirement_id: "GH-2351"
     coverage_status: "NEW"
+    target_package: "scaffold"
 
     test_objective:
       title: "Verify error propagation from ListRepositoryFiles failure"
@@ -436,8 +462,8 @@ scenarios:
       automation_approach: "Go stdlib testing + testify"
 
     specific_preconditions:
-      - name: "FakeClient with ListRepositoryFiles error"
-        requirement: "FakeClient configured to return an error from ListRepositoryFiles"
+      - name: "FakeClient with Errors map entry for ListRepositoryFiles"
+        requirement: "FakeClient Errors map contains 'ListRepositoryFiles' key with rate limit error"
         validation: "N/A"
 
     test_data:
@@ -445,7 +471,8 @@ scenarios:
         - name: "fake_client"
           type: "forge.FakeClient"
           yaml: |
-            ListRepositoryFilesErr: fmt.Errorf("API rate limit exceeded")
+            Errors:
+              ListRepositoryFiles: "API rate limit exceeded"
 
     test_steps:
       setup:
@@ -453,7 +480,9 @@ scenarios:
           action: "Create FakeClient with ListRepositoryFiles error"
           command: |
             client := &forge.FakeClient{
-                ListRepositoryFilesErr: fmt.Errorf("API rate limit exceeded"),
+                Errors: map[string]error{
+                    "ListRepositoryFiles": errors.New("API rate limit exceeded"),
+                },
             }
           validation: "FakeClient created"
 
@@ -495,6 +524,7 @@ scenarios:
     mvp: true
     requirement_id: "GH-2351"
     coverage_status: "NEW"
+    target_package: "scaffold"
 
     test_objective:
       title: "Verify ListRepositoryFiles returns all blob paths"
@@ -527,9 +557,9 @@ scenarios:
           type: "forge.FakeClient"
           yaml: |
             FileContents:
-              "owner/repo/file1.go": "package main"
-              "owner/repo/dir/file2.go": "package dir"
-              "owner/repo/dir/sub/file3.go": "package sub"
+              "owner/repo/file1.go": []byte("package main")
+              "owner/repo/dir/file2.go": []byte("package dir")
+              "owner/repo/dir/sub/file3.go": []byte("package sub")
 
     test_steps:
       setup:
@@ -537,10 +567,10 @@ scenarios:
           action: "Create FakeClient with multi-level file tree"
           command: |
             client := &forge.FakeClient{
-                FileContents: map[string]string{
-                    "owner/repo/file1.go":         "package main",
-                    "owner/repo/dir/file2.go":     "package dir",
-                    "owner/repo/dir/sub/file3.go": "package sub",
+                FileContents: map[string][]byte{
+                    "owner/repo/file1.go":         []byte("package main"),
+                    "owner/repo/dir/file2.go":     []byte("package dir"),
+                    "owner/repo/dir/sub/file3.go": []byte("package sub"),
                 },
             }
           validation: "FakeClient created"
@@ -578,6 +608,7 @@ scenarios:
     mvp: true
     requirement_id: "GH-2351"
     coverage_status: "NEW"
+    target_package: "scaffold"
 
     test_objective:
       title: "Verify tree entries (directories) are excluded from results"
@@ -608,7 +639,7 @@ scenarios:
           type: "forge.FakeClient"
           yaml: |
             FileContents:
-              "owner/repo/dir/file.txt": "content"
+              "owner/repo/dir/file.txt": []byte("content")
             # FakeClient derives paths from keys; "dir/" would not appear as a key
             # This test verifies the LiveClient behavior via mocked HTTP responses
 
@@ -618,8 +649,8 @@ scenarios:
           action: "Create FakeClient with files in nested directories"
           command: |
             client := &forge.FakeClient{
-                FileContents: map[string]string{
-                    "owner/repo/dir/file.txt": "content",
+                FileContents: map[string][]byte{
+                    "owner/repo/dir/file.txt": []byte("content"),
                 },
             }
           validation: "FakeClient created"
@@ -657,6 +688,7 @@ scenarios:
     mvp: true
     requirement_id: "GH-2351"
     coverage_status: "NEW"
+    target_package: "scaffold"
 
     test_objective:
       title: "Verify error when repository tree is truncated"
@@ -678,8 +710,8 @@ scenarios:
       automation_approach: "Go stdlib testing + testify"
 
     specific_preconditions:
-      - name: "FakeClient or httptest mock returning truncated tree"
-        requirement: "Client configured to simulate truncated tree response"
+      - name: "FakeClient with Errors map entry simulating truncated tree"
+        requirement: "FakeClient Errors map contains 'ListRepositoryFiles' key with truncation error message"
         validation: "N/A"
 
     test_data:
@@ -687,8 +719,8 @@ scenarios:
         - name: "fake_client"
           type: "forge.FakeClient"
           yaml: |
-            TruncatedTree: true
-            # Simulates GitHub API returning truncated=true
+            Errors:
+              ListRepositoryFiles: "tree truncated: response too large"
 
     test_steps:
       setup:
@@ -696,9 +728,11 @@ scenarios:
           action: "Create client that simulates truncated tree"
           command: |
             client := &forge.FakeClient{
-                TruncatedTree: true,
+                Errors: map[string]error{
+                    "ListRepositoryFiles": errors.New("tree truncated: response too large"),
+                },
             }
-          validation: "FakeClient created with truncation flag"
+          validation: "FakeClient created with truncation error"
 
       test_execution:
         - step_id: "TEST-01"
@@ -733,6 +767,7 @@ scenarios:
     mvp: true
     requirement_id: "GH-2351"
     coverage_status: "NEW"
+    target_package: "scaffold"
 
     test_objective:
       title: "Verify error propagation for invalid repo"
@@ -754,8 +789,8 @@ scenarios:
       automation_approach: "Go stdlib testing + testify"
 
     specific_preconditions:
-      - name: "FakeClient with ListRepositoryFiles error"
-        requirement: "FakeClient configured to return error for ListRepositoryFiles"
+      - name: "FakeClient with Errors map entry for ListRepositoryFiles"
+        requirement: "FakeClient Errors map contains 'ListRepositoryFiles' key with repo-not-found error"
         validation: "N/A"
 
     test_data:
@@ -763,7 +798,8 @@ scenarios:
         - name: "fake_client"
           type: "forge.FakeClient"
           yaml: |
-            ListRepositoryFilesErr: fmt.Errorf("repository not found: invalid/repo")
+            Errors:
+              ListRepositoryFiles: "repository not found: invalid/repo"
 
     test_steps:
       setup:
@@ -771,7 +807,9 @@ scenarios:
           action: "Create FakeClient with ListRepositoryFiles error"
           command: |
             client := &forge.FakeClient{
-                ListRepositoryFilesErr: fmt.Errorf("repository not found: invalid/repo"),
+                Errors: map[string]error{
+                    "ListRepositoryFiles": errors.New("repository not found: invalid/repo"),
+                },
             }
           validation: "FakeClient created"
 
@@ -812,6 +850,7 @@ scenarios:
     mvp: false
     requirement_id: "GH-2351"
     coverage_status: "NEW"
+    target_package: "forge"
 
     test_objective:
       title: "Verify FakeClient returns correct relative paths"
@@ -840,8 +879,8 @@ scenarios:
           type: "forge.FakeClient"
           yaml: |
             FileContents:
-              "myorg/myrepo/src/main.go": "package main"
-              "myorg/myrepo/README.md": "# readme"
+              "myorg/myrepo/src/main.go": []byte("package main")
+              "myorg/myrepo/README.md": []byte("# readme")
 
     test_steps:
       setup:
@@ -849,9 +888,9 @@ scenarios:
           action: "Create FakeClient with prefixed keys"
           command: |
             client := &forge.FakeClient{
-                FileContents: map[string]string{
-                    "myorg/myrepo/src/main.go": "package main",
-                    "myorg/myrepo/README.md":   "# readme",
+                FileContents: map[string][]byte{
+                    "myorg/myrepo/src/main.go": []byte("package main"),
+                    "myorg/myrepo/README.md":   []byte("# readme"),
                 },
             }
           validation: "FakeClient created"
@@ -884,18 +923,19 @@ scenarios:
     mvp: false
     requirement_id: "GH-2351"
     coverage_status: "NEW"
+    target_package: "forge"
 
     test_objective:
       title: "Verify FakeClient returns empty list for empty map"
       what: |
-        Tests that FakeClient.ListRepositoryFiles returns an empty slice (not nil)
+        Tests that FakeClient.ListRepositoryFiles returns nil or an empty slice
         when the FileContents map is empty. This edge case ensures consistent
         behavior with LiveClient for empty repositories.
       why: |
         An empty repository is a valid state. Returning nil vs empty slice could
         cause nil pointer panics in callers that iterate the result.
       acceptance_criteria:
-        - "Empty FileContents map returns empty slice"
+        - "Empty FileContents map returns nil or empty slice"
         - "No error is returned"
 
     classification:
@@ -918,7 +958,7 @@ scenarios:
           action: "Create FakeClient with empty FileContents"
           command: |
             client := &forge.FakeClient{
-                FileContents: map[string]string{},
+                FileContents: map[string][]byte{},
             }
           validation: "FakeClient created"
 
@@ -939,9 +979,9 @@ scenarios:
         failure_impact: "Empty repository causes error"
       - assertion_id: "ASSERT-02"
         priority: "P1"
-        description: "Empty slice returned (not nil)"
-        condition: "paths != nil && len(paths) == 0"
-        failure_impact: "Nil return could cause nil pointer panic in callers"
+        description: "Nil or empty result returned"
+        condition: "paths == nil || len(paths) == 0"
+        failure_impact: "Unexpected non-empty result for empty input"
 
     dependencies:
       kubernetes_resources: []
@@ -955,12 +995,13 @@ scenarios:
     mvp: false
     requirement_id: "GH-2351"
     coverage_status: "NEW"
+    target_package: "forge"
 
     test_objective:
-      title: "Verify FakeClient respects error injection"
+      title: "Verify FakeClient respects Errors map injection"
       what: |
         Tests that FakeClient.ListRepositoryFiles returns the injected error
-        when ListRepositoryFilesErr is set. This validates the test double's
+        when Errors map has a 'ListRepositoryFiles' entry. This validates the test double's
         error injection mechanism for negative test scenarios.
       why: |
         Error injection is the primary mechanism for testing error handling
@@ -982,7 +1023,8 @@ scenarios:
         - name: "fake_client"
           type: "forge.FakeClient"
           yaml: |
-            ListRepositoryFilesErr: fmt.Errorf("injected test error")
+            Errors:
+              ListRepositoryFiles: "injected test error"
 
     test_steps:
       setup:
@@ -990,7 +1032,9 @@ scenarios:
           action: "Create FakeClient with error injection"
           command: |
             client := &forge.FakeClient{
-                ListRepositoryFilesErr: fmt.Errorf("injected test error"),
+                Errors: map[string]error{
+                    "ListRepositoryFiles": errors.New("injected test error"),
+                },
             }
           validation: "FakeClient created"
 
@@ -1026,6 +1070,7 @@ scenarios:
     mvp: false
     requirement_id: "GH-2351"
     coverage_status: "NEW"
+    target_package: "scaffold"
 
     test_objective:
       title: "Verify empty expected list short-circuits without API calls"
@@ -1052,7 +1097,8 @@ scenarios:
         - name: "fake_client"
           type: "forge.FakeClient"
           yaml: |
-            ListRepositoryFilesErr: fmt.Errorf("should not be called")
+            Errors:
+              ListRepositoryFiles: "should not be called"
             # If ComparePathPresence calls ListRepositoryFiles, this error proves it
 
     test_steps:
@@ -1061,7 +1107,9 @@ scenarios:
           action: "Create FakeClient with error on ListRepositoryFiles"
           command: |
             client := &forge.FakeClient{
-                ListRepositoryFilesErr: fmt.Errorf("should not be called"),
+                Errors: map[string]error{
+                    "ListRepositoryFiles": errors.New("should not be called"),
+                },
             }
           validation: "FakeClient created"
 
@@ -1069,7 +1117,7 @@ scenarios:
         - step_id: "TEST-01"
           action: "Call ComparePathPresence with empty expected list"
           command: |
-            missing, err := scaffold.ComparePathPresence(ctx, client, "owner", "repo", []string{})
+            missing, err := scaffold.ComparePathPresence(ctx, client, "owner", "repo", nil)
           validation: "err is nil (proves ListRepositoryFiles was not called), missing is empty"
 
       cleanup: []
@@ -1098,6 +1146,7 @@ scenarios:
     mvp: false
     requirement_id: "GH-2351"
     coverage_status: "NEW"
+    target_package: "scaffold"
 
     test_objective:
       title: "Verify all-missing paths returned sorted"
@@ -1126,7 +1175,7 @@ scenarios:
           type: "forge.FakeClient"
           yaml: |
             FileContents:
-              "owner/repo/other.txt": "content"
+              "owner/repo/other.txt": []byte("content")
             # None of the expected paths match
 
     test_steps:
@@ -1135,8 +1184,8 @@ scenarios:
           action: "Create FakeClient with non-matching paths"
           command: |
             client := &forge.FakeClient{
-                FileContents: map[string]string{
-                    "owner/repo/other.txt": "content",
+                FileContents: map[string][]byte{
+                    "owner/repo/other.txt": []byte("content"),
                 },
             }
           validation: "FakeClient created"
@@ -1175,6 +1224,7 @@ scenarios:
     mvp: false
     requirement_id: "GH-2351"
     coverage_status: "NEW"
+    target_package: "scaffold"
 
     test_objective:
       title: "Verify concurrent ListRepositoryFiles calls are thread-safe"
@@ -1206,8 +1256,8 @@ scenarios:
           type: "forge.FakeClient"
           yaml: |
             FileContents:
-              "owner/repo/file1.txt": "content1"
-              "owner/repo/file2.txt": "content2"
+              "owner/repo/file1.txt": []byte("content1")
+              "owner/repo/file2.txt": []byte("content2")
 
     test_steps:
       setup:
@@ -1215,9 +1265,9 @@ scenarios:
           action: "Create shared FakeClient"
           command: |
             client := &forge.FakeClient{
-                FileContents: map[string]string{
-                    "owner/repo/file1.txt": "content1",
-                    "owner/repo/file2.txt": "content2",
+                FileContents: map[string][]byte{
+                    "owner/repo/file1.txt": []byte("content1"),
+                    "owner/repo/file2.txt": []byte("content2"),
                 },
             }
           validation: "FakeClient created"
@@ -1269,6 +1319,7 @@ scenarios:
     mvp: false
     requirement_id: "GH-2351"
     coverage_status: "NEW"
+    target_package: "forge"
 
     test_objective:
       title: "Verify FakeClient satisfies Client interface"
@@ -1324,6 +1375,7 @@ scenarios:
     mvp: false
     requirement_id: "GH-2351"
     coverage_status: "NEW"
+    target_package: "forge"
 
     test_objective:
       title: "Verify LiveClient satisfies Client interface"
