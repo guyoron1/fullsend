@@ -1,0 +1,1571 @@
+---
+# Software Test Description (STD) — GH-2054
+# Generated: 2026-06-21
+# Format: v2.1-enhanced (auto mode)
+
+document_metadata:
+  std_version: "2.1-enhanced"
+  generated_date: "2026-06-21"
+  jira_issue: "GH-2054"
+  jira_summary: "Review Agent Summary Comment Should Reflect Inline Findings and Verdict"
+  source_bugs: []
+  stp_reference:
+    file: "outputs/stp/GH-2054/GH-2054_test_plan.md"
+    version: "v1"
+    sections_covered: "Section III - Requirements-to-Tests Mapping"
+  related_prs:
+    - repo: "fullsend-ai/fullsend"
+      pr_number: 2189
+      url: "https://github.com/fullsend-ai/fullsend/pull/2189"
+      title: "Fix review agent summary comment body-verdict inconsistency"
+      merged: true
+  owning_sig: "N/A"
+  participating_sigs: []
+  total_scenarios: 22
+  tier_1_count: 0
+  tier_2_count: 0
+  unit_count: 22
+  functional_count: 0
+  e2e_count: 0
+  p0_count: 8
+  p1_count: 12
+  p2_count: 2
+  existing_coverage_count: 0
+  new_count: 22
+  test_strategy_mode: "auto"
+
+code_generation_config:
+  std_version: "2.1-enhanced"
+  framework: "testing"
+  assertion_library: "testify"
+  language: "go"
+  package_name: "cli"
+  imports:
+    standard:
+      - "testing"
+      - "strings"
+    framework:
+      - "github.com/stretchr/testify/assert"
+      - "github.com/stretchr/testify/require"
+    project: []
+
+common_preconditions:
+  infrastructure:
+    - name: "Go toolchain"
+      requirement: "Go 1.26+"
+      validation: "go version"
+  operators: []
+  cluster_configuration:
+    topology: "N/A"
+    cpu_virtualization: "N/A"
+    storage: "N/A"
+    network: "N/A"
+  rbac_requirements: []
+  notes: >
+    All tests are pure unit tests requiring only the Go toolchain.
+    No cluster, external services, or special configuration needed.
+    Tests target internal/cli/postreview.go functions:
+    ensureBodyFindingsConsistency() and synthesizeReviewBody().
+
+scenarios:
+  # =====================================================================
+  # Group 1: Body replaced when verdict contradicts summary (P0)
+  # Requirement: GH-2054 — Review summary body is consistent with verdict
+  # =====================================================================
+
+  - scenario_id: 1
+    test_id: "TS-GH-2054-001"
+    test_type: "unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-2054"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify body replaced when verdict contradicts summary"
+      what: |
+        Tests that ensureBodyFindingsConsistency() detects when the review body
+        says "No findings" but the verdict is REQUEST_CHANGES with critical/high
+        findings present. The function must return true (indicating replacement
+        needed) and the body must be replaced with synthesized content.
+      why: |
+        This is the core bug scenario from GH-2054. PR reviewers rely on the
+        summary comment to understand the review outcome. A "No findings" body
+        with a blocking verdict and critical inline findings is misleading and
+        undermines trust in the review agent.
+      acceptance_criteria:
+        - "ensureBodyFindingsConsistency returns true when body says 'No findings' and verdict is request_changes with critical findings"
+        - "The returned body is non-empty and differs from the original"
+        - "The returned body contains the critical finding descriptions"
+
+    variables:
+      closure_scope:
+        - name: "result"
+          type: "*ReviewResult"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Review result with contradictory body and findings"
+        - name: "replaced"
+          type: "bool"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Whether body was replaced"
+        - name: "newBody"
+          type: "string"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "The replacement body content"
+
+    test_structure:
+      type: "single"
+      function_name: "TestEnsureBodyFindingsConsistency_ReplacesContradictoryBody"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create ReviewResult with 'No findings' body, request_changes action, and critical findings"
+          command: "Construct ReviewResult struct literal"
+          validation: "Struct is valid and non-nil"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call ensureBodyFindingsConsistency with the contradictory result"
+          command: "replaced, newBody := ensureBodyFindingsConsistency(result)"
+          validation: "Function returns without error"
+        - step_id: "TEST-02"
+          action: "Verify function returns true indicating replacement occurred"
+          command: "assert.True(t, replaced)"
+          validation: "replaced is true"
+        - step_id: "TEST-03"
+          action: "Verify new body contains critical finding descriptions"
+          command: "assert.Contains(t, newBody, findingDescription)"
+          validation: "Finding description present in new body"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Function returns true indicating body was replaced"
+        condition: "replaced == true"
+        failure_impact: "Contradictory bodies would reach PR reviewers"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "New body contains critical finding information"
+        condition: "newBody contains finding descriptions"
+        failure_impact: "Replacement body would be empty or missing findings"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 2
+    test_id: "TS-GH-2054-002"
+    test_type: "unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-2054"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify synthesized body contains all critical/high findings"
+      what: |
+        Tests that synthesizeReviewBody() includes every critical and high
+        severity finding from the findings array in the generated markdown body.
+        Each finding's description, category, and severity must be present.
+      why: |
+        The synthesized body is the safety-net replacement. If it omits any
+        critical/high finding, the purpose of the consistency check is
+        undermined — reviewers would still miss important issues.
+      acceptance_criteria:
+        - "Every critical finding appears in the synthesized body"
+        - "Every high finding appears in the synthesized body"
+        - "Finding descriptions are included verbatim"
+
+    variables:
+      closure_scope:
+        - name: "findings"
+          type: "[]ReviewFinding"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Array of mixed-severity findings"
+        - name: "body"
+          type: "string"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Synthesized body output"
+
+    test_structure:
+      type: "single"
+      function_name: "TestSynthesizeReviewBody_ContainsAllCriticalHighFindings"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create findings array with multiple critical and high severity findings"
+          command: "Construct []ReviewFinding with 2+ critical and 2+ high findings"
+          validation: "Array contains at least 4 findings"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call synthesizeReviewBody with the findings"
+          command: "body := synthesizeReviewBody(findings)"
+          validation: "Non-empty string returned"
+        - step_id: "TEST-02"
+          action: "Verify each critical finding description appears in body"
+          command: "assert.Contains(t, body, criticalFinding.Description) for each"
+          validation: "All critical descriptions present"
+        - step_id: "TEST-03"
+          action: "Verify each high finding description appears in body"
+          command: "assert.Contains(t, body, highFinding.Description) for each"
+          validation: "All high descriptions present"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "All critical findings present in synthesized body"
+        condition: "body contains each critical finding description"
+        failure_impact: "Critical issues would be hidden from reviewers"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "All high findings present in synthesized body"
+        condition: "body contains each high finding description"
+        failure_impact: "High-severity issues would be hidden from reviewers"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 3
+    test_id: "TS-GH-2054-003"
+    test_type: "unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-2054"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify warning logged when body is patched"
+      what: |
+        Tests that when ensureBodyFindingsConsistency detects and patches a
+        contradictory body, a warning-level log message is emitted recording
+        the original body and the replacement action.
+      why: |
+        Observability is critical for debugging the review agent. When the
+        safety net activates, operators need to know it happened so they can
+        investigate the root cause (why the body was wrong in the first place).
+      acceptance_criteria:
+        - "A warning log is emitted when body replacement occurs"
+        - "The log message indicates the safety net was triggered"
+
+    variables:
+      closure_scope:
+        - name: "result"
+          type: "*ReviewResult"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Review result triggering replacement"
+        - name: "logOutput"
+          type: "string"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Captured log output"
+
+    test_structure:
+      type: "single"
+      function_name: "TestEnsureBodyFindingsConsistency_LogsWarningOnPatch"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create contradictory ReviewResult and capture log output"
+          command: "Set up log capture and construct contradictory ReviewResult"
+          validation: "Log capture initialized"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call ensureBodyFindingsConsistency with contradictory result"
+          command: "ensureBodyFindingsConsistency(result)"
+          validation: "Function executes without panic"
+        - step_id: "TEST-02"
+          action: "Verify warning log was emitted"
+          command: "assert.Contains(t, logOutput, expectedWarningText)"
+          validation: "Warning text found in log output"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Warning log emitted on body replacement"
+        condition: "Log output contains warning about body-findings inconsistency"
+        failure_impact: "Silent safety-net activation hinders debugging"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 4
+    test_id: "TS-GH-2054-004"
+    test_type: "unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-2054"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify no replacement when findings array is empty"
+      what: |
+        Tests that ensureBodyFindingsConsistency returns false (no replacement)
+        when the verdict is request_changes but the findings array is empty.
+        An empty findings array means no inline findings were posted, so
+        there is no contradiction to fix.
+      why: |
+        The consistency check must not falsely trigger. A request_changes
+        verdict with no findings is valid (the reviewer may have added
+        comments without structured findings). Replacing the body in this
+        case would destroy valid content.
+      acceptance_criteria:
+        - "ensureBodyFindingsConsistency returns false when findings is empty"
+        - "Original body is preserved unchanged"
+
+    variables:
+      closure_scope:
+        - name: "result"
+          type: "*ReviewResult"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Review result with empty findings"
+        - name: "replaced"
+          type: "bool"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Whether body was replaced"
+
+    test_structure:
+      type: "single"
+      function_name: "TestEnsureBodyFindingsConsistency_NoReplacementEmptyFindings"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create ReviewResult with request_changes action and empty findings array"
+          command: "Construct ReviewResult with Action: 'request_changes', Findings: []"
+          validation: "Result has empty findings array"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call ensureBodyFindingsConsistency"
+          command: "replaced, _ := ensureBodyFindingsConsistency(result)"
+          validation: "Function returns without error"
+        - step_id: "TEST-02"
+          action: "Verify no replacement occurred"
+          command: "assert.False(t, replaced)"
+          validation: "replaced is false"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "No replacement when findings array is empty"
+        condition: "replaced == false"
+        failure_impact: "Valid bodies destroyed when no structured findings exist"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  # =====================================================================
+  # Group 2: Synthesized body groups findings by severity (P0)
+  # Requirement: GH-2054 — Severity ordering and formatting
+  # =====================================================================
+
+  - scenario_id: 5
+    test_id: "TS-GH-2054-005"
+    test_type: "unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-2054"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify severity sections ordered critical to info"
+      what: |
+        Tests that synthesizeReviewBody orders severity sections in the output
+        markdown from most severe to least: critical → high → medium → low → info.
+      why: |
+        Reviewers should see the most impactful issues first. Consistent
+        ordering across all review summaries makes the format predictable
+        and actionable.
+      acceptance_criteria:
+        - "Critical section appears before high section"
+        - "High section appears before medium section"
+        - "Medium section appears before low section"
+        - "Low section appears before info section"
+
+    variables:
+      closure_scope:
+        - name: "findings"
+          type: "[]ReviewFinding"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Findings with all severity levels"
+        - name: "body"
+          type: "string"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Synthesized body output"
+
+    test_structure:
+      type: "single"
+      function_name: "TestSynthesizeReviewBody_SeverityOrder"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create findings with all five severity levels"
+          command: "Construct []ReviewFinding with critical, high, medium, low, info findings"
+          validation: "All severity levels represented"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call synthesizeReviewBody"
+          command: "body := synthesizeReviewBody(findings)"
+          validation: "Non-empty body returned"
+        - step_id: "TEST-02"
+          action: "Verify severity section ordering via string index comparison"
+          command: "assert critical index < high index < medium index < low index < info index"
+          validation: "Sections in correct order"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Severity sections appear in descending severity order"
+        condition: "strings.Index(body, 'Critical') < strings.Index(body, 'High') < ... < strings.Index(body, 'Info')"
+        failure_impact: "Low-severity issues shown before critical ones, misleading reviewers"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 6
+    test_id: "TS-GH-2054-006"
+    test_type: "unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-2054"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify only populated severity sections rendered"
+      what: |
+        Tests that synthesizeReviewBody omits severity sections that have no
+        findings. If only critical and medium findings exist, the body must
+        not contain headings for high, low, or info.
+      why: |
+        Empty sections add noise and make the summary harder to scan.
+        Only showing populated sections keeps the output clean and focused.
+      acceptance_criteria:
+        - "Sections with findings are present in body"
+        - "Sections without findings are absent from body"
+
+    variables:
+      closure_scope:
+        - name: "findings"
+          type: "[]ReviewFinding"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Findings with only critical and medium severity"
+        - name: "body"
+          type: "string"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Synthesized body output"
+
+    test_structure:
+      type: "single"
+      function_name: "TestSynthesizeReviewBody_OnlyPopulatedSections"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create findings with only critical and medium severities"
+          command: "Construct []ReviewFinding with critical and medium findings only"
+          validation: "No high, low, or info findings"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call synthesizeReviewBody"
+          command: "body := synthesizeReviewBody(findings)"
+          validation: "Non-empty body returned"
+        - step_id: "TEST-02"
+          action: "Verify critical section present"
+          command: "assert.Contains(t, body, criticalHeading)"
+          validation: "Critical section present"
+        - step_id: "TEST-03"
+          action: "Verify medium section present"
+          command: "assert.Contains(t, body, mediumHeading)"
+          validation: "Medium section present"
+        - step_id: "TEST-04"
+          action: "Verify absent sections not rendered"
+          command: "assert.NotContains(t, body, highHeading) and assert.NotContains(t, body, lowHeading)"
+          validation: "Unpopulated sections absent"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Populated severity sections are rendered"
+        condition: "body contains critical and medium headings"
+        failure_impact: "Findings silently dropped from summary"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "Empty severity sections are omitted"
+        condition: "body does not contain high, low, info headings"
+        failure_impact: "Empty sections clutter the summary"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 7
+    test_id: "TS-GH-2054-007"
+    test_type: "unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-2054"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify remediation text included when present"
+      what: |
+        Tests that when a finding includes a remediation/suggestion field,
+        synthesizeReviewBody includes that remediation text in the output
+        alongside the finding description.
+      why: |
+        Remediation guidance helps reviewers understand how to fix issues.
+        Dropping it from the synthesized body would remove actionable
+        information that was present in the structured data.
+      acceptance_criteria:
+        - "Remediation text appears in body for findings that have it"
+        - "Findings without remediation are rendered without error"
+
+    variables:
+      closure_scope:
+        - name: "findings"
+          type: "[]ReviewFinding"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Findings with and without remediation text"
+        - name: "body"
+          type: "string"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Synthesized body output"
+
+    test_structure:
+      type: "single"
+      function_name: "TestSynthesizeReviewBody_IncludesRemediation"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create findings with remediation text on some, absent on others"
+          command: "Construct findings with Remediation field populated and empty"
+          validation: "Mix of findings with and without remediation"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call synthesizeReviewBody"
+          command: "body := synthesizeReviewBody(findings)"
+          validation: "Non-empty body returned"
+        - step_id: "TEST-02"
+          action: "Verify remediation text included"
+          command: "assert.Contains(t, body, expectedRemediationText)"
+          validation: "Remediation text present"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Remediation text included in synthesized body"
+        condition: "body contains remediation text for findings that have it"
+        failure_impact: "Actionable fix guidance lost in synthesized summary"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 8
+    test_id: "TS-GH-2054-008"
+    test_type: "unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-2054"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify body format matches pr-review skill template"
+      what: |
+        Tests that the synthesized body output matches the expected markdown
+        format: severity headings, finding bullets with category and description,
+        and optional file location blocks.
+      why: |
+        Consistent formatting ensures the synthesized body is indistinguishable
+        from a correctly generated body. Inconsistent format would reveal the
+        safety net to reviewers and undermine confidence.
+      acceptance_criteria:
+        - "Body contains markdown severity headings (e.g., ### Critical)"
+        - "Each finding is a bullet point with category and description"
+        - "Overall structure matches expected template"
+
+    variables:
+      closure_scope:
+        - name: "findings"
+          type: "[]ReviewFinding"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Representative findings for format validation"
+        - name: "body"
+          type: "string"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Synthesized body output"
+
+    test_structure:
+      type: "single"
+      function_name: "TestSynthesizeReviewBody_MatchesExpectedFormat"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create representative findings with varied attributes"
+          command: "Construct findings with categories, descriptions, file locations"
+          validation: "Findings represent typical review output"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call synthesizeReviewBody"
+          command: "body := synthesizeReviewBody(findings)"
+          validation: "Non-empty body returned"
+        - step_id: "TEST-02"
+          action: "Verify markdown heading format"
+          command: "assert.Contains(t, body, expectedHeadingFormat)"
+          validation: "Headings match expected markdown format"
+        - step_id: "TEST-03"
+          action: "Verify finding bullet format"
+          command: "assert.Contains(t, body, expectedBulletFormat)"
+          validation: "Bullets match expected format"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Synthesized body follows expected markdown template"
+        condition: "Body structure matches pr-review skill template format"
+        failure_impact: "Inconsistent format reveals safety-net activation to reviewers"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  # =====================================================================
+  # Group 3: No-op when body already references findings (P1)
+  # Requirement: GH-2054 — Consistency check pass-through
+  # =====================================================================
+
+  - scenario_id: 9
+    test_id: "TS-GH-2054-009"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-2054"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify no replacement when category present in body"
+      what: |
+        Tests that ensureBodyFindingsConsistency returns false when the body
+        already mentions the finding categories. If the body references
+        "logic-error" and findings contain a "logic-error" category finding,
+        no replacement is needed.
+      why: |
+        The consistency check must not replace bodies that are already correct.
+        A body that mentions finding categories is considered consistent,
+        even if it doesn't list every individual finding.
+      acceptance_criteria:
+        - "Returns false when body contains finding category text"
+        - "Original body is preserved"
+
+    variables:
+      closure_scope:
+        - name: "result"
+          type: "*ReviewResult"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Review result with consistent body"
+
+    test_structure:
+      type: "single"
+      function_name: "TestEnsureBodyFindingsConsistency_NoReplacementWhenCategoryPresent"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create ReviewResult where body mentions finding categories"
+          command: "Construct result with body containing 'logic-error' and findings with category 'logic-error'"
+          validation: "Body references same categories as findings"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call ensureBodyFindingsConsistency"
+          command: "replaced, _ := ensureBodyFindingsConsistency(result)"
+          validation: "Returns false"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "No replacement when body already references finding categories"
+        condition: "replaced == false"
+        failure_impact: "Correct bodies unnecessarily replaced, losing original content"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 10
+    test_id: "TS-GH-2054-010"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-2054"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify case-insensitive category matching"
+      what: |
+        Tests that the category matching in ensureBodyFindingsConsistency is
+        case-insensitive. A body containing "Logic-Error" should match a
+        finding with category "logic-error".
+      why: |
+        Category formatting may vary between the body text and the structured
+        findings. Case-insensitive matching prevents false positives where
+        the body correctly references findings but with different casing.
+      acceptance_criteria:
+        - "Category match is case-insensitive"
+        - "Mixed case body text matches lowercase finding category"
+
+    variables:
+      closure_scope:
+        - name: "result"
+          type: "*ReviewResult"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Review result with mixed-case category references"
+
+    test_structure:
+      type: "single"
+      function_name: "TestEnsureBodyFindingsConsistency_CaseInsensitiveCategoryMatch"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create ReviewResult with mixed-case body category reference"
+          command: "Body contains 'Logic-Error', finding has category 'logic-error'"
+          validation: "Case mismatch between body and finding category"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call ensureBodyFindingsConsistency"
+          command: "replaced, _ := ensureBodyFindingsConsistency(result)"
+          validation: "Returns false (no replacement needed)"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Case-insensitive matching prevents false replacement"
+        condition: "replaced == false"
+        failure_impact: "Case differences cause unnecessary body replacement"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 11
+    test_id: "TS-GH-2054-011"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-2054"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify partial category match does not false-positive"
+      what: |
+        Tests that substring-based category matching does not produce false
+        positives. For example, a body mentioning "error" should not match
+        a finding with category "logic-error" via partial substring match
+        if the implementation uses token-level matching.
+      why: |
+        Overly broad matching would cause the consistency check to pass through
+        bodies that only vaguely reference findings without specifically naming
+        them, defeating the purpose of the check.
+      acceptance_criteria:
+        - "Partial/unrelated substring matches do not prevent replacement"
+        - "Only exact category token matches count as consistent"
+
+    variables:
+      closure_scope:
+        - name: "result"
+          type: "*ReviewResult"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Review result testing partial match behavior"
+
+    test_structure:
+      type: "single"
+      function_name: "TestEnsureBodyFindingsConsistency_PartialMatchNoFalsePositive"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create ReviewResult where body has partial category overlap"
+          command: "Body mentions generic 'error' but finding category is 'logic-error'"
+          validation: "Partial substring overlap exists"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call ensureBodyFindingsConsistency"
+          command: "replaced, _ := ensureBodyFindingsConsistency(result)"
+          validation: "Behavior matches implementation's matching strategy"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Partial category matches behave correctly per implementation"
+        condition: "Function behaves according to its matching strategy (substring or token)"
+        failure_impact: "Incorrect match behavior leads to missed contradictions or false replacements"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  # =====================================================================
+  # Group 4: Non-blocking verdicts do not trigger check (P1)
+  # Requirement: GH-2054 — Verdict-gated activation
+  # =====================================================================
+
+  - scenario_id: 12
+    test_id: "TS-GH-2054-012"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-2054"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify no replacement for approve action"
+      what: |
+        Tests that ensureBodyFindingsConsistency returns false when the
+        verdict action is "approve", regardless of body content or findings.
+      why: |
+        Approving verdicts are non-blocking. Even if the body text happens
+        to say "No findings", an approve verdict is not contradictory —
+        it simply means the reviewer approved despite any minor issues.
+      acceptance_criteria:
+        - "Returns false for approve action"
+        - "Body is not modified"
+
+    variables:
+      closure_scope:
+        - name: "result"
+          type: "*ReviewResult"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Review result with approve action"
+
+    test_structure:
+      type: "single"
+      function_name: "TestEnsureBodyFindingsConsistency_NoReplacementForApprove"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create ReviewResult with approve action and findings"
+          command: "Construct result with Action: 'approve' and non-empty findings"
+          validation: "Action is approve with findings present"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call ensureBodyFindingsConsistency"
+          command: "replaced, _ := ensureBodyFindingsConsistency(result)"
+          validation: "Returns false"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Approve action never triggers body replacement"
+        condition: "replaced == false"
+        failure_impact: "Approval summaries incorrectly modified"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 13
+    test_id: "TS-GH-2054-013"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-2054"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify no replacement for comment action"
+      what: |
+        Tests that ensureBodyFindingsConsistency returns false when the
+        verdict action is "comment", regardless of body content or findings.
+      why: |
+        Comment-only verdicts are informational and non-blocking. The body
+        content should not be modified for non-blocking actions.
+      acceptance_criteria:
+        - "Returns false for comment action"
+        - "Body is not modified"
+
+    variables:
+      closure_scope:
+        - name: "result"
+          type: "*ReviewResult"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Review result with comment action"
+
+    test_structure:
+      type: "single"
+      function_name: "TestEnsureBodyFindingsConsistency_NoReplacementForComment"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create ReviewResult with comment action and findings"
+          command: "Construct result with Action: 'comment' and non-empty findings"
+          validation: "Action is comment with findings present"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call ensureBodyFindingsConsistency"
+          command: "replaced, _ := ensureBodyFindingsConsistency(result)"
+          validation: "Returns false"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Comment action never triggers body replacement"
+        condition: "replaced == false"
+        failure_impact: "Comment-only summaries incorrectly modified"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  # =====================================================================
+  # Group 5: Low/medium-only findings do not trigger check (P1)
+  # Requirement: GH-2054 — Severity-gated activation
+  # =====================================================================
+
+  - scenario_id: 14
+    test_id: "TS-GH-2054-014"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-2054"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify no replacement with only low-severity findings"
+      what: |
+        Tests that ensureBodyFindingsConsistency returns false when the
+        verdict is request_changes but all findings are low severity.
+      why: |
+        The consistency check is designed to catch contradictions involving
+        critical/high findings. Low-severity findings may be intentionally
+        summarized differently or omitted from the body text.
+      acceptance_criteria:
+        - "Returns false when only low-severity findings exist"
+        - "Body is not modified"
+
+    variables:
+      closure_scope:
+        - name: "result"
+          type: "*ReviewResult"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Review result with only low-severity findings"
+
+    test_structure:
+      type: "single"
+      function_name: "TestEnsureBodyFindingsConsistency_NoReplacementLowOnly"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create ReviewResult with request_changes action and only low findings"
+          command: "Construct result with findings all having Severity: 'low'"
+          validation: "No critical or high findings"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call ensureBodyFindingsConsistency"
+          command: "replaced, _ := ensureBodyFindingsConsistency(result)"
+          validation: "Returns false"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Low-severity-only findings do not trigger replacement"
+        condition: "replaced == false"
+        failure_impact: "Bodies unnecessarily replaced for minor issues"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 15
+    test_id: "TS-GH-2054-015"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-2054"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify no replacement with mixed low/medium findings"
+      what: |
+        Tests that ensureBodyFindingsConsistency returns false when findings
+        contain a mix of low and medium severity but no critical or high.
+      why: |
+        Medium-severity findings are below the threshold for the consistency
+        check. Only critical and high findings warrant body replacement.
+      acceptance_criteria:
+        - "Returns false when findings are only low and medium severity"
+        - "Body is not modified"
+
+    variables:
+      closure_scope:
+        - name: "result"
+          type: "*ReviewResult"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Review result with low and medium findings"
+
+    test_structure:
+      type: "single"
+      function_name: "TestEnsureBodyFindingsConsistency_NoReplacementLowMedium"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create ReviewResult with mixed low and medium findings"
+          command: "Construct result with low and medium severity findings"
+          validation: "No critical or high findings present"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call ensureBodyFindingsConsistency"
+          command: "replaced, _ := ensureBodyFindingsConsistency(result)"
+          validation: "Returns false"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Mixed low/medium findings do not trigger replacement"
+        condition: "replaced == false"
+        failure_impact: "Medium-severity findings cause unnecessary body replacement"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  # =====================================================================
+  # Group 6: File location rendering (P1)
+  # Requirement: GH-2054 — Findings with/without file locations
+  # =====================================================================
+
+  - scenario_id: 16
+    test_id: "TS-GH-2054-016"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-2054"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify file and line rendered in backtick block"
+      what: |
+        Tests that synthesizeReviewBody renders findings with file and line
+        information using backtick-formatted blocks (e.g., `path/to/file.go:42`).
+      why: |
+        File location helps reviewers navigate directly to the issue.
+        Backtick formatting ensures the path is visually distinct and
+        potentially linkable in GitHub's markdown renderer.
+      acceptance_criteria:
+        - "File path and line number appear in backtick format"
+        - "Format is consistent across all findings with file locations"
+
+    variables:
+      closure_scope:
+        - name: "findings"
+          type: "[]ReviewFinding"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Findings with file and line information"
+        - name: "body"
+          type: "string"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Synthesized body output"
+
+    test_structure:
+      type: "single"
+      function_name: "TestSynthesizeReviewBody_FileAndLineInBackticks"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create finding with file path and line number"
+          command: "Construct finding with File: 'internal/cli/postreview.go', Line: 42"
+          validation: "Finding has both file and line"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call synthesizeReviewBody"
+          command: "body := synthesizeReviewBody(findings)"
+          validation: "Non-empty body returned"
+        - step_id: "TEST-02"
+          action: "Verify backtick-formatted file location"
+          command: "assert.Contains(t, body, expectedFileLineFormat)"
+          validation: "File:line in backtick format present"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "File and line rendered in backtick block"
+        condition: "body contains `file:line` formatted text"
+        failure_impact: "File locations not visually distinct, harder to navigate"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 17
+    test_id: "TS-GH-2054-017"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-2054"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify findings without file omit location block"
+      what: |
+        Tests that synthesizeReviewBody does not render a file location block
+        for findings that have no file or line information (e.g., general
+        architectural findings).
+      why: |
+        Rendering empty or placeholder file locations would be confusing.
+        Findings without file context should be rendered cleanly without
+        any location block.
+      acceptance_criteria:
+        - "Findings without file info have no file location block"
+        - "Finding description is still rendered correctly"
+
+    variables:
+      closure_scope:
+        - name: "findings"
+          type: "[]ReviewFinding"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Findings without file information"
+        - name: "body"
+          type: "string"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Synthesized body output"
+
+    test_structure:
+      type: "single"
+      function_name: "TestSynthesizeReviewBody_NoFileOmitsLocationBlock"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create finding without file or line information"
+          command: "Construct finding with empty File and Line fields"
+          validation: "Finding has no file location"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call synthesizeReviewBody"
+          command: "body := synthesizeReviewBody(findings)"
+          validation: "Non-empty body returned"
+        - step_id: "TEST-02"
+          action: "Verify no file location block present"
+          command: "assert.NotContains(t, body, backtickFilePattern)"
+          validation: "No backtick file reference in body"
+        - step_id: "TEST-03"
+          action: "Verify finding description still present"
+          command: "assert.Contains(t, body, finding.Description)"
+          validation: "Description rendered without location"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "No file location block for findings without file info"
+        condition: "body does not contain backtick file reference"
+        failure_impact: "Empty/placeholder file locations confuse reviewers"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 18
+    test_id: "TS-GH-2054-018"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-2054"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify file without line number renders correctly"
+      what: |
+        Tests that synthesizeReviewBody renders a finding that has a file path
+        but no line number, showing only the file path without a colon and
+        line number suffix.
+      why: |
+        Some findings are file-level (e.g., "this file is too complex") without
+        a specific line. The renderer must handle this gracefully without
+        appending ":0" or similar artifacts.
+      acceptance_criteria:
+        - "File path rendered without line number"
+        - "No ':0' or empty line number artifact"
+
+    variables:
+      closure_scope:
+        - name: "findings"
+          type: "[]ReviewFinding"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Finding with file but no line number"
+        - name: "body"
+          type: "string"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Synthesized body output"
+
+    test_structure:
+      type: "single"
+      function_name: "TestSynthesizeReviewBody_FileWithoutLine"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create finding with file path but no line number"
+          command: "Construct finding with File: 'internal/cli/postreview.go', Line: 0"
+          validation: "Finding has file but no line"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call synthesizeReviewBody"
+          command: "body := synthesizeReviewBody(findings)"
+          validation: "Non-empty body returned"
+        - step_id: "TEST-02"
+          action: "Verify file path present without line number artifact"
+          command: "assert.Contains(t, body, filePath) and assert.NotContains(t, body, ':0')"
+          validation: "Clean file-only rendering"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "File without line renders cleanly"
+        condition: "body contains file path without ':0' artifact"
+        failure_impact: "Ugly ':0' suffix confuses reviewers about line location"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  # =====================================================================
+  # Group 7: Reject action alias (P1)
+  # Requirement: GH-2054 — Reject alias handling
+  # =====================================================================
+
+  - scenario_id: 19
+    test_id: "TS-GH-2054-019"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-2054"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify reject action triggers body replacement"
+      what: |
+        Tests that ensureBodyFindingsConsistency treats the "reject" action
+        the same as "request_changes" — both are blocking verdicts that
+        should trigger the consistency check.
+      why: |
+        The "reject" action is an alias for request_changes used in some
+        review configurations. The safety net must handle both action names
+        to prevent contradictory summaries regardless of which alias is used.
+      acceptance_criteria:
+        - "reject action triggers consistency check"
+        - "Contradictory body is replaced when action is reject"
+
+    variables:
+      closure_scope:
+        - name: "result"
+          type: "*ReviewResult"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Review result with reject action"
+        - name: "replaced"
+          type: "bool"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Whether body was replaced"
+
+    test_structure:
+      type: "single"
+      function_name: "TestEnsureBodyFindingsConsistency_RejectActionTriggersReplacement"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create contradictory ReviewResult with reject action"
+          command: "Construct result with Action: 'reject', contradictory body, critical findings"
+          validation: "Action is reject with contradictory body"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call ensureBodyFindingsConsistency"
+          command: "replaced, _ := ensureBodyFindingsConsistency(result)"
+          validation: "Returns true"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Reject action triggers body replacement"
+        condition: "replaced == true"
+        failure_impact: "Reject-action reviews bypass safety net"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 20
+    test_id: "TS-GH-2054-020"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-2054"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify reject body contains synthesized findings"
+      what: |
+        Tests that when the reject action triggers body replacement, the
+        resulting body contains all critical/high findings, identical to
+        what would be produced for request_changes.
+      why: |
+        The replacement body must be complete regardless of which action
+        alias triggered it. Reviewers expect the same quality of summary
+        for both reject and request_changes.
+      acceptance_criteria:
+        - "Replacement body contains all critical/high findings"
+        - "Body format identical to request_changes replacement"
+
+    variables:
+      closure_scope:
+        - name: "result"
+          type: "*ReviewResult"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Review result with reject action"
+        - name: "newBody"
+          type: "string"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Replacement body content"
+
+    test_structure:
+      type: "single"
+      function_name: "TestEnsureBodyFindingsConsistency_RejectBodyContainsFindings"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create contradictory ReviewResult with reject action and multiple findings"
+          command: "Construct result with Action: 'reject', contradictory body, critical + high findings"
+          validation: "Multiple severity levels in findings"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call ensureBodyFindingsConsistency"
+          command: "_, newBody := ensureBodyFindingsConsistency(result)"
+          validation: "Non-empty body returned"
+        - step_id: "TEST-02"
+          action: "Verify findings in replacement body"
+          command: "assert.Contains(t, newBody, finding.Description) for each critical/high finding"
+          validation: "All critical/high findings present"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Reject replacement body contains all critical/high findings"
+        condition: "newBody contains all critical and high finding descriptions"
+        failure_impact: "Reject-triggered replacements produce incomplete summaries"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  # =====================================================================
+  # Group 8: Edge cases (P2)
+  # Requirement: GH-2054 — Safe handling of nil/empty inputs
+  # =====================================================================
+
+  - scenario_id: 21
+    test_id: "TS-GH-2054-021"
+    test_type: "unit"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-2054"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify nil result returns false without panic"
+      what: |
+        Tests that ensureBodyFindingsConsistency handles a nil ReviewResult
+        input gracefully, returning false without panicking.
+      why: |
+        Defensive programming — the function may be called in error paths
+        where the result is nil. A panic would crash the review agent
+        instead of gracefully handling the edge case.
+      acceptance_criteria:
+        - "Function does not panic on nil input"
+        - "Returns false (no replacement)"
+
+    variables:
+      closure_scope:
+        - name: "replaced"
+          type: "bool"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Whether body was replaced"
+
+    test_structure:
+      type: "single"
+      function_name: "TestEnsureBodyFindingsConsistency_NilResultNoPanic"
+
+    test_steps:
+      setup: []
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call ensureBodyFindingsConsistency with nil result"
+          command: "replaced, _ := ensureBodyFindingsConsistency(nil)"
+          validation: "No panic occurs"
+        - step_id: "TEST-02"
+          action: "Verify returns false"
+          command: "assert.False(t, replaced)"
+          validation: "replaced is false"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Nil input handled without panic"
+        condition: "replaced == false and no panic"
+        failure_impact: "Review agent crashes on nil result in error paths"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 22
+    test_id: "TS-GH-2054-022"
+    test_type: "unit"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-2054"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify empty findings array returns false"
+      what: |
+        Tests that ensureBodyFindingsConsistency returns false when the
+        ReviewResult has an explicitly empty (non-nil) findings array,
+        even with a blocking verdict.
+      why: |
+        An empty findings array with a blocking verdict means the reviewer
+        used comments or a general body without structured findings.
+        The consistency check should not activate since there is no
+        structured data to synthesize from.
+      acceptance_criteria:
+        - "Returns false with empty findings array"
+        - "Body is not modified"
+
+    variables:
+      closure_scope:
+        - name: "result"
+          type: "*ReviewResult"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Review result with empty findings"
+        - name: "replaced"
+          type: "bool"
+          initialized_in: "test"
+          used_in: ["test"]
+          comment: "Whether body was replaced"
+
+    test_structure:
+      type: "single"
+      function_name: "TestEnsureBodyFindingsConsistency_EmptyFindingsReturnsFalse"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create ReviewResult with blocking verdict and empty findings"
+          command: "Construct result with Action: 'request_changes', Findings: []ReviewFinding{}"
+          validation: "Findings array is empty but non-nil"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call ensureBodyFindingsConsistency"
+          command: "replaced, _ := ensureBodyFindingsConsistency(result)"
+          validation: "Returns false"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Empty findings array returns false"
+        condition: "replaced == false"
+        failure_impact: "Empty findings trigger synthesis producing empty body"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
