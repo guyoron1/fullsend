@@ -13,17 +13,6 @@ document_metadata:
     file: "outputs/stp/GH-2433/GH-2433_test_plan.md"
     version: "v1"
     sections_covered: "Section III - Test Scenarios & Traceability"
-  related_prs:
-    - repo: "fullsend-ai/fullsend"
-      pr_number: 1846
-      url: "https://github.com/fullsend-ai/fullsend/pull/1846"
-      title: "Original data consistency guard fix"
-      merged: true
-    - repo: "fullsend-ai/fullsend"
-      pr_number: 2331
-      url: "https://github.com/fullsend-ai/fullsend/pull/2331"
-      title: "ROLE_APP_IDS migration (regression removed guard)"
-      merged: true
   owning_sig: "N/A"
   participating_sigs: []
   total_scenarios: 10
@@ -50,10 +39,12 @@ code_generation_config:
       - "context"
       - "encoding/json"
       - "fmt"
+      - "sync"
       - "testing"
     framework:
       - path: "github.com/stretchr/testify/assert"
       - path: "github.com/stretchr/testify/require"
+      - path: "github.com/spf13/cobra"
     project:
       - path: "github.com/fullsend-ai/fullsend/internal/mintcore"
 
@@ -116,7 +107,8 @@ scenarios:
           comment: "Provisioner under test"
 
     test_structure:
-      type: "single"
+      type: "subtest"
+      parent_function: "TestEnsureOrgInMint_DataConsistencyGuard"
       function_name: "TestEnsureOrgInMint_DataInconsistencyGuard_ReturnsError"
       package: "gcf"
 
@@ -203,7 +195,8 @@ scenarios:
           comment: "Provisioner under test"
 
     test_structure:
-      type: "single"
+      type: "subtest"
+      parent_function: "TestEnsureOrgInMint_DataConsistencyGuard"
       function_name: "TestEnsureOrgInMint_FirstEnrollment_Succeeds"
       package: "gcf"
 
@@ -277,7 +270,8 @@ scenarios:
           comment: "Provisioner under test"
 
     test_structure:
-      type: "single"
+      type: "subtest"
+      parent_function: "TestEnsureOrgInMint_DataConsistencyGuard"
       function_name: "TestEnsureOrgInMint_PopulatedAllowedOrgs_BypassesGuard"
       package: "gcf"
 
@@ -351,8 +345,10 @@ scenarios:
           comment: "Provisioner under test"
 
     test_structure:
-      type: "table-driven"
+      type: "subtest"
+      parent_function: "TestEnsureOrgInMint_DataConsistencyGuard"
       function_name: "TestEnsureOrgInMint_LegacyKeys_Filtering"
+      table_driven: true
       package: "gcf"
 
     test_steps:
@@ -433,7 +429,8 @@ scenarios:
           comment: "Provisioner with ProjectID 'proj1'"
 
     test_structure:
-      type: "single"
+      type: "subtest"
+      parent_function: "TestEnsureOrgInMint_DataConsistencyGuard"
       function_name: "TestEnsureOrgInMint_DataInconsistencyGuard_ErrorMessageContent"
       package: "gcf"
 
@@ -503,7 +500,7 @@ scenarios:
       acceptance_criteria:
         - "Malformed JSON in ROLE_APP_IDS does not trigger guard"
         - "Missing ROLE_APP_IDS key does not trigger guard"
-        - "Nil trafficEnvVars map for ROLE_APP_IDS does not trigger guard"
+        - "Nil/missing ROLE_APP_IDS key does not trigger guard"
 
     variables:
       closure_scope:
@@ -519,8 +516,10 @@ scenarios:
           comment: "Provisioner under test"
 
     test_structure:
-      type: "table-driven"
+      type: "subtest"
+      parent_function: "TestEnsureOrgInMint_DataConsistencyGuard"
       function_name: "TestEnsureOrgInMint_RoleAppIDs_EdgeCases"
+      table_driven: true
       package: "gcf"
 
     test_steps:
@@ -535,7 +534,6 @@ scenarios:
               {"malformed JSON", "{not-valid-json}"},
               {"empty string", ""},
               {"missing key (not in map)", "<key absent>"},
-              {"empty object", "{}"},
             }
           validation: "Table covers all edge cases"
       test_execution:
@@ -556,12 +554,6 @@ scenarios:
         description: "Missing ROLE_APP_IDS key does not trigger guard"
         condition: "err == nil for missing key case"
         failure_impact: "First-time deployment without ROLE_APP_IDS blocks enrollment"
-      - assertion_id: "ASSERT-03"
-        priority: "P1"
-        description: "Empty object does not trigger guard"
-        condition: "err == nil for '{}' case"
-        failure_impact: "Empty but valid ROLE_APP_IDS blocks enrollment"
-
     dependencies:
       kubernetes_resources: []
       external_tools: []
@@ -603,7 +595,8 @@ scenarios:
           comment: "Provisioner under test"
 
     test_structure:
-      type: "single"
+      type: "subtest"
+      parent_function: "TestEnsureOrgInMint_DataConsistencyGuard"
       function_name: "TestEnsureOrgInMint_EmptyRoleAppIDsObject_Proceeds"
       package: "gcf"
 
@@ -674,8 +667,10 @@ scenarios:
           comment: "Provisioner with multi-org config"
 
     test_structure:
-      type: "table-driven"
+      type: "subtest"
+      parent_function: "TestEnsureOrgInMint_DataConsistencyGuard"
       function_name: "TestProvisionFlows_PropagateGuardError"
+      table_driven: true
       package: "gcf"
 
     test_steps:
@@ -752,9 +747,10 @@ scenarios:
           comment: "CLI command under test"
 
     test_structure:
-      type: "single"
+      type: "subtest"
+      parent_function: "TestEnsureOrgInMint_CLIIntegration"
       function_name: "TestMintEnroll_SurfacesGuardError"
-      package: "cli"
+      package: "gcf"
 
     test_steps:
       setup:
@@ -820,7 +816,8 @@ scenarios:
           comment: "Fake simulating concurrent access with stale reads"
 
     test_structure:
-      type: "single"
+      type: "subtest"
+      parent_function: "TestEnsureOrgInMint_ConcurrentEnrollment"
       function_name: "TestEnsureOrgInMint_ConcurrentEnrollment_GuardPerGoroutine"
       package: "gcf"
 
@@ -853,4 +850,3 @@ scenarios:
       kubernetes_resources: []
       external_tools: []
       scenario_specific_rbac: []
----
