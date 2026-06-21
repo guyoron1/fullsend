@@ -1,7 +1,7 @@
 package tests
 
 import (
-	. "github.com/onsi/ginkgo/v2"
+	"testing"
 )
 
 /*
@@ -11,7 +11,7 @@ STP Reference: outputs/stp/GH-58/GH-58_test_plan.md
 Jira: GH-58
 */
 
-var _ = Describe("[GH-58] EnsureOrgInMint enrollment operations", func() {
+func TestEnsureOrgInMint_EnrollmentOperations(t *testing.T) {
 	/*
 		Markers:
 			- tier1
@@ -22,7 +22,7 @@ var _ = Describe("[GH-58] EnsureOrgInMint enrollment operations", func() {
 			- All tests use mock infrastructure — no GCP credentials required
 	*/
 
-	Context("when data inconsistency is detected", func() {
+	t.Run("[test_id:TS-GH-58-004] should include role count and project ID in error message when data inconsistency detected", func(t *testing.T) {
 		/*
 			Preconditions:
 				- Mock provisioner configured with empty ALLOWED_ORGS
@@ -37,12 +37,10 @@ var _ = Describe("[GH-58] EnsureOrgInMint enrollment operations", func() {
 				- Error message contains the GCP project ID ("my-gcp-project")
 				- Error message provides actionable guidance
 		*/
-		PendingIt("[test_id:TS-GH-58-004] should include role count and project ID in error message", func() {
-			Skip("Phase 1: Design only - awaiting implementation")
-		})
+		t.Skip("Phase 1: Design only - awaiting implementation")
 	})
 
-	Context("when allowed-orgs already has existing entries", func() {
+	t.Run("[test_id:TS-GH-58-006] should add new org without disrupting existing entries", func(t *testing.T) {
 		/*
 			Preconditions:
 				- Mock provisioner configured with ALLOWED_ORGS containing "org-alpha,org-beta"
@@ -56,12 +54,10 @@ var _ = Describe("[GH-58] EnsureOrgInMint enrollment operations", func() {
 				- New org "org-gamma" is present in the updated allowed-orgs list
 				- Existing orgs "org-alpha" and "org-beta" are still present
 		*/
-		PendingIt("[test_id:TS-GH-58-006] should add new org without disrupting existing entries", func() {
-			Skip("Phase 1: Design only - awaiting implementation")
-		})
+		t.Skip("Phase 1: Design only - awaiting implementation")
 	})
 
-	Context("when org is already enrolled", func() {
+	t.Run("[test_id:TS-GH-58-007] should return success without modifying allowed-orgs when org is already enrolled", func(t *testing.T) {
 		/*
 			Preconditions:
 				- Mock provisioner configured with ALLOWED_ORGS containing "target-org"
@@ -74,12 +70,10 @@ var _ = Describe("[GH-58] EnsureOrgInMint enrollment operations", func() {
 				- EnsureOrgInMint returns nil error
 				- No update call is made to modify allowed-orgs
 		*/
-		PendingIt("[test_id:TS-GH-58-007] should return success without modifying allowed-orgs", func() {
-			Skip("Phase 1: Design only - awaiting implementation")
-		})
+		t.Skip("Phase 1: Design only - awaiting implementation")
 	})
 
-	Context("when function URI does not match expected URL", func() {
+	t.Run("[test_id:TS-GH-58-008] [NEGATIVE] should return error for mint URL mismatch", func(t *testing.T) {
 		/*
 			[NEGATIVE]
 			Preconditions:
@@ -93,8 +87,6 @@ var _ = Describe("[GH-58] EnsureOrgInMint enrollment operations", func() {
 				- EnsureOrgInMint returns a non-nil error
 				- Error message indicates URL mismatch
 		*/
-		PendingIt("[test_id:TS-GH-58-008] should return error for mint URL mismatch", func() {
-			Skip("Phase 1: Design only - awaiting implementation")
-		})
+		t.Skip("Phase 1: Design only - awaiting implementation")
 	})
-})
+}

@@ -1,24 +1,12 @@
 status: success
 jira_id: GH-58
-verdict: NEEDS_REVISION
-confidence: MEDIUM
-weighted_score: 72
+initial_verdict: NEEDS_REVISION
+final_verdict: APPROVED
+iterations: 1
 findings:
-  critical: 1
-  major: 4
-  minor: 2
-  actionable: 7
-  total: 7
-artifacts_reviewed:
+  initial: {critical: 1, major: 4, minor: 2}
+  final: {critical: 0, major: 0, minor: 2}
+artifacts_refined:
   std_yaml: true
   go_stubs: true
   python_stubs: false
-  stp_available: true
-dimension_scores:
-  traceability: 90
-  yaml_structure: 55
-  pattern_matching: 30
-  step_quality: 85
-  content_policy: 75
-  pse_quality: 88
-  codegen_readiness: 35

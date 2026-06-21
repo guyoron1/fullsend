@@ -1,7 +1,7 @@
 package tests
 
 import (
-	. "github.com/onsi/ginkgo/v2"
+	"testing"
 )
 
 /*
@@ -11,7 +11,7 @@ STP Reference: outputs/stp/GH-58/GH-58_test_plan.md
 Jira: GH-58
 */
 
-var _ = Describe("[GH-58] EnsureOrgInMint error handling", func() {
+func TestEnsureOrgInMint_ErrorHandling(t *testing.T) {
 	/*
 		Markers:
 			- tier1
@@ -22,7 +22,7 @@ var _ = Describe("[GH-58] EnsureOrgInMint error handling", func() {
 			- All tests use mock infrastructure — no GCP credentials required
 	*/
 
-	Context("when app ID registry contains invalid JSON", func() {
+	t.Run("[test_id:TS-GH-58-012] should proceed without error on malformed app ID registry", func(t *testing.T) {
 		/*
 			Preconditions:
 				- Mock provisioner configured with malformed JSON in APP_ID_REGISTRY
@@ -35,12 +35,10 @@ var _ = Describe("[GH-58] EnsureOrgInMint error handling", func() {
 				- Enrollment proceeds without fatal error
 				- Malformed registry data is treated as empty or handled gracefully
 		*/
-		PendingIt("[test_id:TS-GH-58-012] should proceed without error on malformed app ID registry", func() {
-			Skip("Phase 1: Design only - awaiting implementation")
-		})
+		t.Skip("Phase 1: Design only - awaiting implementation")
 	})
 
-	Context("when reading traffic-serving revision config fails", func() {
+	t.Run("[test_id:TS-GH-58-013] [NEGATIVE] should fail with a clear error on API failure", func(t *testing.T) {
 		/*
 			[NEGATIVE]
 			Preconditions:
@@ -54,12 +52,10 @@ var _ = Describe("[GH-58] EnsureOrgInMint error handling", func() {
 				- Error message clearly indicates config read failure
 				- Error is distinguishable from data inconsistency errors
 		*/
-		PendingIt("[test_id:TS-GH-58-013] should fail with a clear error on API failure", func() {
-			Skip("Phase 1: Design only - awaiting implementation")
-		})
+		t.Skip("Phase 1: Design only - awaiting implementation")
 	})
 
-	Context("when allowed-orgs data is malformed or corrupt", func() {
+	t.Run("[test_id:TS-GH-58-014] should handle corrupt allowed-orgs data gracefully without panicking", func(t *testing.T) {
 		/*
 			Preconditions:
 				- Mock provisioner configured with corrupt data in ALLOWED_ORGS (e.g., binary data, null bytes)
@@ -71,12 +67,10 @@ var _ = Describe("[GH-58] EnsureOrgInMint error handling", func() {
 				- No panic occurs
 				- Operation returns an error or handles gracefully
 		*/
-		PendingIt("[test_id:TS-GH-58-014] should handle gracefully without panicking", func() {
-			Skip("Phase 1: Design only - awaiting implementation")
-		})
+		t.Skip("Phase 1: Design only - awaiting implementation")
 	})
 
-	Context("when Cloud Run service has no traffic-serving revision", func() {
+	t.Run("[test_id:TS-GH-58-015] [NEGATIVE] should fail with a clear error on missing traffic-serving revision", func(t *testing.T) {
 		/*
 			[NEGATIVE]
 			Preconditions:
@@ -89,8 +83,6 @@ var _ = Describe("[GH-58] EnsureOrgInMint error handling", func() {
 				- EnsureOrgInMint returns a non-nil error
 				- Error message indicates missing traffic-serving revision
 		*/
-		PendingIt("[test_id:TS-GH-58-015] should fail with a clear error on missing revision", func() {
-			Skip("Phase 1: Design only - awaiting implementation")
-		})
+		t.Skip("Phase 1: Design only - awaiting implementation")
 	})
-})
+}
