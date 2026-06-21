@@ -1,15 +1,25 @@
-status: success
+status: error
 jira_id: GH-2096
-file_path: /sandbox/workspace/output/GH-2096_test_plan.md
-test_counts:
-  unit_tests: 6
-  functional: 12
-  end_to_end: 2
-  total: 20
-pr_analyzed: "https://github.com/fullsend-ai/fullsend/pull/2303"
-lsp_analysis: true
-lsp_calls: 7
-validation:
-  passed: 17
-  failed: 0
-  warnings: 1
+verdict: BLOCKED
+confidence: HIGH
+weighted_score: 0
+error: "STD artifacts not found. Expected outputs/std/GH-2096/GH-2096_test_description.yaml but no STD YAML, Go stubs, or Python stubs exist. The STP exists at outputs/stp/GH-2096/GH-2096_test_plan.md but the STD has not been generated yet."
+findings:
+  critical: 1
+  major: 0
+  minor: 0
+  actionable: 1
+  total: 1
+artifacts_reviewed:
+  std_yaml: false
+  go_stubs: false
+  python_stubs: false
+  stp_available: true
+dimension_scores:
+  traceability: 0
+  yaml_structure: 0
+  pattern_matching: 0
+  step_quality: 0
+  content_policy: 0
+  pse_quality: 0
+  codegen_readiness: 0
