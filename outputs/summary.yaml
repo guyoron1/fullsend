@@ -1,0 +1,11 @@
+status: success
+jira_id: GH-1835
+file_path: /sandbox/workspace/output/GH-1835_test_plan.md
+test_counts:
+  functional: 12
+  e2e: 0
+  total: 12
+validation:
+  passed: 18
+  failed: 0
+  warnings: 0
