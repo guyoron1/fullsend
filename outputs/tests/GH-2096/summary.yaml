@@ -1,0 +1,16 @@
+status: error
+jira_id: GH-2096
+error: >-
+  STD YAML not found. Expected file at
+  outputs/std/GH-2096/GH-2096_test_description.yaml but it does not exist.
+  The Software Test Description must be generated before test code can be
+  produced. The STP (test plan) exists at
+  outputs/stp/GH-2096/GH-2096_test_plan.md — run the std-builder pipeline
+  stage to generate the STD YAML from the STP before invoking the test
+  generator.
+std_expected_path: outputs/std/GH-2096/GH-2096_test_description.yaml
+stp_available: true
+stp_path: outputs/stp/GH-2096/GH-2096_test_plan.md
+languages: []
+total_test_count: 0
+lsp_patterns_used: false
