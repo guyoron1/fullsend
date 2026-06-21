@@ -1,0 +1,1330 @@
+---
+# Software Test Description (STD) — GH-2247
+# Generated: 2026-06-21
+# Source: outputs/stp/GH-2247/GH-2247_test_plan.md
+
+document_metadata:
+  std_version: "2.1-enhanced"
+  generated_date: "2026-06-21"
+  jira_issue: "GH-2247"
+  jira_summary: "reconcile-repos.sh produces shim blob without sentinel, creating bogus update PR"
+  source_bugs: []
+  stp_reference:
+    file: "outputs/stp/GH-2247/GH-2247_test_plan.md"
+    version: "v1"
+    sections_covered: "Section III - Requirements-to-Tests Mapping"
+  related_prs:
+    - repo: "fullsend-ai/fullsend"
+      pr_number: 2101
+      url: "https://github.com/fullsend-ai/fullsend/pull/2101"
+      title: "Bogus update PR removing sentinel line"
+      merged: true
+  owning_sig: "N/A"
+  participating_sigs: []
+  total_scenarios: 17
+  tier_1_count: 0
+  tier_2_count: 0
+  unit_count: 14
+  functional_count: 3
+  e2e_count: 0
+  p0_count: 7
+  p1_count: 8
+  p2_count: 2
+  existing_coverage_count: 0
+  new_count: 17
+  test_strategy_mode: "auto"
+
+code_generation_config:
+  std_version: "2.1-enhanced"
+  framework: "testing"
+  assertion_library: "testify"
+  language: "go"
+  package_name: "scaffold"
+  imports:
+    standard:
+      - "encoding/base64"
+      - "os"
+      - "os/exec"
+      - "path/filepath"
+      - "strings"
+      - "testing"
+    framework:
+      - path: "github.com/stretchr/testify/assert"
+        alias: ""
+      - path: "github.com/stretchr/testify/require"
+        alias: ""
+    project: []
+
+common_preconditions:
+  infrastructure:
+    - name: "GitHub Actions Ubuntu runner"
+      requirement: "ubuntu-latest with GNU coreutils"
+      validation: "base64 --version | grep -q GNU"
+    - name: "Bash shell"
+      requirement: "bash 4.x+ with set -euo pipefail support"
+      validation: "bash --version"
+  operators: []
+  cluster_configuration:
+    topology: "N/A"
+    cpu_virtualization: "N/A"
+    storage: "Ephemeral tmpdir for test fixtures"
+    network: "Mocked (no real GitHub API calls)"
+  rbac_requirements: []
+  test_harness:
+    - name: "Mock gh CLI"
+      requirement: "Mock script that simulates GitHub API responses"
+      validation: "Mock script exists in test tmpdir/bin"
+    - name: "Mock yq"
+      requirement: "Mock script that returns configured repo lists"
+      validation: "Mock script exists in test tmpdir/bin"
+    - name: "Config directory"
+      requirement: "Temporary config.yaml + shim template"
+      validation: "Config files created in test setup"
+
+scenarios:
+  # =====================================================================
+  # Group 1: Identical content detection (P0)
+  # Requirement: Shim drift detection correctly identifies logically
+  #              identical content as up-to-date
+  # =====================================================================
+
+  - scenario_id: 1
+    test_id: "TS-GH2247-001"
+    test_type: "unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-2247"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify identical content with extra trailing newline not flagged stale"
+      what: |
+        Tests that when remote shim content (from GitHub API) has an extra
+        trailing newline compared to the locally generated template, the
+        decoded text comparison correctly identifies them as identical.
+        The extract_managed_content function strips the sentinel-delimited
+        section and trailing whitespace differences are normalized.
+      why: |
+        This is the root cause of GH-2247. The GitHub content API can return
+        base64 content with different trailing newline counts than locally
+        generated content. The old base64-level comparison produced false
+        positives, creating bogus update PRs like PR #2101.
+      acceptance_criteria:
+        - "Script output contains 'already enrolled (shim up to date)'"
+        - "No blob is created (no update PR triggered)"
+        - "No 'shim is stale' message in output"
+
+    specific_preconditions:
+      - name: "Template with sentinel"
+        requirement: "Shim template file containing sentinel line and managed content"
+        validation: "Template file exists at CONFIG_DIR/templates/shim-workflow-call.yaml"
+
+    test_data:
+      resource_definitions:
+        - name: "shim_template"
+          type: "text"
+          content: |
+            # --- fullsend managed below - do not edit ---
+            fresh shim template
+        - name: "remote_content"
+          type: "text"
+          description: "Same content as template but with extra trailing newline (\\n\\n instead of \\n)"
+          content: |
+            # --- fullsend managed below - do not edit ---
+            fresh shim template
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create temporary directory with config and shim template"
+          command: "mktemp -d && create config.yaml and template"
+          validation: "Config directory exists with template"
+        - step_id: "SETUP-02"
+          action: "Create mock gh CLI returning remote content with extra trailing newline"
+          command: "Write mock gh script that base64-encodes content with extra \\n"
+          validation: "Mock gh script is executable"
+        - step_id: "SETUP-03"
+          action: "Set environment variables (PATH, GITHUB_REPOSITORY_OWNER, GH_TOKEN)"
+          command: "export PATH=mock_bin:$PATH"
+          validation: "Mock commands are found first in PATH"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run reconcile-repos.sh with the test config"
+          command: "bash reconcile-repos.sh CONFIG_DIR"
+          validation: "Script exits successfully"
+        - step_id: "TEST-02"
+          action: "Check output for stale detection"
+          command: "grep 'shim is stale' stdout.log"
+          validation: "No match found — content not flagged stale"
+        - step_id: "TEST-03"
+          action: "Check output for up-to-date confirmation"
+          command: "grep 'already enrolled (shim up to date)' stdout.log"
+          validation: "Match found — content recognized as current"
+        - step_id: "TEST-04"
+          action: "Verify no blob was created"
+          command: "test ! -f blob-input.json"
+          validation: "No blob file exists — no update PR triggered"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Remove temporary directory"
+          command: "rm -rf TMPDIR"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Script does not flag identical content as stale"
+        condition: "stdout does not contain 'shim is stale'"
+        failure_impact: "False positive drift detection causes bogus update PRs (GH-2247 regression)"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "Script confirms content is up to date"
+        condition: "stdout contains 'already enrolled (shim up to date)'"
+        failure_impact: "Script may silently skip repos or produce incorrect status"
+      - assertion_id: "ASSERT-03"
+        priority: "P0"
+        description: "No blob created for false positive"
+        condition: "blob-input file does not exist"
+        failure_impact: "Unnecessary API calls and PR creation"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "GNU base64"
+        - "GNU awk"
+        - "jq"
+      scenario_specific_rbac: []
+
+  - scenario_id: 2
+    test_id: "TS-GH2247-002"
+    test_type: "unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-2247"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify identical content with no trailing newline not flagged stale"
+      what: |
+        Tests that when remote content has no trailing newline (raw bytes end
+        immediately after last content character), decoded text comparison
+        still matches the template which may have a trailing newline.
+      why: |
+        Different base64 encoding tools and APIs may strip or add trailing
+        newlines inconsistently. The comparison must be resilient to this.
+      acceptance_criteria:
+        - "Script output contains 'already enrolled (shim up to date)'"
+        - "No blob is created"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions:
+        - name: "remote_content"
+          type: "text"
+          description: "Same managed content as template but without any trailing newline"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock gh CLI returning content without trailing newline"
+          command: "printf '%s' content | base64 (no trailing newline in input)"
+          validation: "Base64 string differs from template's base64"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run reconcile-repos.sh"
+          command: "bash reconcile-repos.sh CONFIG_DIR"
+          validation: "Script completes without flagging stale"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Remove temporary directory"
+          command: "rm -rf TMPDIR"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "No trailing newline variant not flagged stale"
+        condition: "stdout contains 'already enrolled (shim up to date)'"
+        failure_impact: "False positive from newline-free encoding"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: ["GNU base64"]
+      scenario_specific_rbac: []
+
+  - scenario_id: 3
+    test_id: "TS-GH2247-003"
+    test_type: "unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-2247"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify genuinely different content is flagged stale"
+      what: |
+        Tests that when the remote shim content genuinely differs from the
+        template (different managed content after sentinel), the script
+        correctly detects staleness and triggers an update.
+      why: |
+        While fixing false positives, the comparison must still detect real
+        drift. A regression here would leave repos with outdated shims.
+      acceptance_criteria:
+        - "Script output contains 'shim is stale'"
+        - "A blob is created for the update PR"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions:
+        - name: "remote_content"
+          type: "text"
+          content: |
+            # --- fullsend managed below - do not edit ---
+            stale shim template
+        - name: "expected_template"
+          type: "text"
+          content: |
+            # --- fullsend managed below - do not edit ---
+            fresh shim template
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock gh CLI returning stale managed content"
+          command: "Create mock with 'stale shim template' instead of 'fresh shim template'"
+          validation: "Mock returns base64 of stale content"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run reconcile-repos.sh"
+          command: "bash reconcile-repos.sh CONFIG_DIR"
+          validation: "Script detects stale content"
+        - step_id: "TEST-02"
+          action: "Verify blob created"
+          command: "test -f blob-input.json"
+          validation: "Blob file exists with fresh template content"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Remove temporary directory"
+          command: "rm -rf TMPDIR"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Genuinely different content is flagged stale"
+        condition: "stdout contains 'shim is stale'"
+        failure_impact: "Real drift not detected — repos stuck on outdated shims"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "Update blob is created"
+        condition: "blob-input file exists and contains fresh template"
+        failure_impact: "Stale shim not updated"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: ["GNU base64", "jq"]
+      scenario_specific_rbac: []
+
+  - scenario_id: 4
+    test_id: "TS-GH2247-004"
+    test_type: "unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-2247"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify carriage return differences ignored in comparison"
+      what: |
+        Tests that carriage return characters (\\r) in remote content are
+        stripped via tr -d '\\r' before comparison, so Windows-style line
+        endings (CRLF) do not cause false positive drift detection.
+      why: |
+        The GitHub content API may introduce or preserve carriage returns
+        depending on the source file's line endings. The fix normalizes
+        these before comparison.
+      acceptance_criteria:
+        - "Content with \\r\\n line endings not flagged stale"
+        - "Content with mixed \\r is normalized correctly"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions:
+        - name: "remote_content"
+          type: "text"
+          description: "Same managed content but with \\r\\n line endings"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock gh CLI returning content with CRLF line endings"
+          command: "printf content with \\r\\n | base64"
+          validation: "Base64 contains CRLF artifacts"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run reconcile-repos.sh"
+          command: "bash reconcile-repos.sh CONFIG_DIR"
+          validation: "Content not flagged stale after CR normalization"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Remove temporary directory"
+          command: "rm -rf TMPDIR"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "CRLF differences do not trigger false positive"
+        condition: "stdout does not contain 'shim is stale'"
+        failure_impact: "Windows-originated files cause unnecessary update PRs"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: ["GNU base64", "tr"]
+      scenario_specific_rbac: []
+
+  # =====================================================================
+  # Group 2: Sentinel preservation (P0)
+  # Requirement: Sentinel line is preserved in all shim blob outputs
+  # =====================================================================
+
+  - scenario_id: 5
+    test_id: "TS-GH2247-005"
+    test_type: "unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-2247"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify sentinel present in new enrollment shim"
+      what: |
+        Tests that when a new repo is enrolled (no existing shim on remote),
+        the generated blob contains the sentinel line
+        '# --- fullsend managed below - do not edit ---' from the template.
+      why: |
+        The sentinel line is critical for separating user-owned headers from
+        fullsend-managed content. Missing sentinel breaks all future
+        comparison and update logic.
+      acceptance_criteria:
+        - "Blob content starts with or contains sentinel line"
+        - "Blob content includes fresh template after sentinel"
+
+    specific_preconditions:
+      - name: "New repo (no existing shim)"
+        requirement: "Mock gh API returns 404 for shim contents endpoint"
+        validation: "gh api repos/.../contents returns error"
+
+    test_data:
+      resource_definitions:
+        - name: "sentinel_line"
+          type: "constant"
+          value: "# --- fullsend managed below - do not edit ---"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock gh CLI returning 404 for shim contents"
+          command: "Mock returns rc=1 for contents endpoint"
+          validation: "Mock correctly simulates missing shim"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run reconcile-repos.sh to enroll new repo"
+          command: "bash reconcile-repos.sh CONFIG_DIR"
+          validation: "Script creates enrollment blob"
+        - step_id: "TEST-02"
+          action: "Decode blob content and check for sentinel"
+          command: "jq -r .content blob-input.json | base64 -d | grep sentinel"
+          validation: "Sentinel line found in decoded blob"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Remove temporary directory"
+          command: "rm -rf TMPDIR"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Sentinel line present in new enrollment blob"
+        condition: "Decoded blob contains '# --- fullsend managed below - do not edit ---'"
+        failure_impact: "New enrollments lack sentinel — breaks future update detection"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: ["GNU base64", "jq"]
+      scenario_specific_rbac: []
+
+  - scenario_id: 6
+    test_id: "TS-GH2247-006"
+    test_type: "unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-2247"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify sentinel present in updated stale shim"
+      what: |
+        Tests that when a stale shim is updated, the replacement blob
+        preserves the sentinel line. The update path constructs a new blob
+        from user header (if any) + sentinel + fresh template content.
+      why: |
+        If the update path drops the sentinel, subsequent reconciliation
+        runs would see a pre-sentinel shim and enter infinite update cycles.
+      acceptance_criteria:
+        - "Updated blob contains sentinel line"
+        - "Updated blob contains fresh template content after sentinel"
+        - "User header (if present) preserved above sentinel"
+
+    specific_preconditions:
+      - name: "Stale shim with user header"
+        requirement: "Remote shim has comment header + sentinel + stale content"
+        validation: "Mock gh returns stale shim with header"
+
+    test_data:
+      resource_definitions:
+        - name: "remote_stale_shim"
+          type: "text"
+          content: |
+            # Copyright 2026 Conforma
+            # SPDX-License-Identifier: Apache-2.0
+            # --- fullsend managed below - do not edit ---
+            stale shim template
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock gh CLI returning stale shim with user header"
+          command: "Mock returns base64 of header + sentinel + stale content"
+          validation: "Mock configured correctly"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run reconcile-repos.sh"
+          command: "bash reconcile-repos.sh CONFIG_DIR"
+          validation: "Script detects stale and creates update blob"
+        - step_id: "TEST-02"
+          action: "Decode blob and verify sentinel present"
+          command: "jq -r .content blob.json | base64 -d"
+          validation: "Sentinel line exists in decoded blob"
+        - step_id: "TEST-03"
+          action: "Verify fresh template after sentinel"
+          command: "grep 'fresh shim template' decoded_blob"
+          validation: "Fresh template content follows sentinel"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Remove temporary directory"
+          command: "rm -rf TMPDIR"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Sentinel preserved in updated blob"
+        condition: "Decoded blob contains sentinel line"
+        failure_impact: "Update removes sentinel — infinite update loop"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "Fresh template follows sentinel"
+        condition: "Decoded blob contains 'fresh shim template'"
+        failure_impact: "Update does not apply new template"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: ["GNU base64", "jq"]
+      scenario_specific_rbac: []
+
+  - scenario_id: 7
+    test_id: "TS-GH2247-007"
+    test_type: "unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-2247"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify sentinel survives injection guard rejection"
+      what: |
+        Tests that when non-comment YAML content is found above the sentinel
+        (content injection attempt), the injection guard rejects the
+        non-comment header but the sentinel and managed content are preserved
+        in the output blob.
+      why: |
+        The injection guard protects against arbitrary YAML injection above
+        the sentinel. It must reject bad headers without corrupting the
+        sentinel-delimited managed content.
+      acceptance_criteria:
+        - "Non-comment content above sentinel is NOT in output blob"
+        - "Sentinel line IS in output blob"
+        - "Fresh template content IS in output blob"
+        - "Warning log emitted about rejected header"
+
+    specific_preconditions:
+      - name: "Remote shim with injected YAML"
+        requirement: "Non-comment YAML (e.g., 'name: injected-workflow') above sentinel"
+        validation: "Mock returns shim with injection attempt"
+
+    test_data:
+      resource_definitions:
+        - name: "injected_remote_shim"
+          type: "text"
+          content: |
+            name: injected-workflow
+            # --- fullsend managed below - do not edit ---
+            stale shim template
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock gh CLI returning shim with non-comment YAML above sentinel"
+          command: "Mock returns base64 of injected content"
+          validation: "Mock configured with injection payload"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run reconcile-repos.sh"
+          command: "bash reconcile-repos.sh CONFIG_DIR"
+          validation: "Script runs injection guard"
+        - step_id: "TEST-02"
+          action: "Verify injected content rejected"
+          command: "! grep 'injected-workflow' decoded_blob"
+          validation: "Injected YAML not in output"
+        - step_id: "TEST-03"
+          action: "Verify sentinel preserved"
+          command: "grep sentinel decoded_blob"
+          validation: "Sentinel present in blob"
+        - step_id: "TEST-04"
+          action: "Verify warning emitted"
+          command: "grep '::warning::.*non-comment content above sentinel was rejected' stdout"
+          validation: "Warning log present"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Remove temporary directory"
+          command: "rm -rf TMPDIR"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Injected YAML content rejected"
+        condition: "Decoded blob does NOT contain 'injected-workflow'"
+        failure_impact: "Arbitrary YAML injection allowed in managed workflow files"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "Sentinel preserved despite injection rejection"
+        condition: "Decoded blob contains sentinel line"
+        failure_impact: "Injection guard corrupts managed section boundary"
+      - assertion_id: "ASSERT-03"
+        priority: "P0"
+        description: "Warning log emitted"
+        condition: "stdout contains '::warning::.*non-comment content above sentinel was rejected'"
+        failure_impact: "Silent rejection — repo maintainers not informed"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: ["GNU base64", "jq", "awk"]
+      scenario_specific_rbac: []
+
+  # =====================================================================
+  # Group 3: Pre-sentinel shim fallback (P1)
+  # Requirement: Pre-sentinel shim comparison falls back to full decoded content
+  # =====================================================================
+
+  - scenario_id: 8
+    test_id: "TS-GH2247-008"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-2247"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify pre-sentinel shim matches full decoded content"
+      what: |
+        Tests that when a remote shim has no sentinel line (pre-sentinel
+        format from before sentinel introduction), extract_managed_content
+        returns empty, and the comparison falls back to full decoded content
+        comparison. When the full content matches the template content
+        (minus sentinel), it is recognized as up-to-date.
+      why: |
+        Pre-sentinel shims exist from before the sentinel feature was added.
+        The fallback ensures these repos are not unnecessarily updated if
+        the managed content is identical.
+      acceptance_criteria:
+        - "Pre-sentinel shim with matching content not flagged stale"
+        - "Fallback to full decoded content comparison is triggered"
+
+    specific_preconditions:
+      - name: "Pre-sentinel remote shim"
+        requirement: "Remote shim has managed content but no sentinel line"
+        validation: "Mock returns shim without sentinel"
+
+    test_data:
+      resource_definitions:
+        - name: "pre_sentinel_shim"
+          type: "text"
+          content: "fresh shim template"
+          description: "Same content as template but without sentinel line"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock gh CLI returning pre-sentinel shim with matching content"
+          command: "Mock returns base64 of content without sentinel"
+          validation: "Mock configured with pre-sentinel content"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run reconcile-repos.sh"
+          command: "bash reconcile-repos.sh CONFIG_DIR"
+          validation: "Script uses fallback comparison"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Remove temporary directory"
+          command: "rm -rf TMPDIR"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Pre-sentinel shim with matching content recognized"
+        condition: "No 'shim is stale' in output OR shim detected as stale for migration"
+        failure_impact: "Unnecessary migration churn for pre-sentinel repos"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: ["GNU base64", "awk"]
+      scenario_specific_rbac: []
+
+  - scenario_id: 9
+    test_id: "TS-GH2247-009"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-2247"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify pre-sentinel shim detects genuine drift"
+      what: |
+        Tests that when a pre-sentinel shim has content that genuinely
+        differs from the template, the full decoded content comparison
+        correctly detects the drift and flags it as stale.
+      why: |
+        The fallback path must still catch real drift in pre-sentinel repos,
+        not just suppress all updates.
+      acceptance_criteria:
+        - "Pre-sentinel shim with different content is flagged stale"
+        - "Update blob is created with sentinel + fresh template"
+
+    specific_preconditions:
+      - name: "Pre-sentinel remote shim with stale content"
+        requirement: "Remote shim has different content and no sentinel"
+        validation: "Mock returns outdated pre-sentinel shim"
+
+    test_data:
+      resource_definitions:
+        - name: "stale_pre_sentinel_shim"
+          type: "text"
+          content: "stale shim template"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock gh CLI returning stale pre-sentinel shim"
+          command: "Mock returns base64 of stale content without sentinel"
+          validation: "Mock configured with stale pre-sentinel content"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run reconcile-repos.sh"
+          command: "bash reconcile-repos.sh CONFIG_DIR"
+          validation: "Script detects stale content"
+        - step_id: "TEST-02"
+          action: "Verify update blob created"
+          command: "test -f blob-input.json"
+          validation: "Blob file exists"
+        - step_id: "TEST-03"
+          action: "Verify blob has sentinel (migration to sentinel format)"
+          command: "Decoded blob contains sentinel"
+          validation: "Pre-sentinel shim migrated to sentinel format"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Remove temporary directory"
+          command: "rm -rf TMPDIR"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Pre-sentinel stale content detected"
+        condition: "stdout contains 'shim is stale'"
+        failure_impact: "Pre-sentinel repos never updated even when genuinely stale"
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "Migration blob includes sentinel"
+        condition: "Decoded blob contains sentinel line"
+        failure_impact: "Migration does not add sentinel — stays in pre-sentinel format"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: ["GNU base64", "jq"]
+      scenario_specific_rbac: []
+
+  - scenario_id: 10
+    test_id: "TS-GH2247-010"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-2247"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify empty extract_managed_content triggers fallback"
+      what: |
+        Tests the extract_managed_content function directly: when input has
+        no sentinel line, the function returns empty string, which triggers
+        the fallback to full decoded content comparison in the caller.
+      why: |
+        This is a unit-level test of the sentinel extraction function to
+        verify the fallback trigger condition.
+      acceptance_criteria:
+        - "extract_managed_content returns empty for input without sentinel"
+        - "Caller uses full decoded content when extract returns empty"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions:
+        - name: "content_without_sentinel"
+          type: "text"
+          content: "some content without any sentinel line"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Source reconcile-repos.sh functions"
+          command: "source reconcile-repos.sh (extract functions)"
+          validation: "extract_managed_content function available"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call extract_managed_content with content lacking sentinel"
+          command: "echo 'no sentinel here' | extract_managed_content"
+          validation: "Function returns empty output"
+        - step_id: "TEST-02"
+          action: "Verify empty output triggers fallback in comparison logic"
+          command: "Check that comparison uses full content when managed is empty"
+          validation: "Fallback path taken"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "No cleanup needed for function test"
+          command: "N/A"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "extract_managed_content returns empty for no-sentinel input"
+        condition: "Output of extract_managed_content is empty string"
+        failure_impact: "Function incorrectly returns content for no-sentinel input"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: ["awk"]
+      scenario_specific_rbac: []
+
+  # =====================================================================
+  # Group 4: Stale detection → PR creation (Functional, P1)
+  # Requirement: Stale shim detection triggers update PR only for genuine drift
+  # =====================================================================
+
+  - scenario_id: 11
+    test_id: "TS-GH2247-011"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-2247"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify update PR created for genuine template change"
+      what: |
+        End-to-end functional test: given a repo with a stale shim (different
+        managed content from template), the full reconcile-repos.sh flow
+        creates a Git blob, tree, commit, and updates the branch ref to
+        produce an update PR.
+      why: |
+        Validates the complete update flow from drift detection through
+        GitHub API calls (mocked) to branch creation/update.
+      acceptance_criteria:
+        - "Git blob created with fresh template content"
+        - "Git tree and commit created"
+        - "Branch ref updated to new commit"
+        - "Commit message has proper subject/body format"
+
+    specific_preconditions:
+      - name: "Repo with stale shim and existing PR"
+        requirement: "Mock gh returns stale shim + existing PR for onboard branch"
+        validation: "Mock configured for full update flow"
+
+    test_data:
+      resource_definitions:
+        - name: "stale_remote_shim"
+          type: "text"
+          content: |
+            # Copyright 2026 Conforma
+            # SPDX-License-Identifier: Apache-2.0
+            # --- fullsend managed below - do not edit ---
+            stale shim template
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create comprehensive mock gh CLI simulating full GitHub API"
+          command: "Mock handles: contents, blobs, trees, commits, refs, pr list"
+          validation: "All API endpoints mocked"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run reconcile-repos.sh with full mock environment"
+          command: "bash reconcile-repos.sh CONFIG_DIR"
+          validation: "Script completes update flow"
+        - step_id: "TEST-02"
+          action: "Verify blob created"
+          command: "test -f blob-input.json"
+          validation: "Blob file exists"
+        - step_id: "TEST-03"
+          action: "Verify branch ref updated to desired commit"
+          command: "grep 'refs/heads/fullsend/onboard.*sha=desired-commit-sha' gh-calls.log"
+          validation: "Branch pointed to new commit"
+        - step_id: "TEST-04"
+          action: "Verify commit message format"
+          command: "Parse commit-msgs.log for subject+blank+body format"
+          validation: "Message follows conventional commit format"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Remove temporary directory"
+          command: "rm -rf TMPDIR"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Branch ref updated atomically"
+        condition: "gh log shows PATCH to refs/heads/fullsend/onboard with desired-commit-sha"
+        failure_impact: "Branch update fails or points to wrong commit"
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "Commit message well-formed"
+        condition: "Subject ≤50 chars, blank line, body present, lines ≤72 chars"
+        failure_impact: "Commit messages violate conventional commit format"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: ["GNU base64", "jq"]
+      scenario_specific_rbac: []
+
+  - scenario_id: 12
+    test_id: "TS-GH2247-012"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-2247"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify no PR created when content matches"
+      what: |
+        End-to-end functional test: given a repo with an up-to-date shim
+        (managed content matches template), the reconcile flow does NOT
+        create any blob, tree, commit, or branch update.
+      why: |
+        Validates that the comparison fix prevents unnecessary API calls
+        and PR creation for repos that are already current.
+      acceptance_criteria:
+        - "No blob created"
+        - "No git/blobs API call in gh log"
+        - "Script logs 'already enrolled (shim up to date)'"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions:
+        - name: "uptodate_remote_shim"
+          type: "text"
+          description: "Identical content to template with user header"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock gh returning up-to-date shim content"
+          command: "Mock returns base64 of matching managed content"
+          validation: "Remote content matches template"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run reconcile-repos.sh"
+          command: "bash reconcile-repos.sh CONFIG_DIR"
+          validation: "Script completes without update"
+        - step_id: "TEST-02"
+          action: "Verify no blob created"
+          command: "test ! -f blob-input.json"
+          validation: "No blob file"
+        - step_id: "TEST-03"
+          action: "Verify up-to-date log message"
+          command: "grep 'already enrolled (shim up to date)' stdout.log"
+          validation: "Correct status message"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Remove temporary directory"
+          command: "rm -rf TMPDIR"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "No update for matching content"
+        condition: "No blob-input file AND no git/blobs in gh log"
+        failure_impact: "Unnecessary API calls and PR creation (GH-2247 regression)"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: ["GNU base64"]
+      scenario_specific_rbac: []
+
+  - scenario_id: 13
+    test_id: "TS-GH2247-013"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-2247"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify no blob created for false positive drift"
+      what: |
+        Tests that encoding-only differences (trailing newlines, carriage
+        returns) do not result in any blob creation. This is the functional
+        complement to unit tests 1-4, verifying no downstream API calls.
+      why: |
+        Even if the comparison logic correctly identifies content as
+        matching, a bug in the blob generation path could still create
+        unnecessary blobs. This test validates the full path.
+      acceptance_criteria:
+        - "No blob-input file created"
+        - "No git/blobs API endpoint hit"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions:
+        - name: "encoding_variant_shim"
+          type: "text"
+          description: "Template content with extra trailing newline producing different base64"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock gh with encoding-different but logically identical content"
+          command: "Mock returns base64 of content with extra newline"
+          validation: "Base64 differs from template but decoded content matches"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run reconcile-repos.sh"
+          command: "bash reconcile-repos.sh CONFIG_DIR"
+          validation: "Script completes without creating blob"
+        - step_id: "TEST-02"
+          action: "Verify no blob created"
+          command: "test ! -f blob-input.json"
+          validation: "No blob file"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Remove temporary directory"
+          command: "rm -rf TMPDIR"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "No blob for encoding-only differences"
+        condition: "No blob-input file exists"
+        failure_impact: "False positive drift still triggers API calls even if comparison passes"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: ["GNU base64"]
+      scenario_specific_rbac: []
+
+  # =====================================================================
+  # Group 5: User-owned header preservation (P2)
+  # Requirement: User-owned header above sentinel is preserved during updates
+  # =====================================================================
+
+  - scenario_id: 14
+    test_id: "TS-GH2247-014"
+    test_type: "unit"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-2247"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify comment header preserved above sentinel"
+      what: |
+        Tests that user-owned comment lines (e.g., copyright notices,
+        SPDX license headers) above the sentinel line are preserved in
+        the output blob when the managed content is updated.
+      why: |
+        Repo maintainers add copyright and license headers above the
+        sentinel. These must survive shim updates.
+      acceptance_criteria:
+        - "Comment lines above sentinel present in output blob"
+        - "Sentinel line present after comments"
+        - "Fresh template content present after sentinel"
+
+    specific_preconditions:
+      - name: "Remote shim with comment header"
+        requirement: "Remote shim has copyright + SPDX lines above sentinel"
+        validation: "Mock returns shim with comment header"
+
+    test_data:
+      resource_definitions:
+        - name: "shim_with_header"
+          type: "text"
+          content: |
+            # Copyright 2026 Conforma
+            # SPDX-License-Identifier: Apache-2.0
+            # --- fullsend managed below - do not edit ---
+            stale shim template
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock gh returning shim with comment header + stale content"
+          command: "Mock returns base64 of header + sentinel + stale content"
+          validation: "Mock configured"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run reconcile-repos.sh"
+          command: "bash reconcile-repos.sh CONFIG_DIR"
+          validation: "Script updates managed content, preserves header"
+        - step_id: "TEST-02"
+          action: "Verify copyright header preserved"
+          command: "grep 'Copyright 2026 Conforma' decoded_blob"
+          validation: "Copyright line present"
+        - step_id: "TEST-03"
+          action: "Verify SPDX header preserved"
+          command: "grep 'SPDX-License-Identifier: Apache-2.0' decoded_blob"
+          validation: "SPDX line present"
+        - step_id: "TEST-04"
+          action: "Verify sentinel and fresh content present"
+          command: "grep sentinel and grep 'fresh shim template' in decoded_blob"
+          validation: "Both present"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Remove temporary directory"
+          command: "rm -rf TMPDIR"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Copyright comment preserved"
+        condition: "Decoded blob first line matches '# Copyright 2026 Conforma'"
+        failure_impact: "License headers stripped during shim updates"
+      - assertion_id: "ASSERT-02"
+        priority: "P2"
+        description: "SPDX header preserved"
+        condition: "Decoded blob contains '# SPDX-License-Identifier: Apache-2.0'"
+        failure_impact: "SPDX compliance headers removed"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: ["GNU base64", "jq", "awk"]
+      scenario_specific_rbac: []
+
+  - scenario_id: 15
+    test_id: "TS-GH2247-015"
+    test_type: "unit"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-2247"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify non-comment content above sentinel rejected"
+      what: |
+        Tests that when non-comment YAML content (e.g., 'name: injected-workflow')
+        is found above the sentinel line, the extract_user_header function
+        and validation logic reject it, and the output blob does not contain
+        the injected content. A warning log is emitted.
+      why: |
+        Prevents content injection via the user header section. Only
+        comment lines (starting with #) should be allowed above the sentinel.
+      acceptance_criteria:
+        - "Non-comment YAML content NOT in output blob"
+        - "Warning log emitted about rejected header"
+        - "Sentinel and managed content still present"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions:
+        - name: "injected_shim"
+          type: "text"
+          content: |
+            name: injected-workflow
+            # --- fullsend managed below - do not edit ---
+            stale shim template
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock gh returning shim with injected non-comment YAML"
+          command: "Mock returns base64 of injected content"
+          validation: "Mock configured"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run reconcile-repos.sh"
+          command: "bash reconcile-repos.sh CONFIG_DIR"
+          validation: "Script rejects injection"
+        - step_id: "TEST-02"
+          action: "Verify injection not in blob"
+          command: "! grep 'injected-workflow' decoded_blob"
+          validation: "Injected content absent"
+        - step_id: "TEST-03"
+          action: "Verify warning emitted"
+          command: "grep '::warning::.*non-comment content above sentinel was rejected' stdout"
+          validation: "Warning present"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Remove temporary directory"
+          command: "rm -rf TMPDIR"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Injected YAML rejected from output"
+        condition: "Decoded blob does NOT contain 'injected-workflow'"
+        failure_impact: "Content injection vulnerability in managed workflows"
+      - assertion_id: "ASSERT-02"
+        priority: "P2"
+        description: "Warning log for rejected header"
+        condition: "stdout contains rejection warning"
+        failure_impact: "Silent rejection — no audit trail"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: ["GNU base64", "jq", "awk"]
+      scenario_specific_rbac: []
+
+  # =====================================================================
+  # Group 6: Base64 round-trip integrity (P1)
+  # Requirement: Base64 encoding/decoding round-trip does not corrupt content
+  # =====================================================================
+
+  - scenario_id: 16
+    test_id: "TS-GH2247-016"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-2247"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify base64 round-trip preserves multi-line YAML"
+      what: |
+        Tests that encoding multi-line YAML content to base64 and decoding
+        it back produces byte-identical output. This validates the data
+        transformation pipeline preceding the comparison logic.
+      why: |
+        The comparison logic assumes base64 decode produces identical
+        bytes. If the encode/decode round-trip corrupts content (e.g.,
+        adding/removing characters), comparison results are unreliable.
+      acceptance_criteria:
+        - "Decoded content byte-identical to original input"
+        - "Multi-line YAML structure preserved (indentation, colons, dashes)"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions:
+        - name: "multiline_yaml"
+          type: "text"
+          content: |
+            name: test-workflow
+            on:
+              workflow_call:
+                inputs:
+                  target:
+                    type: string
+            jobs:
+              test:
+                runs-on: ubuntu-latest
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create multi-line YAML test content"
+          command: "Store YAML content in variable"
+          validation: "Content has multiple lines with YAML structure"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Encode to base64 and decode back"
+          command: "echo content | base64 -w0 | base64 -d"
+          validation: "Output matches input"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "No cleanup needed"
+          command: "N/A"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Round-trip preserves multi-line content"
+        condition: "Decoded output == original input (byte comparison)"
+        failure_impact: "Base64 corruption leads to false drift detection"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: ["GNU base64"]
+      scenario_specific_rbac: []
+
+  - scenario_id: 17
+    test_id: "TS-GH2247-017"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-2247"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify line-wrapped base64 input is decoded correctly"
+      what: |
+        Tests that base64 input with line wrapping (76-char lines as
+        produced by standard base64 encoding) is correctly decoded.
+        The GitHub content API returns base64 with line wrapping, while
+        base64 -w0 produces unwrapped output.
+      why: |
+        The script must handle both wrapped and unwrapped base64 formats
+        since it processes content from GitHub API (wrapped) and locally
+        generated content (unwrapped via -w0).
+      acceptance_criteria:
+        - "Wrapped base64 decoded to same content as unwrapped"
+        - "No extra whitespace or newlines in decoded output"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions:
+        - name: "wrapped_base64"
+          type: "text"
+          description: "Base64 string with 76-char line wrapping (standard format)"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Generate wrapped base64 from test content"
+          command: "echo content | base64 (default wrapping)"
+          validation: "Output has line breaks"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Decode wrapped base64"
+          command: "echo wrapped | base64 -d"
+          validation: "Decoded matches original content"
+        - step_id: "TEST-02"
+          action: "Compare with unwrapped decode"
+          command: "echo content | base64 -w0 | base64 -d"
+          validation: "Both produce identical output"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "No cleanup needed"
+          command: "N/A"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Wrapped base64 decoded correctly"
+        condition: "Decoded wrapped == decoded unwrapped == original content"
+        failure_impact: "GitHub API base64 format causes decode errors"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: ["GNU base64"]
+      scenario_specific_rbac: []
+---
