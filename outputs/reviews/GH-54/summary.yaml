@@ -1,0 +1,24 @@
+status: success
+jira_id: GH-54
+verdict: NEEDS_REVISION
+confidence: MEDIUM
+weighted_score: 72
+findings:
+  critical: 1
+  major: 6
+  minor: 4
+  actionable: 10
+  total: 11
+artifacts_reviewed:
+  std_yaml: true
+  go_stubs: true
+  python_stubs: false
+  stp_available: true
+dimension_scores:
+  traceability: 90
+  yaml_structure: 55
+  pattern_matching: 50
+  step_quality: 65
+  content_policy: 75
+  pse_quality: 75
+  codegen_readiness: 85
