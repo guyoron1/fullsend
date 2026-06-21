@@ -1,0 +1,15 @@
+status: success
+jira_id: GH-2096
+file_path: /sandbox/workspace/output/GH-2096_test_plan.md
+test_counts:
+  unit_tests: 6
+  functional: 12
+  end_to_end: 2
+  total: 20
+pr_analyzed: "https://github.com/fullsend-ai/fullsend/pull/2303"
+lsp_analysis: true
+lsp_calls: 7
+validation:
+  passed: 17
+  failed: 0
+  warnings: 1
