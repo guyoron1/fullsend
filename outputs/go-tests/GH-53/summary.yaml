@@ -1,0 +1,22 @@
+status: success
+jira_id: GH-53
+std_source: outputs/std/GH-53/GH-53_test_description.yaml
+languages:
+  - language: go
+    framework: testing
+    files:
+      - sanitize_review_result_test.go
+      - findings_to_review_comments_test.go
+      - output_pipeline_regression_test.go
+    test_count: 20
+total_test_count: 20
+lsp_patterns_used: false
+notes: |
+  All 20 STD scenarios implemented and verified passing.
+  Tests cover 3 categories:
+    - Security Sanitization (8 tests: TS-GH-53-001 through 007, 020)
+    - File-Level Fallback & Integration (9 tests: TS-GH-53-008 through 017)
+    - Regression (2 tests: TS-GH-53-018 through 019)
+  Package: cli (internal/cli)
+  Assertions use testify assert/require.
+  Token patterns match SecretRedactor regex (ghp_/ghs_ with 36+ char suffix).
