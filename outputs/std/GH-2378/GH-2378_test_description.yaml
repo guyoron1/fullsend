@@ -1,0 +1,1069 @@
+---
+# Software Test Description (STD) — GH-2378
+# Code Agent Status Comment Should Reflect Actual Outcome When No PR Is Created
+# Generated: 2026-06-21
+# Format: v2.1-enhanced (comprehensive single-file STD)
+
+document_metadata:
+  std_version: "2.1-enhanced"
+  generated_date: "2026-06-21"
+  jira_issue: "GH-2378"
+  jira_summary: "Code Agent Status Comment Should Reflect Actual Outcome When No PR Is Created"
+  source_bugs: []
+  stp_reference:
+    file: "outputs/stp/GH-2378/GH-2378_test_plan.md"
+    version: "v1"
+    sections_covered: "Section III - Requirements-to-Tests Mapping"
+  related_prs:
+    - repo: "fullsend-ai/fullsend"
+      pr_number: 2381
+      url: "https://github.com/fullsend-ai/fullsend/pull/2381"
+      title: "Fix code agent status comment to reflect actual outcome"
+      merged: true
+  total_scenarios: 10
+  unit_test_count: 9
+  functional_count: 1
+  e2e_count: 0
+  p0_count: 5
+  p1_count: 4
+  p2_count: 1
+
+code_generation_config:
+  std_version: "2.1-enhanced"
+  framework: "testing"
+  assertion_library: "testify"
+  language: "go"
+  package_name: "tests"
+  context_init: "context.Background()"
+  imports:
+    standard:
+      - "context"
+      - "testing"
+      - "os"
+      - "os/exec"
+      - "fmt"
+      - "strings"
+    test_framework:
+      - path: "github.com/stretchr/testify/assert"
+      - path: "github.com/stretchr/testify/require"
+    project:
+      - "github.com/fullsend-ai/fullsend/internal/config"
+  build_tags:
+    - "e2e"
+  test_patterns:
+    function_prefix: "Test"
+    subtest_style: "t.Run"
+    assertion_style: "testify"
+
+common_preconditions:
+  infrastructure:
+    - name: "Go toolchain"
+      requirement: "Go 1.23+"
+      validation: "go version"
+    - name: "GitHub Actions runner"
+      requirement: "Ubuntu latest with bash 5.x+"
+      validation: "bash --version"
+    - name: "gh CLI"
+      requirement: "GitHub CLI installed and authenticated"
+      validation: "gh --version"
+  cluster_configuration:
+    topology: "None"
+    cpu_features: "Standard"
+    storage: "Local filesystem only"
+    network: "GitHub API access"
+  environment_variables:
+    - name: "AGENT_EXIT_CODE"
+      description: "Exit code from agent subprocess, passed from Go harness to post-script"
+      type: "integer string"
+    - name: "AGENT_ERROR_EXIT"
+      description: "Internal flag set by post-code.sh when agent error detected"
+      type: "boolean string (true/false)"
+    - name: "PUSH_TOKEN"
+      description: "GitHub token for pushing changes"
+      type: "string"
+    - name: "REPO_FULL_NAME"
+      description: "Full repository name (org/repo)"
+      type: "string"
+    - name: "ISSUE_NUMBER"
+      description: "GitHub issue number for status comments"
+      type: "string"
+
+scenarios:
+  - scenario_id: "001"
+    test_id: "TS-GH-2378-001"
+    tier: "Unit Tests"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-2378"
+
+    variables:
+      closure_scope:
+        - name: "exitCode"
+          type: "string"
+          initialized_in: "test setup"
+          used_in: ["test execution"]
+          comment: "Simulated agent exit code"
+        - name: "branchExists"
+          type: "bool"
+          initialized_in: "test setup"
+          used_in: ["test execution"]
+          comment: "Whether feature branch exists"
+        - name: "result"
+          type: "string"
+          initialized_in: "test execution"
+          used_in: ["assertions"]
+          comment: "detect_noop function return value"
+
+    test_structure:
+      type: "table-driven"
+      describe:
+        description: "detect_noop with agent error at branch check"
+      context:
+        description: "when agent exits non-zero and no feature branch exists"
+      it:
+        description: "should return agent_error instead of noop"
+        test_id_format: "[test_id:TS-GH-2378-001]"
+
+    test_objective:
+      title: "Verify post-script exits with error when agent exits non-zero and no feature branch exists"
+      what: |
+        Tests the detect_noop function in post-code.sh when AGENT_EXIT_CODE is non-zero
+        and no feature branch has been created. The function should detect this as an
+        agent error (not a normal noop) and set AGENT_ERROR_EXIT=true.
+      why: |
+        This is the primary fix for GH-2378. Previously, when the agent failed with a
+        non-zero exit code but produced no branch, the post-script incorrectly reported
+        "Success". This test ensures the agent error is correctly detected at the first
+        checkpoint (branch existence).
+      acceptance_criteria:
+        - "detect_noop returns 'agent_error' when AGENT_EXIT_CODE != 0 and no branch exists"
+        - "AGENT_ERROR_EXIT is set to 'true' in this scenario"
+        - "Function does NOT return 'noop' for agent error cases"
+
+    specific_preconditions:
+      - name: "post-code.sh sourced for function testing"
+        requirement: "detect_noop function is accessible"
+        validation: "type detect_noop"
+
+    test_data:
+      environment_setup:
+        - variable: "AGENT_EXIT_CODE"
+          value: "1"
+        - variable: "BRANCH_EXISTS"
+          value: "false"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Set AGENT_EXIT_CODE to non-zero value (e.g., 1)"
+          command: "export AGENT_EXIT_CODE=1"
+          validation: "Variable is set"
+        - step_id: "SETUP-02"
+          action: "Ensure no feature branch exists"
+          command: "Simulate branch check returning false"
+          validation: "Branch check returns non-existent"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call detect_noop function"
+          command: "result=$(detect_noop)"
+          validation: "Function returns 'agent_error'"
+        - step_id: "TEST-02"
+          action: "Verify AGENT_ERROR_EXIT flag is set"
+          command: "echo $AGENT_ERROR_EXIT"
+          validation: "AGENT_ERROR_EXIT equals 'true'"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Unset test environment variables"
+          command: "unset AGENT_EXIT_CODE AGENT_ERROR_EXIT"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "detect_noop returns agent_error for non-zero exit with no branch"
+        condition: "result == 'agent_error'"
+        failure_impact: "Agent failures would be silently reported as success"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "AGENT_ERROR_EXIT flag is set to true"
+        condition: "AGENT_ERROR_EXIT == 'true'"
+        failure_impact: "Error comment template would not be selected"
+
+    dependencies:
+      external_tools:
+        - "bash 5.x+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "002"
+    test_id: "TS-GH-2378-002"
+    tier: "Unit Tests"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-2378"
+
+    variables:
+      closure_scope:
+        - name: "exitCode"
+          type: "string"
+          initialized_in: "test setup"
+          used_in: ["test execution"]
+          comment: "Simulated agent exit code"
+        - name: "changedFiles"
+          type: "string"
+          initialized_in: "test setup"
+          used_in: ["test execution"]
+          comment: "Simulated changed files count"
+        - name: "result"
+          type: "string"
+          initialized_in: "test execution"
+          used_in: ["assertions"]
+          comment: "detect_noop function return value"
+
+    test_structure:
+      type: "table-driven"
+      describe:
+        description: "detect_noop with agent error at changed-files check"
+      context:
+        description: "when agent exits non-zero on feature branch with no changed files"
+      it:
+        description: "should return agent_error instead of noop"
+        test_id_format: "[test_id:TS-GH-2378-002]"
+
+    test_objective:
+      title: "Verify post-script exits with error when agent exits non-zero on feature branch with no changed files"
+      what: |
+        Tests the detect_noop function when the agent has created a feature branch
+        but exited with a non-zero code and produced no changed files. This is the
+        second checkpoint where agent errors must be detected.
+      why: |
+        An agent may create a branch (e.g., via initial git operations) but then
+        fail during code generation. The changed-files check is the second point
+        where false-success reporting can occur if agent errors are not detected.
+      acceptance_criteria:
+        - "detect_noop returns 'agent_error' when AGENT_EXIT_CODE != 0 and no changed files exist on feature branch"
+        - "AGENT_ERROR_EXIT is set to 'true'"
+        - "Function does NOT return 'noop' for agent error cases at this checkpoint"
+
+    specific_preconditions:
+      - name: "Feature branch exists but has no changed files"
+        requirement: "git diff returns empty"
+        validation: "git diff --name-only returns empty"
+
+    test_data:
+      environment_setup:
+        - variable: "AGENT_EXIT_CODE"
+          value: "2"
+        - variable: "BRANCH_EXISTS"
+          value: "true"
+        - variable: "CHANGED_FILES"
+          value: "0"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Set AGENT_EXIT_CODE to non-zero value (e.g., 2)"
+          command: "export AGENT_EXIT_CODE=2"
+          validation: "Variable is set"
+        - step_id: "SETUP-02"
+          action: "Simulate feature branch existing with no changed files"
+          command: "Simulate branch check true, changed files count 0"
+          validation: "Branch exists, no changes"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call detect_noop function"
+          command: "result=$(detect_noop)"
+          validation: "Function returns 'agent_error'"
+        - step_id: "TEST-02"
+          action: "Verify AGENT_ERROR_EXIT flag is set"
+          command: "echo $AGENT_ERROR_EXIT"
+          validation: "AGENT_ERROR_EXIT equals 'true'"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Unset test environment variables"
+          command: "unset AGENT_EXIT_CODE AGENT_ERROR_EXIT"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "detect_noop returns agent_error at changed-files checkpoint"
+        condition: "result == 'agent_error'"
+        failure_impact: "Agent failures on existing branch would be reported as noop"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "AGENT_ERROR_EXIT flag is set to true"
+        condition: "AGENT_ERROR_EXIT == 'true'"
+        failure_impact: "Incorrect error comment template selected"
+
+    dependencies:
+      external_tools:
+        - "bash 5.x+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "003"
+    test_id: "TS-GH-2378-003"
+    tier: "Unit Tests"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-2378"
+
+    variables:
+      closure_scope:
+        - name: "exitCode"
+          type: "string"
+          initialized_in: "test setup"
+          used_in: ["test execution"]
+          comment: "Agent exit code set to 0 (success)"
+        - name: "result"
+          type: "string"
+          initialized_in: "test execution"
+          used_in: ["assertions"]
+          comment: "detect_noop function return value"
+
+    test_structure:
+      type: "table-driven"
+      describe:
+        description: "detect_noop preserves noop behavior"
+      context:
+        description: "when agent exits 0 with no commits"
+      it:
+        description: "should return noop (not agent_error)"
+        test_id_format: "[test_id:TS-GH-2378-003]"
+
+    test_objective:
+      title: "Verify post-script exits cleanly when agent exits 0 with no commits (both branch and files paths)"
+      what: |
+        Tests that the detect_noop function correctly returns 'noop' (not 'agent_error')
+        when the agent exits with code 0 but produces no commits. This covers both the
+        no-branch path and the no-changed-files path when exit code is 0.
+      why: |
+        Intentional no-ops are a valid agent outcome (e.g., agent determines no changes
+        are needed). These must continue to be reported as successful completions, not
+        errors. This test prevents regression of the noop path.
+      acceptance_criteria:
+        - "detect_noop returns 'noop' when AGENT_EXIT_CODE == 0 and no branch exists"
+        - "detect_noop returns 'noop' when AGENT_EXIT_CODE == 0 and branch exists but no changed files"
+        - "AGENT_ERROR_EXIT is NOT set to 'true' in either case"
+
+    specific_preconditions:
+      - name: "Agent exit code is 0"
+        requirement: "AGENT_EXIT_CODE=0 or unset"
+        validation: "echo $AGENT_EXIT_CODE"
+
+    test_data:
+      environment_setup:
+        - variable: "AGENT_EXIT_CODE"
+          value: "0"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Set AGENT_EXIT_CODE to 0"
+          command: "export AGENT_EXIT_CODE=0"
+          validation: "Variable is set to 0"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call detect_noop with no branch existing"
+          command: "result=$(detect_noop)"
+          validation: "Function returns 'noop'"
+        - step_id: "TEST-02"
+          action: "Call detect_noop with branch existing but no changed files"
+          command: "result=$(detect_noop)"
+          validation: "Function returns 'noop'"
+        - step_id: "TEST-03"
+          action: "Verify AGENT_ERROR_EXIT is not set"
+          command: "echo ${AGENT_ERROR_EXIT:-unset}"
+          validation: "AGENT_ERROR_EXIT is unset or not 'true'"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Unset test environment variables"
+          command: "unset AGENT_EXIT_CODE AGENT_ERROR_EXIT"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "No-branch path returns noop when exit code is 0"
+        condition: "result == 'noop' (no branch path)"
+        failure_impact: "Successful no-ops would be falsely reported as errors"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "No-files path returns noop when exit code is 0"
+        condition: "result == 'noop' (no files path)"
+        failure_impact: "Successful no-ops would be falsely reported as errors"
+      - assertion_id: "ASSERT-03"
+        priority: "P0"
+        description: "AGENT_ERROR_EXIT is not set for successful no-ops"
+        condition: "AGENT_ERROR_EXIT is unset or != 'true'"
+        failure_impact: "Error comment would be posted for successful runs"
+
+    dependencies:
+      external_tools:
+        - "bash 5.x+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "004"
+    test_id: "TS-GH-2378-004"
+    tier: "Unit Tests"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-2378"
+
+    variables:
+      closure_scope:
+        - name: "agentErrorExit"
+          type: "string"
+          initialized_in: "test setup"
+          used_in: ["test execution"]
+          comment: "Flag indicating agent error vs post-script error"
+        - name: "commentBody"
+          type: "string"
+          initialized_in: "test execution"
+          used_in: ["assertions"]
+          comment: "Generated error comment content"
+
+    test_structure:
+      type: "table-driven"
+      describe:
+        description: "build_error_comment with agent error flag"
+      context:
+        description: "when AGENT_ERROR_EXIT is true"
+      it:
+        description: "should produce comment saying 'Code agent failed'"
+        test_id_format: "[test_id:TS-GH-2378-004]"
+
+    test_objective:
+      title: "Verify error comment says 'Code agent failed' (not 'Post-code script failed') when AGENT_ERROR_EXIT is true"
+      what: |
+        Tests the build_error_comment function to ensure it produces a comment with
+        "Code agent failed" when the AGENT_ERROR_EXIT flag is set to true. This
+        distinguishes agent errors from post-script errors in user-facing comments.
+      why: |
+        Users need to know whether the failure was in the agent itself (e.g., API
+        rate limiting) or in the post-processing script. Different failure sources
+        require different troubleshooting approaches.
+      acceptance_criteria:
+        - "Error comment contains 'Code agent failed' when AGENT_ERROR_EXIT is true"
+        - "Error comment does NOT contain 'Post-code script failed' when AGENT_ERROR_EXIT is true"
+
+    specific_preconditions:
+      - name: "AGENT_ERROR_EXIT flag set"
+        requirement: "AGENT_ERROR_EXIT=true"
+        validation: "echo $AGENT_ERROR_EXIT"
+
+    test_data:
+      environment_setup:
+        - variable: "AGENT_ERROR_EXIT"
+          value: "true"
+        - variable: "AGENT_EXIT_CODE"
+          value: "1"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Set AGENT_ERROR_EXIT to true"
+          command: "export AGENT_ERROR_EXIT=true"
+          validation: "Variable is set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call build_error_comment function"
+          command: "commentBody=$(build_error_comment)"
+          validation: "Function returns comment string"
+        - step_id: "TEST-02"
+          action: "Check comment body content"
+          command: "echo $commentBody | grep 'Code agent failed'"
+          validation: "Comment contains 'Code agent failed'"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Unset test environment variables"
+          command: "unset AGENT_ERROR_EXIT AGENT_EXIT_CODE"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Comment contains 'Code agent failed' for agent errors"
+        condition: "commentBody contains 'Code agent failed'"
+        failure_impact: "Users cannot distinguish agent errors from post-script errors"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "Comment does NOT contain 'Post-code script failed' for agent errors"
+        condition: "commentBody does NOT contain 'Post-code script failed'"
+        failure_impact: "Misleading error attribution"
+
+    dependencies:
+      external_tools:
+        - "bash 5.x+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "005"
+    test_id: "TS-GH-2378-005"
+    tier: "Unit Tests"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-2378"
+
+    variables:
+      closure_scope:
+        - name: "agentExitCode"
+          type: "string"
+          initialized_in: "test setup"
+          used_in: ["test execution"]
+          comment: "The numeric agent exit code to include in comment"
+        - name: "commentBody"
+          type: "string"
+          initialized_in: "test execution"
+          used_in: ["assertions"]
+          comment: "Generated error comment content"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "build_error_comment exit code inclusion"
+      context:
+        description: "when agent exits with specific non-zero code"
+      it:
+        description: "should include numeric exit code in comment body"
+        test_id_format: "[test_id:TS-GH-2378-005]"
+
+    test_objective:
+      title: "Verify error comment body contains the numeric agent exit code value"
+      what: |
+        Tests that the error comment generated by build_error_comment includes the
+        actual numeric exit code from AGENT_EXIT_CODE. This gives users actionable
+        diagnostic information about the failure.
+      why: |
+        The numeric exit code helps engineers diagnose the root cause of agent
+        failures. For example, exit code 1 vs 2 may indicate different failure
+        modes that require different remediation steps.
+      acceptance_criteria:
+        - "Error comment body contains the numeric value of AGENT_EXIT_CODE"
+        - "Exit code is displayed in a human-readable format"
+
+    specific_preconditions:
+      - name: "AGENT_ERROR_EXIT and AGENT_EXIT_CODE set"
+        requirement: "Both variables set with valid values"
+        validation: "echo $AGENT_ERROR_EXIT $AGENT_EXIT_CODE"
+
+    test_data:
+      environment_setup:
+        - variable: "AGENT_ERROR_EXIT"
+          value: "true"
+        - variable: "AGENT_EXIT_CODE"
+          value: "1"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Set AGENT_ERROR_EXIT=true and AGENT_EXIT_CODE=1"
+          command: "export AGENT_ERROR_EXIT=true AGENT_EXIT_CODE=1"
+          validation: "Variables are set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call build_error_comment function"
+          command: "commentBody=$(build_error_comment)"
+          validation: "Comment is generated"
+        - step_id: "TEST-02"
+          action: "Check comment contains exit code value"
+          command: "echo $commentBody | grep '1'"
+          validation: "Comment contains the exit code '1'"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Unset test environment variables"
+          command: "unset AGENT_ERROR_EXIT AGENT_EXIT_CODE"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Error comment contains numeric exit code"
+        condition: "commentBody contains AGENT_EXIT_CODE value"
+        failure_impact: "Users lack diagnostic info about failure cause"
+
+    dependencies:
+      external_tools:
+        - "bash 5.x+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "006"
+    test_id: "TS-GH-2378-006"
+    tier: "Unit Tests"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-2378"
+
+    variables:
+      closure_scope:
+        - name: "agentErrorExit"
+          type: "string"
+          initialized_in: "test setup"
+          used_in: ["test execution"]
+          comment: "Flag unset or false to indicate non-agent error"
+        - name: "commentBody"
+          type: "string"
+          initialized_in: "test execution"
+          used_in: ["assertions"]
+          comment: "Generated error comment content"
+
+    test_structure:
+      type: "table-driven"
+      describe:
+        description: "build_error_comment for non-agent errors"
+      context:
+        description: "when AGENT_ERROR_EXIT is false or unset"
+      it:
+        description: "should produce comment saying 'Post-code script failed'"
+        test_id_format: "[test_id:TS-GH-2378-006]"
+
+    test_objective:
+      title: "Verify error comment says 'Post-code script failed' when AGENT_ERROR_EXIT is false or unset"
+      what: |
+        Tests that the existing error comment format is preserved for non-agent
+        errors. When AGENT_ERROR_EXIT is false or unset, the error comment should
+        use the original "Post-code script failed" wording.
+      why: |
+        Post-script errors (e.g., git push failure, PR creation failure) are
+        distinct from agent errors and should retain their existing error format
+        for backward compatibility and accurate error attribution.
+      acceptance_criteria:
+        - "Error comment contains 'Post-code script failed' when AGENT_ERROR_EXIT is false"
+        - "Error comment contains 'Post-code script failed' when AGENT_ERROR_EXIT is unset"
+        - "Error comment does NOT contain 'Code agent failed' in these cases"
+
+    specific_preconditions:
+      - name: "AGENT_ERROR_EXIT is false or unset"
+        requirement: "Variable not set to 'true'"
+        validation: "test \"$AGENT_ERROR_EXIT\" != 'true'"
+
+    test_data:
+      environment_setup:
+        - variable: "AGENT_ERROR_EXIT"
+          values: ["false", ""]
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Set AGENT_ERROR_EXIT to false (or unset it)"
+          command: "export AGENT_ERROR_EXIT=false  # or: unset AGENT_ERROR_EXIT"
+          validation: "Variable is false or unset"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call build_error_comment function"
+          command: "commentBody=$(build_error_comment)"
+          validation: "Comment is generated"
+        - step_id: "TEST-02"
+          action: "Check comment body for post-script error wording"
+          command: "echo $commentBody | grep 'Post-code script failed'"
+          validation: "Comment contains 'Post-code script failed'"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Unset test environment variables"
+          command: "unset AGENT_ERROR_EXIT"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Comment uses post-script error wording when AGENT_ERROR_EXIT is false"
+        condition: "commentBody contains 'Post-code script failed'"
+        failure_impact: "Post-script errors would be misattributed to agent"
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "Comment uses post-script error wording when AGENT_ERROR_EXIT is unset"
+        condition: "commentBody contains 'Post-code script failed' (unset case)"
+        failure_impact: "Backward compatibility broken for older harness versions"
+
+    dependencies:
+      external_tools:
+        - "bash 5.x+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "007"
+    test_id: "TS-GH-2378-007"
+    tier: "Unit Tests"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-2378"
+
+    variables:
+      closure_scope:
+        - name: "lastExitCode"
+          type: "int"
+          initialized_in: "runAgent"
+          used_in: ["defer closure", "post-script env"]
+          comment: "Agent exit code captured before defer statements"
+        - name: "envVars"
+          type: "[]string"
+          initialized_in: "test execution"
+          used_in: ["assertions"]
+          comment: "Environment variables passed to post-script command"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "AGENT_EXIT_CODE propagation from Go harness"
+      context:
+        description: "when runAgent completes with non-zero exit code"
+      it:
+        description: "should pass AGENT_EXIT_CODE to post-script environment"
+        test_id_format: "[test_id:TS-GH-2378-007]"
+
+    test_objective:
+      title: "Verify lastExitCode is declared before defer closures and AGENT_EXIT_CODE env var is appended to post-script command environment"
+      what: |
+        Tests the Go code in run.go to verify that lastExitCode is declared before
+        the defer closures (status comment defer and post-script defer) so both
+        closures can read it. Also verifies that AGENT_EXIT_CODE is included in the
+        environment variables passed to the post-script command.
+      why: |
+        The root cause of GH-2378 was that lastExitCode was declared after the
+        defer closures, so neither could access the agent's actual exit code. This
+        test ensures the variable scoping fix is correct and the env var propagation
+        works end-to-end within the Go harness.
+      acceptance_criteria:
+        - "lastExitCode is declared before any defer statements that reference it"
+        - "AGENT_EXIT_CODE is included in the post-script command's environment"
+        - "AGENT_EXIT_CODE value matches the agent's actual exit code"
+
+    specific_preconditions:
+      - name: "Go test harness available"
+        requirement: "run_test.go can test runAgent function"
+        validation: "go test -run TestAgentExitCode ./..."
+
+    test_data:
+      go_test_setup:
+        - description: "Mock agent that exits with code 1"
+          exit_code: 1
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create test fixture with mock agent returning non-zero exit"
+          command: "Set up test case with expected exit code"
+          validation: "Fixture is ready"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call runAgent or equivalent function"
+          command: "Invoke Go function under test"
+          validation: "Function completes"
+        - step_id: "TEST-02"
+          action: "Capture environment variables passed to post-script"
+          command: "Inspect cmd.Env for AGENT_EXIT_CODE"
+          validation: "AGENT_EXIT_CODE is present with correct value"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Clean up test fixtures"
+          command: "Standard Go test cleanup"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "AGENT_EXIT_CODE is present in post-script environment"
+        condition: "cmd.Env contains 'AGENT_EXIT_CODE=1'"
+        failure_impact: "Post-script cannot detect agent errors"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "AGENT_EXIT_CODE value matches agent's actual exit code"
+        condition: "AGENT_EXIT_CODE value == strconv.Itoa(lastExitCode)"
+        failure_impact: "Incorrect exit code reported to user"
+
+    dependencies:
+      external_tools:
+        - "Go 1.23+"
+        - "testify"
+      scenario_specific_rbac: []
+
+  - scenario_id: "008"
+    test_id: "TS-GH-2378-008"
+    tier: "Unit Tests"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-2378"
+
+    variables:
+      closure_scope:
+        - name: "exitCode"
+          type: "string"
+          initialized_in: "test setup"
+          used_in: ["test execution"]
+          comment: "Non-zero agent exit code"
+        - name: "changedFiles"
+          type: "string"
+          initialized_in: "test setup"
+          used_in: ["test execution"]
+          comment: "Number of changed files (non-zero)"
+        - name: "result"
+          type: "string"
+          initialized_in: "test execution"
+          used_in: ["assertions"]
+          comment: "detect_noop return value"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "detect_noop with agent error but changes present"
+      context:
+        description: "when agent exits non-zero but changes exist"
+      it:
+        description: "should continue to push/PR flow"
+        test_id_format: "[test_id:TS-GH-2378-008]"
+
+    test_objective:
+      title: "Verify post-script continues to push/PR flow when agent exits non-zero but changes exist"
+      what: |
+        Tests that when the agent exits with a non-zero code but has produced
+        actual file changes, the post-script continues with the normal push/PR
+        creation flow instead of treating it as a noop or agent error.
+      why: |
+        An agent may partially succeed - producing some changes before encountering
+        an error. In this case, the produced changes should still be pushed and
+        a PR created, since the partial work may be valuable.
+      acceptance_criteria:
+        - "detect_noop returns 'continue' (not 'noop' or 'agent_error') when changes exist"
+        - "Post-script proceeds to push/PR flow"
+
+    specific_preconditions:
+      - name: "Changes exist on feature branch"
+        requirement: "git diff returns non-empty"
+        validation: "git diff --name-only returns files"
+
+    test_data:
+      environment_setup:
+        - variable: "AGENT_EXIT_CODE"
+          value: "1"
+        - variable: "BRANCH_EXISTS"
+          value: "true"
+        - variable: "CHANGED_FILES"
+          value: "3"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Set AGENT_EXIT_CODE to non-zero and simulate existing changes"
+          command: "export AGENT_EXIT_CODE=1; simulate changed files"
+          validation: "Variables set, changes simulated"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call detect_noop function"
+          command: "result=$(detect_noop)"
+          validation: "Function returns 'continue'"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Unset test environment variables"
+          command: "unset AGENT_EXIT_CODE"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "detect_noop returns continue when changes exist despite non-zero exit"
+        condition: "result == 'continue'"
+        failure_impact: "Partial agent work would be discarded instead of pushed"
+
+    dependencies:
+      external_tools:
+        - "bash 5.x+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "009"
+    test_id: "TS-GH-2378-009"
+    tier: "Unit Tests"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-2378"
+
+    variables:
+      closure_scope:
+        - name: "exitCode"
+          type: "string"
+          initialized_in: "test setup"
+          used_in: ["test execution"]
+          comment: "Non-zero agent exit code"
+        - name: "headState"
+          type: "string"
+          initialized_in: "test setup"
+          used_in: ["test execution"]
+          comment: "Detached HEAD state indicator"
+        - name: "result"
+          type: "string"
+          initialized_in: "test execution"
+          used_in: ["assertions"]
+          comment: "detect_noop return value"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "detect_noop on detached HEAD with agent error"
+      context:
+        description: "when on detached HEAD with non-zero exit code"
+      it:
+        description: "should return agent_error not noop"
+        test_id_format: "[test_id:TS-GH-2378-009]"
+
+    test_objective:
+      title: "Verify post-script exits with agent error (not noop) when on detached HEAD with non-zero exit code"
+      what: |
+        Tests the edge case where git is in a detached HEAD state and the agent
+        exits with a non-zero code. The detect_noop function should correctly
+        identify this as an agent error rather than a normal noop.
+      why: |
+        Detached HEAD is an unusual but possible state in CI environments. The
+        agent error detection must work correctly regardless of git HEAD state
+        to prevent false-success reporting.
+      acceptance_criteria:
+        - "detect_noop returns 'agent_error' when on detached HEAD with non-zero exit code"
+        - "AGENT_ERROR_EXIT is set to 'true'"
+
+    specific_preconditions:
+      - name: "Git in detached HEAD state"
+        requirement: "HEAD is detached (not on any branch)"
+        validation: "git symbolic-ref HEAD fails"
+
+    test_data:
+      environment_setup:
+        - variable: "AGENT_EXIT_CODE"
+          value: "1"
+        - variable: "HEAD_STATE"
+          value: "detached"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Set AGENT_EXIT_CODE to non-zero and simulate detached HEAD"
+          command: "export AGENT_EXIT_CODE=1; simulate detached HEAD"
+          validation: "Variables set, detached HEAD simulated"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call detect_noop function"
+          command: "result=$(detect_noop)"
+          validation: "Function returns 'agent_error'"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Unset test environment variables"
+          command: "unset AGENT_EXIT_CODE"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Detached HEAD with non-zero exit returns agent_error"
+        condition: "result == 'agent_error'"
+        failure_impact: "Detached HEAD agent failures silently reported as noop"
+
+    dependencies:
+      external_tools:
+        - "bash 5.x+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "010"
+    test_id: "TS-GH-2378-010"
+    tier: "Functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-2378"
+
+    variables:
+      closure_scope:
+        - name: "issueComment"
+          type: "string"
+          initialized_in: "test execution"
+          used_in: ["assertions"]
+          comment: "The issue comment posted by the post-script"
+        - name: "exitCode"
+          type: "int"
+          initialized_in: "test setup"
+          used_in: ["test execution"]
+          comment: "Simulated agent exit code"
+
+    test_structure:
+      type: "single"
+      describe:
+        description: "End-to-end agent failure status comment"
+      context:
+        description: "when agent fails with non-zero exit and no commits"
+      it:
+        description: "should post issue comment with 'Code agent failed' and exit code"
+        test_id_format: "[test_id:TS-GH-2378-010]"
+
+    test_objective:
+      title: "Verify that a simulated agent failure (non-zero exit, no commits) results in an issue comment containing 'Code agent failed' with exit code and workflow run link"
+      what: |
+        End-to-end test that simulates a complete agent failure scenario by running
+        post-code.sh with a non-zero AGENT_EXIT_CODE and no commits. Validates that
+        the resulting issue comment contains the correct failure message, the numeric
+        exit code, and a link to the workflow run for debugging.
+      why: |
+        This end-to-end test validates the complete error reporting pipeline from
+        agent exit code propagation through to the user-facing issue comment. It
+        catches integration issues that unit tests on individual functions might miss.
+      acceptance_criteria:
+        - "Issue comment contains 'Code agent failed'"
+        - "Issue comment contains the numeric exit code"
+        - "Issue comment contains a link to the workflow run"
+        - "Issue comment does NOT say 'Success' or 'Finished Code, Success'"
+
+    specific_preconditions:
+      - name: "post-code.sh script available"
+        requirement: "Script is executable and all dependencies available"
+        validation: "test -x post-code.sh"
+      - name: "GitHub API access (or mock)"
+        requirement: "gh CLI available for comment posting (or mocked)"
+        validation: "gh --version"
+
+    test_data:
+      environment_setup:
+        - variable: "AGENT_EXIT_CODE"
+          value: "1"
+        - variable: "PUSH_TOKEN"
+          value: "mock-token"
+        - variable: "REPO_FULL_NAME"
+          value: "fullsend-ai/fullsend"
+        - variable: "ISSUE_NUMBER"
+          value: "2378"
+        - variable: "GITHUB_RUN_ID"
+          value: "123456789"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Set up environment with agent failure conditions"
+          command: "Export all required environment variables with non-zero exit code"
+          validation: "All variables set"
+        - step_id: "SETUP-02"
+          action: "Mock or intercept gh issue comment call"
+          command: "Set up mock to capture comment body"
+          validation: "Mock is active"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run post-code.sh"
+          command: "bash post-code.sh"
+          validation: "Script completes (may exit non-zero, that's expected)"
+        - step_id: "TEST-02"
+          action: "Capture the comment body posted to the issue"
+          command: "Read captured comment from mock"
+          validation: "Comment body is available for inspection"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Remove mock and clean up environment"
+          command: "Remove mock, unset variables"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Comment contains 'Code agent failed'"
+        condition: "issueComment contains 'Code agent failed'"
+        failure_impact: "Users see misleading success message"
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "Comment contains numeric exit code"
+        condition: "issueComment contains '1' (exit code)"
+        failure_impact: "Users lack diagnostic information"
+      - assertion_id: "ASSERT-03"
+        priority: "P1"
+        description: "Comment contains workflow run link"
+        condition: "issueComment contains URL with GITHUB_RUN_ID"
+        failure_impact: "Users cannot navigate to logs for debugging"
+      - assertion_id: "ASSERT-04"
+        priority: "P1"
+        description: "Comment does NOT contain false success message"
+        condition: "issueComment does NOT contain 'Finished Code, Success'"
+        failure_impact: "Original bug not fixed"
+
+    dependencies:
+      external_tools:
+        - "bash 5.x+"
+        - "gh CLI"
+      scenario_specific_rbac: []
+---
