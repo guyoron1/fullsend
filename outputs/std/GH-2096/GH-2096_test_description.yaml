@@ -13,12 +13,6 @@ document_metadata:
     file: "outputs/stp/GH-2096/GH-2096_test_plan.md"
     version: "v1"
     sections_covered: "Section III - Requirements-to-Tests Mapping"
-  related_prs:
-    - repo: "fullsend-ai/fullsend"
-      pr_number: 2303
-      url: "https://github.com/fullsend-ai/fullsend/pull/2303"
-      title: "Two-pass review strategy for large PRs"
-      merged: false
   owning_sig: "N/A"
   participating_sigs: []
   total_scenarios: 28
@@ -27,8 +21,8 @@ document_metadata:
   unit_count: 18
   functional_count: 8
   e2e_count: 2
-  p0_count: 12
-  p1_count: 12
+  p0_count: 11
+  p1_count: 13
   p2_count: 4
   existing_coverage_count: 0
   new_count: 28
@@ -57,7 +51,7 @@ common_preconditions:
       requirement: "Go 1.26+"
       validation: "go version"
     - name: "fullsend repository"
-      requirement: "Cloned fullsend repo with PR #2303 changes"
+      requirement: "Cloned fullsend repo with two-pass review strategy changes"
       validation: "go build ./..."
   operators: []
   cluster_configuration:
@@ -1729,4 +1723,3 @@ scenarios:
         description: "Zero-critical triage does not cause pipeline issues"
         condition: "Triage and review complete without errors or retries"
         failure_impact: "Zero-critical case could trigger unnecessary fallback or retry logic"
----
