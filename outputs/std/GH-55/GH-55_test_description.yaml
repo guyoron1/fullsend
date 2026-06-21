@@ -1,0 +1,1320 @@
+---
+# Software Test Description (STD) — GH-55
+# Generated: 2026-06-21
+# Source: outputs/stp/GH-55/GH-55_test_plan.md
+
+document_metadata:
+  std_version: "2.1-enhanced"
+  generated_date: "2026-06-21"
+  jira_issue: "GH-55"
+  jira_summary: "Explore OpenHands and evaluate relevance to fullsend"
+  source_bugs: []
+  stp_reference:
+    file: "outputs/stp/GH-55/GH-55_test_plan.md"
+    version: "v1"
+    sections_covered: "Section III - Requirements-to-Tests Mapping"
+  related_prs: []
+  owning_sig: "Documentation / Landscape"
+  participating_sigs:
+    - "Research"
+  total_scenarios: 17
+  documentation_review_count: 17
+  functional_count: 0
+  e2e_count: 0
+  p0_count: 3
+  p1_count: 10
+  p2_count: 4
+
+code_generation_config:
+  std_version: "2.1-enhanced"
+  framework: "testing"
+  assertion_library: "testify"
+  language: "go"
+  package_name: "tests"
+  note: >
+    All scenarios are Documentation Review tier. No automated code tests
+    are generated. Verification is performed through manual PR review of
+    research deliverables.
+
+common_preconditions:
+  infrastructure:
+    - name: "GitHub repository access"
+      requirement: "Read access to fullsend-ai/fullsend repository"
+      validation: "gh repo view fullsend-ai/fullsend"
+    - name: "OpenHands public documentation"
+      requirement: "Access to https://github.com/all-hands-ai/openhands"
+      validation: "curl -s -o /dev/null -w '%{http_code}' https://github.com/all-hands-ai/openhands"
+  operators: []
+  cluster_configuration:
+    topology: "None"
+    cpu_features: "N/A"
+    storage: "N/A"
+    network: "N/A"
+  rbac_requirements: []
+  review_prerequisites:
+    - name: "GH-55 PR submitted"
+      requirement: "PR with landscape/problem doc updates is submitted for review"
+      validation: "gh pr list --search 'GH-55' --state open"
+    - name: "OpenHands source reviewed"
+      requirement: "Evaluator has reviewed OpenHands public docs and source code"
+      validation: "Manual confirmation"
+    - name: "Licensing terms verified"
+      requirement: "OpenHands licensing terms verified against current repository"
+      validation: "Manual confirmation"
+
+scenarios:
+  # =====================================================================
+  # Requirement Group 1: Licensing and Deployment Constraints (P0)
+  # =====================================================================
+
+  - scenario_id: "001"
+    test_id: "TS-GH-55-001"
+    tier: "Documentation Review"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-55"
+    requirement_summary: "Licensing and deployment model constraints are documented with actionable recommendations"
+
+    test_objective:
+      title: "Verify licensing model constraints identified"
+      what: |
+        Verify that the evaluation deliverables clearly identify and document
+        the licensing model constraints for OpenHands. This includes the
+        distinction between MIT-licensed open-source components and
+        PolyForm-licensed enterprise components, and the one-month trial
+        limitation for enterprise features.
+      why: |
+        Licensing constraints directly impact whether fullsend can reuse
+        OpenHands components. Incomplete or inaccurate licensing analysis
+        could lead to legal risk or wasted engineering effort pursuing
+        integration paths blocked by license terms.
+      acceptance_criteria:
+        - "MIT license for core OpenHands OSS identified and documented"
+        - "PolyForm commercial license for Enterprise directory identified"
+        - "One-month evaluation limitation for enterprise features noted"
+        - "Implications for fullsend reuse clearly stated"
+
+    classification:
+      test_type: "Documentation Review"
+      scope: "Research deliverable verification"
+      automation_approach: "Manual PR review"
+
+    specific_preconditions:
+      - name: "OpenHands license files reviewed"
+        requirement: "LICENSE and any enterprise-specific license files inspected"
+        validation: "Manual confirmation"
+
+    test_data:
+      resource_definitions: []
+      reference_documents:
+        - name: "OpenHands LICENSE"
+          url: "https://github.com/all-hands-ai/openhands/blob/main/LICENSE"
+        - name: "OpenHands Enterprise directory"
+          url: "https://github.com/all-hands-ai/openhands/tree/main/openhands/enterprise"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Locate licensing section in evaluation deliverable"
+          command: "Review PR diff for licensing analysis content"
+          validation: "Licensing section exists in evaluation document"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify MIT license identification for OSS components"
+          command: "Review licensing section content"
+          validation: "MIT license correctly identified for core OpenHands"
+        - step_id: "TEST-02"
+          action: "Verify enterprise license identification"
+          command: "Review licensing section content"
+          validation: "PolyForm / commercial license identified for enterprise directory"
+        - step_id: "TEST-03"
+          action: "Verify evaluation limitation documented"
+          command: "Review licensing section content"
+          validation: "One-month trial limitation explicitly stated"
+        - step_id: "TEST-04"
+          action: "Verify implications for fullsend stated"
+          command: "Review licensing section content"
+          validation: "Clear statement of what can and cannot be reused"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Licensing model constraints are identified"
+        condition: "Document contains explicit identification of MIT and PolyForm/commercial licenses"
+        failure_impact: "Legal risk if fullsend team proceeds without understanding license boundaries"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "Trial limitation documented"
+        condition: "One-month enterprise evaluation limit is explicitly noted"
+        failure_impact: "Team may unknowingly exceed evaluation period"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+    variables:
+      closure_scope: []
+
+    test_structure:
+      type: "single"
+      note: "Documentation Review — manual verification, no automated test structure"
+
+  - scenario_id: "002"
+    test_id: "TS-GH-55-002"
+    tier: "Documentation Review"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-55"
+    requirement_summary: "Licensing and deployment model constraints are documented with actionable recommendations"
+
+    test_objective:
+      title: "Verify deployment model options documented"
+      what: |
+        Verify that the evaluation documents OpenHands deployment model
+        options including containerized runtime, self-hosted deployment,
+        and cloud-hosted options, and how they compare to fullsend's
+        sandbox+harness model.
+      why: |
+        Understanding deployment models is critical for evaluating
+        architectural compatibility. Fullsend uses a GitHub Actions
+        sandbox model; knowing how OpenHands deploys helps assess
+        integration feasibility.
+      acceptance_criteria:
+        - "OpenHands deployment options enumerated"
+        - "Containerized runtime model described"
+        - "Comparison to fullsend sandbox model included"
+
+    classification:
+      test_type: "Documentation Review"
+      scope: "Research deliverable verification"
+      automation_approach: "Manual PR review"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Locate deployment model section in evaluation deliverable"
+          command: "Review PR diff for deployment model content"
+          validation: "Deployment model section exists"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify deployment options are enumerated"
+          command: "Review deployment model section"
+          validation: "At least containerized, self-hosted, and cloud options mentioned"
+        - step_id: "TEST-02"
+          action: "Verify comparison to fullsend model"
+          command: "Review deployment model section"
+          validation: "Explicit comparison to fullsend sandbox+harness architecture"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Deployment model options documented"
+        condition: "Document enumerates OpenHands deployment options"
+        failure_impact: "Incomplete architectural assessment"
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "Comparison to fullsend included"
+        condition: "Document compares OpenHands deployment to fullsend sandbox model"
+        failure_impact: "Missing context for build-vs-reuse decision"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+    variables:
+      closure_scope: []
+
+    test_structure:
+      type: "single"
+      note: "Documentation Review — manual verification, no automated test structure"
+
+  - scenario_id: "003"
+    test_id: "TS-GH-55-003"
+    tier: "Documentation Review"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-55"
+    requirement_summary: "Licensing and deployment model constraints are documented with actionable recommendations"
+
+    test_objective:
+      title: "Verify actionable recommendation distinguishes enterprise (PolyForm-licensed) from OSS (MIT-licensed) paths with documented trade-offs"
+      what: |
+        Verify that the evaluation provides a clear, actionable recommendation
+        that distinguishes the enterprise path (PolyForm-licensed, commercial)
+        from the OSS path (MIT-licensed), including documented trade-offs for
+        each path in the context of fullsend's needs.
+      why: |
+        The team needs a clear recommendation to make a build-vs-reuse
+        decision. Without documented trade-offs, the decision will be
+        made without adequate information, risking either unnecessary
+        engineering effort or missed reuse opportunities.
+      acceptance_criteria:
+        - "Enterprise vs OSS paths clearly distinguished"
+        - "Trade-offs for each path documented"
+        - "Recommendation is actionable (team can act on it)"
+        - "Recommendation considers fullsend's specific context"
+
+    classification:
+      test_type: "Documentation Review"
+      scope: "Research deliverable verification"
+      automation_approach: "Manual PR review"
+
+    specific_preconditions: []
+
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Locate recommendation section in evaluation deliverable"
+          command: "Review PR diff for recommendation content"
+          validation: "Recommendation section exists"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify enterprise vs OSS path distinction"
+          command: "Review recommendation section"
+          validation: "Two paths clearly distinguished with license references"
+        - step_id: "TEST-02"
+          action: "Verify trade-offs documented for each path"
+          command: "Review recommendation section"
+          validation: "Pros/cons or trade-off analysis present for both paths"
+        - step_id: "TEST-03"
+          action: "Verify recommendation is actionable"
+          command: "Review recommendation section"
+          validation: "Recommendation includes clear next steps the team can follow"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Recommendation distinguishes enterprise from OSS paths"
+        condition: "Clear separation of PolyForm and MIT paths with trade-offs"
+        failure_impact: "Team cannot make informed build-vs-reuse decision"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+    variables:
+      closure_scope: []
+
+    test_structure:
+      type: "single"
+      note: "Documentation Review — manual verification, no automated test structure"
+
+  # =====================================================================
+  # Requirement Group 2: Architectural Evaluation Coverage (P1)
+  # =====================================================================
+
+  - scenario_id: "004"
+    test_id: "TS-GH-55-004"
+    tier: "Documentation Review"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-55"
+    requirement_summary: "OpenHands architectural evaluation covers all fullsend problem areas"
+
+    test_objective:
+      title: "Verify evaluation covers sandbox execution model"
+      what: |
+        Verify that the evaluation includes analysis of OpenHands' sandbox
+        execution model (containerized runtime, EventStream architecture)
+        and compares it to fullsend's sandbox execution approach.
+      why: |
+        Sandbox execution is a core fullsend capability. Understanding
+        how OpenHands solves the same problem informs whether fullsend
+        can learn from or reuse OpenHands' approach.
+      acceptance_criteria:
+        - "OpenHands sandbox/runtime execution model described"
+        - "Comparison to fullsend sandbox model included"
+        - "Key differences and similarities identified"
+
+    classification:
+      test_type: "Documentation Review"
+      scope: "Research deliverable verification"
+      automation_approach: "Manual PR review"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Locate sandbox execution section in evaluation"
+          command: "Review PR diff"
+          validation: "Sandbox execution analysis exists"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify OpenHands sandbox model described"
+          command: "Review sandbox section"
+          validation: "Containerized runtime and EventStream architecture discussed"
+        - step_id: "TEST-02"
+          action: "Verify fullsend comparison included"
+          command: "Review sandbox section"
+          validation: "Explicit comparison to fullsend sandbox approach"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Sandbox execution model covered"
+        condition: "Evaluation analyzes OpenHands sandbox execution with fullsend comparison"
+        failure_impact: "Incomplete architectural evaluation missing core problem area"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+    variables:
+      closure_scope: []
+
+    test_structure:
+      type: "single"
+      note: "Documentation Review — manual verification"
+
+  - scenario_id: "005"
+    test_id: "TS-GH-55-005"
+    tier: "Documentation Review"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-55"
+    requirement_summary: "OpenHands architectural evaluation covers all fullsend problem areas"
+
+    test_objective:
+      title: "Verify evaluation covers agent orchestration and harness"
+      what: |
+        Verify that the evaluation analyzes OpenHands' agent orchestration
+        model (AgentHub, multi-agent delegation) and compares it to
+        fullsend's harness-based agent orchestration.
+      why: |
+        Agent orchestration is a defining feature of both platforms.
+        Understanding architectural differences enables informed
+        decisions about fullsend's orchestration roadmap.
+      acceptance_criteria:
+        - "OpenHands agent orchestration model described"
+        - "AgentHub and delegation patterns analyzed"
+        - "Comparison to fullsend harness model included"
+
+    classification:
+      test_type: "Documentation Review"
+      scope: "Research deliverable verification"
+      automation_approach: "Manual PR review"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Locate agent orchestration section"
+          command: "Review PR diff"
+          validation: "Agent orchestration analysis exists"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify OpenHands orchestration model described"
+          command: "Review orchestration section"
+          validation: "AgentHub, delegation, and multi-agent patterns discussed"
+        - step_id: "TEST-02"
+          action: "Verify fullsend harness comparison"
+          command: "Review orchestration section"
+          validation: "Explicit comparison to fullsend harness orchestration"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Agent orchestration covered"
+        condition: "Evaluation analyzes OpenHands orchestration with fullsend comparison"
+        failure_impact: "Missing analysis of core architectural differentiator"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+    variables:
+      closure_scope: []
+
+    test_structure:
+      type: "single"
+      note: "Documentation Review — manual verification"
+
+  - scenario_id: "006"
+    test_id: "TS-GH-55-006"
+    tier: "Documentation Review"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-55"
+    requirement_summary: "OpenHands architectural evaluation covers all fullsend problem areas"
+
+    test_objective:
+      title: "Verify evaluation covers workflow dispatch model"
+      what: |
+        Verify that the evaluation analyzes OpenHands' workflow dispatch
+        and task execution model and compares it to fullsend's GitHub
+        Actions-based dispatch mechanism.
+      why: |
+        Workflow dispatch determines how tasks are triggered and routed.
+        Comparing dispatch models reveals whether OpenHands patterns
+        could improve fullsend's dispatch architecture.
+      acceptance_criteria:
+        - "OpenHands workflow/task dispatch model described"
+        - "Comparison to fullsend GitHub Actions dispatch included"
+        - "Differences in trigger mechanisms identified"
+
+    classification:
+      test_type: "Documentation Review"
+      scope: "Research deliverable verification"
+      automation_approach: "Manual PR review"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Locate workflow dispatch section"
+          command: "Review PR diff"
+          validation: "Workflow dispatch analysis exists"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify OpenHands dispatch model described"
+          command: "Review dispatch section"
+          validation: "Task dispatch and execution model discussed"
+        - step_id: "TEST-02"
+          action: "Verify fullsend dispatch comparison"
+          command: "Review dispatch section"
+          validation: "Explicit comparison to fullsend GHA dispatch"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Workflow dispatch model covered"
+        condition: "Evaluation analyzes OpenHands dispatch with fullsend comparison"
+        failure_impact: "Incomplete coverage of fullsend problem areas"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+    variables:
+      closure_scope: []
+
+    test_structure:
+      type: "single"
+      note: "Documentation Review — manual verification"
+
+  - scenario_id: "007"
+    test_id: "TS-GH-55-007"
+    tier: "Documentation Review"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-55"
+    requirement_summary: "OpenHands architectural evaluation covers all fullsend problem areas"
+
+    test_objective:
+      title: "Verify evaluation addresses security model comparison including known 2025 vulnerability disclosures"
+      what: |
+        Verify that the evaluation analyzes OpenHands' security model and
+        compares it to fullsend's approach, with specific reference to
+        known 2025 security disclosures including prompt injection
+        vulnerabilities and zero-click token exfiltration attacks.
+      why: |
+        Security is a critical differentiator for agent platforms. Known
+        vulnerabilities in OpenHands provide important context for
+        evaluating whether its security model is mature enough for
+        fullsend's use cases.
+      acceptance_criteria:
+        - "OpenHands security model described"
+        - "Known 2025 prompt injection vulnerability referenced"
+        - "Known 2025 token exfiltration vulnerability referenced"
+        - "Comparison to fullsend security model included"
+        - "Security implications for potential adoption stated"
+
+    classification:
+      test_type: "Documentation Review"
+      scope: "Research deliverable verification"
+      automation_approach: "Manual PR review"
+
+    specific_preconditions:
+      - name: "2025 security disclosures identified"
+        requirement: "Evaluator has reviewed public security disclosures for OpenHands"
+        validation: "Manual confirmation"
+
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Locate security model section"
+          command: "Review PR diff"
+          validation: "Security model analysis exists"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify OpenHands security model described"
+          command: "Review security section"
+          validation: "Security architecture and trust boundaries discussed"
+        - step_id: "TEST-02"
+          action: "Verify prompt injection vulnerability referenced"
+          command: "Review security section"
+          validation: "2025 prompt injection disclosure cited"
+        - step_id: "TEST-03"
+          action: "Verify token exfiltration vulnerability referenced"
+          command: "Review security section"
+          validation: "2025 zero-click token exfiltration disclosure cited"
+        - step_id: "TEST-04"
+          action: "Verify fullsend security comparison"
+          command: "Review security section"
+          validation: "Explicit comparison to fullsend security model"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Security model comparison includes known vulnerabilities"
+        condition: "Both 2025 disclosures (prompt injection, token exfiltration) are referenced"
+        failure_impact: "Security evaluation incomplete without known vulnerability context"
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "Security implications for adoption stated"
+        condition: "Clear statement of security risks if OpenHands components were adopted"
+        failure_impact: "Team may adopt components with unmitigated security risks"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+    variables:
+      closure_scope: []
+
+    test_structure:
+      type: "single"
+      note: "Documentation Review — manual verification"
+
+  - scenario_id: "008"
+    test_id: "TS-GH-55-008"
+    tier: "Documentation Review"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-55"
+    requirement_summary: "OpenHands architectural evaluation covers all fullsend problem areas"
+
+    test_objective:
+      title: "Verify evaluation identifies capability gaps versus fullsend [NEGATIVE]"
+      what: |
+        Verify that the evaluation identifies capabilities that fullsend
+        has but OpenHands lacks, and vice versa. This is a negative test
+        ensuring the evaluation is not one-sided or only highlighting
+        similarities.
+      why: |
+        A balanced evaluation must identify gaps in both directions to
+        inform strategic decisions. An evaluation that only shows
+        similarities or only shows OpenHands' strengths would be
+        misleading.
+      acceptance_criteria:
+        - "Capabilities fullsend has that OpenHands lacks are identified"
+        - "Capabilities OpenHands has that fullsend lacks are identified"
+        - "Gap analysis is balanced and evidence-based"
+
+    classification:
+      test_type: "Documentation Review"
+      scope: "Research deliverable verification"
+      automation_approach: "Manual PR review"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Locate capability gap analysis section"
+          command: "Review PR diff"
+          validation: "Gap analysis section exists"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify fullsend-only capabilities identified"
+          command: "Review gap analysis"
+          validation: "At least one capability unique to fullsend identified"
+        - step_id: "TEST-02"
+          action: "Verify OpenHands-only capabilities identified"
+          command: "Review gap analysis"
+          validation: "At least one capability unique to OpenHands identified"
+        - step_id: "TEST-03"
+          action: "Verify analysis is evidence-based"
+          command: "Review gap analysis"
+          validation: "Claims are supported by references to source code or documentation"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Capability gaps identified in both directions"
+        condition: "Evaluation identifies gaps for both platforms, not one-sided"
+        failure_impact: "Misleading evaluation could lead to incorrect strategic decisions"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+    variables:
+      closure_scope: []
+
+    test_structure:
+      type: "single"
+      note: "Documentation Review — manual verification"
+
+  # =====================================================================
+  # Requirement Group 3: Landscape Documentation (P1)
+  # =====================================================================
+
+  - scenario_id: "009"
+    test_id: "TS-GH-55-009"
+    tier: "Documentation Review"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-55"
+    requirement_summary: "Landscape documentation updated with OpenHands evaluation findings"
+
+    test_objective:
+      title: "Verify landscape.md updated with OpenHands section"
+      what: |
+        Verify that landscape.md has been updated to include a new section
+        for OpenHands with evaluation findings from this research task.
+      why: |
+        The landscape document is the canonical reference for the team's
+        understanding of the AI coding agent ecosystem. Omitting OpenHands
+        would leave a gap in the team's knowledge base.
+      acceptance_criteria:
+        - "New OpenHands section exists in landscape.md"
+        - "Section contains evaluation findings"
+        - "Section is placed appropriately within document structure"
+
+    classification:
+      test_type: "Documentation Review"
+      scope: "Research deliverable verification"
+      automation_approach: "Manual PR review"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Locate landscape.md changes in PR"
+          command: "Review PR diff for landscape.md"
+          validation: "landscape.md is modified in the PR"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify OpenHands section added"
+          command: "Review landscape.md diff"
+          validation: "New section header for OpenHands exists"
+        - step_id: "TEST-02"
+          action: "Verify section contains evaluation findings"
+          command: "Review OpenHands section content"
+          validation: "Section has substantive content, not just a placeholder"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "landscape.md updated with OpenHands section"
+        condition: "New OpenHands section exists with evaluation findings"
+        failure_impact: "Landscape document incomplete"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+    variables:
+      closure_scope: []
+
+    test_structure:
+      type: "single"
+      note: "Documentation Review — manual verification"
+
+  - scenario_id: "010"
+    test_id: "TS-GH-55-010"
+    tier: "Documentation Review"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-55"
+    requirement_summary: "Landscape documentation updated with OpenHands evaluation findings"
+
+    test_objective:
+      title: "Verify findings cross-referenced with problem docs"
+      what: |
+        Verify that evaluation findings in landscape.md cross-reference
+        relevant problem documents in the docs/problems/ directory,
+        linking OpenHands capabilities to fullsend's documented problems.
+      why: |
+        Cross-referencing ensures the evaluation is grounded in fullsend's
+        actual problem space rather than being a generic technology review.
+      acceptance_criteria:
+        - "At least one cross-reference to docs/problems/ files"
+        - "Cross-references are relevant to evaluation findings"
+        - "Links use correct relative paths"
+
+    classification:
+      test_type: "Documentation Review"
+      scope: "Research deliverable verification"
+      automation_approach: "Manual PR review"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Locate cross-references in landscape.md OpenHands section"
+          command: "Review PR diff"
+          validation: "Cross-references present"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify cross-references to problem docs exist"
+          command: "Search OpenHands section for docs/problems/ references"
+          validation: "At least one cross-reference found"
+        - step_id: "TEST-02"
+          action: "Verify cross-references are relevant"
+          command: "Review each cross-reference"
+          validation: "Referenced problem docs relate to OpenHands evaluation content"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Findings cross-referenced with problem docs"
+        condition: "At least one relevant cross-reference to docs/problems/"
+        failure_impact: "Evaluation disconnected from fullsend's problem space"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+    variables:
+      closure_scope: []
+
+    test_structure:
+      type: "single"
+      note: "Documentation Review — manual verification"
+
+  - scenario_id: "011"
+    test_id: "TS-GH-55-011"
+    tier: "Documentation Review"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-55"
+    requirement_summary: "Landscape documentation updated with OpenHands evaluation findings"
+
+    test_objective:
+      title: "Verify evaluation follows existing landscape format"
+      what: |
+        Verify that the OpenHands section in landscape.md follows the
+        existing format and conventions used for other entries in the
+        landscape document.
+      why: |
+        Consistent formatting ensures the landscape document remains
+        navigable and maintainable as more entries are added.
+      acceptance_criteria:
+        - "Section structure matches existing landscape entries"
+        - "Heading levels are consistent"
+        - "Content organization follows established pattern"
+
+    classification:
+      test_type: "Documentation Review"
+      scope: "Research deliverable verification"
+      automation_approach: "Manual PR review"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Review existing landscape.md format"
+          command: "Read landscape.md before changes"
+          validation: "Existing format understood"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Compare new section structure to existing entries"
+          command: "Compare heading levels, section organization"
+          validation: "Structure consistent with existing entries"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Evaluation follows landscape format"
+        condition: "OpenHands section structure matches existing entries"
+        failure_impact: "Document inconsistency reduces usability"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+    variables:
+      closure_scope: []
+
+    test_structure:
+      type: "single"
+      note: "Documentation Review — manual verification"
+
+  - scenario_id: "012"
+    test_id: "TS-GH-55-012"
+    tier: "Documentation Review"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-55"
+    requirement_summary: "Landscape documentation updated with OpenHands evaluation findings"
+
+    test_objective:
+      title: "Verify stale or inaccurate claims not introduced [NEGATIVE]"
+      what: |
+        Verify that the evaluation does not introduce stale, outdated,
+        or inaccurate claims about OpenHands or other platforms already
+        documented in landscape.md.
+      why: |
+        Inaccurate claims in the landscape document undermine its value
+        as a reference. Since OpenHands is actively developed, claims
+        should be pinned to specific versions or dates.
+      acceptance_criteria:
+        - "Claims reference specific OpenHands versions or commit SHAs"
+        - "Evaluation date is prominently stated"
+        - "No claims contradict current OpenHands public documentation"
+
+    classification:
+      test_type: "Documentation Review"
+      scope: "Research deliverable verification"
+      automation_approach: "Manual PR review"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Note evaluation date and version references"
+          command: "Review PR diff"
+          validation: "Date and version references present"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify evaluation date is stated"
+          command: "Search for date reference in OpenHands section"
+          validation: "Evaluation date prominently documented"
+        - step_id: "TEST-02"
+          action: "Verify version pinning"
+          command: "Check claims for version/SHA references"
+          validation: "Key claims reference specific versions"
+        - step_id: "TEST-03"
+          action: "Spot-check claims against current OpenHands docs"
+          command: "Verify 2-3 key claims against public docs"
+          validation: "Checked claims are accurate"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "No stale or inaccurate claims introduced"
+        condition: "Claims are version-pinned and date-stamped"
+        failure_impact: "Landscape document becomes unreliable reference"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+    variables:
+      closure_scope: []
+
+    test_structure:
+      type: "single"
+      note: "Documentation Review — manual verification"
+
+  - scenario_id: "016"
+    test_id: "TS-GH-55-016"
+    tier: "Documentation Review"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-55"
+    requirement_summary: "Landscape documentation updated with OpenHands evaluation findings"
+
+    test_objective:
+      title: "Verify existing landscape.md content not degraded by OpenHands addition [NEGATIVE]"
+      what: |
+        Verify that adding the OpenHands section does not degrade, remove,
+        or corrupt existing content in landscape.md. This includes checking
+        that no existing sections are deleted, links remain valid, and
+        formatting is preserved.
+      why: |
+        The landscape document contains accumulated knowledge about multiple
+        platforms. Inadvertent removal or corruption of existing content
+        would result in knowledge loss.
+      acceptance_criteria:
+        - "No existing sections removed or truncated"
+        - "Existing links still valid"
+        - "Overall document formatting preserved"
+
+    classification:
+      test_type: "Documentation Review"
+      scope: "Research deliverable verification"
+      automation_approach: "Manual PR review"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Review PR diff for landscape.md"
+          command: "Review additions and deletions in diff"
+          validation: "Diff is available for review"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify no existing sections removed"
+          command: "Check diff for deleted sections"
+          validation: "No section headings removed"
+        - step_id: "TEST-02"
+          action: "Verify no content truncated"
+          command: "Check diff for large deletions"
+          validation: "No significant content removed"
+        - step_id: "TEST-03"
+          action: "Verify existing links preserved"
+          command: "Spot-check existing links in modified file"
+          validation: "Previously existing links still valid"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Existing content not degraded"
+        condition: "No existing sections, links, or content removed by the PR"
+        failure_impact: "Knowledge loss in landscape document"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+    variables:
+      closure_scope: []
+
+    test_structure:
+      type: "single"
+      note: "Documentation Review — manual verification"
+
+  # =====================================================================
+  # Requirement Group 4: Experiment Proposals (P2)
+  # =====================================================================
+
+  - scenario_id: "013"
+    test_id: "TS-GH-55-013"
+    tier: "Documentation Review"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-55"
+    requirement_summary: "Concrete experiment proposals created for actionable evaluation"
+
+    test_objective:
+      title: "Verify experiment proposals reference specific problem areas"
+      what: |
+        Verify that each experiment proposal references a specific fullsend
+        problem area (sandbox, harness, dispatch, security) rather than
+        being generic or abstract.
+      why: |
+        Experiments must be grounded in fullsend's actual problems to
+        generate actionable results. Generic experiments waste resources.
+      acceptance_criteria:
+        - "Each experiment references a specific problem area"
+        - "Problem areas match those evaluated in the architectural analysis"
+
+    classification:
+      test_type: "Documentation Review"
+      scope: "Research deliverable verification"
+      automation_approach: "Manual PR review"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Locate experiment proposals"
+          command: "Review PR diff for experiment proposals"
+          validation: "Experiment proposals exist"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify each experiment references a problem area"
+          command: "Review each experiment proposal"
+          validation: "Each experiment maps to sandbox, harness, dispatch, or security"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Experiments reference specific problem areas"
+        condition: "Each experiment is linked to a specific fullsend problem area"
+        failure_impact: "Experiments may not produce actionable results"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+    variables:
+      closure_scope: []
+
+    test_structure:
+      type: "single"
+      note: "Documentation Review — manual verification"
+
+  - scenario_id: "014"
+    test_id: "TS-GH-55-014"
+    tier: "Documentation Review"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-55"
+    requirement_summary: "Concrete experiment proposals created for actionable evaluation"
+
+    test_objective:
+      title: "Verify each experiment proposal defines objective, method, expected output, and effort estimate"
+      what: |
+        Verify that each experiment proposal is well-structured with a
+        clear objective, methodology, expected output/deliverable, and
+        an effort estimate so the team can prioritize.
+      why: |
+        Well-structured experiment proposals enable the team to evaluate
+        and prioritize them. Missing any of these fields makes it harder
+        to decide which experiments to pursue.
+      acceptance_criteria:
+        - "Each experiment has a stated objective"
+        - "Each experiment describes methodology"
+        - "Each experiment defines expected output"
+        - "Each experiment includes effort estimate"
+
+    classification:
+      test_type: "Documentation Review"
+      scope: "Research deliverable verification"
+      automation_approach: "Manual PR review"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Locate experiment proposals"
+          command: "Review PR diff"
+          validation: "Experiment proposals found"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify objective defined for each experiment"
+          command: "Review each experiment"
+          validation: "Clear objective statement present"
+        - step_id: "TEST-02"
+          action: "Verify methodology defined"
+          command: "Review each experiment"
+          validation: "Method or approach described"
+        - step_id: "TEST-03"
+          action: "Verify expected output defined"
+          command: "Review each experiment"
+          validation: "Expected deliverable or result stated"
+        - step_id: "TEST-04"
+          action: "Verify effort estimate included"
+          command: "Review each experiment"
+          validation: "Time or effort estimate provided"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Experiment proposals are well-structured"
+        condition: "All four fields (objective, method, output, effort) present for each experiment"
+        failure_impact: "Team cannot effectively prioritize experiments"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+    variables:
+      closure_scope: []
+
+    test_structure:
+      type: "single"
+      note: "Documentation Review — manual verification"
+
+  - scenario_id: "015"
+    test_id: "TS-GH-55-015"
+    tier: "Documentation Review"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-55"
+    requirement_summary: "Concrete experiment proposals created for actionable evaluation"
+
+    test_objective:
+      title: "Verify experiment proposals linked to GH-260"
+      what: |
+        Verify that experiment proposals are linked to GH-260 (the tracking
+        issue for concrete experiments) so they can be tracked and
+        prioritized within the project's issue management system.
+      why: |
+        Linking to GH-260 ensures experiment proposals don't get lost and
+        are tracked alongside other project work. Without tracking,
+        proposals may never be acted upon.
+      acceptance_criteria:
+        - "Experiment proposals reference GH-260"
+        - "Link format is correct (URL or issue reference)"
+
+    classification:
+      test_type: "Documentation Review"
+      scope: "Research deliverable verification"
+      automation_approach: "Manual PR review"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Locate experiment proposals"
+          command: "Review PR diff"
+          validation: "Experiment proposals found"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify GH-260 linkage"
+          command: "Search experiment proposals for GH-260 reference"
+          validation: "At least one reference to GH-260 found"
+        - step_id: "TEST-02"
+          action: "Verify link format is correct"
+          command: "Check GH-260 reference format"
+          validation: "Link is valid URL or GitHub issue reference"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Experiments linked to GH-260"
+        condition: "Experiment proposals reference GH-260"
+        failure_impact: "Experiment proposals not tracked for follow-up"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+    variables:
+      closure_scope: []
+
+    test_structure:
+      type: "single"
+      note: "Documentation Review — manual verification"
+
+  - scenario_id: "017"
+    test_id: "TS-GH-55-017"
+    tier: "Documentation Review"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-55"
+    requirement_summary: "Concrete experiment proposals created for actionable evaluation"
+
+    test_objective:
+      title: "Verify evaluation findings map to at least 2 of 4 proposed experiments in GH-260"
+      what: |
+        Verify that the evaluation findings directly support and inform
+        at least 2 of the 4 proposed experiments in GH-260 (prompt
+        injection red-teaming, event stream audit, review quality
+        evaluation, tiered intent classification).
+      why: |
+        The evaluation should produce findings actionable enough to
+        inform experiment design. If findings don't map to experiments,
+        the evaluation may lack the depth needed for next steps.
+      acceptance_criteria:
+        - "Evaluation findings map to at least 2 of 4 GH-260 experiments"
+        - "Mapping is explicit (not just implied)"
+        - "Findings provide enough detail to inform experiment design"
+
+    classification:
+      test_type: "Documentation Review"
+      scope: "Research deliverable verification"
+      automation_approach: "Manual PR review"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+      reference_experiments:
+        - name: "Prompt injection red-teaming"
+          issue: "GH-260"
+        - name: "Event stream audit"
+          issue: "GH-260"
+        - name: "Review quality evaluation"
+          issue: "GH-260"
+        - name: "Tiered intent classification"
+          issue: "GH-260"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Identify the 4 GH-260 experiments"
+          command: "Review GH-260 for experiment list"
+          validation: "Four experiments identified"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Map evaluation findings to GH-260 experiments"
+          command: "Cross-reference findings with experiments"
+          validation: "At least 2 experiments have supporting findings"
+        - step_id: "TEST-02"
+          action: "Verify mapping is explicit"
+          command: "Check for direct references or clear connections"
+          validation: "Mapping is stated, not just implied"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Findings map to at least 2 of 4 experiments"
+        condition: "Evaluation findings explicitly support >= 2 GH-260 experiments"
+        failure_impact: "Evaluation lacks depth to inform experiment design"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+    variables:
+      closure_scope: []
+
+    test_structure:
+      type: "single"
+      note: "Documentation Review — manual verification"
+---
