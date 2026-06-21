@@ -13,11 +13,12 @@ document_metadata:
     file: "outputs/stp/GH-55/GH-55_test_plan.md"
     version: "v1"
     sections_covered: "Section III - Requirements-to-Tests Mapping"
-  related_prs: []
   owning_sig: "Documentation / Landscape"
   participating_sigs:
     - "Research"
   total_scenarios: 17
+  tier_1_count: 0
+  tier_2_count: 0
   documentation_review_count: 17
   functional_count: 0
   e2e_count: 0
@@ -99,6 +100,10 @@ scenarios:
       scope: "Research deliverable verification"
       automation_approach: "Manual PR review"
 
+    patterns:
+      primary: "documentation-review"
+      helpers_required: []
+
     specific_preconditions:
       - name: "OpenHands license files reviewed"
         requirement: "LICENSE and any enterprise-specific license files inspected"
@@ -121,21 +126,21 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Verify MIT license identification for OSS components"
-          command: "Review licensing section content"
+          command: "Search licensing section for 'MIT' keyword and verify open-source scope"
           validation: "MIT license correctly identified for core OpenHands"
         - step_id: "TEST-02"
           action: "Verify enterprise license identification"
-          command: "Review licensing section content"
+          command: "Search licensing section for 'PolyForm' or 'commercial license' terms"
           validation: "PolyForm / commercial license identified for enterprise directory"
         - step_id: "TEST-03"
           action: "Verify evaluation limitation documented"
-          command: "Review licensing section content"
+          command: "Search licensing section for trial duration or evaluation period references"
           validation: "One-month trial limitation explicitly stated"
         - step_id: "TEST-04"
           action: "Verify implications for fullsend stated"
-          command: "Review licensing section content"
+          command: "Search licensing section for reuse implications and fullsend-specific guidance"
           validation: "Clear statement of what can and cannot be reused"
-      cleanup: []
+      cleanup: [] # No cleanup — documentation review
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -160,6 +165,10 @@ scenarios:
     test_structure:
       type: "single"
       note: "Documentation Review — manual verification, no automated test structure"
+
+    code_structure:
+      type: "none"
+      note: "Documentation Review — no automated test structure"
 
   - scenario_id: "002"
     test_id: "TS-GH-55-002"
@@ -191,6 +200,10 @@ scenarios:
       scope: "Research deliverable verification"
       automation_approach: "Manual PR review"
 
+    patterns:
+      primary: "documentation-review"
+      helpers_required: []
+
     specific_preconditions: []
 
     test_data:
@@ -205,13 +218,13 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Verify deployment options are enumerated"
-          command: "Review deployment model section"
+          command: "Search deployment section for containerized, self-hosted, and cloud deployment options"
           validation: "At least containerized, self-hosted, and cloud options mentioned"
         - step_id: "TEST-02"
           action: "Verify comparison to fullsend model"
-          command: "Review deployment model section"
+          command: "Search deployment section for fullsend sandbox+harness architecture comparison"
           validation: "Explicit comparison to fullsend sandbox+harness architecture"
-      cleanup: []
+      cleanup: [] # No cleanup — documentation review
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -236,6 +249,10 @@ scenarios:
     test_structure:
       type: "single"
       note: "Documentation Review — manual verification, no automated test structure"
+
+    code_structure:
+      type: "none"
+      note: "Documentation Review — no automated test structure"
 
   - scenario_id: "003"
     test_id: "TS-GH-55-003"
@@ -268,6 +285,10 @@ scenarios:
       scope: "Research deliverable verification"
       automation_approach: "Manual PR review"
 
+    patterns:
+      primary: "documentation-review"
+      helpers_required: []
+
     specific_preconditions: []
 
     test_data:
@@ -282,17 +303,17 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Verify enterprise vs OSS path distinction"
-          command: "Review recommendation section"
+          command: "Search recommendation section for PolyForm vs MIT path separation and license labels"
           validation: "Two paths clearly distinguished with license references"
         - step_id: "TEST-02"
           action: "Verify trade-offs documented for each path"
-          command: "Review recommendation section"
+          command: "Search recommendation section for pros/cons or trade-off analysis for both paths"
           validation: "Pros/cons or trade-off analysis present for both paths"
         - step_id: "TEST-03"
           action: "Verify recommendation is actionable"
-          command: "Review recommendation section"
+          command: "Search recommendation section for concrete next steps or action items"
           validation: "Recommendation includes clear next steps the team can follow"
-      cleanup: []
+      cleanup: [] # No cleanup — documentation review
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -312,6 +333,10 @@ scenarios:
     test_structure:
       type: "single"
       note: "Documentation Review — manual verification, no automated test structure"
+
+    code_structure:
+      type: "none"
+      note: "Documentation Review — no automated test structure"
 
   # =====================================================================
   # Requirement Group 2: Architectural Evaluation Coverage (P1)
@@ -345,6 +370,10 @@ scenarios:
       scope: "Research deliverable verification"
       automation_approach: "Manual PR review"
 
+    patterns:
+      primary: "documentation-review"
+      helpers_required: []
+
     specific_preconditions: []
     test_data:
       resource_definitions: []
@@ -353,18 +382,18 @@ scenarios:
       setup:
         - step_id: "SETUP-01"
           action: "Locate sandbox execution section in evaluation"
-          command: "Review PR diff"
+          command: "Review PR diff for sandbox execution analysis section"
           validation: "Sandbox execution analysis exists"
       test_execution:
         - step_id: "TEST-01"
           action: "Verify OpenHands sandbox model described"
-          command: "Review sandbox section"
+          command: "Search sandbox section for containerized runtime and EventStream architecture details"
           validation: "Containerized runtime and EventStream architecture discussed"
         - step_id: "TEST-02"
           action: "Verify fullsend comparison included"
-          command: "Review sandbox section"
+          command: "Search sandbox section for explicit fullsend sandbox comparison and key differences"
           validation: "Explicit comparison to fullsend sandbox approach"
-      cleanup: []
+      cleanup: [] # No cleanup — documentation review
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -384,6 +413,10 @@ scenarios:
     test_structure:
       type: "single"
       note: "Documentation Review — manual verification"
+
+    code_structure:
+      type: "none"
+      note: "Documentation Review — no automated test structure"
 
   - scenario_id: "005"
     test_id: "TS-GH-55-005"
@@ -413,6 +446,10 @@ scenarios:
       scope: "Research deliverable verification"
       automation_approach: "Manual PR review"
 
+    patterns:
+      primary: "documentation-review"
+      helpers_required: []
+
     specific_preconditions: []
     test_data:
       resource_definitions: []
@@ -421,18 +458,18 @@ scenarios:
       setup:
         - step_id: "SETUP-01"
           action: "Locate agent orchestration section"
-          command: "Review PR diff"
+          command: "Review PR diff for agent orchestration analysis section"
           validation: "Agent orchestration analysis exists"
       test_execution:
         - step_id: "TEST-01"
           action: "Verify OpenHands orchestration model described"
-          command: "Review orchestration section"
+          command: "Search orchestration section for AgentHub, delegation, and multi-agent pattern details"
           validation: "AgentHub, delegation, and multi-agent patterns discussed"
         - step_id: "TEST-02"
           action: "Verify fullsend harness comparison"
-          command: "Review orchestration section"
+          command: "Search orchestration section for fullsend harness orchestration comparison"
           validation: "Explicit comparison to fullsend harness orchestration"
-      cleanup: []
+      cleanup: [] # No cleanup — documentation review
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -452,6 +489,10 @@ scenarios:
     test_structure:
       type: "single"
       note: "Documentation Review — manual verification"
+
+    code_structure:
+      type: "none"
+      note: "Documentation Review — no automated test structure"
 
   - scenario_id: "006"
     test_id: "TS-GH-55-006"
@@ -481,6 +522,10 @@ scenarios:
       scope: "Research deliverable verification"
       automation_approach: "Manual PR review"
 
+    patterns:
+      primary: "documentation-review"
+      helpers_required: []
+
     specific_preconditions: []
     test_data:
       resource_definitions: []
@@ -489,18 +534,18 @@ scenarios:
       setup:
         - step_id: "SETUP-01"
           action: "Locate workflow dispatch section"
-          command: "Review PR diff"
+          command: "Review PR diff for workflow dispatch analysis section"
           validation: "Workflow dispatch analysis exists"
       test_execution:
         - step_id: "TEST-01"
           action: "Verify OpenHands dispatch model described"
-          command: "Review dispatch section"
+          command: "Search dispatch section for task dispatch and execution model details"
           validation: "Task dispatch and execution model discussed"
         - step_id: "TEST-02"
           action: "Verify fullsend dispatch comparison"
-          command: "Review dispatch section"
+          command: "Search dispatch section for fullsend GitHub Actions dispatch comparison"
           validation: "Explicit comparison to fullsend GHA dispatch"
-      cleanup: []
+      cleanup: [] # No cleanup — documentation review
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -520,6 +565,10 @@ scenarios:
     test_structure:
       type: "single"
       note: "Documentation Review — manual verification"
+
+    code_structure:
+      type: "none"
+      note: "Documentation Review — no automated test structure"
 
   - scenario_id: "007"
     test_id: "TS-GH-55-007"
@@ -553,6 +602,10 @@ scenarios:
       scope: "Research deliverable verification"
       automation_approach: "Manual PR review"
 
+    patterns:
+      primary: "documentation-review"
+      helpers_required: []
+
     specific_preconditions:
       - name: "2025 security disclosures identified"
         requirement: "Evaluator has reviewed public security disclosures for OpenHands"
@@ -565,26 +618,26 @@ scenarios:
       setup:
         - step_id: "SETUP-01"
           action: "Locate security model section"
-          command: "Review PR diff"
+          command: "Review PR diff for security model analysis section"
           validation: "Security model analysis exists"
       test_execution:
         - step_id: "TEST-01"
           action: "Verify OpenHands security model described"
-          command: "Review security section"
+          command: "Search security section for security architecture and trust boundary details"
           validation: "Security architecture and trust boundaries discussed"
         - step_id: "TEST-02"
           action: "Verify prompt injection vulnerability referenced"
-          command: "Review security section"
+          command: "Search security section for 2025 prompt injection disclosure citation"
           validation: "2025 prompt injection disclosure cited"
         - step_id: "TEST-03"
           action: "Verify token exfiltration vulnerability referenced"
-          command: "Review security section"
+          command: "Search security section for 2025 zero-click token exfiltration disclosure citation"
           validation: "2025 zero-click token exfiltration disclosure cited"
         - step_id: "TEST-04"
           action: "Verify fullsend security comparison"
-          command: "Review security section"
+          command: "Search security section for fullsend security model comparison and risk assessment"
           validation: "Explicit comparison to fullsend security model"
-      cleanup: []
+      cleanup: [] # No cleanup — documentation review
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -609,6 +662,10 @@ scenarios:
     test_structure:
       type: "single"
       note: "Documentation Review — manual verification"
+
+    code_structure:
+      type: "none"
+      note: "Documentation Review — no automated test structure"
 
   - scenario_id: "008"
     test_id: "TS-GH-55-008"
@@ -640,6 +697,10 @@ scenarios:
       scope: "Research deliverable verification"
       automation_approach: "Manual PR review"
 
+    patterns:
+      primary: "documentation-review"
+      helpers_required: []
+
     specific_preconditions: []
     test_data:
       resource_definitions: []
@@ -648,22 +709,22 @@ scenarios:
       setup:
         - step_id: "SETUP-01"
           action: "Locate capability gap analysis section"
-          command: "Review PR diff"
+          command: "Review PR diff for capability gap analysis section"
           validation: "Gap analysis section exists"
       test_execution:
         - step_id: "TEST-01"
           action: "Verify fullsend-only capabilities identified"
-          command: "Review gap analysis"
+          command: "Search gap analysis for capabilities unique to fullsend not present in OpenHands"
           validation: "At least one capability unique to fullsend identified"
         - step_id: "TEST-02"
           action: "Verify OpenHands-only capabilities identified"
-          command: "Review gap analysis"
+          command: "Search gap analysis for capabilities unique to OpenHands not present in fullsend"
           validation: "At least one capability unique to OpenHands identified"
         - step_id: "TEST-03"
           action: "Verify analysis is evidence-based"
-          command: "Review gap analysis"
+          command: "Check gap analysis claims for supporting references to source code or documentation"
           validation: "Claims are supported by references to source code or documentation"
-      cleanup: []
+      cleanup: [] # No cleanup — documentation review
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -683,6 +744,10 @@ scenarios:
     test_structure:
       type: "single"
       note: "Documentation Review — manual verification"
+
+    code_structure:
+      type: "none"
+      note: "Documentation Review — no automated test structure"
 
   # =====================================================================
   # Requirement Group 3: Landscape Documentation (P1)
@@ -715,6 +780,10 @@ scenarios:
       scope: "Research deliverable verification"
       automation_approach: "Manual PR review"
 
+    patterns:
+      primary: "documentation-review"
+      helpers_required: []
+
     specific_preconditions: []
     test_data:
       resource_definitions: []
@@ -723,18 +792,18 @@ scenarios:
       setup:
         - step_id: "SETUP-01"
           action: "Locate landscape.md changes in PR"
-          command: "Review PR diff for landscape.md"
+          command: "Review PR diff for landscape.md modifications"
           validation: "landscape.md is modified in the PR"
       test_execution:
         - step_id: "TEST-01"
           action: "Verify OpenHands section added"
-          command: "Review landscape.md diff"
+          command: "Search landscape.md diff for new OpenHands section header"
           validation: "New section header for OpenHands exists"
         - step_id: "TEST-02"
           action: "Verify section contains evaluation findings"
-          command: "Review OpenHands section content"
+          command: "Search OpenHands section for substantive evaluation content beyond placeholder"
           validation: "Section has substantive content, not just a placeholder"
-      cleanup: []
+      cleanup: [] # No cleanup — documentation review
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -754,6 +823,10 @@ scenarios:
     test_structure:
       type: "single"
       note: "Documentation Review — manual verification"
+
+    code_structure:
+      type: "none"
+      note: "Documentation Review — no automated test structure"
 
   - scenario_id: "010"
     test_id: "TS-GH-55-010"
@@ -782,6 +855,10 @@ scenarios:
       scope: "Research deliverable verification"
       automation_approach: "Manual PR review"
 
+    patterns:
+      primary: "documentation-review"
+      helpers_required: []
+
     specific_preconditions: []
     test_data:
       resource_definitions: []
@@ -790,18 +867,18 @@ scenarios:
       setup:
         - step_id: "SETUP-01"
           action: "Locate cross-references in landscape.md OpenHands section"
-          command: "Review PR diff"
+          command: "Review PR diff for cross-reference content in OpenHands section"
           validation: "Cross-references present"
       test_execution:
         - step_id: "TEST-01"
           action: "Verify cross-references to problem docs exist"
-          command: "Search OpenHands section for docs/problems/ references"
+          command: "Search OpenHands section for docs/problems/ path references"
           validation: "At least one cross-reference found"
         - step_id: "TEST-02"
           action: "Verify cross-references are relevant"
-          command: "Review each cross-reference"
+          command: "Check each cross-referenced problem doc relates to OpenHands evaluation content"
           validation: "Referenced problem docs relate to OpenHands evaluation content"
-      cleanup: []
+      cleanup: [] # No cleanup — documentation review
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -821,6 +898,10 @@ scenarios:
     test_structure:
       type: "single"
       note: "Documentation Review — manual verification"
+
+    code_structure:
+      type: "none"
+      note: "Documentation Review — no automated test structure"
 
   - scenario_id: "011"
     test_id: "TS-GH-55-011"
@@ -849,6 +930,10 @@ scenarios:
       scope: "Research deliverable verification"
       automation_approach: "Manual PR review"
 
+    patterns:
+      primary: "documentation-review"
+      helpers_required: []
+
     specific_preconditions: []
     test_data:
       resource_definitions: []
@@ -857,14 +942,14 @@ scenarios:
       setup:
         - step_id: "SETUP-01"
           action: "Review existing landscape.md format"
-          command: "Read landscape.md before changes"
+          command: "Read landscape.md to understand existing entry format and conventions"
           validation: "Existing format understood"
       test_execution:
         - step_id: "TEST-01"
           action: "Compare new section structure to existing entries"
-          command: "Compare heading levels, section organization"
+          command: "Compare OpenHands section heading levels and organization against existing entries"
           validation: "Structure consistent with existing entries"
-      cleanup: []
+      cleanup: [] # No cleanup — documentation review
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -884,6 +969,10 @@ scenarios:
     test_structure:
       type: "single"
       note: "Documentation Review — manual verification"
+
+    code_structure:
+      type: "none"
+      note: "Documentation Review — no automated test structure"
 
   - scenario_id: "012"
     test_id: "TS-GH-55-012"
@@ -913,6 +1002,10 @@ scenarios:
       scope: "Research deliverable verification"
       automation_approach: "Manual PR review"
 
+    patterns:
+      primary: "documentation-review"
+      helpers_required: []
+
     specific_preconditions: []
     test_data:
       resource_definitions: []
@@ -921,22 +1014,22 @@ scenarios:
       setup:
         - step_id: "SETUP-01"
           action: "Note evaluation date and version references"
-          command: "Review PR diff"
+          command: "Review PR diff for date stamps and version references in OpenHands section"
           validation: "Date and version references present"
       test_execution:
         - step_id: "TEST-01"
           action: "Verify evaluation date is stated"
-          command: "Search for date reference in OpenHands section"
+          command: "Search OpenHands section for prominent evaluation date reference"
           validation: "Evaluation date prominently documented"
         - step_id: "TEST-02"
           action: "Verify version pinning"
-          command: "Check claims for version/SHA references"
+          command: "Search key claims for specific OpenHands version or commit SHA references"
           validation: "Key claims reference specific versions"
         - step_id: "TEST-03"
           action: "Spot-check claims against current OpenHands docs"
-          command: "Verify 2-3 key claims against public docs"
+          command: "Verify 2-3 key claims by cross-referencing against current OpenHands public documentation"
           validation: "Checked claims are accurate"
-      cleanup: []
+      cleanup: [] # No cleanup — documentation review
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -957,78 +1050,9 @@ scenarios:
       type: "single"
       note: "Documentation Review — manual verification"
 
-  - scenario_id: "016"
-    test_id: "TS-GH-55-016"
-    tier: "Documentation Review"
-    priority: "P1"
-    mvp: false
-    requirement_id: "GH-55"
-    requirement_summary: "Landscape documentation updated with OpenHands evaluation findings"
-
-    test_objective:
-      title: "Verify existing landscape.md content not degraded by OpenHands addition [NEGATIVE]"
-      what: |
-        Verify that adding the OpenHands section does not degrade, remove,
-        or corrupt existing content in landscape.md. This includes checking
-        that no existing sections are deleted, links remain valid, and
-        formatting is preserved.
-      why: |
-        The landscape document contains accumulated knowledge about multiple
-        platforms. Inadvertent removal or corruption of existing content
-        would result in knowledge loss.
-      acceptance_criteria:
-        - "No existing sections removed or truncated"
-        - "Existing links still valid"
-        - "Overall document formatting preserved"
-
-    classification:
-      test_type: "Documentation Review"
-      scope: "Research deliverable verification"
-      automation_approach: "Manual PR review"
-
-    specific_preconditions: []
-    test_data:
-      resource_definitions: []
-
-    test_steps:
-      setup:
-        - step_id: "SETUP-01"
-          action: "Review PR diff for landscape.md"
-          command: "Review additions and deletions in diff"
-          validation: "Diff is available for review"
-      test_execution:
-        - step_id: "TEST-01"
-          action: "Verify no existing sections removed"
-          command: "Check diff for deleted sections"
-          validation: "No section headings removed"
-        - step_id: "TEST-02"
-          action: "Verify no content truncated"
-          command: "Check diff for large deletions"
-          validation: "No significant content removed"
-        - step_id: "TEST-03"
-          action: "Verify existing links preserved"
-          command: "Spot-check existing links in modified file"
-          validation: "Previously existing links still valid"
-      cleanup: []
-
-    assertions:
-      - assertion_id: "ASSERT-01"
-        priority: "P1"
-        description: "Existing content not degraded"
-        condition: "No existing sections, links, or content removed by the PR"
-        failure_impact: "Knowledge loss in landscape document"
-
-    dependencies:
-      kubernetes_resources: []
-      external_tools: []
-      scenario_specific_rbac: []
-
-    variables:
-      closure_scope: []
-
-    test_structure:
-      type: "single"
-      note: "Documentation Review — manual verification"
+    code_structure:
+      type: "none"
+      note: "Documentation Review — no automated test structure"
 
   # =====================================================================
   # Requirement Group 4: Experiment Proposals (P2)
@@ -1060,6 +1084,10 @@ scenarios:
       scope: "Research deliverable verification"
       automation_approach: "Manual PR review"
 
+    patterns:
+      primary: "documentation-review"
+      helpers_required: []
+
     specific_preconditions: []
     test_data:
       resource_definitions: []
@@ -1068,14 +1096,14 @@ scenarios:
       setup:
         - step_id: "SETUP-01"
           action: "Locate experiment proposals"
-          command: "Review PR diff for experiment proposals"
+          command: "Review PR diff for experiment proposal section"
           validation: "Experiment proposals exist"
       test_execution:
         - step_id: "TEST-01"
           action: "Verify each experiment references a problem area"
-          command: "Review each experiment proposal"
+          command: "Check each experiment proposal for explicit mapping to sandbox, harness, dispatch, or security"
           validation: "Each experiment maps to sandbox, harness, dispatch, or security"
-      cleanup: []
+      cleanup: [] # No cleanup — documentation review
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -1095,6 +1123,10 @@ scenarios:
     test_structure:
       type: "single"
       note: "Documentation Review — manual verification"
+
+    code_structure:
+      type: "none"
+      note: "Documentation Review — no automated test structure"
 
   - scenario_id: "014"
     test_id: "TS-GH-55-014"
@@ -1125,6 +1157,10 @@ scenarios:
       scope: "Research deliverable verification"
       automation_approach: "Manual PR review"
 
+    patterns:
+      primary: "documentation-review"
+      helpers_required: []
+
     specific_preconditions: []
     test_data:
       resource_definitions: []
@@ -1133,26 +1169,26 @@ scenarios:
       setup:
         - step_id: "SETUP-01"
           action: "Locate experiment proposals"
-          command: "Review PR diff"
+          command: "Review PR diff for experiment proposal section"
           validation: "Experiment proposals found"
       test_execution:
         - step_id: "TEST-01"
           action: "Verify objective defined for each experiment"
-          command: "Review each experiment"
+          command: "Check each experiment proposal for clear objective statement"
           validation: "Clear objective statement present"
         - step_id: "TEST-02"
           action: "Verify methodology defined"
-          command: "Review each experiment"
+          command: "Check each experiment proposal for method or approach description"
           validation: "Method or approach described"
         - step_id: "TEST-03"
           action: "Verify expected output defined"
-          command: "Review each experiment"
+          command: "Check each experiment proposal for expected deliverable or result"
           validation: "Expected deliverable or result stated"
         - step_id: "TEST-04"
           action: "Verify effort estimate included"
-          command: "Review each experiment"
+          command: "Check each experiment proposal for time or effort estimate"
           validation: "Time or effort estimate provided"
-      cleanup: []
+      cleanup: [] # No cleanup — documentation review
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -1172,6 +1208,10 @@ scenarios:
     test_structure:
       type: "single"
       note: "Documentation Review — manual verification"
+
+    code_structure:
+      type: "none"
+      note: "Documentation Review — no automated test structure"
 
   - scenario_id: "015"
     test_id: "TS-GH-55-015"
@@ -1200,6 +1240,10 @@ scenarios:
       scope: "Research deliverable verification"
       automation_approach: "Manual PR review"
 
+    patterns:
+      primary: "documentation-review"
+      helpers_required: []
+
     specific_preconditions: []
     test_data:
       resource_definitions: []
@@ -1208,18 +1252,18 @@ scenarios:
       setup:
         - step_id: "SETUP-01"
           action: "Locate experiment proposals"
-          command: "Review PR diff"
+          command: "Review PR diff for experiment proposal section"
           validation: "Experiment proposals found"
       test_execution:
         - step_id: "TEST-01"
           action: "Verify GH-260 linkage"
-          command: "Search experiment proposals for GH-260 reference"
+          command: "Search experiment proposals for GH-260 issue reference or URL"
           validation: "At least one reference to GH-260 found"
         - step_id: "TEST-02"
           action: "Verify link format is correct"
-          command: "Check GH-260 reference format"
+          command: "Validate GH-260 reference is a valid URL or GitHub issue reference format"
           validation: "Link is valid URL or GitHub issue reference"
-      cleanup: []
+      cleanup: [] # No cleanup — documentation review
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -1239,6 +1283,91 @@ scenarios:
     test_structure:
       type: "single"
       note: "Documentation Review — manual verification"
+
+    code_structure:
+      type: "none"
+      note: "Documentation Review — no automated test structure"
+
+  - scenario_id: "016"
+    test_id: "TS-GH-55-016"
+    tier: "Documentation Review"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-55"
+    requirement_summary: "Landscape documentation updated with OpenHands evaluation findings"
+
+    test_objective:
+      title: "Verify existing landscape.md content not degraded by OpenHands addition [NEGATIVE]"
+      what: |
+        Verify that adding the OpenHands section does not degrade, remove,
+        or corrupt existing content in landscape.md. This includes checking
+        that no existing sections are deleted, links remain valid, and
+        formatting is preserved.
+      why: |
+        The landscape document contains accumulated knowledge about multiple
+        platforms. Inadvertent removal or corruption of existing content
+        would result in knowledge loss.
+      acceptance_criteria:
+        - "No existing sections removed or truncated"
+        - "Existing links still valid"
+        - "Overall document formatting preserved"
+
+    classification:
+      test_type: "Documentation Review"
+      scope: "Research deliverable verification"
+      automation_approach: "Manual PR review"
+
+    patterns:
+      primary: "documentation-review"
+      helpers_required: []
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Review PR diff for landscape.md"
+          command: "Review additions and deletions in landscape.md diff"
+          validation: "Diff is available for review"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify no existing sections removed"
+          command: "Check diff for deleted section headings in landscape.md"
+          validation: "No section headings removed"
+        - step_id: "TEST-02"
+          action: "Verify no content truncated"
+          command: "Check diff for large deletions or truncated content blocks"
+          validation: "No significant content removed"
+        - step_id: "TEST-03"
+          action: "Verify existing links preserved"
+          command: "Spot-check previously existing links in modified landscape.md for validity"
+          validation: "Previously existing links still valid"
+      cleanup: [] # No cleanup — documentation review
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Existing content not degraded"
+        condition: "No existing sections, links, or content removed by the PR"
+        failure_impact: "Knowledge loss in landscape document"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+    variables:
+      closure_scope: []
+
+    test_structure:
+      type: "single"
+      note: "Documentation Review — manual verification"
+
+    code_structure:
+      type: "none"
+      note: "Documentation Review — no automated test structure"
 
   - scenario_id: "017"
     test_id: "TS-GH-55-017"
@@ -1269,6 +1398,10 @@ scenarios:
       scope: "Research deliverable verification"
       automation_approach: "Manual PR review"
 
+    patterns:
+      primary: "documentation-review"
+      helpers_required: []
+
     specific_preconditions: []
     test_data:
       resource_definitions: []
@@ -1286,18 +1419,18 @@ scenarios:
       setup:
         - step_id: "SETUP-01"
           action: "Identify the 4 GH-260 experiments"
-          command: "Review GH-260 for experiment list"
+          command: "Review GH-260 issue for the four experiment proposals"
           validation: "Four experiments identified"
       test_execution:
         - step_id: "TEST-01"
           action: "Map evaluation findings to GH-260 experiments"
-          command: "Cross-reference findings with experiments"
+          command: "Cross-reference evaluation findings with each of the four GH-260 experiments"
           validation: "At least 2 experiments have supporting findings"
         - step_id: "TEST-02"
           action: "Verify mapping is explicit"
-          command: "Check for direct references or clear connections"
+          command: "Check for direct references or explicit connections between findings and experiments"
           validation: "Mapping is stated, not just implied"
-      cleanup: []
+      cleanup: [] # No cleanup — documentation review
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -1317,4 +1450,8 @@ scenarios:
     test_structure:
       type: "single"
       note: "Documentation Review — manual verification"
+
+    code_structure:
+      type: "none"
+      note: "Documentation Review — no automated test structure"
 ---
