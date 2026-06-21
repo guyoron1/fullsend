@@ -1,0 +1,12 @@
+status: error
+jira_id: GH-2378
+error: "STD YAML not found at outputs/std/GH-2378/GH-2378_test_description.yaml"
+detail: >
+  The Software Test Description (STD) YAML file has not been generated for
+  GH-2378. The STP exists at outputs/stp/GH-2378/GH-2378_test_plan.md, but
+  the STD must be generated (via std-builder) before test code can be produced.
+  The STD review also confirmed this gap (verdict: BLOCKED).
+languages: []
+total_test_count: 0
+lsp_patterns_used: false
+recommendation: "Run the std-builder command for GH-2378 to generate the STD YAML, then re-run test generation."
