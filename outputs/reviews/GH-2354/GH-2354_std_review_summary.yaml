@@ -1,0 +1,24 @@
+status: success
+jira_id: GH-2354
+verdict: APPROVED_WITH_FINDINGS
+confidence: MEDIUM
+weighted_score: 82
+findings:
+  critical: 0
+  major: 7
+  minor: 8
+  actionable: 15
+  total: 15
+artifacts_reviewed:
+  std_yaml: true
+  go_stubs: true
+  python_stubs: false
+  stp_available: true
+dimension_scores:
+  traceability: 100
+  yaml_structure: 72
+  pattern_matching: 70
+  step_quality: 85
+  content_policy: 80
+  pse_quality: 82
+  codegen_readiness: 78
