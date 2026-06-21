@@ -1,0 +1,22 @@
+status: success
+jira_id: GH-2432
+verdict: APPROVED_WITH_FINDINGS
+confidence: LOW
+weighted_score: 93
+findings:
+  critical: 0
+  major: 1
+  minor: 5
+  actionable: 6
+  total: 6
+reviewed: outputs/stp/GH-2432/GH-2432_test_plan.md
+report: GH-2432_stp_review.md
+dimension_scores:
+  rule_compliance: 94
+  requirement_coverage: 95
+  scenario_quality: 85
+  risk_accuracy: 93
+  scope_boundary: 100
+  strategy: 100
+  metadata: 85
+scope_downgrade: false
