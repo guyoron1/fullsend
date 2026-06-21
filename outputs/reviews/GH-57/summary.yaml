@@ -1,0 +1,22 @@
+status: success
+jira_id: GH-57
+verdict: APPROVED_WITH_FINDINGS
+confidence: MEDIUM
+weighted_score: 84
+findings:
+  critical: 0
+  major: 4
+  minor: 2
+  actionable: 5
+  total: 6
+reviewed: outputs/stp/GH-57/GH-57_test_plan.md
+report: GH-57_stp_review.md
+dimension_scores:
+  rule_compliance: 89
+  requirement_coverage: 70
+  scenario_quality: 85
+  risk_accuracy: 95
+  scope_boundary: 95
+  strategy: 80
+  metadata: 95
+scope_downgrade: false
