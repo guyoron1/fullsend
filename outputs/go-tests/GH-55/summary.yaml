@@ -1,0 +1,47 @@
+---
+# QualityFlow Test Generator Output Summary
+# Generated: 2026-06-21
+
+status: success
+jira_id: "GH-55"
+jira_summary: "Explore OpenHands and evaluate relevance to fullsend"
+std_source: "outputs/std/GH-55/GH-55_test_description.yaml"
+
+languages:
+  - language: go
+    framework: testing
+    files: []
+    test_count: 0
+    note: >
+      All 17 STD scenarios are Documentation Review tier with
+      code_structure.type 'none'. No automated Go test code is
+      generated per the STD specification.
+
+total_test_count: 0
+total_scenarios: 17
+documentation_review_scenarios: 17
+automated_test_scenarios: 0
+
+lsp_patterns_used: false
+
+generation_notes: |
+  The STD for GH-55 contains 17 scenarios, all classified as
+  "Documentation Review" tier. The STD code_generation_config
+  explicitly states: "All scenarios are Documentation Review tier.
+  No automated code tests are generated. Verification is performed
+  through manual PR review of research deliverables."
+
+  Breakdown by priority:
+    P0: 3 scenarios (001-003) - Licensing and deployment constraints
+    P1: 10 scenarios (004-012, 016) - Architectural evaluation + landscape docs
+    P2: 4 scenarios (013-015, 017) - Experiment proposals
+
+  No Go or Python test files were generated because no scenarios
+  have automatable test structures. All verification is performed
+  through manual PR review of the research deliverables.
+
+config_used:
+  project_id: "fullsend"
+  config_dir: "/sandbox/workspace/agent-input/config/projects/fullsend"
+  go_config: "go.yaml (enabled, framework: testing)"
+  python_config: "not found (no python.yaml in project config)"
