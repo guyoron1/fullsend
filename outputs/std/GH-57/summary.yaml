@@ -1,0 +1,11 @@
+status: success
+jira_id: GH-57
+stp_source: outputs/stp/GH-57/GH-57_test_plan.md
+std_yaml: outputs/std/GH-57/GH-57_test_description.yaml
+test_counts:
+  total: 4
+  tier1: 4
+  tier2: 0
+stubs:
+  go: 4
+  python: 0
