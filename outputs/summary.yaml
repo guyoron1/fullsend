@@ -1,0 +1,15 @@
+status: success
+jira_id: GH-2096
+file_path: /sandbox/workspace/output/GH-2096_test_plan.md
+test_counts:
+  unit_tests: 16
+  functional: 8
+  end_to_end: 4
+  total: 28
+pr_analyzed: "https://github.com/fullsend-ai/fullsend/pull/2303"
+lsp_analysis: true
+lsp_calls: 9
+regression_trace:
+  - "scaffold.go:FullsendRepoFile -> cli/run.go:bootstrapCommon"
+  - "scaffold.go:WalkFullsendRepo -> installfiles.go:CollectInstallFiles -> layers/workflows.go:Install"
+  - "scaffold.go:WalkFullsendRepoAll -> scaffold_test.go (7 test functions)"
