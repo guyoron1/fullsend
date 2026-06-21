@@ -1,0 +1,22 @@
+status: success
+jira_id: GH-1230
+verdict: APPROVED_WITH_FINDINGS
+confidence: LOW
+weighted_score: 79
+findings:
+  critical: 0
+  major: 5
+  minor: 6
+  actionable: 9
+  total: 11
+reviewed: outputs/stp/GH-1230/GH-1230_test_plan.md
+report: GH-1230_stp_review.md
+dimension_scores:
+  rule_compliance: 85
+  requirement_coverage: 80
+  scenario_quality: 75
+  risk_accuracy: 80
+  scope_boundary: 90
+  strategy: 70
+  metadata: 40
+scope_downgrade: false
