@@ -1,0 +1,13 @@
+status: blocked
+jira_id: GH-2096
+initial_verdict: BLOCKED
+final_verdict: BLOCKED
+iterations: 0
+reason: "STD artifacts not found — STD YAML and test stubs must be generated before refinement can proceed"
+findings:
+  initial: {critical: 0, major: 0, minor: 0}
+  final: {critical: 0, major: 0, minor: 0}
+artifacts_refined:
+  std_yaml: false
+  go_stubs: false
+  python_stubs: false
