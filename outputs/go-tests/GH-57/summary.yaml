@@ -1,0 +1,12 @@
+status: success
+jira_id: GH-57
+std_source: outputs/std/GH-57/GH-57_test_description.yaml
+languages:
+  - language: go
+    framework: testing
+    files:
+      - gh57_research_output_test.go
+      - gh57_helpers_test.go
+    test_count: 5
+total_test_count: 5
+lsp_patterns_used: false
