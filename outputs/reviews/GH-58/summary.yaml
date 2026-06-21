@@ -1,22 +1,24 @@
 status: success
 jira_id: GH-58
-verdict: APPROVED_WITH_FINDINGS
+verdict: NEEDS_REVISION
 confidence: MEDIUM
-weighted_score: 81
+weighted_score: 72
 findings:
-  critical: 0
-  major: 3
-  minor: 6
-  actionable: 8
-  total: 9
-reviewed: outputs/stp/GH-58/GH-58_test_plan.md
-report: outputs/reviews/GH-58/GH-58_stp_review.md
+  critical: 1
+  major: 4
+  minor: 2
+  actionable: 7
+  total: 7
+artifacts_reviewed:
+  std_yaml: true
+  go_stubs: true
+  python_stubs: false
+  stp_available: true
 dimension_scores:
-  rule_compliance: 78
-  requirement_coverage: 80
-  scenario_quality: 78
-  risk_accuracy: 92
-  scope_boundary: 85
-  strategy: 88
-  metadata: 75
-scope_downgrade: false
+  traceability: 90
+  yaml_structure: 55
+  pattern_matching: 30
+  step_quality: 85
+  content_policy: 75
+  pse_quality: 88
+  codegen_readiness: 35
