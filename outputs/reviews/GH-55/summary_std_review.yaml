@@ -1,0 +1,24 @@
+status: success
+jira_id: GH-55
+verdict: APPROVED_WITH_FINDINGS
+confidence: MEDIUM
+weighted_score: 88
+findings:
+  critical: 0
+  major: 3
+  minor: 6
+  actionable: 7
+  total: 9
+artifacts_reviewed:
+  std_yaml: true
+  go_stubs: false
+  python_stubs: false
+  stp_available: true
+dimension_scores:
+  traceability: 98
+  yaml_structure: 75
+  pattern_matching: -1  # N/A — Documentation Review tier, no patterns
+  step_quality: 82
+  content_policy: 95
+  pse_quality: -1  # N/A — no stubs (Documentation Review tier)
+  codegen_readiness: -1  # N/A — no code generation intended
