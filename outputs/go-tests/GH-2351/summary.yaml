@@ -1,0 +1,15 @@
+status: success
+jira_id: GH-2351
+std_source: outputs/std/GH-2351/GH-2351_test_description.yaml
+languages:
+  - language: go
+    framework: testing
+    files:
+      - compare_path_presence_test.go
+      - list_repository_files_test.go
+      - fake_client_test.go
+      - edge_cases_test.go
+      - interface_compliance_test.go
+    test_count: 17
+total_test_count: 17
+lsp_patterns_used: false
