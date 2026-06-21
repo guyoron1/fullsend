@@ -182,6 +182,7 @@ func TestMergeChangeProposal_ContextCancellation(t *testing.T) {
 	t.Run("[test_id:TS-GH-2432-008] should abort retry on cancelled context", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
+		[NEGATIVE]
 		Preconditions:
 			- Mock server returns 409 on merge
 			- Context is cancelled after first 409 response
@@ -198,6 +199,7 @@ func TestMergeChangeProposal_ContextCancellation(t *testing.T) {
 	t.Run("[test_id:TS-GH-2432-009] should return context.Canceled error on cancellation", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
+		[NEGATIVE]
 		Preconditions:
 			- Mock server returns 409 on merge
 			- Context is cancelled during retry wait

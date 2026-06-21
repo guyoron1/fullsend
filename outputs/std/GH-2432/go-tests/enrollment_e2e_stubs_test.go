@@ -1,4 +1,4 @@
-package github
+package admin
 
 import (
 	"testing"
@@ -50,7 +50,7 @@ func TestEnrollmentMergeResilience(t *testing.T) {
 
 		Expected:
 			- Merge succeeds even when reconcile workflow pushes during the merge window
-			- Retry is transparent to the caller
+			- Retry is transparent to the caller: test passes without error and logs show retry activity if 409 was encountered
 		*/
 	})
 
