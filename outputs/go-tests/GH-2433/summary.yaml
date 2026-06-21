@@ -1,0 +1,11 @@
+status: success
+jira_id: GH-2433
+std_source: outputs/std/GH-2433/GH-2433_test_description.yaml
+languages:
+  - language: go
+    framework: testing
+    files:
+      - data_consistency_guard_test.go
+    test_count: 15
+total_test_count: 15
+lsp_patterns_used: false
