@@ -1,0 +1,28 @@
+status: success
+jira_id: GH-2247
+stp_source: outputs/stp/GH-2247/GH-2247_test_plan.md
+std_yaml: outputs/std/GH-2247/GH-2247_test_description.yaml
+test_counts:
+  total: 23
+  tier1: 23
+  tier2: 0
+  unit_tests: 19
+  functional: 4
+  p0: 11
+  p1: 10
+  p2: 1
+stubs:
+  go: 23
+  python: 0
+go_stub_files:
+  - go-tests/shim_drift_detection_stubs_test.go
+  - go-tests/sentinel_preservation_stubs_test.go
+  - go-tests/header_preservation_stubs_test.go
+  - go-tests/injection_guard_stubs_test.go
+  - go-tests/pre_sentinel_migration_stubs_test.go
+  - go-tests/full_reconciliation_stubs_test.go
+notes:
+  - "All 23 STP scenarios covered with Go test stubs"
+  - "No Python stubs generated (tier2_tests disabled, no End-to-End scenarios)"
+  - "Stubs use standard Go testing with testify (project convention)"
+  - "Phase 1: Design stubs with PSE comments only (t.Skip)"
