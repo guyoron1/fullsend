@@ -1,0 +1,22 @@
+status: success
+jira_id: GH-58
+verdict: APPROVED_WITH_FINDINGS
+confidence: MEDIUM
+weighted_score: 81
+findings:
+  critical: 0
+  major: 3
+  minor: 6
+  actionable: 8
+  total: 9
+reviewed: outputs/stp/GH-58/GH-58_test_plan.md
+report: outputs/reviews/GH-58/GH-58_stp_review.md
+dimension_scores:
+  rule_compliance: 78
+  requirement_coverage: 80
+  scenario_quality: 78
+  risk_accuracy: 92
+  scope_boundary: 85
+  strategy: 88
+  metadata: 75
+scope_downgrade: false
