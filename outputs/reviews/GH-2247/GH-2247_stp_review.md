@@ -7,7 +7,7 @@
 
 ---
 
-## Verdict: APPROVED_WITH_FINDINGS
+## Verdict: APPROVED
 
 ## Summary
 
@@ -15,24 +15,24 @@
 |:-------|:------|
 | Dimensions reviewed | 7/7 |
 | Critical findings | 0 |
-| Major findings | 2 |
-| Minor findings | 5 |
-| Actionable findings | 7 |
+| Major findings | 0 |
+| Minor findings | 3 |
+| Actionable findings | 3 |
 | Confidence | MEDIUM |
-| Weighted score | 83/100 |
+| Weighted score | 93/100 |
 
 ## Dimension Scores
 
 | Dimension | Weight | Pass Rate | Weighted |
 |:----------|:-------|:----------|:---------|
-| 1. Rule Compliance | 25% | 75% | 18.75 |
-| 2. Requirement Coverage | 30% | 88% | 26.40 |
-| 3. Scenario Quality | 15% | 87% | 13.05 |
-| 4. Risk & Limitation Accuracy | 10% | 85% | 8.50 |
+| 1. Rule Compliance | 25% | 94% | 23.50 |
+| 2. Requirement Coverage | 30% | 95% | 28.50 |
+| 3. Scenario Quality | 15% | 93% | 13.95 |
+| 4. Risk & Limitation Accuracy | 10% | 95% | 9.50 |
 | 5. Scope Boundary Assessment | 10% | 95% | 9.50 |
-| 6. Test Strategy Appropriateness | 5% | 70% | 3.50 |
-| 7. Metadata Accuracy | 5% | 85% | 4.25 |
-| **Total** | **100%** | | **83.95** |
+| 6. Test Strategy Appropriateness | 5% | 95% | 4.75 |
+| 7. Metadata Accuracy | 5% | 90% | 4.50 |
+| **Total** | **100%** | | **94.20** |
 
 ---
 
@@ -42,55 +42,35 @@
 
 | Rule | Status | Finding |
 |:-----|:-------|:--------|
-| A — Abstraction Level | WARN | Internal function names referenced in Section 1.2 (minor) |
+| A — Abstraction Level | PASS | Fix Description uses behavioral language; function names removed from non-Evidence fields |
 | A.2 — Language Precision | PASS | Language is precise and professional throughout |
-| B — Section I Meta-Checklist | SKIP | No STP template available for comparison (repo_files_fetch disabled, no templates dir) |
-| C — Prerequisites vs Scenarios | PASS | All 22 scenarios describe testable behaviors, no prerequisites masquerading as test cases |
+| B — Section I Meta-Checklist | PASS | Requirements Review (1.5), Known Limitations (1.6), and Technology Review (1.7) now present |
+| C — Prerequisites vs Scenarios | PASS | All 23 scenarios describe testable behaviors, no prerequisites masquerading as test cases |
 | D — Dependencies | PASS | N/A — bug fix has no external team dependencies |
 | E — Upgrade Testing | PASS | N/A — bash script fix creates no persistent state |
-| F — Version Derivation | WARN | No version information in STP; project version is "0.x" (minor) |
+| F — Version Derivation | PASS | Version "0.x" matches project config; no version mismatch |
 | G — Testing Tools | PASS | Test environment lists feature-specific tools (mock binaries) appropriately |
 | G.2 — Environment Specificity | PASS | Requirements are feature-specific (Bash 4.4+, mock gh/yq) |
 | H — Risk Deduplication | PASS | No risk entries duplicate environment requirements |
 | I — QE Kickoff Timing | PASS | N/A — bug fix; no formal kickoff section required |
 | J — One Tier Per Row | PASS | Each scenario specifies exactly one tier |
-| K — Cross-Section Consistency | PASS | Scope, out-of-scope, and scenarios are internally consistent |
-| L — Section Content Validation | WARN | Non-standard STP structure deviates from expected Section I/II/III format (major) |
-| M — Deletion Test | WARN | Section 1.2 Fix Description contains implementation-level detail beyond what test decision requires (minor) |
+| K — Cross-Section Consistency | PASS | Scope, out-of-scope, scenarios, and new Test Strategy section are internally consistent |
+| L — Section Content Validation | PASS | Structure now includes meta-checklist elements (1.5, 1.6, 1.7) and Test Strategy (Section 4) |
+| M — Deletion Test | PASS | Fix Description consolidated to single behavioral paragraph; no excessive detail |
 | N — Link/Reference Validation | PASS | GH-2247 link and PR #2101 references are correct and consistent with source data |
 | O — Untestable Aspects | PASS | N/A — no items marked untestable |
-| P — Testing Pyramid Efficiency | PASS | Bug fix classification: single-package. STP proposes 18 Unit + 4 Functional — appropriate pyramid with unit base and functional validation |
+| P — Testing Pyramid Efficiency | PASS | Bug fix classification: single-package. STP proposes 19 Unit + 4 Functional — appropriate pyramid with unit base and functional validation |
 
-#### Detailed Findings
+#### Residual Observations
 
-**D1-L-001 — Non-standard STP structure** (MAJOR)
-
-- **Severity:** MAJOR
-- **Dimension:** Rule Compliance
-- **Rule:** L — Section Content Validation
-- **Description:** The STP uses a custom 8-section structure instead of the standard Section I (meta-checklist with Requirements Review, Known Limitations, Technology Review), Section II (Scope, Test Strategy, Test Environment, Entry Criteria, Risks), Section III (Requirements-to-Tests Mapping) format. Key missing elements: Requirements Review checklist, formal Test Strategy with checkbox items, Entry Criteria, and Known Limitations section.
-- **Evidence:** STP sections are: 1. Summary, 2. Scope, 3. Requirements-to-Tests Mapping, 4. Test Classification Summary, 5. Existing Test Coverage, 6. Risk Assessment, 7. Test Environment, 8. Acceptance Criteria Verification. No Section I meta-checklist or Section II.2 Test Strategy with standard checkbox items.
-- **Remediation:** Restructure the STP to follow the standard template format: add Section I with Requirements Review, Known Limitations, and Technology Review checklists; restructure Section II with Scope of Testing, Test Strategy (checkbox items for Functional, Regression, Performance, Security, Upgrade, etc.), Test Environment, Entry/Exit Criteria, and Risks.
-- **Actionable:** true
-
-**D1-A-001 — Internal function name references** (MINOR)
+**D1-B-001 — Non-standard section numbering** (MINOR)
 
 - **Severity:** MINOR
 - **Dimension:** Rule Compliance
-- **Rule:** A — Abstraction Level
-- **Description:** Section 1.2 (Fix Description) references internal function names `managed_content_b64()`, `extract_managed_content`, and `shim_with_header_b64()`. While these provide useful context for a bug fix description, they are code-level implementation details.
-- **Evidence:** "The fix replaces the base64-to-base64 comparison with decoded text comparison: ... **Extract managed content** via `extract_managed_content` (everything from sentinel onward)"
-- **Remediation:** Replace function name references with behavioral descriptions. E.g., "the managed-content extraction logic" instead of "`extract_managed_content`". Keep function names only in Evidence fields of Section 3 requirement tables where they serve as source code citations.
-- **Actionable:** true
-
-**D1-M-001 — Fix Description overly detailed** (MINOR)
-
-- **Severity:** MINOR
-- **Dimension:** Rule Compliance
-- **Rule:** M — Deletion Test (ISTQB)
-- **Description:** Section 1.2 contains a 5-step implementation-level description of the code changes. A test plan needs to know *what behavior changed* (decoded text comparison replaces base64 comparison), not the step-by-step code changes. The numbered steps add bulk without aiding the Go/No-Go test decision.
-- **Evidence:** Five numbered steps describing decode, strip, extract, compare, and fallback logic at code level.
-- **Remediation:** Consolidate the Fix Description to a single behavioral paragraph: "The fix changes shim drift detection to compare decoded text content instead of re-encoded base64. Both the expected template output and the remote file content are decoded, carriage-return normalized, and compared as strings. For pre-sentinel shims (no sentinel found), full decoded content is compared."
+- **Rule:** B — Section I Meta-Checklist
+- **Description:** The meta-checklist elements (Requirements Review, Known Limitations, Technology Review) are numbered as sub-sections of Section 1 (1.5, 1.6, 1.7) rather than as a standalone Section I with standard I.1/I.2/I.3 numbering. This is a structural convention difference, not a content gap. All required content is present.
+- **Evidence:** Sections 1.5 Requirements Review, 1.6 Known Limitations, 1.7 Technology Review — content matches expected meta-checklist elements.
+- **Remediation:** Optional: rename to "Section I" with I.1/I.2/I.3 sub-sections if aligning strictly with template conventions. Current numbering is functionally equivalent.
 - **Actionable:** true
 
 ### Dimension 2: Requirement Coverage
@@ -101,7 +81,7 @@
 | Acceptance criteria coverage rate | 100% |
 | Linked issues reflected | 1/1 (PR #2101) |
 | Negative scenarios present | YES (4 negative + 3 edge case) |
-| Coverage gaps found | 1 |
+| Coverage gaps found | 0 |
 
 **Acceptance Criteria Verification (from GitHub Issue):**
 
@@ -113,62 +93,56 @@
 | Non-comment YAML injection is blocked | Scenarios #12, #13, #14 | ✅ Covered |
 | Pre-sentinel repos are correctly migrated | Scenarios #16, #17, #18 | ✅ Covered |
 
-**Coverage Gap:**
+**Previously identified gap resolved:**
+- `__ORG__` interpolation consistency — now addressed by Scenario #5a and acknowledged in Known Limitations (Section 1.6 item 3)
 
-**D2-001 — __ORG__ interpolation consistency not explicitly addressed** (MINOR)
-
-- **Severity:** MINOR
-- **Dimension:** Requirement Coverage
-- **Rule:** N/A
-- **Description:** The maintainer's re-triage (comment by @ralphbean) suggested the false positive may stem from comparing pre-interpolated templates with post-interpolated strings (`__ORG__` placeholder substitution). While the decoded text comparison fix inherently resolves this (both sides use `shim_content_b64()` which substitutes `__ORG__`), no explicit test scenario verifies that `__ORG__` substitution produces consistent results between expected and remote content paths. The test harness template also does not contain `__ORG__` placeholders.
-- **Evidence:** Re-triage comment: "I think b64 encoding has nothing to do with the bug. Is it just about comparing pre-interpolated templates with post-interpolated strings?" — The test template at `CONFIG_DIR/templates/shim-workflow-call.yaml` uses `fresh shim template` without `__ORG__`.
-- **Remediation:** Add a test scenario (or extend Test 5) where the test template contains an `__ORG__` placeholder, and verify the comparison path correctly handles the substituted value matching on both sides.
-- **Actionable:** true
+**Coverage Strengths:**
+- 100% acceptance criteria coverage
+- Both root cause hypotheses (base64 trailing newlines AND `__ORG__` interpolation) are addressed in Problem Statement and covered by scenarios
+- Maintainer feedback (@ralphbean re-triage comment) incorporated into STP narrative and test scenarios
 
 ### Dimension 3: Scenario Quality
 
 | Metric | Value |
 |:-------|:------|
-| Total scenarios | 22 |
-| Unit Tests | 18 |
+| Total scenarios | 23 |
+| Unit Tests | 19 |
 | Functional | 4 |
-| P0 | 12 |
-| P1 | 8 |
+| P0 | 10 |
+| P1 | 11 |
 | P2 | 2 |
-| Positive scenarios | 15 |
+| Positive scenarios | 16 |
 | Negative scenarios | 4 |
 | Edge case scenarios | 3 |
 
-**Scenario-level findings:**
+**Priority distribution improvement:**
+- P0 reduced from 55% (12/22) to 43% (10/23) — better differentiation
+- Scenarios #2 and #9 correctly downgraded to P1
+- P0/P1/P2 ratio is now reasonable for a bug fix STP
 
-**D3-001 — P0 priority inflation** (MINOR)
+**Scenario Quality Strengths:**
+- All 23 scenarios are specific and describe distinct testable behaviors
+- Good mix of positive (16), negative (4), and edge case (3) scenarios
+- Scenarios are concise (most under 15 words) and user-observable
+- Each requirement in Section 3 has 2+ scenarios providing adequate depth
+- Existing Test Coverage section (6.1/6.2) provides excellent traceability between STP scenarios and implemented tests
+
+**D3-001 — Scenario 5a numbering convention** (MINOR)
 
 - **Severity:** MINOR
 - **Dimension:** Scenario Quality
 - **Rule:** N/A
-- **Description:** 12 of 22 scenarios (55%) are classified as P0. While the core drift detection and sentinel preservation scenarios legitimately warrant P0, some scenarios test supplementary behaviors that are P1-appropriate.
-- **Evidence:** Scenarios #2 (stale detection), #3 (up-to-date with header), and #9 (license header preserved) are P0. While important, stale detection (#2) is a variant of the primary comparison test (#1), and header preservation (#9) is a secondary behavior relative to the core sentinel fix.
-- **Remediation:** Consider downgrading scenarios #2 and #9 to P1. Reserve P0 for the primary regression scenario (#1), sentinel integrity (#6, #7), core migration (#16, #17, #18), injection guard (#12, #14), and full reconciliation (#19, #20).
+- **Description:** Scenario 5a uses a letter suffix instead of a sequential integer. While functional, this deviates from the sequential numbering pattern (1-22) used by all other scenarios.
+- **Evidence:** "5a | Verify `__ORG__` placeholder substitution..." — all other scenarios use integer IDs.
+- **Remediation:** Optional: renumber as scenario 23 at the end of Section 3.1, or renumber all scenarios in Section 3.1 sequentially.
 - **Actionable:** true
-
-**Scenario Quality Strengths:**
-- All 22 scenarios are specific and describe distinct testable behaviors
-- Good mix of positive (15), negative (4), and edge case (3) scenarios
-- Scenarios are concise (most under 15 words) and user-observable
-- Each requirement in Section 3 has 2+ scenarios providing adequate depth
-- The Existing Test Coverage section (5.1/5.2) provides excellent traceability between STP scenarios and implemented tests
 
 ### Dimension 4: Risk & Limitation Accuracy
 
-**D4-001 — Root cause description incomplete** (MINOR)
-
-- **Severity:** MINOR
-- **Dimension:** Risk & Limitation Accuracy
-- **Rule:** N/A
-- **Description:** The STP's Problem Statement (Section 1.1) attributes the false positive to "Bash command substitution strips trailing newlines, so the re-encoded base64 could differ from the original." The maintainer's updated triage hypothesis suggested the issue may instead be about comparing pre-interpolated templates with post-interpolated strings (`__ORG__` substitution). The fix resolves both scenarios, but the Problem Statement captures only one root cause hypothesis.
-- **Evidence:** Issue comment from @ralphbean: "I think b64 encoding has nothing to do with the bug. Is it just about comparing pre-interpolated templates with post-interpolated strings?" Updated triage: "The false positive stems from comparing pre-interpolated template content against post-interpolated deployed content."
-- **Remediation:** Update Section 1.1 to acknowledge both root cause hypotheses and explain that the decoded text comparison fix resolves both: "The false positive could arise from either (a) trailing newline differences in base64 re-encoding via command substitution, or (b) comparing pre-interpolated template placeholders against post-interpolated deployed content. The decoded text comparison fix resolves both scenarios."
-- **Actionable:** true
+**Improvements from prior review:**
+- Problem Statement (Section 1.1) now acknowledges both root cause hypotheses: (a) trailing newline differences in base64 re-encoding and (b) pre-interpolated vs post-interpolated template comparison. This matches the maintainer's re-triage analysis.
+- Known Limitations section (1.6) added with 3 legitimate constraints
+- Risk Assessment unchanged — all 5 risks remain legitimate and well-mitigated
 
 **Risk Assessment Strengths:**
 - All 5 risks are legitimate uncertainties with actionable mitigations
@@ -181,55 +155,58 @@
 - **Scope alignment:** All in-scope items directly relate to the bug fix in `reconcile-repos.sh` ✅
 - **Out-of-scope items:** Reasonable exclusions (GitHub API behavior, branch/PR mechanics, external tools, template correctness, unenrollment flow) ✅
 - **Project scope boundaries:** The fix is in `internal/scaffold/` which maps to "Scaffold" — a declared in-scope resource ✅
+- **Component label:** Updated to "scaffold / dispatch" reflecting both code location and functional area ✅
 - **No scope violations detected**
-- **Pass rate: 95%** (deducted 5% for minor: scope could explicitly mention what *functional behaviors* are tested rather than listing code-level concerns like "Base64 encoding/decoding round-trip behavior")
 
 ### Dimension 6: Test Strategy Appropriateness
 
-**D6-001 — Missing formal Test Strategy section** (MAJOR)
+**Major improvement:** Test Strategy section (Section 4) now present with:
+- 8 strategy checkbox items with checked/unchecked states and justifications ✅
+- Entry Criteria with 3 specific conditions ✅
+- Exit Criteria with 4 measurable conditions ✅
 
-- **Severity:** MAJOR
-- **Dimension:** Test Strategy Appropriateness
-- **Rule:** N/A (structural)
-- **Description:** The STP has no formal Test Strategy section with standard checkbox items (Functional Testing, Regression Testing, Performance Testing, Security Testing, Upgrade Testing, etc.). Section 4 (Test Classification Summary) provides tier rationale, and Section 7 (Test Environment) covers infrastructure, but no explicit strategy decisions are documented with justifications for checked/unchecked states.
-- **Evidence:** Standard strategy items not addressed: Functional Testing (implicitly Y), Regression Testing (implicitly Y via Test 5), Performance Testing (implicitly N/A), Security Testing (content injection guard is tested but not framed as security testing strategy), Upgrade Testing (implicitly N/A). No checkbox format with sub-items explaining each decision.
-- **Remediation:** Add a Test Strategy section with standard checkbox items. At minimum: `[x] Functional Testing` (shim comparison logic), `[x] Regression Testing` (Test 5 prevents PR #2101 recurrence), `[ ] Performance Testing` (N/A — string comparison, no latency requirements), `[ ] Security Testing` (content injection guard is functional, not security-boundary testing), `[ ] Upgrade Testing` (N/A — no persistent state).
-- **Actionable:** true
+**Strategy checkbox validation:**
+- [x] Functional Testing — correctly checked ✅
+- [x] Regression Testing — correctly checked (Test 5 regression) ✅
+- [ ] Performance Testing — correctly unchecked (string comparison, no latency requirements) ✅
+- [ ] Security Testing — correctly unchecked with valid justification ✅
+- [ ] Upgrade Testing — correctly unchecked (no persistent state) ✅
+- [ ] Compatibility Testing — correctly unchecked (fixed CI runners) ✅
+- [x] Negative Testing — correctly checked (injection guard, duplicate prevention) ✅
+- [x] Edge Case Testing — correctly checked with specific examples ✅
 
-**Strategy Strengths:**
-- Tier rationale in Section 4 is well-reasoned: unit tests for isolated functions, functional for full script, no E2E (correct — fix is bash string comparison)
-- The "No End-to-End tests" justification is sound and well-explained
+**D6-001 — Previously identified gap resolved:** The missing Test Strategy section has been added with appropriate content.
 
 ### Dimension 7: Metadata Accuracy
 
-**D7-001 — Component label vs file path mismatch** (MINOR)
+| Field | Validation | Status |
+|:------|:-----------|:-------|
+| Ticket ID | GH-2247 matches source | ✅ |
+| Title | Matches upstream issue title verbatim | ✅ |
+| Type | Bug Fix — matches `type/bug` label | ✅ |
+| Priority | High — matches `priority/high` label | ✅ |
+| Component | "scaffold / dispatch" — reflects both code location and functional area | ✅ |
+| Date | 2026-06-21 — current | ✅ |
+
+**D7-001 — Component label improvement noted:** Updated from "dispatch (reconcile-repos.sh)" to "scaffold / dispatch (reconcile-repos.sh)" — now reflects actual code location (`internal/scaffold/`) alongside the functional area label (`component/dispatch`).
+
+**D7-002 — Files Changed table still references internal function name** (MINOR)
 
 - **Severity:** MINOR
 - **Dimension:** Metadata Accuracy
-- **Rule:** N/A
-- **Description:** The STP lists the component as "dispatch (reconcile-repos.sh)" which matches the GitHub issue label `component/dispatch`. However, the actual file path is `internal/scaffold/fullsend-repo/scripts/reconcile-repos.sh`, which maps to the "scaffold" component in `components.yaml`.
-- **Evidence:** STP Component: "dispatch (reconcile-repos.sh)". GitHub label: "component/dispatch". File path: `internal/scaffold/`. components.yaml: scaffold → `internal/scaffold/`.
-- **Remediation:** Update to "scaffold (reconcile-repos.sh)" or "dispatch/scaffold (reconcile-repos.sh)" to reflect both the functional area (dispatch/reconciliation) and the code location (scaffold package).
+- **Rule:** A — Abstraction Level (residual)
+- **Description:** Section 1.3 Files Changed table still references `managed_content_b64()` in the Change column description. This is a metadata/evidence field where internal references are acceptable per Rule A's "acceptable locations" guidance, but for full consistency with the behavioral language used elsewhere in the document, it could be rephrased.
+- **Evidence:** "Replace `managed_content_b64()` comparison with decoded text comparison (lines 400-421)"
+- **Remediation:** Optional: rephrase to "Replace base64-to-base64 comparison with decoded text comparison (lines 400-421)".
 - **Actionable:** true
-
-**Metadata Strengths:**
-- Ticket ID, title, type, priority all match source data exactly
-- Title matches GitHub issue title verbatim
-- Type correctly identified as Bug Fix (matches `type/bug` label)
-- Priority correctly identified as High (matches `priority/high` label)
-- PR #2101 reference is accurate and consistent
 
 ---
 
 ## Recommendations
 
-1. **[MAJOR]** Non-standard STP structure missing meta-checklist and test strategy sections — **Remediation:** Restructure to standard Section I/II/III format with Requirements Review, Known Limitations, Technology Review checklists and Test Strategy checkbox items — **Actionable:** yes
-2. **[MAJOR]** Missing formal Test Strategy section with standard checkbox items — **Remediation:** Add Test Strategy with Functional, Regression, Performance, Security, and Upgrade Testing checkbox items with justifications — **Actionable:** yes
-3. **[MINOR]** Internal function name references in Section 1.2 — **Remediation:** Replace `managed_content_b64()`, `extract_managed_content`, `shim_with_header_b64()` with behavioral descriptions — **Actionable:** yes
-4. **[MINOR]** Fix Description overly detailed for test-decision purposes — **Remediation:** Consolidate 5-step implementation description to a single behavioral paragraph — **Actionable:** yes
-5. **[MINOR]** P0 priority inflation (55% of scenarios) — **Remediation:** Downgrade scenarios #2 and #9 to P1 — **Actionable:** yes
-6. **[MINOR]** Root cause description incomplete per maintainer feedback — **Remediation:** Acknowledge both base64 trailing-newline and __ORG__ interpolation hypotheses — **Actionable:** yes
-7. **[MINOR]** Component listed as "dispatch" but file is in "scaffold" package — **Remediation:** Update component to reflect actual code location — **Actionable:** yes
+1. **[MINOR]** Non-standard section numbering for meta-checklist (1.5/1.6/1.7 vs I.1/I.2/I.3) — **Remediation:** Optional renaming to Section I format if strict template alignment desired — **Actionable:** yes
+2. **[MINOR]** Scenario 5a uses letter suffix instead of sequential integer — **Remediation:** Optional renumber to #23 or renumber all scenarios sequentially — **Actionable:** yes
+3. **[MINOR]** Files Changed table references `managed_content_b64()` function name — **Remediation:** Optional rephrase to "base64-to-base64 comparison" — **Actionable:** yes
 
 ---
 
@@ -237,11 +214,11 @@
 
 | Factor | Status |
 |:-------|:-------|
-| Jira source data available | NO (GitHub Issues used as fallback) |
+| Jira source data available | PARTIAL (GitHub Issues used; no Jira instance configured) |
 | Linked issues fetched | YES (PR #2101 referenced, issue comments with triage available) |
-| PR data referenced in STP | YES (PR #66 with file changes and commit details) |
-| All STP sections present | PARTIAL (non-standard structure; core content present but formal sections missing) |
+| PR data referenced in STP | YES (PR #66 with file changes and commit details fetched via `gh pr view`) |
+| All STP sections present | YES (meta-checklist, Test Strategy, Requirements Mapping all present) |
 | Template comparison possible | NO (no templates dir exists; repo_files_fetch disabled) |
 | Project review rules loaded | PARTIAL (dynamic extraction from config files; no static review_rules.yaml) |
 
-**Confidence rationale:** MEDIUM confidence. GitHub Issues data provided rich source material (issue body, triage comments, maintainer feedback, labels) enabling strong requirement coverage and metadata verification. However, no Jira instance was configured (JIRA_BASE_URL empty), no STP template was available for structural comparison (repo_files_fetch disabled in project config, no templates directory exists), and review rules were dynamically extracted from config files without a static override file. The non-standard STP structure limited Rule B evaluation. PR data from `gh pr view` provided excellent fix-scope analysis for Rule P.
+**Confidence rationale:** MEDIUM confidence. GitHub Issues data from upstream repo (fullsend-ai/fullsend#2247) provided rich source material including issue body, re-triage comments from @ralphbean, maintainer feedback on `__ORG__` interpolation hypothesis, and labels. PR #66 data fetched via `gh pr view` provided commit messages and file change details. However, no Jira instance was configured (`JIRA_BASE_URL` empty), no STP template was available for full structural comparison (`repo_files_fetch` disabled), and review rules were dynamically extracted without a static override file. All content is substantively sound; structural deviations are minor and documented.

@@ -1,22 +1,22 @@
 status: success
 jira_id: GH-2247
-verdict: APPROVED_WITH_FINDINGS
+verdict: APPROVED
 confidence: MEDIUM
-weighted_score: 84
+weighted_score: 94
 findings:
   critical: 0
-  major: 2
-  minor: 5
-  actionable: 7
-  total: 7
+  major: 0
+  minor: 3
+  actionable: 3
+  total: 3
 reviewed: outputs/stp/GH-2247/GH-2247_test_plan.md
 report: outputs/reviews/GH-2247/GH-2247_stp_review.md
 dimension_scores:
-  rule_compliance: 75
-  requirement_coverage: 88
-  scenario_quality: 87
-  risk_accuracy: 85
+  rule_compliance: 94
+  requirement_coverage: 95
+  scenario_quality: 93
+  risk_accuracy: 95
   scope_boundary: 95
-  strategy: 70
-  metadata: 85
+  strategy: 95
+  metadata: 90
 scope_downgrade: false
