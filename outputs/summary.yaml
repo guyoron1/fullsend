@@ -1,0 +1,18 @@
+status: success
+jira_id: GH-2433
+file_path: /sandbox/workspace/output/GH-2433_test_plan.md
+test_counts:
+  unit_tests: 8
+  functional: 2
+  e2e: 0
+  total: 10
+validation:
+  passed: 17
+  failed: 0
+  warnings: 1
+data_sources:
+  github_issue: true
+  pr_2331: true
+  pr_1846: true
+  lsp_analysis: true
+  triage_comment: true
