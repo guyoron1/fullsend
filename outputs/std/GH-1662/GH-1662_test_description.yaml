@@ -1,0 +1,1571 @@
+---
+# Software Test Description (STD) - GH-1662
+# Auto-generated from STP: outputs/stp/GH-1662/GH-1662_test_plan.md
+
+document_metadata:
+  std_version: "2.1-enhanced"
+  generated_date: "2026-06-21"
+  jira_issue: "GH-1662"
+  jira_summary: "Require Authorization on All Agent Dispatch Paths"
+  source_bugs: []
+  stp_reference:
+    file: "outputs/stp/GH-1662/GH-1662_test_plan.md"
+    version: "v1"
+    sections_covered: "Section III - Test Scenarios & Traceability"
+  related_prs:
+    - repo: "fullsend-ai/fullsend"
+      pr_number: 1688
+      url: "https://github.com/fullsend-ai/fullsend/pull/1688"
+      title: "Require authorization on all agent dispatch paths"
+      merged: false
+  owning_sig: "N/A"
+  participating_sigs: []
+  total_scenarios: 27
+  tier_1_count: 0
+  tier_2_count: 0
+  unit_count: 6
+  functional_count: 17
+  e2e_count: 4
+  p0_count: 10
+  p1_count: 15
+  p2_count: 2
+  existing_coverage_count: 0
+  new_count: 27
+  test_strategy_mode: "auto"
+
+code_generation_config:
+  std_version: "2.1-enhanced"
+  framework: "testing"
+  assertion_library: "testify"
+  language: "go"
+  package_name: "dispatch"
+  imports:
+    standard:
+      - "testing"
+      - "strings"
+    framework:
+      - path: "github.com/stretchr/testify/assert"
+      - path: "github.com/stretchr/testify/require"
+    project:
+      - path: "github.com/fullsend-ai/fullsend/internal/scaffold"
+
+common_preconditions:
+  infrastructure:
+    - name: "Go toolchain"
+      requirement: "Go 1.26+"
+      validation: "go version"
+    - name: "Repository checkout"
+      requirement: "fullsend-ai/fullsend repository cloned"
+      validation: "test -f go.mod"
+  test_environment:
+    - name: "GitHub Actions runner"
+      requirement: "ubuntu-latest for CI integration tests"
+      validation: "N/A - CI environment"
+    - name: "Bash shell"
+      requirement: "bash 4+ for shell function unit tests"
+      validation: "bash --version"
+  cluster_configuration:
+    topology: "N/A"
+    cpu_virtualization: "N/A"
+    storage: "N/A"
+    network: "GitHub API access for integration tests"
+  special_configurations:
+    - name: "Test GitHub org"
+      requirement: "Users with OWNER, MEMBER, COLLABORATOR, CONTRIBUTOR, NONE associations"
+      validation: "Manual verification of user roles"
+
+scenarios:
+  # ============================================================
+  # Requirement: All slash commands enforce authorization
+  # ============================================================
+  - scenario_id: "001"
+    test_id: "TS-GH-1662-001"
+    test_type: "functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-1662"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify authorized user triggers /fs-triage successfully"
+      what: |
+        Tests that a user with an authorized association (OWNER, MEMBER, or COLLABORATOR)
+        can successfully trigger the /fs-triage slash command via a GitHub issue comment.
+        The dispatch routing should set the STAGE variable to proceed with triage.
+      why: |
+        Authorized users must be able to invoke triage to maintain the core product workflow.
+        If authorization incorrectly blocks authorized users, the triage pipeline breaks.
+      acceptance_criteria:
+        - "Dispatch routing sets STAGE when comment author has OWNER association"
+        - "Dispatch routing sets STAGE when comment author has MEMBER association"
+        - "Dispatch routing sets STAGE when comment author has COLLABORATOR association"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with testify assertions"
+
+    specific_preconditions:
+      - name: "Dispatch workflow template"
+        requirement: "reusable-dispatch.yml and dispatch.yml scaffold files accessible"
+        validation: "Scaffold render produces dispatch workflow content"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Render dispatch workflow content from scaffold"
+          command: "scaffold.RenderDispatchWorkflow()"
+          validation: "Workflow content is non-empty string"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Simulate /fs-triage comment from authorized user (OWNER)"
+          command: "Parse dispatch workflow for is_authorized check on fs-triage path"
+          validation: "Authorization check passes for OWNER association"
+        - step_id: "TEST-02"
+          action: "Verify STAGE is set when authorization passes"
+          command: "Check dispatch routing sets STAGE=triage for authorized user"
+          validation: "STAGE variable is set to expected value"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Authorized user triggers /fs-triage dispatch"
+        condition: "Dispatch workflow contains is_authorized check that accepts OWNER/MEMBER/COLLABORATOR"
+        failure_impact: "Authorized users blocked from triage, breaking core workflow"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.26+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "002"
+    test_id: "TS-GH-1662-002"
+    test_type: "functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-1662"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify unauthorized user cannot trigger /fs-triage"
+      what: |
+        Tests that a user with an unauthorized association (NONE, CONTRIBUTOR,
+        FIRST_TIME_CONTRIBUTOR) cannot trigger the /fs-triage slash command.
+        The dispatch routing should NOT set the STAGE variable.
+      why: |
+        Unauthorized users must be blocked from triggering inference runs to prevent
+        cost exposure and abuse on public repositories.
+      acceptance_criteria:
+        - "Dispatch routing does NOT set STAGE when comment author has NONE association"
+        - "Dispatch routing does NOT set STAGE when comment author has CONTRIBUTOR association"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with testify assertions"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Render dispatch workflow content from scaffold"
+          command: "scaffold.RenderDispatchWorkflow()"
+          validation: "Workflow content is non-empty string"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Simulate /fs-triage comment from unauthorized user (NONE)"
+          command: "Parse dispatch workflow for is_authorized check on fs-triage path"
+          validation: "Authorization check rejects NONE association"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Unauthorized user is blocked from /fs-triage"
+        condition: "Dispatch workflow authorization check rejects NONE/CONTRIBUTOR associations"
+        failure_impact: "Security gap - unauthorized users can trigger inference costs"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.26+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "003"
+    test_id: "TS-GH-1662-003"
+    test_type: "functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-1662"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify unauthorized user cannot trigger /fs-code"
+      what: |
+        Tests that a user with an unauthorized association cannot trigger the /fs-code
+        slash command. The dispatch routing should skip setting STAGE for code generation.
+      why: |
+        /fs-code triggers expensive inference runs. Unauthorized access to code generation
+        represents a significant cost and security exposure.
+      acceptance_criteria:
+        - "Dispatch routing does NOT set STAGE for /fs-code when author is unauthorized"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with testify assertions"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Render dispatch workflow content"
+          command: "scaffold.RenderDispatchWorkflow()"
+          validation: "Workflow content rendered"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify /fs-code path has is_authorized gate"
+          command: "Assert dispatch workflow content contains authorization check for fs-code"
+          validation: "Authorization gate present on fs-code path"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Unauthorized user blocked from /fs-code"
+        condition: "fs-code dispatch path includes is_authorized check"
+        failure_impact: "Unauthorized code generation triggers - cost exposure"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.26+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "004"
+    test_id: "TS-GH-1662-004"
+    test_type: "functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-1662"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify unauthorized user cannot trigger /fs-review"
+      what: |
+        Tests that a user with an unauthorized association cannot trigger the /fs-review
+        slash command. The dispatch routing should skip setting STAGE for review.
+      why: |
+        /fs-review triggers inference runs for PR review. Unauthorized access would allow
+        arbitrary users to consume review resources on public repos.
+      acceptance_criteria:
+        - "Dispatch routing does NOT set STAGE for /fs-review when author is unauthorized"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with testify assertions"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Render dispatch workflow content"
+          command: "scaffold.RenderDispatchWorkflow()"
+          validation: "Workflow content rendered"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify /fs-review path has is_authorized gate"
+          command: "Assert dispatch workflow content contains authorization check for fs-review"
+          validation: "Authorization gate present on fs-review path"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Unauthorized user blocked from /fs-review"
+        condition: "fs-review dispatch path includes is_authorized check"
+        failure_impact: "Unauthorized review triggers - cost exposure"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.26+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "005"
+    test_id: "TS-GH-1662-005"
+    test_type: "functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-1662"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify CONTRIBUTOR association is rejected for slash commands"
+      what: |
+        Tests that the CONTRIBUTOR association type is explicitly rejected by the
+        authorization check for all slash commands. CONTRIBUTOR means someone who has
+        contributed to the repo but is not a member/collaborator.
+      why: |
+        CONTRIBUTOR is an important edge case - these users have contributed code but
+        should not be able to trigger agent runs without explicit org membership.
+      acceptance_criteria:
+        - "is_event_actor_authorized returns false for CONTRIBUTOR association"
+        - "Dispatch routing skips STAGE for CONTRIBUTOR on all slash commands"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with testify assertions"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Render dispatch workflow content"
+          command: "scaffold.RenderDispatchWorkflow()"
+          validation: "Workflow content rendered"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify CONTRIBUTOR is not in the authorized associations list"
+          command: "Parse is_event_actor_authorized function for accepted values"
+          validation: "CONTRIBUTOR is not in OWNER|MEMBER|COLLABORATOR set"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "CONTRIBUTOR association is rejected"
+        condition: "Authorization function does not accept CONTRIBUTOR"
+        failure_impact: "External contributors could trigger expensive agent runs"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.26+"
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Requirement: PR event triggers enforce actor authorization
+  # ============================================================
+  - scenario_id: "006"
+    test_id: "TS-GH-1662-006"
+    test_type: "functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-1662"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify member PR triggers auto-review"
+      what: |
+        Tests that a pull_request_target event (opened/synchronize/ready_for_review)
+        from a user with MEMBER or higher association correctly triggers the auto-review
+        dispatch by setting STAGE. Uses PR_AUTHOR_ASSOC environment variable.
+      why: |
+        Member PRs should automatically trigger review to maintain the CI/CD workflow.
+        Blocking member PRs from auto-review would break the development loop.
+      acceptance_criteria:
+        - "PR event from MEMBER sets STAGE for review dispatch"
+        - "PR_AUTHOR_ASSOC is checked in the dispatch routing"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with testify assertions"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Render dispatch workflow content"
+          command: "scaffold.RenderDispatchWorkflow()"
+          validation: "Workflow content rendered"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify PR event path checks PR_AUTHOR_ASSOC"
+          command: "Assert workflow content contains PR_AUTHOR_ASSOC authorization check"
+          validation: "PR actor authorization check present on PR event path"
+        - step_id: "TEST-02"
+          action: "Verify authorized PR author triggers review"
+          command: "Assert STAGE is set when PR_AUTHOR_ASSOC is MEMBER"
+          validation: "STAGE set for authorized PR author"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Member PR triggers auto-review"
+        condition: "PR event dispatch checks PR_AUTHOR_ASSOC and proceeds for MEMBER"
+        failure_impact: "Member PRs would not get auto-reviewed, breaking CI workflow"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.26+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "007"
+    test_id: "TS-GH-1662-007"
+    test_type: "functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-1662"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify external contributor PR skips auto-review"
+      what: |
+        Tests that a pull_request_target event from a user with NONE or CONTRIBUTOR
+        association does NOT trigger auto-review. The dispatch routing should skip
+        setting STAGE for non-member PR authors.
+      why: |
+        External contributor PRs should not automatically trigger inference-backed review
+        to prevent cost exposure on public repos from drive-by PRs.
+      acceptance_criteria:
+        - "PR event from NONE association does NOT set STAGE"
+        - "PR event from CONTRIBUTOR association does NOT set STAGE"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with testify assertions"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Render dispatch workflow content"
+          command: "scaffold.RenderDispatchWorkflow()"
+          validation: "Workflow content rendered"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify PR event path rejects unauthorized PR authors"
+          command: "Assert dispatch skips STAGE when PR_AUTHOR_ASSOC is NONE"
+          validation: "STAGE NOT set for unauthorized PR author"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "External contributor PR skips auto-review"
+        condition: "PR event dispatch rejects NONE/CONTRIBUTOR PR authors"
+        failure_impact: "Unauthorized PRs trigger costly inference review"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.26+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "008"
+    test_id: "TS-GH-1662-008"
+    test_type: "functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-1662"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify PR synchronize by non-member skips review"
+      what: |
+        Tests that a pull_request_target.synchronize event from a non-member does not
+        trigger auto-review. This covers the case where an external contributor pushes
+        additional commits to their PR.
+      why: |
+        Each synchronize event could trigger a full review cycle. Non-member pushes
+        to existing PRs must also be gated to prevent repeated unauthorized inference.
+      acceptance_criteria:
+        - "PR synchronize event from non-member does NOT set STAGE for review"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with testify assertions"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Render dispatch workflow content"
+          command: "scaffold.RenderDispatchWorkflow()"
+          validation: "Workflow content rendered"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify synchronize event also checks PR_AUTHOR_ASSOC"
+          command: "Assert PR synchronize path includes authorization check"
+          validation: "Authorization check covers synchronize event type"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "PR synchronize by non-member skips review"
+        condition: "Synchronize event path includes PR_AUTHOR_ASSOC check"
+        failure_impact: "Each push to external PR triggers unauthorized review"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.26+"
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Requirement: Auto-triage on issues.opened/edited remains ungated
+  # ============================================================
+  - scenario_id: "009"
+    test_id: "TS-GH-1662-009"
+    test_type: "functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-1662"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify external user issue triggers auto-triage"
+      what: |
+        Tests that the issues.opened event triggers auto-triage WITHOUT any authorization
+        check. This is intentionally ungated to preserve the drive-by bug reporter workflow
+        where external users can open issues and get automatic triage.
+      why: |
+        Auto-triage for issue creation is a key value proposition. External contributors
+        opening bug reports should get automatic triage regardless of their org membership.
+      acceptance_criteria:
+        - "issues.opened event path does NOT include is_authorized check"
+        - "STAGE is set for triage on issues.opened regardless of author association"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with testify assertions"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Render dispatch workflow content"
+          command: "scaffold.RenderDispatchWorkflow()"
+          validation: "Workflow content rendered"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify issues.opened path has NO authorization gate"
+          command: "Assert dispatch workflow issues.opened path does not call is_authorized"
+          validation: "No authorization check on issues.opened path"
+        - step_id: "TEST-02"
+          action: "Verify STAGE is set unconditionally for issues.opened"
+          command: "Assert STAGE=triage is set in issues.opened branch"
+          validation: "STAGE set without auth check"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Auto-triage is ungated for issue creation"
+        condition: "issues.opened dispatch path has no authorization check"
+        failure_impact: "External bug reporters blocked from auto-triage, breaking key workflow"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.26+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "010"
+    test_id: "TS-GH-1662-010"
+    test_type: "functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-1662"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify edited issue re-triggers triage without auth"
+      what: |
+        Tests that the issues.edited event also triggers auto-triage WITHOUT authorization.
+        When an issue is edited (title/body changed), it should re-trigger triage.
+      why: |
+        Issue edits may contain updated information that changes triage classification.
+        This path must also be ungated to support the drive-by workflow.
+      acceptance_criteria:
+        - "issues.edited event path does NOT include is_authorized check"
+        - "STAGE is set for triage on issues.edited regardless of author association"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with testify assertions"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Render dispatch workflow content"
+          command: "scaffold.RenderDispatchWorkflow()"
+          validation: "Workflow content rendered"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify issues.edited path has NO authorization gate"
+          command: "Assert dispatch workflow issues.edited path does not call is_authorized"
+          validation: "No authorization check on issues.edited path"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Auto-triage is ungated for issue edits"
+        condition: "issues.edited dispatch path has no authorization check"
+        failure_impact: "Issue edits fail to re-trigger triage for external users"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.26+"
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Requirement: Bot-to-bot agent handoffs via labels unaffected
+  # ============================================================
+  - scenario_id: "011"
+    test_id: "TS-GH-1662-011"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-1662"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify label-based handoff triggers downstream agent"
+      what: |
+        Tests that label-based bot-to-bot handoffs (e.g., triage agent adds a label
+        that triggers code agent) are unaffected by the new authorization gates.
+        Label events should not go through author_association checks.
+      why: |
+        Bot-to-bot handoffs via labels are a critical part of the agent pipeline.
+        If authorization gates block label events, the entire multi-agent workflow breaks.
+      acceptance_criteria:
+        - "Label event dispatch path does NOT include is_authorized check"
+        - "Label-triggered agent runs proceed without authorization gate"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with testify assertions"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Render dispatch workflow content"
+          command: "scaffold.RenderDispatchWorkflow()"
+          validation: "Workflow content rendered"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify label event path has no authorization gate"
+          command: "Assert dispatch workflow label event does not call is_authorized"
+          validation: "No authorization check on label event path"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Label-based handoffs are unaffected"
+        condition: "Label event dispatch path has no authorization check"
+        failure_impact: "Multi-agent pipeline breaks - agents cannot hand off to each other"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.26+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "012"
+    test_id: "TS-GH-1662-012"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-1662"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify bot slash command is blocked by non-Bot check"
+      what: |
+        Tests that slash commands from bot accounts (user_type: Bot) are handled
+        correctly in the authorization flow. Bot slash commands should be evaluated
+        based on bot-to-bot rules, not blocked by the user authorization gate.
+      why: |
+        Bots posting slash commands (e.g., from automation) need clear behavior.
+        The authorization gate should not inadvertently block legitimate bot interactions.
+      acceptance_criteria:
+        - "Bot user type is distinguished from human user type in dispatch"
+        - "Bot slash command handling is consistent with bot-to-bot rules"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with testify assertions"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Render dispatch workflow content"
+          command: "scaffold.RenderDispatchWorkflow()"
+          validation: "Workflow content rendered"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify bot user type handling in dispatch"
+          command: "Assert dispatch workflow handles Bot user_type correctly"
+          validation: "Bot user type has defined behavior in dispatch routing"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Bot slash command behavior is well-defined"
+        condition: "Dispatch routing handles Bot user type distinctly from human users"
+        failure_impact: "Bot automation breaks or bypasses authorization unintentionally"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.26+"
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Requirement: Authorized users can invoke all slash commands
+  # ============================================================
+  - scenario_id: "013"
+    test_id: "TS-GH-1662-013"
+    test_type: "e2e"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-1662"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify OWNER can invoke /fs-triage, /fs-code, /fs-review, /fs-fix, /fs-retro, and /fs-prioritize"
+      what: |
+        End-to-end test that an OWNER association user can successfully invoke all six
+        slash commands. Each command should set the appropriate STAGE in dispatch routing.
+      why: |
+        Repository owners should have unrestricted access to all agent commands.
+        This validates the positive path for the highest-privilege association level.
+      acceptance_criteria:
+        - "OWNER can invoke /fs-triage and STAGE is set"
+        - "OWNER can invoke /fs-code and STAGE is set"
+        - "OWNER can invoke /fs-review and STAGE is set"
+        - "OWNER can invoke /fs-fix and STAGE is set"
+        - "OWNER can invoke /fs-retro and STAGE is set"
+        - "OWNER can invoke /fs-prioritize and STAGE is set"
+
+    classification:
+      test_type: "E2E"
+      scope: "Multi-component"
+      automation_approach: "Go test with scaffold content assertions"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Render dispatch workflow content for both per-repo and per-org templates"
+          command: "scaffold.RenderDispatchWorkflow()"
+          validation: "Both workflow variants rendered"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify all six slash commands accept OWNER association"
+          command: "Assert each command path sets STAGE when is_authorized returns true for OWNER"
+          validation: "All commands accessible to OWNER"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "OWNER has full access to all slash commands"
+        condition: "All six slash commands set STAGE for OWNER association"
+        failure_impact: "Repository owners blocked from agent commands"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.26+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "014"
+    test_id: "TS-GH-1662-014"
+    test_type: "e2e"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-1662"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify MEMBER can invoke /fs-triage, /fs-code, /fs-review, /fs-fix, /fs-retro, and /fs-prioritize"
+      what: |
+        End-to-end test that a MEMBER association user can successfully invoke all six
+        slash commands. MEMBER is the most common authorized association level.
+      why: |
+        Organization members are the primary users of agent commands.
+        This validates the typical user path for the most common association level.
+      acceptance_criteria:
+        - "MEMBER can invoke all six slash commands and STAGE is set"
+
+    classification:
+      test_type: "E2E"
+      scope: "Multi-component"
+      automation_approach: "Go test with scaffold content assertions"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Render dispatch workflow content"
+          command: "scaffold.RenderDispatchWorkflow()"
+          validation: "Workflow content rendered"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify all six slash commands accept MEMBER association"
+          command: "Assert each command path sets STAGE for MEMBER"
+          validation: "All commands accessible to MEMBER"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "MEMBER has full access to all slash commands"
+        condition: "All six slash commands set STAGE for MEMBER association"
+        failure_impact: "Org members blocked from agent commands"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.26+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "015"
+    test_id: "TS-GH-1662-015"
+    test_type: "e2e"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-1662"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify COLLABORATOR can invoke /fs-triage, /fs-code, /fs-review, /fs-fix, /fs-retro, and /fs-prioritize"
+      what: |
+        End-to-end test that a COLLABORATOR association user can successfully invoke all
+        six slash commands. COLLABORATOR is explicitly invited to the repository.
+      why: |
+        Collaborators are trusted users who have been given explicit repo access.
+        They must be able to use all agent commands.
+      acceptance_criteria:
+        - "COLLABORATOR can invoke all six slash commands and STAGE is set"
+
+    classification:
+      test_type: "E2E"
+      scope: "Multi-component"
+      automation_approach: "Go test with scaffold content assertions"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Render dispatch workflow content"
+          command: "scaffold.RenderDispatchWorkflow()"
+          validation: "Workflow content rendered"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify all six slash commands accept COLLABORATOR"
+          command: "Assert each command path sets STAGE for COLLABORATOR"
+          validation: "All commands accessible to COLLABORATOR"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "COLLABORATOR has full access to all slash commands"
+        condition: "All six slash commands set STAGE for COLLABORATOR association"
+        failure_impact: "Repo collaborators blocked from agent commands"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.26+"
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Requirement: Per-repo and per-org dispatch templates consistent
+  # ============================================================
+  - scenario_id: "016"
+    test_id: "TS-GH-1662-016"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-1662"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify per-repo dispatch has identical auth gates"
+      what: |
+        Unit test that validates the per-repo reusable-dispatch.yml template contains
+        the same authorization gates as the per-org dispatch.yml template. Both templates
+        must check is_authorized for all gated slash commands and PR events.
+      why: |
+        Authorization behavior must be consistent regardless of whether the repo uses
+        per-repo or per-org dispatch. Inconsistency would create security gaps.
+      acceptance_criteria:
+        - "Per-repo dispatch contains is_authorized checks for all gated commands"
+        - "Per-repo dispatch contains PR_AUTHOR_ASSOC check for PR events"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go unit test with string assertions"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Render per-repo dispatch workflow content"
+          command: "scaffold.RenderReusableDispatchWorkflow()"
+          validation: "Per-repo workflow content rendered"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Assert per-repo dispatch contains is_authorized for fs-triage"
+          command: "strings.Contains(content, 'is_authorized') for fs-triage section"
+          validation: "is_authorized present in fs-triage path"
+        - step_id: "TEST-02"
+          action: "Assert per-repo dispatch contains is_authorized for fs-code"
+          command: "strings.Contains(content, 'is_authorized') for fs-code section"
+          validation: "is_authorized present in fs-code path"
+        - step_id: "TEST-03"
+          action: "Assert per-repo dispatch contains is_authorized for fs-review"
+          command: "strings.Contains(content, 'is_authorized') for fs-review section"
+          validation: "is_authorized present in fs-review path"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Per-repo dispatch has all authorization gates"
+        condition: "All gated commands have is_authorized check in per-repo template"
+        failure_impact: "Per-repo dispatch has security gaps - inconsistent with per-org"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.26+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "017"
+    test_id: "TS-GH-1662-017"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-1662"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify per-org scaffold dispatch has identical auth gates"
+      what: |
+        Unit test that validates the per-org scaffold dispatch.yml template contains
+        the same authorization gates. This is the template installed by scaffold install
+        into each org repository.
+      why: |
+        The per-org template is the default for new repos. It must have the same
+        authorization behavior as the per-repo template.
+      acceptance_criteria:
+        - "Per-org dispatch contains is_authorized checks for all gated commands"
+        - "Per-org dispatch contains PR_AUTHOR_ASSOC check for PR events"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go unit test with string assertions"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Render per-org scaffold dispatch workflow content"
+          command: "scaffold.RenderOrgDispatchWorkflow()"
+          validation: "Per-org workflow content rendered"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Assert per-org dispatch contains is_authorized for all gated commands"
+          command: "strings.Contains(content, 'is_authorized') for each gated command"
+          validation: "is_authorized present for all gated commands"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Per-org dispatch has all authorization gates"
+        condition: "All gated commands have is_authorized check in per-org template"
+        failure_impact: "Per-org dispatch has security gaps"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.26+"
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Requirement: Previously gated commands remain correctly gated
+  # ============================================================
+  - scenario_id: "018"
+    test_id: "TS-GH-1662-018"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-1662"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify /fs-fix still requires authorization after dispatch routing changes"
+      what: |
+        Regression test that /fs-fix continues to have an authorization gate after
+        the dispatch routing changes. /fs-fix was previously gated and must remain so.
+      why: |
+        The dispatch routing refactor must not accidentally remove existing authorization
+        gates. /fs-fix triggers code fixes that consume inference resources.
+      acceptance_criteria:
+        - "/fs-fix dispatch path still contains is_authorized check"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with string assertions"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Render dispatch workflow content"
+          command: "scaffold.RenderDispatchWorkflow()"
+          validation: "Workflow content rendered"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify /fs-fix path retains is_authorized check"
+          command: "Assert fs-fix section contains is_authorized"
+          validation: "Authorization gate present on fs-fix"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "/fs-fix remains gated"
+        condition: "fs-fix dispatch path includes is_authorized check"
+        failure_impact: "Regression - previously secure command becomes ungated"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.26+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "019"
+    test_id: "TS-GH-1662-019"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-1662"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify /fs-retro still requires authorization after dispatch routing changes"
+      what: |
+        Regression test that /fs-retro continues to have an authorization gate after
+        the dispatch routing changes.
+      why: |
+        /fs-retro was previously gated and must remain so. Removing the gate would
+        be a security regression.
+      acceptance_criteria:
+        - "/fs-retro dispatch path still contains is_authorized check"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with string assertions"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Render dispatch workflow content"
+          command: "scaffold.RenderDispatchWorkflow()"
+          validation: "Workflow content rendered"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify /fs-retro path retains is_authorized check"
+          command: "Assert fs-retro section contains is_authorized"
+          validation: "Authorization gate present on fs-retro"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "/fs-retro remains gated"
+        condition: "fs-retro dispatch path includes is_authorized check"
+        failure_impact: "Regression - previously secure command becomes ungated"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.26+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "020"
+    test_id: "TS-GH-1662-020"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-1662"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify /fs-prioritize still requires authorization after dispatch routing changes"
+      what: |
+        Regression test that /fs-prioritize continues to have an authorization gate
+        after the dispatch routing changes.
+      why: |
+        /fs-prioritize was previously gated and must remain so. Removing the gate
+        would be a security regression.
+      acceptance_criteria:
+        - "/fs-prioritize dispatch path still contains is_authorized check"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with string assertions"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Render dispatch workflow content"
+          command: "scaffold.RenderDispatchWorkflow()"
+          validation: "Workflow content rendered"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify /fs-prioritize path retains is_authorized check"
+          command: "Assert fs-prioritize section contains is_authorized"
+          validation: "Authorization gate present on fs-prioritize"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "/fs-prioritize remains gated"
+        condition: "fs-prioritize dispatch path includes is_authorized check"
+        failure_impact: "Regression - previously secure command becomes ungated"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.26+"
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Requirement: Unauthorized slash command feedback
+  # ============================================================
+  - scenario_id: "021"
+    test_id: "TS-GH-1662-021"
+    test_type: "e2e"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-1662"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify unauthorized command produces user-visible response"
+      what: |
+        Tests that when an unauthorized user attempts a slash command, some form of
+        visible feedback is provided (reaction, comment, etc.). Currently not implemented
+        per Known Limitations - dispatch silently skips.
+      why: |
+        Users need feedback when their commands are rejected so they understand why
+        nothing happened. ADR 0051 specifies this behavior.
+      acceptance_criteria:
+        - "Unauthorized slash command attempt produces visible feedback (when implemented)"
+        - "Current behavior: silent skip is documented and tested"
+
+    classification:
+      test_type: "E2E"
+      scope: "Multi-component"
+      automation_approach: "Go test - may require integration with GitHub API"
+
+    specific_preconditions:
+      - name: "Feedback mechanism"
+        requirement: "Pending implementation - test validates current silent skip behavior"
+        validation: "N/A"
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Render dispatch workflow content"
+          command: "scaffold.RenderDispatchWorkflow()"
+          validation: "Workflow content rendered"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify dispatch handles unauthorized attempts"
+          command: "Assert unauthorized path exists and STAGE is not set"
+          validation: "Unauthorized path clearly defined in dispatch"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Unauthorized attempt has defined behavior"
+        condition: "Dispatch routing has explicit handling for unauthorized users"
+        failure_impact: "Undefined behavior for unauthorized users"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.26+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "022"
+    test_id: "TS-GH-1662-022"
+    test_type: "functional"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-1662"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify silent skip for unauthorized PR event trigger"
+      what: |
+        Tests that when an unauthorized user's PR triggers a PR event, the dispatch
+        silently skips setting STAGE without producing errors in the workflow log.
+      why: |
+        Silent skip is the current behavior for unauthorized PR events. This should
+        not produce workflow failures or error noise in logs.
+      acceptance_criteria:
+        - "Unauthorized PR event does not set STAGE"
+        - "No workflow errors generated for unauthorized PR event"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with string assertions"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Render dispatch workflow content"
+          command: "scaffold.RenderDispatchWorkflow()"
+          validation: "Workflow content rendered"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify unauthorized PR event path skips cleanly"
+          command: "Assert dispatch routing has else branch for unauthorized PR"
+          validation: "Clean skip path exists for unauthorized PR events"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Silent skip for unauthorized PR events"
+        condition: "Unauthorized PR event path exists and does not set STAGE"
+        failure_impact: "Workflow errors for external contributor PRs"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.26+"
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Requirement: is_event_actor_authorized validates all types
+  # ============================================================
+  - scenario_id: "023"
+    test_id: "TS-GH-1662-023"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-1662"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify OWNER association returns authorized"
+      what: |
+        Unit test for the is_event_actor_authorized shell function. Tests that passing
+        OWNER as the association value returns success (exit code 0).
+      why: |
+        The shell function is the core authorization primitive. OWNER must always
+        be authorized.
+      acceptance_criteria:
+        - "is_event_actor_authorized with OWNER input returns exit code 0"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go unit test validating shell function in rendered workflow"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Render dispatch workflow containing is_event_actor_authorized function"
+          command: "scaffold.RenderDispatchWorkflow()"
+          validation: "Function definition found in rendered content"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify OWNER is in the authorized associations case statement"
+          command: "Assert is_event_actor_authorized accepts OWNER"
+          validation: "OWNER returns authorized"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "OWNER is authorized"
+        condition: "is_event_actor_authorized returns success for OWNER"
+        failure_impact: "Repository owners cannot use agent commands"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.26+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "024"
+    test_id: "TS-GH-1662-024"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-1662"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify empty association string returns unauthorized"
+      what: |
+        Unit test for is_event_actor_authorized with an empty string input. Tests that
+        the function correctly rejects an empty or missing association value.
+      why: |
+        Empty association is an edge case that could occur if GitHub doesn't populate
+        the field. The function must safely reject empty values.
+      acceptance_criteria:
+        - "is_event_actor_authorized with empty string returns failure"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go unit test validating shell function logic"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Render dispatch workflow containing is_event_actor_authorized function"
+          command: "scaffold.RenderDispatchWorkflow()"
+          validation: "Function definition found"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify empty string is NOT in authorized associations"
+          command: "Assert is_event_actor_authorized rejects empty string"
+          validation: "Empty string returns unauthorized"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Empty association is rejected"
+        condition: "is_event_actor_authorized returns failure for empty string"
+        failure_impact: "Security gap - missing association could be treated as authorized"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.26+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "025"
+    test_id: "TS-GH-1662-025"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-1662"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify FIRST_TIME_CONTRIBUTOR is rejected"
+      what: |
+        Unit test for is_event_actor_authorized with FIRST_TIME_CONTRIBUTOR input.
+        This is a distinct GitHub association type for users making their first
+        contribution to the repository.
+      why: |
+        FIRST_TIME_CONTRIBUTOR must be explicitly rejected. It is a distinct type
+        from CONTRIBUTOR and could be overlooked in the case statement.
+      acceptance_criteria:
+        - "is_event_actor_authorized rejects FIRST_TIME_CONTRIBUTOR"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go unit test validating shell function logic"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Render dispatch workflow"
+          command: "scaffold.RenderDispatchWorkflow()"
+          validation: "Workflow content rendered"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify FIRST_TIME_CONTRIBUTOR is not in authorized set"
+          command: "Assert is_event_actor_authorized rejects FIRST_TIME_CONTRIBUTOR"
+          validation: "FIRST_TIME_CONTRIBUTOR returns unauthorized"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "FIRST_TIME_CONTRIBUTOR is rejected"
+        condition: "is_event_actor_authorized returns failure for FIRST_TIME_CONTRIBUTOR"
+        failure_impact: "First-time contributors could trigger agent runs"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.26+"
+      scenario_specific_rbac: []
+
+  - scenario_id: "026"
+    test_id: "TS-GH-1662-026"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-1662"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify NONE association is rejected"
+      what: |
+        Unit test for is_event_actor_authorized with NONE input. NONE represents a user
+        with no association to the repository.
+      why: |
+        NONE is the most common unauthorized association type. Users with no repo
+        connection must be blocked from all gated commands.
+      acceptance_criteria:
+        - "is_event_actor_authorized rejects NONE"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go unit test validating shell function logic"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Render dispatch workflow"
+          command: "scaffold.RenderDispatchWorkflow()"
+          validation: "Workflow content rendered"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify NONE is not in authorized set"
+          command: "Assert is_event_actor_authorized rejects NONE"
+          validation: "NONE returns unauthorized"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "NONE association is rejected"
+        condition: "is_event_actor_authorized returns failure for NONE"
+        failure_impact: "Random GitHub users can trigger agent runs"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.26+"
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Scenario 027: Duplicate check - was listed as scenario but is
+  # covered by 001-005, so we include it as a separate verification
+  # ============================================================
+  - scenario_id: "027"
+    test_id: "TS-GH-1662-027"
+    test_type: "functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-1662"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify CONTRIBUTOR association is rejected for slash commands"
+      what: |
+        Duplicate verification that CONTRIBUTOR (distinct from FIRST_TIME_CONTRIBUTOR)
+        is rejected across all slash command dispatch paths. This scenario tests the
+        specific case in the context of full dispatch routing, not just the shell function.
+      why: |
+        CONTRIBUTOR is a common association for open-source repos. This scenario
+        validates the end-to-end dispatch behavior, not just the is_authorized function.
+      acceptance_criteria:
+        - "All gated slash command paths reject CONTRIBUTOR association"
+        - "Dispatch routing does not set STAGE for CONTRIBUTOR on any gated command"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go unit test with testify assertions"
+
+    specific_preconditions: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Render dispatch workflow content"
+          command: "scaffold.RenderDispatchWorkflow()"
+          validation: "Workflow content rendered"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify CONTRIBUTOR is rejected across all dispatch paths"
+          command: "Assert is_authorized rejects CONTRIBUTOR for all gated commands"
+          validation: "CONTRIBUTOR rejected on all paths"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "CONTRIBUTOR is blocked from all gated commands"
+        condition: "No gated dispatch path sets STAGE for CONTRIBUTOR association"
+        failure_impact: "Contributors can trigger expensive agent runs"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "Go 1.26+"
+      scenario_specific_rbac: []
