@@ -1,18 +1,22 @@
 status: success
 jira_id: GH-2433
-file_path: /sandbox/workspace/output/GH-2433_test_plan.md
-test_counts:
-  unit_tests: 8
-  functional: 2
-  e2e: 0
-  total: 10
-validation:
-  passed: 17
-  failed: 0
-  warnings: 1
-data_sources:
-  github_issue: true
-  pr_2331: true
-  pr_1846: true
-  lsp_analysis: true
-  triage_comment: true
+verdict: APPROVED_WITH_FINDINGS
+confidence: LOW
+weighted_score: 93
+findings:
+  critical: 0
+  major: 1
+  minor: 4
+  actionable: 5
+  total: 5
+reviewed: outputs/stp/GH-2433/GH-2433_test_plan.md
+report: GH-2433_stp_review.md
+dimension_scores:
+  rule_compliance: 88
+  requirement_coverage: 95
+  scenario_quality: 90
+  risk_accuracy: 100
+  scope_boundary: 95
+  strategy: 100
+  metadata: 100
+scope_downgrade: false
