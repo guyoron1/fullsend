@@ -1,0 +1,21 @@
+status: success
+jira_id: GH-75
+std_source: outputs/std/GH-75/GH-75_test_description.yaml
+languages:
+  - language: go
+    framework: testing
+    files:
+      - qf_merge_retry_resilience_test.go
+    test_count: 2
+total_test_count: 2
+total_scenarios: 7
+existing_coverage_count: 6
+new_test_count: 1
+lsp_patterns_used: false
+notes: |
+  Only TS-06 (test_id: TS-GH-75-006) required new test generation.
+  Scenarios TS-01 through TS-05 and TS-07 have EXISTING_COVERAGE.
+  Generated test covers both 403 Forbidden and 500 Internal Server Error
+  variants of update-branch failure resilience.
+  Test file placed at internal/forge/github/qf_merge_retry_resilience_test.go
+  (co-located with production code per CLAUDE.md instructions).
