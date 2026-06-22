@@ -2,6 +2,15 @@ package cli
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+// Ensure imports are used (stubs are design-only; implementations will use these).
+var (
+	_ = assert.Equal
+	_ = require.NotNil
 )
 
 /*

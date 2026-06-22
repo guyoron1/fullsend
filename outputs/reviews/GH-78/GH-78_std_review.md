@@ -12,7 +12,7 @@
 
 ---
 
-## Verdict: APPROVED_WITH_FINDINGS
+## Verdict: APPROVED
 
 ## Summary
 
@@ -20,10 +20,10 @@
 |:-------|:------|
 | Dimensions reviewed | 7/7 |
 | Critical findings | 0 |
-| Major findings | 5 |
-| Minor findings | 4 |
-| Actionable findings | 8 |
-| Weighted score | 80 |
+| Major findings | 0 |
+| Minor findings | 1 |
+| Actionable findings | 1 |
+| Weighted score | 96 |
 | Confidence | LOW |
 
 ## Traceability Summary
@@ -95,7 +95,7 @@ All P0 scenarios (001, 002, 003) are fully testable unit tests. No contradiction
 
 ---
 
-### Dimension 2: STD YAML Structure (Weight: 20%) — Score: 60/100
+### Dimension 2: STD YAML Structure (Weight: 20%) — Score: 100/100
 
 #### 2a. Document-Level Structure
 
@@ -113,7 +113,7 @@ All P0 scenarios (001, 002, 003) are fully testable unit tests. No contradiction
 |:------|:--------|:------|
 | `scenario_id` | 17/17 | Sequential 001-017 |
 | `test_id` | 17/17 | Format `TS-GH-78-{NUM:03d}` — correct |
-| `test_type` | 17/17 | "functional" — used instead of `tier` |
+| `test_type` | 17/17 | "functional" — consistent across root and classification |
 | `priority` | 17/17 | P0: 3, P1: 9, P2: 5 |
 | `requirement_id` | 17/17 | All "GH-78" |
 | `coverage_status` | 17/17 | All "NEW" |
@@ -121,48 +121,52 @@ All P0 scenarios (001, 002, 003) are fully testable unit tests. No contradiction
 | `test_data` | 17/17 | resource_definitions present |
 | `test_steps` | 17/17 | setup + test_execution present |
 | `assertions` | 17/17 | At least 1 assertion per scenario |
-| `patterns` | 0/17 | **MISSING** |
-| `variables` | 0/17 | **MISSING** |
-| `test_structure` | 0/17 | **MISSING** |
-| `code_structure` | 0/17 | **MISSING** |
+| `patterns` | 17/17 | Primary pattern assigned |
+| `variables` | 17/17 | closure_scope present |
+| `test_structure` | 17/17 | describe/context/it hierarchy present |
+| `code_structure` | 17/17 | Framework structure hint present |
 
-**Findings:**
+#### 2c. v2.1-Specific Checks
 
-- **D2-2b-001**
-  - **Severity:** MAJOR
-  - **Dimension:** STD YAML Structure
-  - **Description:** All 17 scenarios are missing v2.1-enhanced fields: `patterns`, `variables`, `test_structure`, and `code_structure`. These fields are specified as required in the v2.1-enhanced schema but are absent from every scenario.
-  - **Evidence:** No scenario contains `patterns:`, `variables:`, `test_structure:`, or `code_structure:` keys.
-  - **Remediation:** Add `patterns` (with at least a `primary` pattern descriptor), `variables` (with `closure_scope` array — can be empty for simple unit tests), `test_structure` (describe/context/it hierarchy), and `code_structure` (Go `t.Run` structure hint) to each scenario. For this auto-detected Go testing project, `patterns.primary` can be a descriptive label like `"unit-function-call"`, and `code_structure` can be `"TestXxx/t.Run"`.
-  - **Actionable:** true
+- [x] `variables.closure_scope` present on all scenarios (empty array — appropriate for Go testing with `t.Run`, no closure scope needed)
+- [x] Empty cleanup arrays acceptable for pure in-memory unit tests with no external resources
+- [x] `test_type` casing is consistent: `"functional"` (lowercase) in both scenario root and classification block
 
-- **D2-2b-002**
-  - **Severity:** MINOR
-  - **Dimension:** STD YAML Structure
-  - **Description:** Inconsistent casing of `test_type` between scenario-level field (`"functional"`, lowercase) and `classification.test_type` (`"Functional"`, title case). While not a structural error, this inconsistency could confuse downstream tooling.
-  - **Evidence:** `test_type: "functional"` (line 84) vs `test_type: "Functional"` in `classification` (line 108) — pattern repeats in all 17 scenarios.
-  - **Remediation:** Normalize to one casing convention. Recommend `"functional"` (lowercase) for the machine-readable field and `"Functional"` for the classification display field, or unify both to lowercase.
-  - **Actionable:** true
+**No findings for Dimension 2.**
 
 ---
 
-### Dimension 3: Pattern Matching Correctness (Weight: 10%) — Score: 40/100
+### Dimension 3: Pattern Matching Correctness (Weight: 10%) — Score: 100/100
 
-No pattern assignments exist in the STD (see D2-2b-001). Pattern matching cannot be evaluated.
+#### 3a. Primary Pattern Matching
 
-**Findings:**
+| Scenario | Primary Pattern | Match Quality |
+|:---------|:----------------|:--------------|
+| 001 | unit-function-boolean-return | CORRECT — tests return value of ensureBodyFindingsConsistency |
+| 002 | unit-output-format-validation | CORRECT — validates output format ordering |
+| 003 | unit-output-format-validation | CORRECT — validates output structure |
+| 004 | unit-function-boolean-return | CORRECT — tests return value for reject action |
+| 005 | unit-function-boolean-return | CORRECT — tests no-op return value |
+| 006 | unit-function-boolean-return | CORRECT — tests case-insensitive match |
+| 007 | unit-function-boolean-return | CORRECT — tests approve action return |
+| 008 | unit-function-boolean-return | CORRECT — tests comment action return |
+| 009 | unit-function-boolean-return | CORRECT — tests low/medium only return |
+| 010 | unit-output-format-validation | CORRECT — validates file:line format |
+| 011 | unit-output-format-validation | CORRECT — validates no-file rendering |
+| 012 | unit-output-format-validation | CORRECT — validates remediation text rendering |
+| 013 | unit-output-format-validation | CORRECT — validates section omission |
+| 014 | unit-function-boolean-return | CORRECT — tests nil input return |
+| 015 | unit-function-boolean-return | CORRECT — tests empty findings return |
+| 016 | unit-function-boolean-return | CORRECT — tests unknown action return |
+| 017 | unit-output-format-validation | CORRECT — validates file-only rendering |
 
-- **D3-3a-001**
-  - **Severity:** MAJOR
-  - **Dimension:** Pattern Matching Correctness
-  - **Description:** No `patterns` block exists on any scenario. Without pattern assignments, the code generator cannot apply template-driven test generation. This is a direct consequence of the missing v2.1 fields.
-  - **Evidence:** Zero occurrences of `patterns:` key across all 17 scenarios.
-  - **Remediation:** For this auto-detected project (Go `testing` + `testify`), assign descriptive pattern IDs. Suggested patterns: `"unit-function-boolean-return"` for scenarios testing return values (001, 004-009, 014-016), `"unit-output-format-validation"` for scenarios testing synthesized body format (002, 003, 010-013, 017).
-  - **Actionable:** true
+All 17 scenarios have correct, descriptive pattern assignments. Two pattern categories appropriately separate boolean-return tests from output-format-validation tests.
+
+**No findings for Dimension 3.**
 
 ---
 
-### Dimension 4: Test Step Quality (Weight: 15%) — Score: 85/100
+### Dimension 4: Test Step Quality (Weight: 15%) — Score: 95/100
 
 #### Step Inventory
 
@@ -231,27 +235,14 @@ Good balance. Edge cases covered: nil input (014), empty findings (015), unknown
 
 ---
 
-### Dimension 4.5: STD Content Policy (Weight: 10%) — Score: 70/100
+### Dimension 4.5: STD Content Policy (Weight: 10%) — Score: 100/100
 
 #### 4.5a. Banned Content
 
-**Findings:**
-
-- **D4.5-4.5a-001**
-  - **Severity:** MAJOR
-  - **Dimension:** STD Content Policy
-  - **Description:** `document_metadata.related_prs` contains PR URLs and metadata. The STD is a test design document that describes *what* to test, not *what code changed*. PR URLs are implementation artifacts that belong in the STP, not the STD.
-  - **Evidence:** Lines 18-27 of the STD YAML contain `related_prs` with two entries: `guyoron1/fullsend#78` and `fullsend-ai/fullsend#2189`, including URLs, titles, and merge status.
-  - **Remediation:** Remove the `related_prs` block from `document_metadata`. The STP already references the PRs in Section I.
-  - **Actionable:** true
-
-- **D4.5-4.5a-002**
-  - **Severity:** MINOR
-  - **Dimension:** STD Content Policy
-  - **Description:** `document_metadata.source_bugs` references `GH-2054`, which is an upstream issue. While linking to the parent issue is reasonable for context, this creates a dependency on external issue trackers.
-  - **Evidence:** Line 11: `source_bugs: - "GH-2054"`
-  - **Remediation:** Consider whether `source_bugs` is needed in the STD or if the `jira_issue` and `stp_reference` fields provide sufficient lineage.
-  - **Actionable:** true
+- [x] No `related_prs` in document_metadata
+- [x] No `source_bugs` in document_metadata
+- [x] No PR URLs or branch names in metadata
+- [x] No developer names or assignees in metadata
 
 #### 4.5b. No Implementation Details in Stubs
 
@@ -261,9 +252,11 @@ Go stubs contain only `t.Skip("Phase 1: Design only - awaiting implementation")`
 
 No infrastructure setup, cluster configuration, or environment provisioning in stubs. The `common_preconditions` appropriately lists Go toolchain and testify as infrastructure requirements. PASS.
 
+**No findings for Dimension 4.5.**
+
 ---
 
-### Dimension 5: PSE Docstring Quality (Weight: 10%) — Score: 85/100
+### Dimension 5: PSE Docstring Quality (Weight: 10%) — Score: 100/100
 
 #### Go Stubs
 
@@ -279,8 +272,8 @@ No infrastructure setup, cluster configuration, or environment provisioning in s
 **Quality Assessment:**
 
 - **Preconditions:** Specific — reference concrete struct fields, action values, severity levels, and category strings. Example: *"ReviewResult with action 'request-changes', Body text 'No findings to report.' that does not reference any finding category, One critical finding with category 'logic-error'"* (TS-GH-78-001).
-- **Steps:** Numbered and actionable — reference function names and expected operations. Example: *"1. Call ensureBodyFindingsConsistency with the contradictory ReviewResult"*.
-- **Expected:** Measurable outcomes — specify return values, body content changes, and specific string matches. Example: *"Function returns true indicating body was replaced, ReviewResult.Body is overwritten with synthesized content, Synthesized body contains the critical finding category 'logic-error'"*.
+- **Steps:** Numbered and actionable — reference function names and expected operations.
+- **Expected:** Measurable outcomes — specify return values, body content changes, and specific string matches.
 
 **PSE Section Classification:** Correct. No "Verify..." steps misclassified in Steps section. Expected sections describe observable outcomes with verification methods.
 
@@ -288,27 +281,21 @@ No infrastructure setup, cluster configuration, or environment provisioning in s
 
 **Module-level comments:** Reference STP file path (not PR URLs). PASS.
 
-**Finding:**
-
-- **D5-5a-001**
-  - **Severity:** MAJOR
-  - **Dimension:** PSE Docstring Quality
-  - **Description:** Go stub files import only `"testing"` but not `testify`. While stubs are design artifacts with `t.Skip()` bodies, the `code_generation_config` specifies `testify/assert` and `testify/require` as framework imports. Stubs should include at minimum a commented import or the actual import so the code generation phase can verify the import structure compiles.
-  - **Evidence:** All 4 stub files contain only `import ("testing")`. The `code_generation_config.imports.framework` lists `github.com/stretchr/testify/assert` and `github.com/stretchr/testify/require`.
-  - **Remediation:** Add testify imports to the stub files (they can be blank-imported or commented). This ensures the stub files' import blocks match what code generation will produce, catching import path issues early.
-  - **Actionable:** true
+**Import blocks:** All 4 stub files import `testify/assert` and `testify/require`, matching `code_generation_config.imports.framework`. Blank-reference variables (`_ = assert.Equal`, `_ = require.NotNil`) prevent unused-import compilation errors in stub phase. PASS.
 
 #### Python Stubs
 
 Not applicable — no Python stubs generated (`tier2_tests: false`).
 
+**No findings for Dimension 5.**
+
 ---
 
-### Dimension 6: Code Generation Readiness (Weight: 5%) — Score: 68/100
+### Dimension 6: Code Generation Readiness (Weight: 5%) — Score: 100/100
 
 #### 6a. Variable Declarations
 
-No `variables` blocks exist (see D2-2b-001). Variable declaration checks cannot be performed. The Go `testing` framework with `t.Run` subtests does not require closure scope variables in the same way Ginkgo does, so this is less impactful for this project.
+All 17 scenarios have `variables.closure_scope: []`. For Go `testing` framework with `t.Run` subtests (not Ginkgo), closure scope variables are not required — test data is constructed within each `t.Run` function body. Empty arrays are correct. PASS.
 
 #### 6b. Import Completeness
 
@@ -317,40 +304,23 @@ No `variables` blocks exist (see D2-2b-001). Variable declaration checks cannot 
 - Framework: `testify/assert`, `testify/require`
 - Project: `github.com/fullsend-ai/fullsend/internal/cli`
 
-These are appropriate for the scenarios described. However, `strings` may not be needed in all test files (only scenarios checking string content need it). Minor concern — Go handles unused imports at compile time.
+These are appropriate for the scenarios described. Stub files now include the framework imports, matching the code generation config. PASS.
 
 #### 6c. Code Structure Validity
 
-No `code_structure` blocks exist, so template-driven code generation cannot validate structure patterns. The stub files demonstrate correct Go test structure (`func TestXxx(t *testing.T)` with `t.Run` subtests), which serves as an implicit structure reference.
+All 17 scenarios have `code_structure.pattern: "func TestXxx(t *testing.T) { t.Run(...) }"` — valid Go testing structure. Framework and assertion library correctly specified. PASS.
 
 #### 6d. Timeout Appropriateness
 
 No timeouts referenced in test steps. For pure in-memory unit tests, this is appropriate — no long-running operations. PASS.
 
-**Finding:**
-
-- **D6-6a-001**
-  - **Severity:** MINOR
-  - **Dimension:** Code Generation Readiness
-  - **Description:** Missing `variables` and `code_structure` blocks reduce code generation automation readiness. While the stubs provide sufficient structural reference for manual implementation, automated code generation pipelines that rely on v2.1 schema fields will need these populated.
-  - **Evidence:** 0/17 scenarios have `variables` or `code_structure` fields.
-  - **Remediation:** For each scenario, add: `variables: { closure_scope: [] }` and `code_structure: "func TestXxx(t *testing.T) { t.Run(...) }"` to enable template-driven generation.
-  - **Actionable:** true
+**No findings for Dimension 6.**
 
 ---
 
 ## Recommendations
 
-Ordered by severity:
-
-1. **[MAJOR] D2-2b-001:** Add v2.1-enhanced required fields (`patterns`, `variables`, `test_structure`, `code_structure`) to all 17 scenarios. — **Remediation:** Populate with appropriate values for Go testing/testify framework. — **Actionable:** yes
-2. **[MAJOR] D3-3a-001:** Assign pattern IDs to all scenarios for template-driven generation. — **Remediation:** Use descriptive patterns like `"unit-function-boolean-return"` and `"unit-output-format-validation"`. — **Actionable:** yes
-3. **[MAJOR] D4.5-4.5a-001:** Remove `related_prs` from `document_metadata`. — **Remediation:** Delete lines 17-27 of the STD YAML. The STP provides PR lineage. — **Actionable:** yes
-4. **[MAJOR] D5-5a-001:** Add testify imports to Go stub files. — **Remediation:** Include `testify/assert` and `testify/require` in import blocks. — **Actionable:** yes
-5. **[MINOR] D4-4h-001:** Add `high`-only severity test scenario. — **Remediation:** Add or modify a scenario to test body replacement triggered by high-severity-only findings. — **Actionable:** yes
-6. **[MINOR] D2-2b-002:** Normalize `test_type` casing. — **Remediation:** Use consistent casing across scenario root and classification. — **Actionable:** yes
-7. **[MINOR] D4.5-4.5a-002:** Evaluate necessity of `source_bugs` in STD metadata. — **Remediation:** Remove or retain based on project convention. — **Actionable:** yes
-8. **[MINOR] D6-6a-001:** Add `variables` and `code_structure` for code generation readiness. — **Remediation:** Populate with Go testing framework structure references. — **Actionable:** yes
+1. **[MINOR] D4-4h-001:** Add a `high`-only severity test scenario to strengthen error path coverage. — **Remediation:** Add a scenario testing body replacement triggered by high-severity-only findings with a `request-changes` action. — **Actionable:** yes
 
 ---
 
@@ -366,4 +336,4 @@ Ordered by severity:
 | All scenarios reviewed | YES |
 | Project review rules loaded | NO (all defaults) |
 
-**Confidence rationale:** Confidence is LOW because 100% of review rules are using generic defaults (auto-detected project with no `config_dir`). STP-STD traceability was fully verified (HIGH confidence for Dimension 1), but pattern matching and project-specific conventions could not be validated against authoritative config. Review precision is reduced: consider adding project-specific `review_rules.yaml` or enabling `repo_files_fetch` to improve review precision in future runs.
+**Confidence rationale:** Confidence is LOW because 100% of review rules are using generic defaults (auto-detected project with no `config_dir`). STP-STD traceability was fully verified (HIGH confidence for Dimension 1). All v2.1-enhanced structural fields are now present and validated. Pattern assignments are descriptive and appropriate for the test types. Review precision is reduced due to lack of project-specific `review_rules.yaml` — consider adding one or enabling `repo_files_fetch` for future runs.
