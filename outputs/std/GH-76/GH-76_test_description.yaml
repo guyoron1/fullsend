@@ -1,0 +1,1391 @@
+---
+# Software Test Description (STD) — GH-76
+# Bound Enrollment Wait with Timeout and Backoff
+# Generated: 2026-06-22
+# Version: 2.1-enhanced (auto mode)
+
+document_metadata:
+  std_version: "2.1-enhanced"
+  generated_date: "2026-06-22"
+  jira_issue: "GH-76"
+  jira_summary: "Bound Enrollment Wait with Timeout and Backoff"
+  source_bugs: []
+  stp_reference:
+    file: "outputs/stp/GH-76/GH-76_test_plan.md"
+    version: "v1"
+    sections_covered: "Section III - Test Scenarios & Traceability"
+  related_prs:
+    - repo: "guyoron1/fullsend"
+      pr_number: 76
+      url: "https://github.com/guyoron1/fullsend/pull/76"
+      title: "Bound Enrollment Wait with Timeout and Backoff"
+      merged: false
+    - repo: "fullsend-ai/fullsend"
+      pr_number: 2359
+      url: "https://github.com/fullsend-ai/fullsend/pull/2359"
+      title: "Upstream: Bound enrollment wait with timeout and backoff"
+      merged: true
+  owning_sig: "N/A"
+  participating_sigs: []
+  total_scenarios: 27
+  tier_1_count: 0
+  tier_2_count: 0
+  unit_count: 25
+  functional_count: 2
+  e2e_count: 0
+  p0_count: 6
+  p1_count: 19
+  p2_count: 2
+  existing_coverage_count: 0
+  new_count: 27
+  test_strategy_mode: "auto"
+
+code_generation_config:
+  std_version: "2.1-enhanced"
+  framework: "testing"
+  assertion_library: "testify"
+  language: "go"
+  package_name: "layers"
+  target_test_directory: null
+  filename_prefix: "qf_"
+  imports:
+    standard:
+      - "context"
+      - "testing"
+      - "time"
+      - "net/http"
+      - "net/http/httptest"
+    framework:
+      - "github.com/stretchr/testify/assert"
+      - "github.com/stretchr/testify/require"
+    project:
+      - "github.com/fullsend-ai/fullsend/internal/forge"
+      - "github.com/fullsend-ai/fullsend/internal/forge/github"
+      - "github.com/fullsend-ai/fullsend/internal/ui"
+      - "github.com/fullsend-ai/fullsend/internal/config"
+
+common_preconditions:
+  infrastructure:
+    - name: "Go toolchain"
+      requirement: "Go 1.22+"
+      validation: "go version"
+    - name: "fullsend source"
+      requirement: "PR #76 changes available on branch"
+      validation: "git log --oneline -1"
+  operators: []
+  cluster_configuration:
+    topology: "N/A"
+    cpu_virtualization: "N/A"
+    storage: "N/A"
+    network: "N/A"
+  rbac_requirements: []
+
+scenarios:
+  # ===================================================================
+  # GROUP 1: Enrollment Wait — Backoff Behavior (internal/layers)
+  # Package: layers
+  # ===================================================================
+  - scenario_id: 1
+    test_id: "TS-GH-76-001"
+    test_type: "unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-76"
+    coverage_status: "NEW"
+    target_package: "layers"
+    target_directory: "internal/layers"
+    test_objective:
+      title: "Verify enrollment wait completes when workflow succeeds quickly"
+      what: |
+        Tests that awaitWorkflowRun returns successfully when the forge client
+        reports the workflow run as completed on the first or second poll iteration.
+        Validates that the bounded wait loop exits promptly on success without
+        exhausting the full 3-minute timeout.
+      why: |
+        Fast-completing workflows should give immediate feedback to the operator.
+        If the polling loop does not exit promptly on success, operators experience
+        unnecessary delays during enrollment.
+      acceptance_criteria:
+        - "awaitWorkflowRun returns nil error when workflow completes"
+        - "Function returns within a fraction of the total timeout"
+        - "Progress messages are emitted during polling"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create a fake forge.Client that returns workflow completed status"
+          validation: "Fake client is callable and returns expected responses"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call awaitWorkflowRun with short context deadline"
+          validation: "Function returns nil error"
+        - step_id: "TEST-02"
+          action: "Verify printer output contains progress messages"
+          validation: "Progress buffer contains expected output"
+      cleanup: []
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "awaitWorkflowRun returns nil error on success"
+        condition: "err == nil"
+        failure_impact: "Enrollment will not complete even when workflow succeeds"
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "Progress messages are printed during wait"
+        condition: "printer output contains progress text"
+        failure_impact: "Operator has no visibility into enrollment progress"
+    variables:
+      closure_scope:
+        - name: "fc"
+          type: "*forge.FakeClient"
+          initialized_in: "test function"
+          used_in: ["test function"]
+          comment: "Fake client returning completed workflow"
+        - name: "buf"
+          type: "*bytes.Buffer"
+          initialized_in: "test function"
+          used_in: ["test function"]
+          comment: "Captures printer output"
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+
+  - scenario_id: 2
+    test_id: "TS-GH-76-002"
+    test_type: "unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-76"
+    coverage_status: "NEW"
+    target_package: "layers"
+    target_directory: "internal/layers"
+    test_objective:
+      title: "Verify backoff intervals follow 2s->4s->8s->15s progression"
+      what: |
+        Tests the nextInterval function with successive inputs to verify the
+        exponential backoff sequence: 2s initial, doubling each iteration (4s, 8s),
+        capping at 15s maximum. Validates the complete interval progression.
+      why: |
+        Correct backoff progression reduces GitHub API calls from ~36 to ~10-12
+        per enrollment wait while providing faster initial feedback.
+      acceptance_criteria:
+        - "nextInterval(2s) returns 4s"
+        - "nextInterval(4s) returns 8s"
+        - "nextInterval(8s) returns 15s (capped)"
+        - "nextInterval(15s) returns 15s (stays at max)"
+    test_steps:
+      setup: []
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call nextInterval with enrollmentPollInitial (2s)"
+          validation: "Returns 4s"
+        - step_id: "TEST-02"
+          action: "Call nextInterval with 4s"
+          validation: "Returns 8s"
+        - step_id: "TEST-03"
+          action: "Call nextInterval with 8s"
+          validation: "Returns enrollmentPollMax (15s)"
+        - step_id: "TEST-04"
+          action: "Call nextInterval with enrollmentPollMax (15s)"
+          validation: "Returns enrollmentPollMax (15s, no change)"
+      cleanup: []
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Interval doubles from initial to 4s"
+        condition: "nextInterval(2s) == 4s"
+        failure_impact: "Backoff progression broken, API calls not reduced"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "Interval caps at enrollmentPollMax"
+        condition: "nextInterval(8s) == 15s"
+        failure_impact: "Unbounded interval growth could cause excessive delays"
+    variables:
+      closure_scope: []
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+
+  - scenario_id: 3
+    test_id: "TS-GH-76-003"
+    test_type: "unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-76"
+    coverage_status: "NEW"
+    target_package: "layers"
+    target_directory: "internal/layers"
+    test_objective:
+      title: "Verify wait times out after 3 minutes with actionable error"
+      what: |
+        Tests that awaitWorkflowRun returns a timeout error when the workflow
+        never completes within the 3-minute deadline. Validates that the error
+        message includes actionable guidance for the operator.
+      why: |
+        Operators must receive clear guidance when enrollment times out.
+        Without an actionable error, they may not know how to recover.
+      acceptance_criteria:
+        - "Function returns an error after deadline expires"
+        - "Error message contains timeout indication"
+        - "Error message includes re-run guidance"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create fake client that always returns 'in_progress' status"
+          validation: "Client never reports workflow complete"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call awaitWorkflowRun with short context deadline"
+          validation: "Function returns error after context cancellation"
+        - step_id: "TEST-02"
+          action: "Inspect error message content"
+          validation: "Contains actionable timeout guidance"
+      cleanup: []
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Returns error on timeout"
+        condition: "err != nil"
+        failure_impact: "Silent timeout leaves operator confused"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "Error message includes actionable guidance"
+        condition: "error contains re-run or timeout guidance text"
+        failure_impact: "Operator cannot recover from timeout"
+    variables:
+      closure_scope:
+        - name: "fc"
+          type: "*forge.FakeClient"
+          initialized_in: "test function"
+          used_in: ["test function"]
+          comment: "Fake client that never completes"
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+
+  - scenario_id: 4
+    test_id: "TS-GH-76-004"
+    test_type: "unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-76"
+    coverage_status: "NEW"
+    target_package: "layers"
+    target_directory: "internal/layers"
+    test_objective:
+      title: "Verify backoff caps at 15s and does not exceed maximum"
+      what: |
+        Tests the boundary condition where nextInterval receives a value at or
+        above the maximum (15s). Validates that the cap is enforced and the
+        returned interval never exceeds enrollmentPollMax.
+      why: |
+        Without a proper cap, the backoff interval could grow indefinitely,
+        causing extremely long gaps between polls and poor user experience.
+      acceptance_criteria:
+        - "nextInterval at boundary returns enrollmentPollMax"
+        - "nextInterval above boundary returns enrollmentPollMax"
+    test_steps:
+      setup: []
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call nextInterval with value at cap boundary (8s, where 2*8=16 > 15)"
+          validation: "Returns enrollmentPollMax (15s)"
+        - step_id: "TEST-02"
+          action: "Call nextInterval with enrollmentPollMax"
+          validation: "Returns enrollmentPollMax (no increase)"
+      cleanup: []
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Cap is enforced at boundary"
+        condition: "nextInterval(8s) == enrollmentPollMax"
+        failure_impact: "Interval exceeds maximum, causing excessive delays"
+    variables:
+      closure_scope: []
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+
+  - scenario_id: 5
+    test_id: "TS-GH-76-005"
+    test_type: "unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-76"
+    coverage_status: "NEW"
+    target_package: "layers"
+    target_directory: "internal/layers"
+    test_objective:
+      title: "Verify timeout error includes guidance to re-run install"
+      what: |
+        Tests that when enrollment wait times out, the error message specifically
+        suggests re-running the install command. This ensures operators have a
+        clear next step to recover.
+      why: |
+        Actionable error messages reduce support burden and help operators
+        self-serve during enrollment issues.
+      acceptance_criteria:
+        - "Timeout error message contains 're-run' or 'install' guidance"
+        - "Error message is user-friendly, not a raw Go error"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create fake client that always returns in_progress"
+          validation: "Client configured to never complete"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call awaitWorkflowRun with short deadline"
+          validation: "Returns error"
+        - step_id: "TEST-02"
+          action: "Assert error message contains actionable guidance"
+          validation: "Message includes guidance text"
+      cleanup: []
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Error message includes re-run guidance"
+        condition: "error message contains install re-run suggestion"
+        failure_impact: "Operator stuck without recovery guidance"
+    variables:
+      closure_scope:
+        - name: "fc"
+          type: "*forge.FakeClient"
+          initialized_in: "test function"
+          used_in: ["test function"]
+          comment: "Fake client for timeout scenario"
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+
+  - scenario_id: 6
+    test_id: "TS-GH-76-006"
+    test_type: "unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-76"
+    coverage_status: "NEW"
+    target_package: "layers"
+    target_directory: "internal/layers"
+    test_objective:
+      title: "Verify timeout reports elapsed time accurately"
+      what: |
+        Tests that the timeout error message includes the actual elapsed time,
+        allowing operators to confirm the wait ran for the expected duration.
+      why: |
+        Elapsed time in error messages helps operators diagnose whether the
+        timeout is expected or indicates a configuration issue.
+      acceptance_criteria:
+        - "Error or progress output includes elapsed time"
+        - "Elapsed time is approximately equal to the configured timeout"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create fake client that never completes"
+          validation: "Client configured"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call awaitWorkflowRun with known deadline"
+          validation: "Function times out"
+        - step_id: "TEST-02"
+          action: "Check output for elapsed time"
+          validation: "Output contains elapsed time value"
+      cleanup: []
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Output includes elapsed time"
+        condition: "output or error contains time indication"
+        failure_impact: "Operator cannot determine wait duration"
+    variables:
+      closure_scope:
+        - name: "buf"
+          type: "*bytes.Buffer"
+          initialized_in: "test function"
+          used_in: ["test function"]
+          comment: "Captures printer output to check elapsed time"
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+
+  - scenario_id: 7
+    test_id: "TS-GH-76-007"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-76"
+    coverage_status: "NEW"
+    target_package: "layers"
+    target_directory: "internal/layers"
+    test_objective:
+      title: "Verify context cancellation interrupts wait promptly"
+      what: |
+        Tests that when the parent context is cancelled (e.g., Ctrl+C), the
+        awaitWorkflowRun function exits promptly rather than waiting for
+        the next poll interval to complete.
+      why: |
+        Operators must be able to interrupt enrollment at any time. A
+        non-responsive cancellation would be a poor user experience.
+      acceptance_criteria:
+        - "Function returns context.Canceled or context.DeadlineExceeded error"
+        - "Function exits within a short time of cancellation"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create context with cancel function"
+          validation: "Cancellable context ready"
+        - step_id: "SETUP-02"
+          action: "Create fake client that returns in_progress"
+          validation: "Client will not complete workflow"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Start awaitWorkflowRun in goroutine, then cancel context"
+          validation: "Function returns promptly with context error"
+      cleanup: []
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Returns context cancellation error"
+        condition: "err is context.Canceled or context.DeadlineExceeded"
+        failure_impact: "Operator cannot interrupt enrollment wait"
+    variables:
+      closure_scope:
+        - name: "ctx"
+          type: "context.Context"
+          initialized_in: "test function"
+          used_in: ["test function"]
+          comment: "Cancellable context"
+        - name: "cancel"
+          type: "context.CancelFunc"
+          initialized_in: "test function"
+          used_in: ["test function"]
+          comment: "Cancel function for context"
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+
+  - scenario_id: 8
+    test_id: "TS-GH-76-008"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-76"
+    coverage_status: "NEW"
+    target_package: "layers"
+    target_directory: "internal/layers"
+    test_objective:
+      title: "Verify cancellation during backoff sleep exits cleanly"
+      what: |
+        Tests that if context is cancelled while the function is sleeping
+        between polls (during the backoff interval), it exits immediately
+        rather than completing the sleep.
+      why: |
+        The backoff intervals grow up to 15s. Operators should not have to
+        wait the full interval before cancellation takes effect.
+      acceptance_criteria:
+        - "Function returns within milliseconds of cancellation"
+        - "No panic or unclean exit on cancellation during sleep"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create context with short deadline"
+          validation: "Context will expire during backoff sleep"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call awaitWorkflowRun where context expires during sleep"
+          validation: "Returns context error promptly"
+      cleanup: []
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Exits promptly during sleep on cancellation"
+        condition: "Function returns within a few ms of context expiry"
+        failure_impact: "Operator forced to wait full backoff interval"
+    variables:
+      closure_scope:
+        - name: "ctx"
+          type: "context.Context"
+          initialized_in: "test function"
+          used_in: ["test function"]
+          comment: "Context with short deadline"
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+
+  - scenario_id: 9
+    test_id: "TS-GH-76-009"
+    test_type: "unit"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-76"
+    coverage_status: "NEW"
+    target_package: "layers"
+    target_directory: "internal/layers"
+    test_objective:
+      title: "Verify progress shows elapsed time format"
+      what: |
+        Tests that progress messages emitted during enrollment wait display
+        the elapsed time in a human-readable format (e.g., "1m30s").
+      why: |
+        Clear elapsed time formatting helps operators understand how long
+        they have been waiting and how much time remains.
+      acceptance_criteria:
+        - "Progress output contains elapsed time in readable format"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create fake client that completes after a few polls"
+          validation: "Client will trigger multiple progress messages"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call awaitWorkflowRun and capture printer output"
+          validation: "Output contains elapsed time format"
+      cleanup: []
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Elapsed time is in human-readable format"
+        condition: "Progress output matches expected time format"
+        failure_impact: "Operator cannot gauge wait progress"
+    variables:
+      closure_scope:
+        - name: "buf"
+          type: "*bytes.Buffer"
+          initialized_in: "test function"
+          used_in: ["test function"]
+          comment: "Captures progress output"
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+
+  - scenario_id: 10
+    test_id: "TS-GH-76-010"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-76"
+    coverage_status: "NEW"
+    target_package: "layers"
+    target_directory: "internal/layers"
+    test_objective:
+      title: "Verify Install path uses bounded workflow wait"
+      what: |
+        Tests that the Install method calls awaitWorkflowRun (bounded wait)
+        instead of the old fixed-interval polling loop.
+      why: |
+        Both Install and Uninstall paths must use the new bounded wait
+        to ensure consistent behavior and reduced API usage.
+      acceptance_criteria:
+        - "Install invokes awaitWorkflowRun"
+        - "Install respects the 3-minute timeout"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create enrollment layer with fake client"
+          validation: "Layer configured with fast-completing workflow"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call Install and verify it completes via awaitWorkflowRun"
+          validation: "Install succeeds without timeout"
+      cleanup: []
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Install uses bounded wait"
+        condition: "Install completes successfully via awaitWorkflowRun"
+        failure_impact: "Install path may still use old polling loop"
+    variables:
+      closure_scope:
+        - name: "fc"
+          type: "*forge.FakeClient"
+          initialized_in: "test function"
+          used_in: ["test function"]
+          comment: "Fake client for Install path"
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+
+  - scenario_id: 11
+    test_id: "TS-GH-76-011"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-76"
+    coverage_status: "NEW"
+    target_package: "layers"
+    target_directory: "internal/layers"
+    test_objective:
+      title: "Verify Uninstall path uses bounded workflow wait"
+      what: |
+        Tests that the Uninstall method calls awaitWorkflowRun with the
+        same bounded timeout and backoff as Install.
+      why: |
+        Consistent behavior between Install and Uninstall prevents
+        confusion and ensures both paths benefit from reduced API usage.
+      acceptance_criteria:
+        - "Uninstall invokes awaitWorkflowRun"
+        - "Uninstall respects the 3-minute timeout"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create enrollment layer with fake client for uninstall"
+          validation: "Layer configured"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call Uninstall and verify completion via bounded wait"
+          validation: "Uninstall succeeds"
+      cleanup: []
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Uninstall uses bounded wait"
+        condition: "Uninstall completes via awaitWorkflowRun"
+        failure_impact: "Uninstall may still use old polling loop"
+    variables:
+      closure_scope:
+        - name: "fc"
+          type: "*forge.FakeClient"
+          initialized_in: "test function"
+          used_in: ["test function"]
+          comment: "Fake client for Uninstall path"
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+
+  - scenario_id: 12
+    test_id: "TS-GH-76-012"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-76"
+    coverage_status: "NEW"
+    target_package: "layers"
+    target_directory: "internal/layers"
+    test_objective:
+      title: "Verify await failure is non-fatal for both paths"
+      what: |
+        Tests that when awaitWorkflowRun times out or fails, both Install
+        and Uninstall continue execution (non-fatal). The enrollment
+        proceeds with a warning rather than aborting.
+      why: |
+        Workflow monitoring is advisory. A timeout should not prevent
+        enrollment from completing — the workflow may still succeed.
+      acceptance_criteria:
+        - "Install continues after awaitWorkflowRun failure"
+        - "Uninstall continues after awaitWorkflowRun failure"
+        - "Warning is logged on failure"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create fake client that causes await to fail"
+          validation: "Client configured to trigger timeout"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call Install with failing await"
+          validation: "Install returns nil error (non-fatal)"
+        - step_id: "TEST-02"
+          action: "Call Uninstall with failing await"
+          validation: "Uninstall returns nil error (non-fatal)"
+      cleanup: []
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Install treats await failure as non-fatal"
+        condition: "Install returns nil error despite await failure"
+        failure_impact: "Enrollment aborts unnecessarily on workflow timeout"
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "Uninstall treats await failure as non-fatal"
+        condition: "Uninstall returns nil error despite await failure"
+        failure_impact: "Unenrollment aborts unnecessarily on workflow timeout"
+    variables:
+      closure_scope:
+        - name: "fc"
+          type: "*forge.FakeClient"
+          initialized_in: "test function"
+          used_in: ["test function"]
+          comment: "Fake client that triggers await failure"
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+
+  # ===================================================================
+  # GROUP 2: nextInterval Pure Function (internal/layers)
+  # Package: layers
+  # ===================================================================
+  - scenario_id: 13
+    test_id: "TS-GH-76-013"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-76"
+    coverage_status: "NEW"
+    target_package: "layers"
+    target_directory: "internal/layers"
+    test_objective:
+      title: "Verify nextInterval doubles current value"
+      what: |
+        Tests the pure function nextInterval with various input values to
+        confirm it always returns 2x the input (when below the max cap).
+      why: |
+        Exponential backoff requires correct doubling. An incorrect
+        multiplier would cause either too-frequent or too-infrequent polling.
+      acceptance_criteria:
+        - "nextInterval(2s) == 4s"
+        - "nextInterval(4s) == 8s"
+        - "nextInterval(1s) == 2s"
+    test_steps:
+      setup: []
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call nextInterval with values below cap"
+          validation: "Returns exactly 2x input"
+      cleanup: []
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Doubling is correct for sub-cap values"
+        condition: "nextInterval(x) == 2*x for x < cap/2"
+        failure_impact: "Backoff algorithm broken"
+    variables:
+      closure_scope: []
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+
+  - scenario_id: 14
+    test_id: "TS-GH-76-014"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-76"
+    coverage_status: "NEW"
+    target_package: "layers"
+    target_directory: "internal/layers"
+    test_objective:
+      title: "Verify nextInterval caps at enrollmentPollMax"
+      what: |
+        Tests that nextInterval never returns a value exceeding
+        enrollmentPollMax (15s), even when the doubled value would exceed it.
+      why: |
+        Without cap enforcement, poll intervals could grow unboundedly,
+        causing unacceptable delays between workflow status checks.
+      acceptance_criteria:
+        - "nextInterval(8s) == 15s (not 16s)"
+        - "nextInterval(15s) == 15s"
+        - "nextInterval(30s) == 15s"
+    test_steps:
+      setup: []
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call nextInterval with values at and above cap boundary"
+          validation: "All return enrollmentPollMax"
+      cleanup: []
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Cap enforced at boundary and beyond"
+        condition: "nextInterval(x) == enrollmentPollMax for 2*x >= enrollmentPollMax"
+        failure_impact: "Interval exceeds maximum, poor UX"
+    variables:
+      closure_scope: []
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+
+  - scenario_id: 15
+    test_id: "TS-GH-76-015"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-76"
+    coverage_status: "NEW"
+    target_package: "layers"
+    target_directory: "internal/layers"
+    test_objective:
+      title: "Verify backoff with initial value at cap boundary"
+      what: |
+        Tests the edge case where the initial interval is exactly at the
+        cap value, or values that when doubled exactly equal the cap.
+      why: |
+        Boundary conditions in backoff algorithms are common sources of
+        off-by-one bugs.
+      acceptance_criteria:
+        - "nextInterval at exact boundary returns cap"
+        - "No off-by-one errors at boundary"
+    test_steps:
+      setup: []
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call nextInterval with values at exact boundary"
+          validation: "Returns enrollmentPollMax"
+      cleanup: []
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Boundary condition handled correctly"
+        condition: "No off-by-one at cap boundary"
+        failure_impact: "Edge case causes incorrect interval"
+    variables:
+      closure_scope: []
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+
+  # ===================================================================
+  # GROUP 3: Reconcile-Status CLI (internal/cli)
+  # Package: cli
+  # ===================================================================
+  - scenario_id: 16
+    test_id: "TS-GH-76-016"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-76"
+    coverage_status: "NEW"
+    target_package: "cli"
+    target_directory: "internal/cli"
+    test_objective:
+      title: "Verify reconcile-status authenticates via mint-url"
+      what: |
+        Tests that the reconcile-status command uses the --mint-url flag to
+        acquire a token via OIDC mint instead of a static token.
+      why: |
+        Migrating from static tokens to OIDC mint improves security by
+        using short-lived, scoped tokens.
+      acceptance_criteria:
+        - "Command accepts --mint-url flag"
+        - "Token is acquired via mint URL when flag is provided"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create reconcile-status command with --mint-url flag"
+          validation: "Command parses flag correctly"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute command with --mint-url pointing to mock mint server"
+          validation: "Command uses mint URL for authentication"
+      cleanup: []
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Mint-url flag is accepted and used for auth"
+        condition: "Command successfully authenticates via mint"
+        failure_impact: "Auth migration broken, cannot use OIDC tokens"
+    variables:
+      closure_scope:
+        - name: "srv"
+          type: "*httptest.Server"
+          initialized_in: "test function"
+          used_in: ["test function"]
+          comment: "Mock mint server"
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+
+  - scenario_id: 17
+    test_id: "TS-GH-76-017"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-76"
+    coverage_status: "NEW"
+    target_package: "cli"
+    target_directory: "internal/cli"
+    test_objective:
+      title: "Verify error when neither mint-url nor token provided"
+      what: |
+        Tests that the reconcile-status command returns a clear error when
+        no authentication method is configured (no --mint-url and no --token).
+      why: |
+        Clear error messages prevent operators from running commands in
+        misconfigured states that would silently fail.
+      acceptance_criteria:
+        - "Command returns error when no auth flag provided"
+        - "Error message indicates authentication is required"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create reconcile-status command without auth flags"
+          validation: "Command created"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute command without --mint-url or --token"
+          validation: "Returns authentication error"
+      cleanup: []
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Error when no auth method configured"
+        condition: "err != nil and message indicates auth required"
+        failure_impact: "Command silently fails without authentication"
+    variables:
+      closure_scope: []
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+
+  - scenario_id: 18
+    test_id: "TS-GH-76-018"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-76"
+    coverage_status: "NEW"
+    target_package: "cli"
+    target_directory: "internal/cli"
+    test_objective:
+      title: "Verify deprecated token flag emits warning"
+      what: |
+        Tests that using the deprecated --status-token flag emits a
+        deprecation warning while still functioning correctly.
+      why: |
+        Backward compatibility requires the old flag to work, but operators
+        should be guided toward the new --mint-url flag.
+      acceptance_criteria:
+        - "Deprecated flag still works for authentication"
+        - "Warning message is emitted about deprecation"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create command with deprecated --token flag"
+          validation: "Command accepts deprecated flag"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute command with --token flag"
+          validation: "Command works but emits deprecation warning"
+      cleanup: []
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Deprecated flag emits warning"
+        condition: "Output or stderr contains deprecation warning"
+        failure_impact: "Operators not informed about migration path"
+    variables:
+      closure_scope: []
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+
+  # ===================================================================
+  # GROUP 4: Run Command Status Notifier (internal/cli)
+  # Package: cli
+  # ===================================================================
+  - scenario_id: 19
+    test_id: "TS-GH-76-019"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-76"
+    coverage_status: "NEW"
+    target_package: "cli"
+    target_directory: "internal/cli"
+    test_objective:
+      title: "Verify status notifier uses mint-url from flag"
+      what: |
+        Tests that the run command's setupStatusNotifier function uses the
+        --mint-url CLI flag to configure the status notification client.
+      why: |
+        The run command must use OIDC mint for status comment authentication,
+        matching the reconcile-status migration.
+      acceptance_criteria:
+        - "setupStatusNotifier reads --mint-url flag"
+        - "Status notifier is configured with mint URL"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create run command with --mint-url flag set"
+          validation: "Flag parsed"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call setupStatusNotifier"
+          validation: "Returns notifier configured with mint URL"
+      cleanup: []
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Notifier uses mint-url from flag"
+        condition: "Notifier configured with correct mint URL"
+        failure_impact: "Status comments fail to authenticate"
+    variables:
+      closure_scope: []
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+
+  - scenario_id: 20
+    test_id: "TS-GH-76-020"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-76"
+    coverage_status: "NEW"
+    target_package: "cli"
+    target_directory: "internal/cli"
+    test_objective:
+      title: "Verify status notifier falls back to FULLSEND_MINT_URL env"
+      what: |
+        Tests that when --mint-url flag is not provided, setupStatusNotifier
+        falls back to the FULLSEND_MINT_URL environment variable.
+      why: |
+        Environment variable fallback supports CI environments where flags
+        cannot easily be passed to the run command.
+      acceptance_criteria:
+        - "Falls back to FULLSEND_MINT_URL when flag not set"
+        - "Environment variable value is used for configuration"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Set FULLSEND_MINT_URL environment variable"
+          validation: "Environment configured"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call setupStatusNotifier without --mint-url flag"
+          validation: "Notifier configured from environment variable"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Unset FULLSEND_MINT_URL environment variable"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Falls back to FULLSEND_MINT_URL env var"
+        condition: "Notifier uses env var value"
+        failure_impact: "CI environments cannot configure status notifications"
+    variables:
+      closure_scope: []
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+
+  - scenario_id: 21
+    test_id: "TS-GH-76-021"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-76"
+    coverage_status: "NEW"
+    target_package: "cli"
+    target_directory: "internal/cli"
+    test_objective:
+      title: "Verify error when no mint source available"
+      what: |
+        Tests that setupStatusNotifier returns an error when neither
+        --mint-url flag nor FULLSEND_MINT_URL environment variable is set.
+      why: |
+        Without a mint source, the status notifier cannot authenticate.
+        A clear error prevents silent failures in CI.
+      acceptance_criteria:
+        - "Returns error when no mint URL source available"
+        - "Error message indicates what is missing"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Ensure no --mint-url flag and no FULLSEND_MINT_URL env"
+          validation: "No mint source configured"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call setupStatusNotifier"
+          validation: "Returns error about missing mint URL"
+      cleanup: []
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Error on missing mint source"
+        condition: "err != nil and message indicates missing mint URL"
+        failure_impact: "Silent failure when mint not configured"
+    variables:
+      closure_scope: []
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+
+  # ===================================================================
+  # GROUP 5: Orphaned Status Comments (internal/statuscomment)
+  # Package: statuscomment
+  # ===================================================================
+  - scenario_id: 22
+    test_id: "TS-GH-76-022"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-76"
+    coverage_status: "NEW"
+    target_package: "statuscomment"
+    target_directory: "internal/statuscomment"
+    test_objective:
+      title: "Verify orphaned started comment updated to interrupted"
+      what: |
+        Tests that ReconcileOrphaned finds comments in 'started' state
+        and updates them to 'interrupted' status with the appropriate reason.
+      why: |
+        Orphaned started comments from crashed agent runs must be reconciled
+        to provide accurate PR status information.
+      acceptance_criteria:
+        - "Started comment is detected as orphaned"
+        - "Comment body updated to show interrupted status"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create fake client with an orphaned 'started' comment"
+          validation: "Comment exists with started marker"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call ReconcileOrphaned with terminated reason"
+          validation: "Comment updated to interrupted status"
+      cleanup: []
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Orphaned started comment reconciled"
+        condition: "Comment body contains interrupted status"
+        failure_impact: "PRs show stale 'in progress' status"
+    variables:
+      closure_scope:
+        - name: "fc"
+          type: "*forge.FakeClient"
+          initialized_in: "test function"
+          used_in: ["test function"]
+          comment: "Fake client with orphaned comment"
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+
+  - scenario_id: 23
+    test_id: "TS-GH-76-023"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-76"
+    coverage_status: "NEW"
+    target_package: "statuscomment"
+    target_directory: "internal/statuscomment"
+    test_objective:
+      title: "Verify already-terminal comment is skipped"
+      what: |
+        Tests that ReconcileOrphaned does not modify comments that are
+        already in a terminal state (completed, failed, interrupted).
+      why: |
+        Re-processing terminal comments could cause incorrect status
+        updates and confusing PR comment history.
+      acceptance_criteria:
+        - "Terminal comments are not modified"
+        - "No error returned for terminal comments"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create fake client with already-terminal comment"
+          validation: "Comment is in completed/failed state"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call ReconcileOrphaned"
+          validation: "Comment unchanged, no error"
+      cleanup: []
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Terminal comments not modified"
+        condition: "Comment body unchanged after reconciliation"
+        failure_impact: "Completed comments incorrectly re-processed"
+    variables:
+      closure_scope:
+        - name: "fc"
+          type: "*forge.FakeClient"
+          initialized_in: "test function"
+          used_in: ["test function"]
+          comment: "Fake client with terminal comment"
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+
+  - scenario_id: 24
+    test_id: "TS-GH-76-024"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-76"
+    coverage_status: "NEW"
+    target_package: "statuscomment"
+    target_directory: "internal/statuscomment"
+    test_objective:
+      title: "Verify cancelled reason produces cancelled label"
+      what: |
+        Tests that when ReconcileOrphaned is called with a 'cancelled'
+        reason, the updated comment uses the correct 'cancelled' label
+        (distinct from 'terminated' or 'interrupted').
+      why: |
+        Different termination reasons (cancelled vs terminated) have
+        different semantic meanings and should be reflected in PR comments.
+      acceptance_criteria:
+        - "Cancelled reason produces cancelled label in comment"
+        - "Label is distinct from terminated/interrupted"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create fake client with orphaned started comment"
+          validation: "Comment ready for reconciliation"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call ReconcileOrphaned with cancelled reason"
+          validation: "Comment updated with cancelled label"
+      cleanup: []
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Cancelled reason produces correct label"
+        condition: "Comment body contains cancelled status label"
+        failure_impact: "Wrong termination reason shown on PR"
+    variables:
+      closure_scope:
+        - name: "fc"
+          type: "*forge.FakeClient"
+          initialized_in: "test function"
+          used_in: ["test function"]
+          comment: "Fake client for cancelled test"
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+
+  - scenario_id: 25
+    test_id: "TS-GH-76-025"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-76"
+    coverage_status: "NEW"
+    target_package: "statuscomment"
+    target_directory: "internal/statuscomment"
+    test_objective:
+      title: "Verify missing comment is not an error"
+      what: |
+        Tests that ReconcileOrphaned handles the case where no matching
+        comment exists for the given run ID. This is not an error — the
+        agent may not have posted a start comment.
+      why: |
+        Not all agent runs post status comments. ReconcileOrphaned must
+        be tolerant of missing comments.
+      acceptance_criteria:
+        - "No error returned when comment is missing"
+        - "No panic or unexpected behavior"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create fake client with no matching comments"
+          validation: "Client returns empty comment list"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call ReconcileOrphaned"
+          validation: "Returns nil error"
+      cleanup: []
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Missing comment is not an error"
+        condition: "err == nil"
+        failure_impact: "Reconciliation fails for runs without start comments"
+    variables:
+      closure_scope:
+        - name: "fc"
+          type: "*forge.FakeClient"
+          initialized_in: "test function"
+          used_in: ["test function"]
+          comment: "Fake client with no comments"
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+
+  # ===================================================================
+  # GROUP 6: CI Workflow Integration (functional)
+  # ===================================================================
+  - scenario_id: 26
+    test_id: "TS-GH-76-026"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-76"
+    coverage_status: "NEW"
+    target_package: "cli"
+    target_directory: "internal/cli"
+    test_objective:
+      title: "Verify workflow parameter accepts mint-url"
+      what: |
+        Tests that the CLI commands accept and correctly parse the --mint-url
+        parameter when invoked as they would be from CI workflows.
+      why: |
+        CI workflows have been updated to pass mint-url instead of status-token.
+        The CLI must correctly accept this parameter.
+      acceptance_criteria:
+        - "CLI accepts --mint-url parameter"
+        - "Parameter value is propagated to status notifier"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create CLI command with --mint-url flag"
+          validation: "Command accepts flag"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Parse --mint-url flag and verify value"
+          validation: "Flag value matches input"
+      cleanup: []
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Mint-url parameter accepted and parsed"
+        condition: "Flag value propagated to notifier config"
+        failure_impact: "CI workflows fail to configure authentication"
+    variables:
+      closure_scope: []
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+
+  - scenario_id: 27
+    test_id: "TS-GH-76-027"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-76"
+    coverage_status: "NEW"
+    target_package: "cli"
+    target_directory: "internal/cli"
+    test_objective:
+      title: "Verify agent status posting works end-to-end with mint"
+      what: |
+        Tests the complete flow from CLI flag parsing through mint token
+        acquisition to status comment posting, using mocked HTTP endpoints.
+      why: |
+        End-to-end validation ensures all components (CLI, mintclient,
+        status notifier, forge client) integrate correctly.
+      acceptance_criteria:
+        - "Status comment posted successfully using mint-acquired token"
+        - "Token acquisition flow completes without error"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock mint server and mock GitHub API server"
+          validation: "Mock servers running"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run status post flow with mock mint URL"
+          validation: "Comment posted to mock GitHub API"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Shut down mock servers"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "End-to-end mint auth flow works"
+        condition: "Comment posted successfully with mint token"
+        failure_impact: "Complete auth migration broken"
+    variables:
+      closure_scope:
+        - name: "mintServer"
+          type: "*httptest.Server"
+          initialized_in: "test function"
+          used_in: ["test function"]
+          comment: "Mock mint token server"
+        - name: "ghServer"
+          type: "*httptest.Server"
+          initialized_in: "test function"
+          used_in: ["test function"]
+          comment: "Mock GitHub API server"
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
