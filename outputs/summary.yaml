@@ -1,7 +1,22 @@
 status: success
 jira_id: GH-77
-file_path: /sandbox/workspace/output/GH-77_test_plan.md
-test_counts:
-  functional: 16
-  end_to_end: 0
-  total: 16
+verdict: APPROVED_WITH_FINDINGS
+confidence: LOW
+weighted_score: 81
+findings:
+  critical: 0
+  major: 5
+  minor: 6
+  actionable: 9
+  total: 11
+reviewed: outputs/stp/GH-77/GH-77_test_plan.md
+report: outputs/stp/GH-77/GH-77_stp_review.md
+dimension_scores:
+  rule_compliance: 85
+  requirement_coverage: 85
+  scenario_quality: 80
+  risk_accuracy: 75
+  scope_boundary: 90
+  strategy: 70
+  metadata: 50
+scope_downgrade: false
