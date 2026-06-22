@@ -1,0 +1,22 @@
+status: success
+jira_id: GH-77
+verdict: APPROVED_WITH_FINDINGS
+confidence: MEDIUM
+weighted_score: 85
+findings:
+  critical: 0
+  major: 4
+  minor: 5
+  actionable: 8
+  total: 9
+reviewed: outputs/stp/GH-77/GH-77_test_plan.md
+report: outputs/GH-77_stp_review.md
+dimension_scores:
+  rule_compliance: 90
+  requirement_coverage: 85
+  scenario_quality: 80
+  risk_accuracy: 85
+  scope_boundary: 90
+  strategy: 80
+  metadata: 70
+scope_downgrade: false
