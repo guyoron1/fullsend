@@ -4,9 +4,10 @@
 
 ### Metadata & Tracking
 
-- **Enhancement:** [GH-69](https://github.com/guyoron1/fullsend/issues/69)
-- **Feature Tracking:** [GH-69](https://github.com/guyoron1/fullsend/issues/69) — fix(#1230): run OutputPipeline on post-review before posting to forge
+- **Enhancement:** [GH-69](https://github.com/guyoron1/fullsend/issues/69) — fix(#1230): run OutputPipeline on post-review before posting to forge
+- **Feature Tracking:** [GH-69](https://github.com/guyoron1/fullsend/issues/69)
 - **Epic Tracking:** [GH-1230](https://github.com/guyoron1/fullsend/issues/1230)
+- **Upstream Mirror:** [fullsend-ai/fullsend#2444](https://github.com/fullsend-ai/fullsend/pull/2444)
 - **QE Owner:** QualityFlow (auto-generated)
 - **Owning SIG:** N/A
 - **Participating SIGs:** N/A
@@ -15,7 +16,7 @@
 
 ### Feature Overview
 
-This is a security fix that adds output sanitization to the `post-review` CLI command. The change introduces a `sanitizeReviewResult()` function that calls `security.OutputPipeline().Scan()` on all user-visible text fields in a `ReviewResult` — specifically the review body, finding descriptions, and finding remediations — before they are posted to the GitHub API via the forge client. The OutputPipeline chains a `UnicodeNormalizer` (strips zero-width and invisible characters) followed by a `SecretRedactor` (pattern-matches API keys, tokens, and credentials), preventing credential and PII leaks in public PR comments.
+Security fix that sanitizes review output through the security output pipeline before posting to the forge API, preventing credential and PII leaks in public PR comments. The pipeline normalizes obfuscated text (zero-width and invisible characters) and redacts detected secrets (API keys, tokens, credentials) from the review body and all finding fields before they reach the GitHub API.
 
 ---
 
@@ -67,7 +68,7 @@ This test plan covers the sanitization of review output in the `post-review` CLI
 - **P0:** Verify that secrets (API keys, tokens, credentials) embedded in review body and finding fields are redacted before posting to forge API.
 - **P0:** Verify that zero-width unicode obfuscation does not bypass secret detection.
 - **P1:** Verify that clean content (no secrets) passes through sanitization unchanged.
-- **P1:** Verify that sanitization integrates correctly with the post-review command flow (stale-head check, sticky post, formal review).
+- **P1:** Verify that sanitized content is delivered to the forge API when the post-review command processes a review containing secrets.
 - **P2:** Verify edge cases (empty body, empty findings, redaction warning logging).
 
 **Out of Scope (Testing Scope Exclusions):**
@@ -86,7 +87,7 @@ This test plan covers the sanitization of review output in the `post-review` CLI
 - [x] **Automation Testing** — Applicable
   - All tests are automated Go unit tests using `testing` + `testify`. No manual testing required.
 - [x] **Regression Testing** — Applicable
-  - Verify existing post-review behavior (stale-head detection, sticky comment posting, formal review submission) is not broken by the addition of sanitization.
+  - Existing tests in `internal/cli/postreview_test.go` cover `parseReviewResult`, stale-head detection, and formal review submission. These must continue to pass after adding `sanitizeReviewResult`. Run `go test ./internal/cli/...` to confirm.
 
 **Non-Functional:**
 
@@ -119,16 +120,9 @@ This test plan covers the sanitization of review output in the `post-review` CLI
 
 #### II.3 — Test Environment
 
-- **Cluster Topology:** N/A — unit tests only, no cluster required
 - **Platform Version:** Go 1.26.0 (per go.mod)
-- **CPU Virtualization:** N/A
-- **Compute:** Standard CI runner
-- **Special Hardware:** None
-- **Storage:** N/A
-- **Network:** N/A
-- **Operators:** N/A
-- **Platform:** Linux (CI)
-- **Special Configs:** None
+- **Compute:** Standard CI runner (Linux)
+- **Special Requirements:** None — unit tests only, no cluster, special hardware, network, or storage requirements
 
 #### II.3.1 — Testing Tools & Frameworks
 
@@ -156,9 +150,9 @@ No new or special tools required. Standard testing infrastructure: Go `testing` 
   - Mitigation: N/A
   - Status: Low risk
 - [ ] **Untestable**
-  - Specific Risk: Fail-open behavior of the Pipeline cannot be tested without injecting scanner errors.
-  - Mitigation: Pipeline error handling is tested in `internal/security/scanner_test.go`.
-  - Status: Accepted
+  - Specific Risk: Fail-open behavior of the Pipeline is testable via scanner interface mocking but is out of scope for this STP — covered in `internal/security/scanner_test.go`.
+  - Mitigation: Rely on existing scanner package tests for error-path coverage.
+  - Status: Accepted — out of scope, not untestable
 - [ ] **Resources**
   - Specific Risk: None
   - Mitigation: N/A
@@ -178,19 +172,18 @@ No new or special tools required. Standard testing infrastructure: Go `testing` 
 
 #### III.1 — Requirements Mapping
 
-- **Requirement ID:** GH-69
-- **Requirement Summary:** Review body content is sanitized for leaked secrets before posting to forge API
+- **Requirement ID:** GH-69-AC1
+- **Requirement Summary:** As a repository maintainer, I want secrets in review body content to be redacted before posting to forge API, so that credentials are not leaked in public PR comments.
 - **Test Scenarios:**
-  - Verify secrets in review body are redacted before posting
-  - Verify clean review body passes through unchanged
-  - Verify redaction warning logged with finding count
+  - Verify secrets embedded in review body are redacted before posting
+  - Verify clean review body (no secrets) passes through unchanged
 - **Test Type:** Unit Tests
 - **Priority:** P0
 
 ---
 
-- **Requirement ID:** GH-69
-- **Requirement Summary:** Review finding descriptions and remediations are sanitized before posting as inline comments
+- **Requirement ID:** GH-69-AC2
+- **Requirement Summary:** As a repository maintainer, I want secrets in review finding descriptions and remediations to be redacted before posting as inline comments, so that agent-generated findings do not leak credentials.
 - **Test Scenarios:**
   - Verify secrets in finding descriptions are redacted
   - Verify secrets in finding remediations are redacted
@@ -200,31 +193,40 @@ No new or special tools required. Standard testing infrastructure: Go `testing` 
 
 ---
 
-- **Requirement ID:** GH-69
-- **Requirement Summary:** Zero-width unicode obfuscation is normalized before secret detection
+- **Requirement ID:** GH-69-AC3
+- **Requirement Summary:** As a repository maintainer, I want zero-width unicode obfuscation to not bypass secret detection, so that intentionally obfuscated credentials are still caught.
 - **Test Scenarios:**
-  - Verify zero-width obfuscated secrets are detected and redacted
-  - Verify fullwidth character normalization before scanning
+  - Verify secrets obfuscated with zero-width characters are detected and redacted
+  - Verify secrets obfuscated with fullwidth characters are detected and redacted
 - **Test Type:** Unit Tests
 - **Priority:** P1
 
 ---
 
-- **Requirement ID:** GH-69
-- **Requirement Summary:** Sanitization handles edge cases without errors
+- **Requirement ID:** GH-69-AC4
+- **Requirement Summary:** As a repository maintainer, I want sanitization to handle edge cases gracefully, so that empty or minimal review content does not cause errors.
 - **Test Scenarios:**
-  - Verify empty review body skips sanitization
+  - Verify empty review body skips sanitization without error
   - Verify review with no findings sanitizes body only
 - **Test Type:** Unit Tests
 - **Priority:** P2
 
 ---
 
-- **Requirement ID:** GH-69
-- **Requirement Summary:** End-to-end post-review flow works with sanitized content
+- **Requirement ID:** GH-69-AC5
+- **Requirement Summary:** As a repository maintainer, I want a warning logged when secrets are redacted, so that security events are observable in CI logs.
 - **Test Scenarios:**
-  - Verify post-review completes after body redaction
-  - Verify sanitization runs before stale-head check
+  - Verify redaction warning is logged with correct finding count when secrets are found in body
+  - Verify no warning is logged when review content is clean
+- **Test Type:** Unit Tests
+- **Priority:** P1
+
+---
+
+- **Requirement ID:** GH-69-AC6
+- **Requirement Summary:** As a repository maintainer, I want sanitized content delivered to the forge API when the post-review command processes a review containing secrets.
+- **Test Scenarios:**
+  - Verify post-review command posts sanitized content to forge API when review body contains embedded secrets
 - **Test Type:** Functional
 - **Priority:** P1
 
