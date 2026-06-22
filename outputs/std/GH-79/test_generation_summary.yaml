@@ -1,0 +1,31 @@
+status: success
+jira_id: GH-79
+std_source: outputs/std/GH-79/GH-79_test_description.yaml
+languages:
+  - language: go
+    framework: testing
+    files:
+      - qf_helpers_test.go
+      - qf_slash_command_auth_test.go
+      - qf_pr_dispatch_auth_test.go
+      - qf_authorized_user_dispatch_test.go
+      - qf_auto_triage_exception_test.go
+      - qf_bot_label_workflows_test.go
+      - qf_bot_user_blocking_test.go
+      - qf_auth_association_eval_test.go
+      - qf_needs_info_retriage_test.go
+      - qf_cli_infrastructure_test.go
+      - qf_platform_auth_invariant_test.go
+      - qf_pr_retro_dispatch_test.go
+      - qf_visible_feedback_test.go
+    test_count: 40
+total_test_count: 40
+lsp_patterns_used: false
+blocked_tests: 2
+blocked_reason: "Visible feedback not implemented in this PR (scenarios 36-37)"
+scenarios_covered:
+  functional_tier1: 35
+  e2e_tier2: 3
+  blocked: 2
+compile_gate: pass
+all_tests_pass: true
