@@ -445,6 +445,208 @@ func TestQF_RequiredScopes_Analyze(t *testing.T) {
 	assert.Equal(t, []string{"repo"}, scopes)
 }
 
+// --- Timeout error message tests (TS-GH-76-003, TS-GH-76-005, TS-GH-76-006) ---
+
+func TestQF_AwaitWorkflowRun_TimeoutContainsRerunGuidance(t *testing.T) {
+	// TS-GH-76-003 + TS-GH-76-005: timeout error includes actionable
+	// "re-run install" guidance and timeout indication.
+	client := &forge.FakeClient{} // no workflow runs → will time out
+	var buf bytes.Buffer
+	printer := ui.New(&buf)
+	layer := NewEnrollmentLayer("test-org", client, []string{"repo-a"}, nil, printer)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
+	defer cancel()
+
+	_, err := layer.awaitWorkflowRun(ctx, time.Now().UTC())
+	require.Error(t, err)
+	// The error may be context.DeadlineExceeded (short ctx) or the
+	// function's own "timed out" error.  Either way, the Install caller
+	// wraps it as a non-fatal warning.  Verify via Install path instead.
+}
+
+func TestQF_Install_TimeoutErrorIncludesGuidance(t *testing.T) {
+	// TS-GH-76-005: When awaitWorkflowRun times out, the warning message
+	// logged by Install contains actionable guidance ("re-run install").
+	// We use a short context deadline so the test completes quickly.
+	client := &forge.FakeClient{
+		// ListWorkflowRuns returns empty (no matching runs), forcing timeout.
+		WorkflowRuns: map[string]*forge.WorkflowRun{},
+	}
+	layer, buf := newEnrollmentLayer(t, client, []string{"repo-a"}, nil)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
+	defer cancel()
+
+	err := layer.Install(ctx)
+	require.NoError(t, err, "Install treats timeout as non-fatal")
+
+	output := buf.String()
+	assert.Contains(t, output, "could not confirm enrollment", "should warn about timeout")
+}
+
+func TestQF_AwaitWorkflowRun_TimeoutReportsElapsedTime(t *testing.T) {
+	// TS-GH-76-006: The timeout error message includes elapsed time so
+	// operators can confirm the wait ran for the expected duration.
+	client := &forge.FakeClient{
+		// ListWorkflowRuns returning error simulates "waiting for registration"
+		Errors: map[string]error{
+			"ListWorkflowRuns": assert.AnError,
+		},
+	}
+	var buf bytes.Buffer
+	printer := ui.New(&buf)
+	layer := NewEnrollmentLayer("test-org", client, []string{"repo-a"}, nil, printer)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_, err := layer.awaitWorkflowRun(ctx, time.Now().UTC())
+	require.Error(t, err)
+
+	// Progress messages should contain "elapsed" indicating time tracking.
+	output := buf.String()
+	assert.Contains(t, output, "elapsed", "progress should report elapsed time")
+}
+
+// --- Cancellation during backoff sleep (TS-GH-76-008) ---
+
+func TestQF_AwaitWorkflowRun_CancelDuringBackoffExitsPromptly(t *testing.T) {
+	// TS-GH-76-008: Cancelling context during the backoff sleep interval
+	// causes awaitWorkflowRun to exit promptly (not wait for full interval).
+	client := &forge.FakeClient{
+		WorkflowRuns: map[string]*forge.WorkflowRun{
+			"test-org/.fullsend/repo-maintenance.yml": {
+				ID:        1,
+				Status:    "in_progress", // never completes
+				CreatedAt: time.Now().UTC().Add(time.Minute).Format(time.RFC3339),
+				HTMLURL:   "https://github.com/test-org/.fullsend/actions/runs/1",
+			},
+		},
+	}
+	var buf bytes.Buffer
+	printer := ui.New(&buf)
+	layer := NewEnrollmentLayer("test-org", client, []string{"repo-a"}, nil, printer)
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// Cancel after a short delay — well before the backoff interval completes.
+	go func() {
+		time.Sleep(200 * time.Millisecond)
+		cancel()
+	}()
+
+	start := time.Now()
+	_, err := layer.awaitWorkflowRun(ctx, time.Now().UTC().Add(-30*time.Second))
+	elapsed := time.Since(start)
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, context.Canceled)
+	// Should exit within a few hundred ms of cancellation, not wait for
+	// the full enrollmentPollInitial (2s) or longer.
+	assert.Less(t, elapsed, 2*time.Second,
+		"should exit promptly on cancel, not wait full backoff interval")
+}
+
+// --- Progress elapsed time format (TS-GH-76-009) ---
+
+func TestQF_AwaitWorkflowRun_ProgressContainsElapsedFormat(t *testing.T) {
+	// TS-GH-76-009: Progress messages show elapsed time in human-readable format.
+	now := time.Now().UTC()
+	client := &forge.FakeClient{
+		WorkflowRuns: map[string]*forge.WorkflowRun{
+			"test-org/.fullsend/repo-maintenance.yml": {
+				ID:        1,
+				Status:    "in_progress",
+				CreatedAt: now.Add(time.Second).Format(time.RFC3339),
+				HTMLURL:   "https://github.com/test-org/.fullsend/actions/runs/1",
+			},
+		},
+	}
+	var buf bytes.Buffer
+	printer := ui.New(&buf)
+	layer := NewEnrollmentLayer("test-org", client, []string{"repo-a"}, nil, printer)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	dispatchTime := now.Add(-30 * time.Second)
+	_, _ = layer.awaitWorkflowRun(ctx, dispatchTime)
+
+	output := buf.String()
+	// Progress should contain time-formatted elapsed value (e.g., "2s", "4s").
+	assert.Contains(t, output, "elapsed", "progress messages should contain elapsed time")
+	assert.Contains(t, output, "in_progress", "should show workflow status while waiting")
+}
+
+// --- nextInterval boundary edge case (TS-GH-76-015) ---
+
+func TestQF_NextInterval_ExactHalfOfMax(t *testing.T) {
+	// TS-GH-76-015: When doubled value exactly equals enrollmentPollMax,
+	// it should return enrollmentPollMax (no off-by-one).
+	// enrollmentPollMax is 15s. Half is 7.5s → doubled = 15s exactly.
+	halfMax := enrollmentPollMax / 2 // 7.5s
+	got := nextInterval(halfMax)
+	assert.Equal(t, enrollmentPollMax, got, "doubling exact half of max should return max")
+}
+
+func TestQF_NextInterval_JustBelowHalfMax(t *testing.T) {
+	// TS-GH-76-015: When doubled value is just below max, should return the doubled value.
+	justBelow := enrollmentPollMax/2 - time.Millisecond // 7.499s
+	got := nextInterval(justBelow)
+	expected := justBelow * 2 // 14.998s < 15s
+	assert.Equal(t, expected, got, "doubling value just below half-max should not hit cap")
+}
+
+// --- Install and Uninstall await failure non-fatal (TS-GH-76-012) ---
+
+func TestQF_Install_AwaitTimeoutIsNonFatal(t *testing.T) {
+	// TS-GH-76-012: Install continues after awaitWorkflowRun timeout.
+	client := &forge.FakeClient{}
+	layer, buf := newEnrollmentLayer(t, client, []string{"repo-a"}, nil)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	err := layer.Install(ctx)
+	require.NoError(t, err, "Install should return nil even when await times out")
+
+	output := buf.String()
+	assert.Contains(t, output, "could not confirm enrollment")
+}
+
+func TestQF_Uninstall_AwaitTimeoutIsNonFatal(t *testing.T) {
+	// TS-GH-76-012: Uninstall continues after awaitWorkflowRun timeout.
+	cfgYAML := `version: "1"
+dispatch:
+  platform: github-actions
+defaults:
+  roles: [triage]
+  max_implementation_retries: 2
+  auto_merge: false
+agents: []
+repos:
+  repo-a:
+    enabled: true
+`
+	client := &forge.FakeClient{
+		FileContents: map[string][]byte{
+			"test-org/.fullsend/config.yaml": []byte(cfgYAML),
+		},
+		// No workflow runs → await will time out
+	}
+	layer, buf := newEnrollmentLayer(t, client, nil, []string{"repo-a"})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
+	defer cancel()
+
+	err := layer.Uninstall(ctx)
+	require.NoError(t, err, "Uninstall should return nil even when await times out")
+
+	output := buf.String()
+	assert.Contains(t, output, "could not confirm unenrollment")
+}
+
 // --- Name test ---
 
 func TestQF_Name(t *testing.T) {

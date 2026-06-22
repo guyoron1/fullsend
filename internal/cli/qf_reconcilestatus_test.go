@@ -1,8 +1,11 @@
 package cli
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,6 +13,7 @@ import (
 
 	"github.com/fullsend-ai/fullsend/internal/forge"
 	gh "github.com/fullsend-ai/fullsend/internal/forge/github"
+	"github.com/fullsend-ai/fullsend/internal/ui"
 )
 
 // QualityFlow generated tests for GH-76: bound enrollment wait with timeout and backoff
@@ -170,4 +174,142 @@ func TestQF_ReconcileStatus_CancelledReason(t *testing.T) {
 
 	err := cmd.Execute()
 	require.NoError(t, err)
+}
+
+// --- setupStatusNotifier tests (TS-GH-76-019, TS-GH-76-020, TS-GH-76-021) ---
+
+func TestQF_SetupStatusNotifier_MintURLFromFlag(t *testing.T) {
+	// TS-GH-76-019: setupStatusNotifier uses --mint-url flag value to
+	// configure the status notification client with a client factory.
+	tmpDir := t.TempDir()
+	printer := ui.New(io.Discard)
+
+	sOpts := statusOpts{
+		statusRepo: "org/repo",
+		statusNum:  7,
+		mintURL:    "https://mint.example.com",
+	}
+
+	t.Setenv("GITHUB_RUN_ID", "run-42")
+
+	n, err := setupStatusNotifier(tmpDir, "review", sOpts, printer)
+	require.NoError(t, err)
+	assert.NotNil(t, n)
+	assert.True(t, n.HasClientFactory(),
+		"client factory should be set when --mint-url is provided via flag")
+}
+
+func TestQF_SetupStatusNotifier_FallsBackToMintURLEnv(t *testing.T) {
+	// TS-GH-76-020: When --mint-url flag is not provided, setupStatusNotifier
+	// falls back to FULLSEND_MINT_URL environment variable.
+	tmpDir := t.TempDir()
+	printer := ui.New(io.Discard)
+
+	sOpts := statusOpts{
+		statusRepo: "org/repo",
+		statusNum:  7,
+		// mintURL deliberately empty — should fall back to env
+	}
+
+	t.Setenv("FULLSEND_MINT_URL", "https://mint.example.com")
+	t.Setenv("GITHUB_RUN_ID", "run-42")
+
+	n, err := setupStatusNotifier(tmpDir, "code", sOpts, printer)
+	require.NoError(t, err)
+	assert.NotNil(t, n)
+	assert.True(t, n.HasClientFactory(),
+		"client factory should be set from FULLSEND_MINT_URL env var")
+}
+
+func TestQF_SetupStatusNotifier_ErrorWhenNoMintSource(t *testing.T) {
+	// TS-GH-76-021: Returns error when neither --mint-url flag nor
+	// FULLSEND_MINT_URL environment variable is set.
+	tmpDir := t.TempDir()
+	printer := ui.New(io.Discard)
+
+	sOpts := statusOpts{
+		statusRepo: "org/repo",
+		statusNum:  7,
+	}
+
+	t.Setenv("FULLSEND_MINT_URL", "")
+	t.Setenv("GITHUB_RUN_ID", "run-42")
+
+	_, err := setupStatusNotifier(tmpDir, "review", sOpts, printer)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no mint URL available",
+		"should indicate mint URL is missing")
+}
+
+// --- Run command flag acceptance (TS-GH-76-026) ---
+
+func TestQF_RunCommand_AcceptsMintURLFlag(t *testing.T) {
+	// TS-GH-76-026: The run command's CLI accepts --mint-url parameter.
+	cmd := newRunCmd()
+
+	f := cmd.Flags().Lookup("mint-url")
+	require.NotNil(t, f, "run command should expose --mint-url flag")
+	assert.Equal(t, "", f.DefValue, "default should be empty (env fallback)")
+}
+
+func TestQF_RunCommand_DeprecatedStatusTokenFlag(t *testing.T) {
+	// TS-GH-76-018 (run variant): The --status-token flag is deprecated
+	// but still present for backwards compatibility.
+	cmd := newRunCmd()
+
+	f := cmd.Flags().Lookup("status-token")
+	require.NotNil(t, f, "run command should have --status-token for backwards compat")
+	assert.NotEmpty(t, f.Deprecated, "--status-token should be marked deprecated")
+}
+
+// --- E2E flow: setupStatusNotifier with config.yaml (TS-GH-76-027) ---
+
+func TestQF_SetupStatusNotifier_LoadsConfigYAML(t *testing.T) {
+	// TS-GH-76-027: End-to-end flow from config loading through notifier setup.
+	tmpDir := t.TempDir()
+	printer := ui.New(io.Discard)
+
+	configData := `defaults:
+  status_notifications:
+    comment:
+      start: enabled
+      completion: enabled
+`
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "config.yaml"), []byte(configData), 0o644))
+
+	sOpts := statusOpts{
+		statusRepo: "org/repo",
+		statusNum:  7,
+		mintURL:    "https://mint.example.com",
+	}
+
+	t.Setenv("GITHUB_RUN_ID", "run-42")
+
+	n, err := setupStatusNotifier(tmpDir, "review", sOpts, printer)
+	require.NoError(t, err)
+	assert.NotNil(t, n)
+	assert.True(t, n.HasClientFactory(),
+		"notifier should be fully configured with config.yaml and mint URL")
+}
+
+func TestQF_SetupStatusNotifier_DeprecatedTokenNoFactory(t *testing.T) {
+	// TS-GH-76-018 (setup variant): When using deprecated --status-token,
+	// no client factory is set (static token used directly).
+	tmpDir := t.TempDir()
+	printer := ui.New(io.Discard)
+
+	sOpts := statusOpts{
+		statusRepo:  "org/repo",
+		statusNum:   7,
+		statusToken: "test-static-token",
+	}
+
+	t.Setenv("FULLSEND_MINT_URL", "")
+	t.Setenv("GITHUB_RUN_ID", "run-42")
+
+	n, err := setupStatusNotifier(tmpDir, "code", sOpts, printer)
+	require.NoError(t, err)
+	assert.NotNil(t, n)
+	assert.False(t, n.HasClientFactory(),
+		"static token should not set client factory")
 }
