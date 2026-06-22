@@ -1,22 +1,25 @@
-status: success
+status: error
 jira_id: GH-72
-verdict: NEEDS_REVISION
-confidence: LOW
-weighted_score: 73
+verdict: BLOCKED
+confidence: HIGH
+weighted_score: 0
+error: "STD artifact not found at outputs/std/GH-72/GH-72_test_description.yaml"
 findings:
-  critical: 2
-  major: 7
-  minor: 6
-  actionable: 13
-  total: 15
-reviewed: outputs/stp/GH-72/GH-72_test_plan.md
-report: GH-72_stp_review.md
+  critical: 1
+  major: 0
+  minor: 0
+  actionable: 1
+  total: 1
+artifacts_reviewed:
+  std_yaml: false
+  go_stubs: false
+  python_stubs: false
+  stp_available: true
 dimension_scores:
-  rule_compliance: 72
-  requirement_coverage: 70
-  scenario_quality: 75
-  risk_accuracy: 90
-  scope_boundary: 60
-  strategy: 65
-  metadata: 85
-scope_downgrade: false
+  traceability: 0
+  yaml_structure: 0
+  pattern_matching: 0
+  step_quality: 0
+  content_policy: 0
+  pse_quality: 0
+  codegen_readiness: 0
