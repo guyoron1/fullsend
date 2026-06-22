@@ -1,0 +1,61 @@
+---
+status: success
+component: std-orchestrator
+jira_id: GH-77
+phase: phase1
+stp_file: outputs/stp/GH-77/GH-77_test_plan.md
+output_dir: outputs/std/GH-77/
+
+execution_summary:
+  total_stp_scenarios: 20
+  unit_scenarios: 16
+  integration_scenarios: 4
+  existing_coverage_scenarios: 15
+  partial_coverage_scenarios: 1
+  new_scenarios: 4
+  p0_count: 4
+  p1_count: 12
+  p2_count: 4
+  std_file_generated: "GH-77_test_description.yaml"
+  scenarios_in_std: 20
+
+code_generation:
+  phase: phase1
+  test_strategy: auto
+  language: go
+  framework: testing
+  assertion_library: testify
+  go_tests:
+    file_count: 3
+    test_count: 4
+    status: "stubs_generated"
+    files:
+      - "drift_detection_stubs_test.go"
+      - "base64_roundtrip_stubs_test.go"
+      - "reconcile_regression_stubs_test.go"
+  python_tests:
+    file_count: 0
+    test_count: 0
+    status: "not_applicable"
+
+validation_results:
+  std_file:
+    file: GH-77_test_description.yaml
+    status: valid
+    yaml_syntax: passed
+    required_sections: passed
+    scenarios_count: 20
+  stub_coverage:
+    new_partial_scenarios: 4
+    stubs_generated: 4
+    coverage: "100%"
+
+errors: []
+warnings: []
+
+notes:
+  - "STD YAML generated as internal format (v2.1-enhanced, auto mode)"
+  - "15 of 20 scenarios have EXISTING_COVERAGE from GH-2247 test suite"
+  - "4 new stubs generated for uncovered/partially covered scenarios"
+  - "Stubs use stdlib testing + testify (auto-detected from repo)"
+---
