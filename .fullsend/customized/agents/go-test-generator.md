@@ -140,27 +140,34 @@ Log all verifications to stdout. If any constant was substituted:
 **IMPORTANT:** Never silently use an unverified constant. If `$SOURCE_REPO_DIR`
 does not exist, log `constants_verified: skipped` and proceed with STD values as-is.
 
-### Step 3: Resolve Target Directory
+### Step 3: Resolve Target Directories
 
-Read `target_test_directory` from the STD YAML's `code_generation_config`:
+Read `target_test_directory` and `target_test_directories` from the STD
+YAML's `code_generation_config`:
 
 ```bash
 TARGET_DIR=$(grep 'target_test_directory:' outputs/std/$JIRA_TICKET/${JIRA_TICKET}_test_description.yaml | awk '{print $2}' | tr -d '"')
 ```
 
-Determine the output location:
-- If `TARGET_DIR` is set AND `$SOURCE_REPO_DIR` exists → **co-located mode**:
-  write files to `$SOURCE_REPO_DIR/$TARGET_DIR/` with `qf_` prefix
-- Otherwise → **fallback mode**: write files to `$FULLSEND_OUTPUT_DIR/`
-  with `qf_` prefix
+Also check for `target_test_directories` (plural) — a list of all
+candidate package directories.
 
-### Step 3.5: Scan Existing Tests in Target Package
+**Per-scenario resolution:** For each test scenario, determine its target
+package by matching the functions/types it tests to their source package
+in `$SOURCE_REPO_DIR`. Use `TARGET_DIR` as the default when a scenario
+doesn't clearly map to a specific package.
 
-Before generating, read existing test files in the target package to
-learn the codebase conventions:
+If `$SOURCE_REPO_DIR` does not exist, report an error — do not write
+tests to `$FULLSEND_OUTPUT_DIR` as they will not compile.
+
+### Step 3.5: Scan Existing Tests in Target Packages
+
+Before generating, read existing test files in each resolved target
+package to learn the codebase conventions:
 
 ```bash
-ls $SOURCE_REPO_DIR/$TARGET_DIR/*_test.go 2>/dev/null
+# For each resolved package directory:
+ls $SOURCE_REPO_DIR/{package_dir}/*_test.go 2>/dev/null
 ```
 
 Extract from existing tests:
@@ -180,20 +187,22 @@ Invoke the **go-test-generator** skill with the Jira ID. It will:
 3. Generate working Go/Ginkgo test files using **real production imports**
 4. Validate generated code structure
 
-**Co-located mode:** Write `qf_*_test.go` files to `$SOURCE_REPO_DIR/$TARGET_DIR/`
-**Fallback mode:** Write `qf_*_test.go` files to `$FULLSEND_OUTPUT_DIR/`
+Write each `qf_*_test.go` file to `$SOURCE_REPO_DIR/{resolved_package}/`
+where `{resolved_package}` is determined per-scenario from the code being
+tested. Multiple test files may land in different packages.
 
 **CRITICAL:** Tests MUST import production types from their real packages.
 Do NOT redeclare types, structs, interfaces, or constants. The test files
 are inside the module tree and can import `internal/` packages directly.
 
-### Step 4: Compile Gate (Co-located mode only)
+### Step 4: Compile Gate
 
-If in co-located mode, verify the generated tests compile:
+Verify the generated tests compile across all target packages:
 
 ```bash
 cd $SOURCE_REPO_DIR
-go test -run='^$' -count=1 ./$TARGET_DIR/...
+# Run compile check on each package that received qf_ test files
+go test -run='^$' -count=1 ./...
 ```
 
 **If compilation fails:**
@@ -231,10 +240,8 @@ constants_corrections:              # list of corrections made (empty if all mat
 
 ### Step 5: Push Output to PR Branch (MANDATORY)
 
-Push generated test files to the PR branch. The approach depends on the
-output mode determined in Step 3.
-
-**Co-located mode** (test files already in `$SOURCE_REPO_DIR/$TARGET_DIR/`):
+Push generated test files to the PR branch. Test files are distributed
+across source packages — stage all `qf_*` files found in the source tree.
 
 ```bash
 cd "$FULLSEND_TARGET_REPO_DIR"
@@ -245,8 +252,8 @@ REPO_NAME=$(echo "$REMOTE_URL" | sed -n 's|.*github\.com[:/]\(.*\)\.git|\1|p')
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${REPO_NAME}.git"
 
-# Stage co-located test files (qf_ prefix makes them discoverable)
-git add "$TARGET_DIR"/qf_*_test.go
+# Stage all co-located test files across all packages
+find . -name "qf_*_test.go" -not -path "*/.git/*" -exec git add {} \;
 
 # Also stage metadata for post-pipeline summary
 META_DEST="outputs/go-tests/$JIRA_TICKET"
@@ -259,25 +266,5 @@ git commit -m "Add QualityFlow Go tests for $JIRA_TICKET [skip ci]" || true
 git push origin "HEAD:$BRANCH" || echo "Push failed — output available in sandbox artifacts"
 ```
 
-**Fallback mode** (test files in `$FULLSEND_OUTPUT_DIR/`):
-
-```bash
-DEST="$FULLSEND_TARGET_REPO_DIR/outputs/go-tests/$JIRA_TICKET"
-mkdir -p "$DEST"
-cp "$FULLSEND_OUTPUT_DIR/"qf_*_test.go "$DEST/" 2>/dev/null || true
-cp "$FULLSEND_OUTPUT_DIR/${JIRA_TICKET}_lsp_patterns.yaml" "$DEST/" 2>/dev/null || true
-cp "$FULLSEND_OUTPUT_DIR/summary.yaml" "$DEST/" 2>/dev/null || true
-cd "$FULLSEND_TARGET_REPO_DIR"
-git config user.email "qualityflow[bot]@users.noreply.github.com"
-git config user.name "QualityFlow"
-REMOTE_URL=$(git remote get-url origin)
-REPO_NAME=$(echo "$REMOTE_URL" | sed -n 's|.*github\.com[:/]\(.*\)\.git|\1|p')
-BRANCH=$(git rev-parse --abbrev-ref HEAD)
-git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${REPO_NAME}.git"
-git add "outputs/go-tests/$JIRA_TICKET/"
-git commit -m "Add QualityFlow Go tests for $JIRA_TICKET [skip ci]" || true
-git push origin "HEAD:$BRANCH" || echo "Push failed — output available in sandbox artifacts"
-```
-
 If git push fails, do not treat it as a fatal error. The output files in
-`$FULLSEND_OUTPUT_DIR` will be extracted by FullSend as a fallback.
+`$FULLSEND_OUTPUT_DIR` will be extracted by FullSend as a secondary channel.

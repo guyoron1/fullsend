@@ -207,16 +207,32 @@ code_generation_config:
 
 **Resolving `target_test_directory` (auto mode):**
 
-1. From the PR diff `changed_files`, identify the primary package directory
+1. From the PR diff `changed_files`, identify ALL package directories
    where production code was modified (e.g., `internal/cli/run.go` → `internal/cli`)
-2. Verify that directory contains existing `_test.go` files (confirming
+2. Verify each directory contains existing `_test.go` files (confirming
    tests belong there)
-3. If multiple directories changed, pick the one with the most changes
-4. **Fallback:** Derive from `imports.project[0]` — translate the import
-   path to a filesystem path relative to the module root (e.g.,
+3. If a single directory dominates the changes, use it as the primary value
+4. If multiple directories changed, set `target_test_directory` to the
+   primary directory AND add a `target_test_directories` list field:
+   ```yaml
+   target_test_directory: "internal/cli"          # primary (most changes)
+   target_test_directories:                        # all candidate packages
+     - "internal/cli"
+     - "internal/forge/github"
+     - "internal/harness"
+   ```
+5. If no `.go` files changed (e.g., only shell scripts or docs), derive
+   from `imports.project` entries — translate each import path to a
+   filesystem path relative to the module root (e.g.,
    `github.com/org/repo/internal/cli` → `internal/cli`)
-5. If nothing resolves, set to `null` — the test generator will fall back
-   to writing to `outputs/` (backward-compatible)
+6. **Never set to `null`.** If nothing resolves from changed files or
+   imports, scan test scenarios for referenced functions/types and resolve
+   their packages. As a last resort, use the module root directory.
+
+The test generator uses `target_test_directories` (plural) when available
+to distribute tests per-scenario to the correct package. When only
+`target_test_directory` (singular) is set, it still resolves per-scenario
+placement from each scenario's referenced imports.
 
 Skip CNV-specific fields (context_init, dot_imports, k8s imports, KubeVirt helpers,
 timeout constants, helper_library_imports) when in auto mode. These are project-specific
@@ -308,7 +324,7 @@ code_generation_config:
   - sig-compute → `tests/compute/`
   - sig-storage → `tests/storage/`
   - If `config_dir` has `repositories.yaml` with a `test_directory` field, use that
-  - Set to `null` if unresolvable — the test generator falls back to `outputs/`
+  - Never set to `null` — use `owning_sig` default as last resort
 - **filename_prefix**: Always `"qf_"` (from `_defaults.yaml` `test_file_prefix`)
 - All other fields are STATIC (copy from template above)
 

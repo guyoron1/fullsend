@@ -33,28 +33,35 @@ configured language/framework.
 
 ## Output
 
-**Co-located mode** (when `code_generation_config.target_test_directory` is set):
-
-Test files are written directly into the source package directory with
-`qf_` filename prefix, co-located with production code:
+Test files are **always** written directly into source package directories
+with `qf_` filename prefix, co-located with production code:
 
 ```
-{target_test_directory}/qf_{feature}_test.go      (Go)
-{target_test_directory}/qf_test_{feature}.py       (Python)
-outputs/go-tests/{JIRA_ID}/summary.yaml            (metadata only)
-outputs/python-tests/{JIRA_ID}/summary.yaml        (metadata only)
+{resolved_package}/qf_{feature}_test.go      (Go)
+{resolved_package}/qf_test_{feature}.py       (Python)
+outputs/go-tests/{JIRA_ID}/summary.yaml       (metadata only)
+outputs/python-tests/{JIRA_ID}/summary.yaml   (metadata only)
 ```
 
-**Fallback mode** (when `target_test_directory` is null or `SOURCE_REPO_PATH` unavailable):
+**Per-scenario package resolution:** Each test file is placed in the
+source package that contains the code it tests. When the STD YAML
+provides `target_test_directories` (plural), use it as the candidate
+list. When only `target_test_directory` (singular) is provided, use it
+as the default but still resolve per-scenario if scenarios reference
+functions in other packages.
 
-```
-outputs/go-tests/{JIRA_ID}/qf_{feature}_test.go
-outputs/python-tests/{JIRA_ID}/qf_test_{feature}.py
-outputs/tests/{JIRA_ID}/{language}/qf_*             (any other language)
-```
+**Resolution order for each scenario's target package:**
+1. The scenario's `code_under_test` or referenced function → find its
+   package in `SOURCE_REPO_PATH`
+2. The scenario's imports (`imports.project` entries) → derive the
+   filesystem path from the import path
+3. `target_test_directory` from `code_generation_config` (default)
+4. If `SOURCE_REPO_PATH` is unavailable → **error**: report
+   `"reason": "no-source-repo"` and do not generate tests. Never write
+   tests to `outputs/` or `qf-tests/` — they won't compile.
 
-The `qf_` filename prefix is always used regardless of mode — it makes
-QF-generated tests discoverable via `find . -name 'qf_*'`.
+The `qf_` filename prefix makes QF-generated tests discoverable via
+`find . -name 'qf_*'`.
 
 ---
 
@@ -139,10 +146,11 @@ Extract:
 projects). Instead, read existing test files in `SOURCE_REPO_PATH` to learn
 conventions (indentation, assertion style, helper patterns) directly from the repo.
 
-### Step 3.5: Scan Existing Tests in Target Package
+### Step 3.5: Scan Existing Tests in Target Packages
 
-If `code_generation_config.target_test_directory` is set and
-`SOURCE_REPO_PATH` is available:
+For each resolved target package directory (from `target_test_directories`
+or `target_test_directory`), scan existing tests when `SOURCE_REPO_PATH`
+is available:
 
 ```bash
 ls $SOURCE_REPO_PATH/{target_test_directory}/*_test.go 2>/dev/null
@@ -167,10 +175,10 @@ appropriate framework section below.
 - Python: `qf_test_{feature}.py`
 
 **File placement (all frameworks):**
-- If `target_test_directory` is set → write to
-  `$SOURCE_REPO_PATH/{target_test_directory}/`
-- If `target_test_directory` is null → fall back to
-  `outputs/{language}-tests/{JIRA_ID}/`
+- Resolve the target package for each test file using the per-scenario
+  resolution order (see Output section above)
+- Write to `$SOURCE_REPO_PATH/{resolved_package}/`
+- If `SOURCE_REPO_PATH` is unavailable → error, do not generate
 
 ---
 
@@ -403,7 +411,6 @@ pytest --collect-only {target_test_directory}/qf_test_{feature}.py
 ### Compile gate skip conditions
 
 Skip the compile gate when:
-- `SOURCE_REPO_PATH` is not set (fallback mode — tests in `outputs/`)
 - The project uses a non-standard build system (e.g., `build_command`
   in config is set to something other than `go test`)
 

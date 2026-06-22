@@ -6,8 +6,8 @@
 # Pipeline: stp-builder → stp-reviewer → stp-refiner → std-builder →
 #           std-reviewer → std-refiner → test-generator
 # Each agent runs in its own FullSend sandbox, passing outputs via the PR repo.
-# After all agents complete, test files are organized under qf-tests/{JIRA_ID}/
-# and intermediate artifacts are cleaned up — all on the code PR branch.
+# After all agents complete, test files are co-located in source package
+# directories with qf_ prefix and intermediate artifacts are cleaned up.
 name: qualityflow
 
 permissions:
@@ -927,17 +927,19 @@ jobs:
           # QualityFlow Agent — Test Generation (Stage 7)
 
           CRITICAL REQUIREMENT: Generated test files MUST be placed directly in
-          the source package directories with `qf_` filename prefix. Do NOT write
-          tests to qf-tests/ — they must be co-located with production code so
-          they can import internal/ packages and compile.
+          source package directories with `qf_` filename prefix. Do NOT write
+          tests to qf-tests/ or outputs/ — they must be co-located with
+          production code so they can import internal/ packages and compile.
 
-          Read `target_test_directory` from the STD YAML's `code_generation_config`
-          to determine where test files should be placed.
+          For each test scenario, resolve its target package:
+          1. Match the scenario's tested functions/types to their source package
+          2. Use `target_test_directory` from STD YAML as the default package
+          3. Use `target_test_directories` (plural) as candidate packages
+          4. Different test files CAN and SHOULD land in different packages
 
           After generating test files:
 
-          1. Write qf_*_test.go / qf_test_*.py files into the target package
-             directory (from code_generation_config.target_test_directory)
+          1. Write qf_*_test.go / qf_test_*.py into each resolved package dir
           2. Run compile gate: `go test -run='^$' -count=1 ./...`
           3. Fix any compilation errors, retry up to 3 times
           4. Push only files that compile:
@@ -961,8 +963,8 @@ jobs:
           git push origin "HEAD:$BRANCH" || echo "Push failed — output available in sandbox artifacts"
           ```
 
-          If target_test_directory is null or SOURCE_REPO_DIR is unavailable,
-          fall back to writing tests to outputs/ with qf_ prefix.
+          NEVER write tests to qf-tests/ or outputs/{language}-tests/.
+          If SOURCE_REPO_DIR is unavailable, report an error instead.
 
           This is MANDATORY. Do not consider your task complete until you have
           attempted the git push.
