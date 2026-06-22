@@ -1,0 +1,36 @@
+status: success
+jira_id: GH-73
+std_source: outputs/std/GH-73/GH-73_test_description.yaml
+languages:
+  - language: go
+    framework: testing
+    assertion_library: testify
+    files:
+      - internal/cli/qf_postreview_test.go
+      - internal/cli/qf_reconcilestatus_test.go
+      - internal/cli/qf_run_test.go
+      - internal/cli/qf_mint_test.go
+      - internal/cli/qf_vendor_test.go
+      - internal/binary/qf_download_test.go
+      - internal/binary/qf_vendorroot_test.go
+      - internal/harness/qf_discover_test.go
+      - internal/harness/qf_lint_test.go
+      - internal/dispatch/gcf/qf_provisioner_test.go
+      - internal/scaffold/qf_render_test.go
+    test_count: 61
+total_test_count: 61
+scenario_coverage:
+  total_scenarios: 46
+  covered: 46
+  missing: 0
+compile_gate: passed
+compile_gate_retries: 1
+lsp_patterns_used: false
+target_directories:
+  - internal/cli
+  - internal/binary
+  - internal/harness
+  - internal/dispatch/gcf
+  - internal/scaffold
+mode: co-located
+filename_prefix: qf_
