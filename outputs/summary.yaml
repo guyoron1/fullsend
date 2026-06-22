@@ -1,0 +1,22 @@
+status: success
+jira_id: GH-72
+file_path: /sandbox/workspace/output/GH-72_test_plan.md
+test_counts:
+  unit_tests: 30
+  functional: 4
+  end_to_end: 1
+  total: 35
+validation:
+  checks_total: 18
+  checks_passed: 18
+  checks_failed: 0
+pipeline:
+  project_resolver: auto-detected
+  data_collection: github_issue
+  pr_analysis: "PR #72 (4084 additions, 185 deletions, 57 files)"
+  lsp_analysis: "10 LSP calls (documentSymbol, findReferences, incomingCalls)"
+  regression_themes:
+    - "Batch path-existence via Git Trees API"
+    - "Mint token integration for status comments"
+    - "ADR-0045 Phase 3 (Lint, DiscoverRemoteAgents)"
+    - "Config expansion for triage prerequisites"
