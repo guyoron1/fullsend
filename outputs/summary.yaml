@@ -1,7 +1,0 @@
-status: success
-jira_id: GH-77
-file_path: /sandbox/workspace/output/GH-77_test_plan.md
-test_counts:
-  functional: 16
-  e2e: 0
-  total: 16
