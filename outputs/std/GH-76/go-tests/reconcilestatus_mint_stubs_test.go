@@ -14,7 +14,6 @@ import (
 func TestQFStub_ReconcileStatusMintAuth(t *testing.T) {
 	/*
 	Preconditions:
-		- Go 1.22+ toolchain available
 		- reconcile-status command accessible via newReconcileStatusCmd()
 	*/
 

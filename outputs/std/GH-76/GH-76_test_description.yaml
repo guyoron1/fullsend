@@ -5,7 +5,7 @@
 # Version: 2.1-enhanced (auto mode)
 
 document_metadata:
-  std_version: "2.1-enhanced"
+  std_version: "2.1-enhanced-auto"
   generated_date: "2026-06-22"
   jira_issue: "GH-76"
   jira_summary: "Bound Enrollment Wait with Timeout and Backoff"
@@ -14,17 +14,6 @@ document_metadata:
     file: "outputs/stp/GH-76/GH-76_test_plan.md"
     version: "v1"
     sections_covered: "Section III - Test Scenarios & Traceability"
-  related_prs:
-    - repo: "guyoron1/fullsend"
-      pr_number: 76
-      url: "https://github.com/guyoron1/fullsend/pull/76"
-      title: "Bound Enrollment Wait with Timeout and Backoff"
-      merged: false
-    - repo: "fullsend-ai/fullsend"
-      pr_number: 2359
-      url: "https://github.com/fullsend-ai/fullsend/pull/2359"
-      title: "Upstream: Bound enrollment wait with timeout and backoff"
-      merged: true
   owning_sig: "N/A"
   participating_sigs: []
   total_scenarios: 27
@@ -34,35 +23,61 @@ document_metadata:
   functional_count: 2
   e2e_count: 0
   p0_count: 6
-  p1_count: 19
-  p2_count: 2
+  p1_count: 20
+  p2_count: 1
   existing_coverage_count: 0
   new_count: 27
   test_strategy_mode: "auto"
 
 code_generation_config:
-  std_version: "2.1-enhanced"
+  std_version: "2.1-enhanced-auto"
   framework: "testing"
   assertion_library: "testify"
   language: "go"
-  package_name: "layers"
-  target_test_directory: null
   filename_prefix: "qf_"
-  imports:
-    standard:
-      - "context"
-      - "testing"
-      - "time"
-      - "net/http"
-      - "net/http/httptest"
-    framework:
-      - "github.com/stretchr/testify/assert"
-      - "github.com/stretchr/testify/require"
-    project:
-      - "github.com/fullsend-ai/fullsend/internal/forge"
-      - "github.com/fullsend-ai/fullsend/internal/forge/github"
-      - "github.com/fullsend-ai/fullsend/internal/ui"
-      - "github.com/fullsend-ai/fullsend/internal/config"
+  per_package_imports:
+    layers:
+      package_name: "layers"
+      target_test_directory: "internal/layers"
+      imports:
+        standard:
+          - "context"
+          - "testing"
+          - "time"
+        framework:
+          - "github.com/stretchr/testify/assert"
+          - "github.com/stretchr/testify/require"
+        project:
+          - "github.com/fullsend-ai/fullsend/internal/forge"
+          - "github.com/fullsend-ai/fullsend/internal/forge/github"
+          - "github.com/fullsend-ai/fullsend/internal/ui"
+    cli:
+      package_name: "cli"
+      target_test_directory: "internal/cli"
+      imports:
+        standard:
+          - "context"
+          - "net/http"
+          - "net/http/httptest"
+          - "testing"
+        framework:
+          - "github.com/stretchr/testify/assert"
+          - "github.com/stretchr/testify/require"
+        project:
+          - "github.com/fullsend-ai/fullsend/internal/cli"
+          - "github.com/fullsend-ai/fullsend/internal/mintclient"
+          - "github.com/fullsend-ai/fullsend/internal/statuscomment"
+    statuscomment:
+      package_name: "statuscomment"
+      target_test_directory: "internal/statuscomment"
+      imports:
+        standard:
+          - "testing"
+        framework:
+          - "github.com/stretchr/testify/assert"
+          - "github.com/stretchr/testify/require"
+        project:
+          - "github.com/fullsend-ai/fullsend/internal/forge"
 
 common_preconditions:
   infrastructure:
@@ -70,8 +85,8 @@ common_preconditions:
       requirement: "Go 1.22+"
       validation: "go version"
     - name: "fullsend source"
-      requirement: "PR #76 changes available on branch"
-      validation: "git log --oneline -1"
+      requirement: "Enrollment bounded wait implementation available in package"
+      validation: "go build ./internal/layers/..."
   operators: []
   cluster_configuration:
     topology: "N/A"

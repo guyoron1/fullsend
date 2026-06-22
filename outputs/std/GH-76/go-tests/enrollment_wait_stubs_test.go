@@ -14,8 +14,7 @@ import (
 func TestQFStub_EnrollmentWaitBackoff(t *testing.T) {
 	/*
 	Preconditions:
-		- Go 1.22+ toolchain available
-		- PR #76 changes available on branch
+		- awaitWorkflowRun and nextInterval functions available in package
 		- forge.FakeClient available for mocking workflow status
 	*/
 

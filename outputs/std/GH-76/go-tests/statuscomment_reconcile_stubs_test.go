@@ -14,7 +14,6 @@ import (
 func TestQFStub_ReconcileOrphaned(t *testing.T) {
 	/*
 	Preconditions:
-		- Go 1.22+ toolchain available
 		- forge.FakeClient available for mocking comment operations
 		- ReconcileOrphaned function accessible in package
 	*/
