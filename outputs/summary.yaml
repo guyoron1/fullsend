@@ -2,21 +2,23 @@ status: success
 jira_id: GH-73
 verdict: NEEDS_REVISION
 confidence: LOW
-weighted_score: 72
+weighted_score: 83
 findings:
   critical: 2
   major: 5
-  minor: 3
-  actionable: 9
-  total: 10
-reviewed: outputs/stp/GH-73/GH-73_test_plan.md
-report: GH-73_stp_review.md
+  minor: 4
+  actionable: 11
+  total: 11
+artifacts_reviewed:
+  std_yaml: true
+  go_stubs: false
+  python_stubs: false
+  stp_available: true
 dimension_scores:
-  rule_compliance: 56
-  requirement_coverage: 80
-  scenario_quality: 75
-  risk_accuracy: 85
-  scope_boundary: 70
-  strategy: 60
-  metadata: 85
-scope_downgrade: false
+  traceability: 88
+  yaml_structure: 82
+  pattern_matching: 70
+  step_quality: 85
+  content_policy: 90
+  pse_quality: null  # skipped — no stubs
+  codegen_readiness: 60
