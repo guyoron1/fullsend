@@ -4,8 +4,8 @@
 
 ### Metadata & Tracking
 
-- **Enhancement:** [GH-72](https://github.com/guyoron1/fullsend/issues/72) — perf(#2351): batch path-existence checks via Git Trees API
-- **Feature Tracking:** [GH-72](https://github.com/guyoron1/fullsend/issues/72)
+- **Enhancement:** [GH-72](https://github.com/fullsend-ai/fullsend/issues/72) — perf(#2351): batch path-existence checks via Git Trees API
+- **Feature Tracking:** [GH-72](https://github.com/fullsend-ai/fullsend/issues/72)
 - **Epic Tracking:** [upstream #2360](https://github.com/fullsend-ai/fullsend/pull/2360)
 - **QE Owner:** QualityFlow (auto-generated)
 - **Owning SIG:** N/A
@@ -57,6 +57,7 @@ This PR introduces a performance optimization that replaces O(N) individual GitH
 - [ ] **Developer handoff completed and design reviewed.**
   - PR adds new `forge.Client` interface method (`ListRepositoryFiles`), requiring all implementations (live, fake) to implement it.
   - `ClientFactory` pattern in `statuscomment.Notifier` is a well-understood dependency injection approach.
+  - QE kickoff completed during PR review phase.
 
 - [ ] **Technology challenges identified and mitigated.**
   - Git Trees API truncation for very large repos is handled with explicit error return.
@@ -118,7 +119,7 @@ This test plan covers four change themes in GH-72: (1) batch path-existence chec
 **Non-Functional:**
 
 - [ ] **Performance Testing** — Not applicable.
-  - Performance improvement is architectural (O(N) → O(1) API calls); no benchmark tests in scope.
+  - The O(N) → O(1) API call optimization is validated via a functional guard test (error injection on `GetFileContent` confirms batch API is used). No dedicated performance benchmarking suite is in scope.
 
 - [ ] **Scale Testing** — Not applicable.
   - Truncated tree error handling covers the scale boundary; no load testing needed.
@@ -141,9 +142,8 @@ This test plan covers four change themes in GH-72: (1) batch path-existence chec
 - [ ] **Upgrade Testing** — Not applicable.
   - No data migration or state upgrade required.
 
-- [x] **Dependencies** — Applicable.
-  - `mintclient` package is a new dependency for status comment authentication.
-  - `forge.FakeClient` updated to support new interface method.
+- [ ] **Dependencies** — Not applicable.
+  - No cross-team deliveries are required. All dependencies are internal to the fullsend module and versioned together (`mintclient`, `forge.FakeClient`).
 
 - [ ] **Cross Integrations** — Not applicable.
   - Changes are internal to fullsend; no cross-product integrations.
@@ -168,7 +168,7 @@ This test plan covers four change themes in GH-72: (1) batch path-existence chec
 
 #### II.3.1 — Testing Tools & Frameworks
 
-No new or special tools required. Standard `go test` with `testify` assertions.
+No new or special tools required beyond the project standard.
 
 #### II.4 — Entry Criteria
 
@@ -205,8 +205,8 @@ No new or special tools required. Standard `go test` with `testify` assertions.
   - Status: [x] No risk
 
 - [ ] **Dependencies**
-  - Risk: `mintclient` package availability and API stability.
-  - Mitigation: Package is internal to the fullsend module; versioned together.
+  - Risk: None identified — all packages are internal to the fullsend module and versioned together.
+  - Mitigation: N/A
   - Status: [x] No risk
 
 - [ ] **Other**
@@ -268,7 +268,7 @@ No new or special tools required. Standard `go test` with `testify` assertions.
   - Verify validation rejects empty org — Unit Tests — P2
 
 - CI workflows correctly pass mint-url instead of static status-token
-  - Verify action.yml passes mint-url to binary — End-to-End — P1
+  - Verify action.yml passes mint-url to binary — Functional — P1
   - Verify deprecation warning emitted for status-token — Functional — P1
   - Verify token masking in GitHub Actions output — Functional — P1
 
