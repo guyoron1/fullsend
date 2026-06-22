@@ -1,22 +1,22 @@
 status: success
 jira_id: GH-79
-verdict: NEEDS_REVISION
+verdict: APPROVED_WITH_FINDINGS
 confidence: MEDIUM
-weighted_score: 78
+weighted_score: 92
 findings:
-  critical: 1
-  major: 8
-  minor: 6
-  actionable: 13
-  total: 15
+  critical: 0
+  major: 0
+  minor: 3
+  actionable: 1
+  total: 3
 reviewed: outputs/stp/GH-79/GH-79_test_plan.md
 report: outputs/reviews/GH-79/GH-79_stp_review.md
 dimension_scores:
-  rule_compliance: 75
-  requirement_coverage: 72
-  scenario_quality: 85
-  risk_accuracy: 85
-  scope_boundary: 82
-  strategy: 88
-  metadata: 80
+  rule_compliance: 95
+  requirement_coverage: 92
+  scenario_quality: 93
+  risk_accuracy: 95
+  scope_boundary: 95
+  strategy: 93
+  metadata: 90
 scope_downgrade: false
