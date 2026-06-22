@@ -1,0 +1,27 @@
+status: success
+jira_id: GH-76
+file_path: /sandbox/workspace/output/GH-76_test_plan.md
+test_counts:
+  unit_tests: 25
+  functional: 2
+  total: 27
+validation:
+  passed: 18
+  failed: 0
+  warnings: 2
+project:
+  project_id: auto-detected
+  display_name: fullsend
+  language: go
+  framework: testing
+  assertion_library: testify
+pipeline_steps:
+  project_resolver: success
+  data_collection: success
+  pr_analysis: success
+  lsp_analysis: success
+  requirement_mapping: success
+  scenario_building: success
+  tier_classification: success
+  template_engine: success
+  output_validation: success
