@@ -14,33 +14,22 @@ document_metadata:
     file: "outputs/stp/GH-77/GH-77_test_plan.md"
     version: "v1"
     sections_covered: "Section III - Requirements-to-Tests Mapping"
-  related_prs:
-    - repo: "fullsend-ai/fullsend"
-      pr_number: 2254
-      url: "https://github.com/fullsend-ai/fullsend/pull/2254"
-      title: "fix(#2247): compare decoded text in shim drift detection"
-      merged: false
-    - repo: "guyoron1/fullsend"
-      pr_number: 77
-      url: "https://github.com/guyoron1/fullsend/pull/77"
-      title: "fix(#2247): compare decoded text in shim drift detection"
-      merged: false
   owning_sig: "Dispatch"
   participating_sigs: []
 
   total_scenarios: 20
   tier_1_count: 0
   tier_2_count: 0
-  unit_count: 16
+  unit_count: 14
   functional_count: 0
-  integration_count: 4
+  integration_count: 6
   e2e_count: 0
   p0_count: 4
-  p1_count: 12
-  p2_count: 4
-  existing_coverage_count: 15
+  p1_count: 11
+  p2_count: 5
+  existing_coverage_count: 16
   partial_coverage_count: 1
-  new_count: 4
+  new_count: 3
   test_strategy_mode: "auto"
 
 code_generation_config:
