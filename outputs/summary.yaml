@@ -1,0 +1,21 @@
+status: success
+jira_id: GH-74
+file_path: /sandbox/workspace/output/GH-74_test_plan.md
+test_counts:
+  unit_tests: 19
+  tier1: 0
+  tier2: 0
+  total: 19
+validation:
+  total_checks: 18
+  passed: 18
+  failed: 0
+  warnings: 0
+pipeline:
+  project_id: auto-detected
+  display_name: fullsend
+  issue_source: github
+  lsp_analysis: true
+  lsp_calls: 6
+  pr_analyzed: 74
+  source_repo: guyoron1/fullsend
