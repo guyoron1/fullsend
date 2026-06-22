@@ -2403,12 +2403,12 @@ sections:
 summary:
   total_scenarios: 98
   by_priority:
-    P0: 35
-    P1: 43
-    P2: 20
+    P0: 41
+    P1: 46
+    P2: 11
   by_test_type:
-    unit: 78
-    integration: 14
+    unit: 84
+    integration: 11
     e2e: 3
     functional: 0
   by_section:
