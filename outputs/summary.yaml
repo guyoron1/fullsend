@@ -1,28 +1,22 @@
 status: success
 jira_id: GH-73
-file_path: /sandbox/workspace/output/GH-73_test_plan.md
-test_counts:
-  unit: 72
-  integration: 8
-  e2e: 6
-  total: 86
-scenarios:
-  total: 86
-  high_priority: 32
-  medium_priority: 38
-  low_priority: 16
-components:
-  - post-review CLI
-  - forge interface
-  - forge GitHub implementation
-  - reconcile status
-  - CLI (vendor, mint, admin, run, discover-slugs)
-  - binary vendoring
-  - GCF provisioner
-  - harness (discovery, lint, scaffold)
-  - config
-  - E2E tests
-  - workflows
-regression_risk: high
-lsp_analysis: true
-lsp_calls: 6
+verdict: NEEDS_REVISION
+confidence: LOW
+weighted_score: 72
+findings:
+  critical: 2
+  major: 5
+  minor: 3
+  actionable: 9
+  total: 10
+reviewed: outputs/stp/GH-73/GH-73_test_plan.md
+report: GH-73_stp_review.md
+dimension_scores:
+  rule_compliance: 56
+  requirement_coverage: 80
+  scenario_quality: 75
+  risk_accuracy: 85
+  scope_boundary: 70
+  strategy: 60
+  metadata: 85
+scope_downgrade: false
