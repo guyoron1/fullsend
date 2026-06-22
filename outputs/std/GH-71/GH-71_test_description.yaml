@@ -14,12 +14,6 @@ document_metadata:
     file: "outputs/stp/GH-71/GH-71_test_plan.md"
     version: "v1"
     sections_covered: "Section III - Test Scenarios & Traceability"
-  related_prs:
-    - repo: "guyoron1/fullsend"
-      pr_number: 71
-      url: "https://github.com/guyoron1/fullsend/pull/71"
-      title: "fix(#2378): report failure when agent errors with no commits"
-      merged: false
   owning_sig: "N/A"
   participating_sigs: []
   total_scenarios: 22
@@ -40,24 +34,40 @@ code_generation_config:
   framework: "testing"
   assertion_library: "testify"
   language: "go"
-  package_name: "cli"
-  target_test_directory: "internal/cli"
   filename_prefix: "qf_"
-  imports:
-    standard:
-      - "context"
-      - "os"
-      - "os/exec"
-      - "path/filepath"
-      - "testing"
-    framework:
-      - "github.com/stretchr/testify/assert"
-      - "github.com/stretchr/testify/require"
-    project:
-      - "github.com/fullsend-ai/fullsend/internal/cli"
-      - "github.com/fullsend-ai/fullsend/internal/forge"
-      - "github.com/fullsend-ai/fullsend/internal/statuscomment"
-      - "github.com/fullsend-ai/fullsend/internal/config"
+  target_packages:
+    cli:
+      package_name: "cli"
+      target_test_directory: "internal/cli"
+      scenarios: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 20, 21, 22]
+      imports:
+        standard:
+          - "context"
+          - "os"
+          - "os/exec"
+          - "path/filepath"
+          - "testing"
+        framework:
+          - "github.com/stretchr/testify/assert"
+          - "github.com/stretchr/testify/require"
+        project:
+          - "github.com/fullsend-ai/fullsend/internal/cli"
+          - "github.com/fullsend-ai/fullsend/internal/forge"
+    statuscomment:
+      package_name: "statuscomment"
+      target_test_directory: "internal/statuscomment"
+      scenarios: [17, 18, 19]
+      imports:
+        standard:
+          - "context"
+          - "testing"
+        framework:
+          - "github.com/stretchr/testify/assert"
+          - "github.com/stretchr/testify/require"
+        project:
+          - "github.com/fullsend-ai/fullsend/internal/statuscomment"
+          - "github.com/fullsend-ai/fullsend/internal/forge"
+          - "github.com/fullsend-ai/fullsend/internal/config"
 
 common_preconditions:
   infrastructure:
@@ -201,7 +211,10 @@ scenarios:
           action: "Inspect AGENT_EXIT_CODE in post-script environment"
           command: "Check AGENT_EXIT_CODE value"
           validation: "AGENT_EXIT_CODE equals '0'"
-      cleanup: []
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Reset environment variable"
+          command: "t.Setenv handles automatic cleanup via t.Cleanup()"
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -323,7 +336,10 @@ scenarios:
           action: "Check AGENT_EXIT_CODE after completion"
           command: "Read AGENT_EXIT_CODE from post-script env"
           validation: "Value is '0' (from last successful iteration)"
-      cleanup: []
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Reset environment variable"
+          command: "t.Setenv handles automatic cleanup via t.Cleanup()"
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -469,7 +485,10 @@ scenarios:
           action: "Extract URL from comment body"
           command: "Parse mock gh invocation for URL"
           validation: "URL matches expected format"
-      cleanup: []
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Remove mock gh binary and temp files"
+          command: "os.Remove(mockGhPath); os.Remove(invocationLog)"
 
     assertions:
       - assertion_id: "ASSERT-01"
@@ -533,7 +552,10 @@ scenarios:
           action: "Check failure comment content"
           command: "Read mock gh invocation"
           validation: "Comment references agent error and exit code 2"
-      cleanup: []
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Remove mock gh binary and temp files"
+          command: "os.Remove(mockGhPath); os.Remove(invocationLog)"
 
     assertions:
       - assertion_id: "ASSERT-01"
