@@ -1,0 +1,47 @@
+---
+status: success
+component: std-orchestrator
+jira_id: GH-79
+phase: phase1
+stp_file: outputs/stp/GH-79/GH-79_test_plan.md
+output_dir: outputs/std/GH-79/
+
+execution_summary:
+  total_stp_scenarios: 40
+  functional_scenarios: 37
+  e2e_scenarios: 3
+  std_file_generated: "GH-79_test_description.yaml"
+  scenarios_in_std: 40
+  test_strategy_mode: "auto"
+  language: "go"
+  framework: "testing"
+  assertion_library: "testify"
+
+validation_results:
+  std_file:
+    file: GH-79_test_description.yaml
+    status: valid
+    yaml_syntax: passed
+    required_sections: passed
+    scenarios_count: 40
+    unique_test_ids: passed
+
+priority_breakdown:
+  p0: 14
+  p1: 19
+  p2: 7
+
+blocked_scenarios:
+  count: 2
+  ids: ["TS-GH-79-036", "TS-GH-79-037"]
+  reason: "Visible feedback not implemented in this PR"
+
+errors: []
+warnings:
+  - "2 scenarios (36, 37) are BLOCKED — visible feedback not yet implemented per ADR 0051"
+
+notes:
+  - "STD YAML generated as internal format (auto mode)"
+  - "Language: Go, Framework: testing + testify"
+  - "Stub generation will follow via go-stub-generator"
+---

@@ -1,0 +1,1958 @@
+---
+# Software Test Description (STD) — GH-79
+# ADR 0051: Implement is_authorized on All Agent Dispatch Paths
+# Generated: 2026-06-22
+# Source: outputs/stp/GH-79/GH-79_test_plan.md
+
+document_metadata:
+  std_version: "2.1-enhanced"
+  generated_date: "2026-06-22"
+  jira_issue: "GH-79"
+  jira_summary: "feat(#1662): ADR 0051 + implement is_authorized on all agent dispatch paths"
+  source_bugs: []
+  stp_reference:
+    file: "outputs/stp/GH-79/GH-79_test_plan.md"
+    version: "v1"
+    sections_covered: "Section III - Requirements-to-Tests Mapping"
+  related_prs:
+    - repo: "guyoron1/fullsend"
+      pr_number: 79
+      url: "https://github.com/guyoron1/fullsend/pull/79"
+      title: "feat(#1662): ADR 0051 + implement is_authorized on all agent dispatch paths"
+      merged: false
+    - repo: "fullsend-ai/fullsend"
+      pr_number: 1688
+      url: "https://github.com/fullsend-ai/fullsend/pull/1688"
+      title: "feat(#1662): ADR 0051 + implement is_authorized on all agent dispatch paths (upstream)"
+      merged: false
+  owning_sig: "platform"
+  participating_sigs: ["security"]
+  total_scenarios: 40
+  tier_1_count: 0
+  tier_2_count: 0
+  unit_count: 0
+  functional_count: 37
+  e2e_count: 3
+  p0_count: 14
+  p1_count: 19
+  p2_count: 7
+  existing_coverage_count: 0
+  new_count: 40
+  test_strategy_mode: "auto"
+
+code_generation_config:
+  std_version: "2.1-enhanced"
+  framework: "testing"
+  assertion_library: "testify"
+  language: "go"
+  package_name: "dispatch_auth"
+  target_test_directory: null
+  filename_prefix: "qf_"
+  imports:
+    standard:
+      - "testing"
+      - "context"
+    framework:
+      - "github.com/stretchr/testify/assert"
+      - "github.com/stretchr/testify/require"
+    project: []
+
+common_preconditions:
+  infrastructure:
+    - name: "GitHub Actions environment"
+      requirement: "ubuntu-latest runner with shell access"
+      validation: "Runner is available and workflow can be dispatched"
+    - name: "Repository access"
+      requirement: "Access to repository with reusable-dispatch.yml"
+      validation: "Workflow file exists at .github/workflows/reusable-dispatch.yml"
+  cluster_configuration:
+    topology: "N/A"
+    cpu_virtualization: "N/A"
+    storage: "N/A"
+    network: "N/A"
+  rbac_requirements:
+    - permission: "Read on repository workflows"
+      scope: "Repository"
+      validation: "User has read access to .github/workflows/"
+  test_environment:
+    platform: "GitHub Actions (ubuntu-latest)"
+    language: "Go 1.26.0"
+    framework: "Go test + testify"
+    dispatch_testing: "Shell function unit tests or workflow simulation"
+    ci_workflow: "reusable-dispatch.yml dispatch routing"
+
+# ===========================================================================
+# SCENARIOS
+# ===========================================================================
+
+scenarios:
+  # =========================================================================
+  # 3.1 Slash Command Authorization (P0)
+  # =========================================================================
+  - scenario_id: 1
+    test_id: "TS-GH-79-001"
+    test_type: "functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify unauthorized user cannot trigger /fs-triage"
+      what: |
+        Tests that when a user with an unauthorized association (e.g., NONE or
+        CONTRIBUTOR) issues the /fs-triage slash command, the dispatch routing
+        does not set STAGE=triage and the agent run is not triggered.
+      why: |
+        /fs-triage was previously ungated as a slash command, creating a
+        cost-exposure and abuse-surface gap. ADR 0051 mandates authorization
+        on all slash-command dispatch paths.
+      acceptance_criteria:
+        - "STAGE is not set to 'triage' for unauthorized user"
+        - "No agent inference run is dispatched"
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+    specific_preconditions:
+      - name: "Unauthorized user association"
+        requirement: "Simulated COMMENT_AUTHOR_ASSOC=NONE"
+        validation: "Environment variable set correctly"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Configure dispatch environment with unauthorized user"
+          command: "Set COMMENT_AUTHOR_ASSOC=NONE, COMMENT_BODY=/fs-triage, COMMENT_USER_TYPE=User"
+          validation: "Environment variables set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute is_authorized check for /fs-triage command"
+          command: "Call is_authorized() with COMMENT_AUTHOR_ASSOC=NONE"
+          validation: "Function returns non-zero (unauthorized)"
+        - step_id: "TEST-02"
+          action: "Verify STAGE is not set"
+          command: "Check STAGE variable after dispatch routing"
+          validation: "STAGE is empty or unset"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Reset environment variables"
+          command: "Unset dispatch environment variables"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "is_authorized returns unauthorized for NONE association"
+        condition: "is_authorized() returns non-zero exit code"
+        failure_impact: "Unauthorized users can trigger agent triage runs, incurring cost"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "STAGE not set for unauthorized user"
+        condition: "STAGE variable is empty after routing"
+        failure_impact: "Agent dispatch proceeds without authorization"
+
+  - scenario_id: 2
+    test_id: "TS-GH-79-002"
+    test_type: "functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify unauthorized user cannot trigger /fs-code"
+      what: |
+        Tests that when a user with an unauthorized association issues the
+        /fs-code slash command, the dispatch routing blocks the request.
+      why: |
+        /fs-code triggers code generation agent runs which are expensive.
+        Unauthorized access would expose the system to cost and abuse.
+      acceptance_criteria:
+        - "STAGE is not set to 'code' for unauthorized user"
+        - "No agent inference run is dispatched"
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+    specific_preconditions: []
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Configure dispatch environment with unauthorized user and /fs-code"
+          command: "Set COMMENT_AUTHOR_ASSOC=NONE, COMMENT_BODY=/fs-code, COMMENT_USER_TYPE=User"
+          validation: "Environment variables set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute dispatch routing for /fs-code"
+          command: "Call is_authorized() with NONE association"
+          validation: "Returns unauthorized"
+        - step_id: "TEST-02"
+          action: "Verify STAGE is not set to code"
+          command: "Check STAGE variable"
+          validation: "STAGE is empty"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Reset environment variables"
+          command: "Unset dispatch environment variables"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Unauthorized user blocked from /fs-code"
+        condition: "STAGE != 'code' when COMMENT_AUTHOR_ASSOC=NONE"
+        failure_impact: "Unauthorized users can trigger expensive code generation runs"
+
+  - scenario_id: 3
+    test_id: "TS-GH-79-003"
+    test_type: "functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify unauthorized user cannot trigger /fs-review"
+      what: |
+        Tests that when a user with an unauthorized association issues the
+        /fs-review slash command, the dispatch routing blocks the request.
+      why: |
+        /fs-review triggers review agent runs. Unauthorized access would
+        expose the system to cost and potential abuse.
+      acceptance_criteria:
+        - "STAGE is not set to 'review' for unauthorized user"
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+    specific_preconditions: []
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Configure dispatch with unauthorized user and /fs-review"
+          command: "Set COMMENT_AUTHOR_ASSOC=NONE, COMMENT_BODY=/fs-review"
+          validation: "Environment variables set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute dispatch routing for /fs-review"
+          command: "Call is_authorized() with NONE association"
+          validation: "Returns unauthorized"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Reset environment variables"
+          command: "Unset dispatch variables"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Unauthorized user blocked from /fs-review"
+        condition: "STAGE != 'review' when COMMENT_AUTHOR_ASSOC=NONE"
+        failure_impact: "Unauthorized users can trigger review agent runs"
+
+  - scenario_id: 4
+    test_id: "TS-GH-79-004"
+    test_type: "functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify COLLABORATOR can trigger all slash commands"
+      what: |
+        Tests that a user with COLLABORATOR association can successfully
+        trigger /fs-triage, /fs-code, and /fs-review slash commands.
+      why: |
+        COLLABORATOR is one of the three authorized associations per ADR 0051.
+        Legitimate collaborators must not be blocked from agent dispatch.
+      acceptance_criteria:
+        - "COLLABORATOR passes is_authorized check"
+        - "STAGE is correctly set for each command"
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+    specific_preconditions:
+      - name: "COLLABORATOR association"
+        requirement: "Simulated COMMENT_AUTHOR_ASSOC=COLLABORATOR"
+        validation: "Environment variable set"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Configure dispatch with COLLABORATOR user"
+          command: "Set COMMENT_AUTHOR_ASSOC=COLLABORATOR, COMMENT_USER_TYPE=User"
+          validation: "Environment variables set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Test /fs-triage dispatch"
+          command: "Set COMMENT_BODY=/fs-triage, run dispatch routing"
+          validation: "STAGE=triage"
+        - step_id: "TEST-02"
+          action: "Test /fs-code dispatch"
+          command: "Set COMMENT_BODY=/fs-code, run dispatch routing"
+          validation: "STAGE=code"
+        - step_id: "TEST-03"
+          action: "Test /fs-review dispatch"
+          command: "Set COMMENT_BODY=/fs-review, run dispatch routing"
+          validation: "STAGE=review"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Reset environment"
+          command: "Unset dispatch variables"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "COLLABORATOR authorized for all commands"
+        condition: "is_authorized() returns 0 for COLLABORATOR"
+        failure_impact: "Legitimate collaborators blocked from using agent commands"
+
+  - scenario_id: 5
+    test_id: "TS-GH-79-005"
+    test_type: "functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify NONE association rejected for all commands"
+      what: |
+        Tests that a user with NONE association is rejected by is_authorized
+        for all slash commands (/fs-triage, /fs-code, /fs-review, /fs-fix,
+        /fs-retro, /fs-prioritize).
+      why: |
+        NONE association indicates no relationship with the repository.
+        These users must never trigger agent dispatch to prevent abuse.
+      acceptance_criteria:
+        - "NONE association fails is_authorized for every command"
+        - "No STAGE is set for any command"
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+    specific_preconditions: []
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Configure dispatch with NONE association"
+          command: "Set COMMENT_AUTHOR_ASSOC=NONE, COMMENT_USER_TYPE=User"
+          validation: "Environment variables set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Test all slash commands with NONE association"
+          command: "Iterate over /fs-triage, /fs-code, /fs-review, /fs-fix, /fs-retro, /fs-prioritize"
+          validation: "All commands rejected"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Reset environment"
+          command: "Unset dispatch variables"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "NONE rejected for all slash commands"
+        condition: "is_authorized() returns non-zero for NONE on every command"
+        failure_impact: "External unknown users can trigger agent runs"
+
+  - scenario_id: 6
+    test_id: "TS-GH-79-006"
+    test_type: "functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify FIRST_TIME_CONTRIBUTOR association rejected"
+      what: |
+        Tests that a user with FIRST_TIME_CONTRIBUTOR association is rejected
+        by is_authorized for slash commands.
+      why: |
+        FIRST_TIME_CONTRIBUTOR is not in the authorized set (OWNER, MEMBER,
+        COLLABORATOR). First-time contributors should not trigger agent runs.
+      acceptance_criteria:
+        - "FIRST_TIME_CONTRIBUTOR fails is_authorized check"
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+    specific_preconditions: []
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Configure dispatch with FIRST_TIME_CONTRIBUTOR"
+          command: "Set COMMENT_AUTHOR_ASSOC=FIRST_TIME_CONTRIBUTOR"
+          validation: "Variable set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute is_authorized check"
+          command: "Call is_authorized()"
+          validation: "Returns non-zero"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Reset environment"
+          command: "Unset variables"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "FIRST_TIME_CONTRIBUTOR rejected"
+        condition: "is_authorized() returns non-zero"
+        failure_impact: "First-time contributors can trigger expensive agent runs"
+
+  # =========================================================================
+  # 3.2 PR-Triggered Dispatch Authorization (P0)
+  # =========================================================================
+  - scenario_id: 7
+    test_id: "TS-GH-79-007"
+    test_type: "functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify MEMBER PR author triggers auto-review"
+      what: |
+        Tests that when a PR is opened by a MEMBER, the pull_request_target
+        dispatch path correctly sets STAGE=review for auto-review.
+      why: |
+        Members should get automatic review on their PRs. The authorization
+        check must not block legitimate internal contributors.
+      acceptance_criteria:
+        - "MEMBER PR author passes is_event_actor_authorized"
+        - "STAGE=review is set for auto-review"
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+    specific_preconditions:
+      - name: "PR event context"
+        requirement: "Simulated pull_request_target.opened event"
+        validation: "Event type and action configured"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Configure PR event with MEMBER author"
+          command: "Set EVENT=pull_request_target, ACTION=opened, PR_AUTHOR_ASSOC=MEMBER"
+          validation: "Variables set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute PR dispatch routing"
+          command: "Call is_event_actor_authorized(PR_AUTHOR_ASSOC)"
+          validation: "Returns authorized"
+        - step_id: "TEST-02"
+          action: "Verify STAGE set to review"
+          command: "Check STAGE variable"
+          validation: "STAGE=review"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Reset environment"
+          command: "Unset variables"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "MEMBER PR author authorized for auto-review"
+        condition: "is_event_actor_authorized returns 0 for MEMBER"
+        failure_impact: "Internal contributors do not get automatic PR reviews"
+
+  - scenario_id: 8
+    test_id: "TS-GH-79-008"
+    test_type: "functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify external PR author blocked from auto-review"
+      what: |
+        Tests that when a PR is opened by a user with NONE association,
+        the auto-review dispatch is blocked.
+      why: |
+        External PRs from unknown users should not automatically trigger
+        review agent runs, preventing cost exposure from fork-based PRs.
+      acceptance_criteria:
+        - "NONE PR author fails is_event_actor_authorized"
+        - "STAGE is not set to review"
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+    specific_preconditions: []
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Configure PR event with external author"
+          command: "Set PR_AUTHOR_ASSOC=NONE, EVENT=pull_request_target, ACTION=opened"
+          validation: "Variables set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute PR dispatch routing"
+          command: "Call is_event_actor_authorized(NONE)"
+          validation: "Returns unauthorized"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Reset environment"
+          command: "Unset variables"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "External PR author blocked from auto-review"
+        condition: "is_event_actor_authorized returns non-zero for NONE"
+        failure_impact: "External PRs trigger expensive review agent runs"
+
+  - scenario_id: 9
+    test_id: "TS-GH-79-009"
+    test_type: "functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify synchronize event checks PR author association"
+      what: |
+        Tests that when new commits are pushed to a PR (synchronize event),
+        the dispatch checks the PR author's association before triggering review.
+      why: |
+        Synchronize events should respect the same authorization as opened events.
+        A push to an external PR should not bypass authorization.
+      acceptance_criteria:
+        - "Synchronize event calls is_event_actor_authorized"
+        - "MEMBER author on synchronize triggers review"
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+    specific_preconditions: []
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Configure synchronize event"
+          command: "Set EVENT=pull_request_target, ACTION=synchronize, PR_AUTHOR_ASSOC=MEMBER"
+          validation: "Variables set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute dispatch routing for synchronize"
+          command: "Run dispatch routing logic"
+          validation: "STAGE=review for MEMBER"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Reset environment"
+          command: "Unset variables"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Synchronize event respects author association"
+        condition: "STAGE=review when PR_AUTHOR_ASSOC=MEMBER on synchronize"
+        failure_impact: "Synchronize events bypass authorization"
+
+  - scenario_id: 10
+    test_id: "TS-GH-79-010"
+    test_type: "functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify ready_for_review event checks PR author association"
+      what: |
+        Tests that when a draft PR is marked ready for review, the dispatch
+        checks the PR author's association before triggering auto-review.
+      why: |
+        Draft-to-ready transition should not bypass authorization checks.
+      acceptance_criteria:
+        - "ready_for_review event calls is_event_actor_authorized"
+        - "Authorized author triggers review on ready_for_review"
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+    specific_preconditions: []
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Configure ready_for_review event"
+          command: "Set EVENT=pull_request_target, ACTION=ready_for_review, PR_AUTHOR_ASSOC=OWNER"
+          validation: "Variables set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute dispatch routing"
+          command: "Run dispatch routing logic"
+          validation: "STAGE=review for OWNER"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Reset environment"
+          command: "Unset variables"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "ready_for_review respects author association"
+        condition: "STAGE=review when PR_AUTHOR_ASSOC=OWNER on ready_for_review"
+        failure_impact: "Draft-to-ready transition bypasses authorization"
+
+  # =========================================================================
+  # 3.3 Authorized User Dispatch (P0)
+  # =========================================================================
+  - scenario_id: 11
+    test_id: "TS-GH-79-011"
+    test_type: "functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify OWNER dispatches all slash commands"
+      what: |
+        Tests that a user with OWNER association can trigger all slash commands.
+      why: |
+        Repository owners must have full access to all agent commands.
+      acceptance_criteria:
+        - "OWNER passes is_authorized for every slash command"
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+    specific_preconditions: []
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Configure dispatch with OWNER"
+          command: "Set COMMENT_AUTHOR_ASSOC=OWNER, COMMENT_USER_TYPE=User"
+          validation: "Variables set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Test all commands with OWNER"
+          command: "Iterate /fs-triage, /fs-code, /fs-review, /fs-fix, /fs-retro, /fs-prioritize"
+          validation: "All commands dispatch successfully"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Reset environment"
+          command: "Unset variables"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "OWNER authorized for all commands"
+        condition: "is_authorized() returns 0 for OWNER on every command"
+        failure_impact: "Repository owners blocked from agent commands"
+
+  - scenario_id: 12
+    test_id: "TS-GH-79-012"
+    test_type: "functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify MEMBER dispatches all slash commands"
+      what: |
+        Tests that a user with MEMBER association can trigger all slash commands.
+      why: |
+        Organization members must have access to all agent commands.
+      acceptance_criteria:
+        - "MEMBER passes is_authorized for every slash command"
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+    specific_preconditions: []
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Configure dispatch with MEMBER"
+          command: "Set COMMENT_AUTHOR_ASSOC=MEMBER, COMMENT_USER_TYPE=User"
+          validation: "Variables set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Test all commands with MEMBER"
+          command: "Iterate all slash commands"
+          validation: "All commands dispatch successfully"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Reset environment"
+          command: "Unset variables"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "MEMBER authorized for all commands"
+        condition: "is_authorized() returns 0 for MEMBER on every command"
+        failure_impact: "Organization members blocked from agent commands"
+
+  - scenario_id: 13
+    test_id: "TS-GH-79-013"
+    test_type: "functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify COLLABORATOR dispatches all slash commands"
+      what: |
+        Tests that a user with COLLABORATOR association can trigger all slash commands.
+      why: |
+        Repository collaborators must have access to all agent commands.
+      acceptance_criteria:
+        - "COLLABORATOR passes is_authorized for every slash command"
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+    specific_preconditions: []
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Configure dispatch with COLLABORATOR"
+          command: "Set COMMENT_AUTHOR_ASSOC=COLLABORATOR, COMMENT_USER_TYPE=User"
+          validation: "Variables set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Test all commands with COLLABORATOR"
+          command: "Iterate all slash commands"
+          validation: "All commands dispatch successfully"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Reset environment"
+          command: "Unset variables"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "COLLABORATOR authorized for all commands"
+        condition: "is_authorized() returns 0 for COLLABORATOR on every command"
+        failure_impact: "Repository collaborators blocked from agent commands"
+
+  - scenario_id: 14
+    test_id: "TS-GH-79-014"
+    test_type: "functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify /fs-code blocked when PR already exists"
+      what: |
+        Tests that /fs-code command is blocked when a PR already exists
+        for the issue, even for authorized users.
+      why: |
+        Duplicate code generation on issues with existing PRs wastes resources
+        and creates conflicting branches.
+      acceptance_criteria:
+        - "/fs-code does not set STAGE=code when PR exists"
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+    specific_preconditions:
+      - name: "Existing PR"
+        requirement: "has_label check returns true for PR-related label"
+        validation: "PR label present in ISSUE_LABELS"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Configure dispatch with authorized user and existing PR"
+          command: "Set COMMENT_AUTHOR_ASSOC=MEMBER, COMMENT_BODY=/fs-code, simulate existing PR"
+          validation: "Variables set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute /fs-code dispatch"
+          command: "Run dispatch routing"
+          validation: "STAGE is not set to code"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Reset environment"
+          command: "Unset variables"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "/fs-code blocked with existing PR"
+        condition: "STAGE != 'code' when PR already exists"
+        failure_impact: "Duplicate code generation runs on issues with PRs"
+
+  # =========================================================================
+  # 3.4 Auto-Triage Exception (P1)
+  # =========================================================================
+  - scenario_id: 15
+    test_id: "TS-GH-79-015"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify any user opening issue triggers triage"
+      what: |
+        Tests that when any user (regardless of association) opens a new issue,
+        auto-triage is triggered without authorization check.
+      why: |
+        ADR 0051 explicitly exempts issue auto-triage from authorization to
+        support drive-by bug reporters who have no repository association.
+      acceptance_criteria:
+        - "issues.opened event sets STAGE=triage regardless of user association"
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+    specific_preconditions: []
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Configure issues.opened event with external user"
+          command: "Set EVENT=issues, ACTION=opened, COMMENT_AUTHOR_ASSOC=NONE"
+          validation: "Variables set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute dispatch routing for issues.opened"
+          command: "Run dispatch routing"
+          validation: "STAGE=triage regardless of association"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Reset environment"
+          command: "Unset variables"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Auto-triage fires for any user on issue open"
+        condition: "STAGE=triage when EVENT=issues, ACTION=opened"
+        failure_impact: "Drive-by bug reporters do not get automatic triage"
+
+  - scenario_id: 16
+    test_id: "TS-GH-79-016"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify issue edit by external user triggers triage"
+      what: |
+        Tests that when an external user edits an issue, auto-triage is
+        triggered without authorization.
+      why: |
+        Issue edits should also trigger triage to capture updated information
+        from any user, per ADR 0051 exception.
+      acceptance_criteria:
+        - "issues.edited event sets STAGE=triage for external user"
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+    specific_preconditions: []
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Configure issues.edited event"
+          command: "Set EVENT=issues, ACTION=edited, COMMENT_AUTHOR_ASSOC=NONE"
+          validation: "Variables set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute dispatch routing"
+          command: "Run dispatch routing"
+          validation: "STAGE=triage"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Reset environment"
+          command: "Unset variables"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Issue edit triggers auto-triage for external user"
+        condition: "STAGE=triage on issues.edited with NONE association"
+        failure_impact: "Issue edits by external users do not trigger re-triage"
+
+  - scenario_id: 17
+    test_id: "TS-GH-79-017"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify NONE association user triggers auto-triage"
+      what: |
+        Tests that a user with NONE association still triggers auto-triage
+        on issue creation, confirming the ADR 0051 exception.
+      why: |
+        Explicitly confirms the exception path — NONE users are blocked from
+        slash commands but must trigger auto-triage.
+      acceptance_criteria:
+        - "NONE user on issues.opened sets STAGE=triage"
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+    specific_preconditions: []
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Configure NONE user issue open"
+          command: "Set EVENT=issues, ACTION=opened, COMMENT_AUTHOR_ASSOC=NONE"
+          validation: "Variables set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute dispatch routing"
+          command: "Run dispatch routing"
+          validation: "STAGE=triage"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Reset environment"
+          command: "Unset variables"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "NONE user triggers auto-triage on issue open"
+        condition: "STAGE=triage for NONE on issues.opened"
+        failure_impact: "ADR 0051 exception not working — external bug reporters blocked"
+
+  # =========================================================================
+  # 3.5 Bot-to-Bot Label Workflows (P1)
+  # =========================================================================
+  - scenario_id: 18
+    test_id: "TS-GH-79-018"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify ready-to-code label triggers code dispatch"
+      what: |
+        Tests that when the ready-to-code label is applied to an issue,
+        the dispatch sets STAGE=code without authorization check.
+      why: |
+        Label-based bot-to-bot handoff (triage → code) must work without
+        authorization since label application requires write access.
+      acceptance_criteria:
+        - "ready-to-code label sets STAGE=code"
+        - "No is_authorized check on label path"
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+    specific_preconditions: []
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Configure issues.labeled event with ready-to-code"
+          command: "Set EVENT=issues, ACTION=labeled, LABEL_NAME=ready-to-code"
+          validation: "Variables set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute dispatch routing"
+          command: "Run dispatch routing"
+          validation: "STAGE=code"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Reset environment"
+          command: "Unset variables"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "ready-to-code label dispatches code stage"
+        condition: "STAGE=code when LABEL_NAME=ready-to-code"
+        failure_impact: "Bot-to-bot handoff broken — triage cannot trigger code generation"
+
+  - scenario_id: 19
+    test_id: "TS-GH-79-019"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify ready-for-review label triggers review dispatch"
+      what: |
+        Tests that when the ready-for-review label is applied, the dispatch
+        sets STAGE=review without authorization check.
+      why: |
+        Label-based bot-to-bot handoff (code → review) must work.
+      acceptance_criteria:
+        - "ready-for-review label sets STAGE=review"
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+    specific_preconditions: []
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Configure issues.labeled event with ready-for-review"
+          command: "Set EVENT=issues, ACTION=labeled, LABEL_NAME=ready-for-review"
+          validation: "Variables set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute dispatch routing"
+          command: "Run dispatch routing"
+          validation: "STAGE=review"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Reset environment"
+          command: "Unset variables"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "ready-for-review label dispatches review stage"
+        condition: "STAGE=review when LABEL_NAME=ready-for-review"
+        failure_impact: "Bot-to-bot handoff broken — code cannot trigger review"
+
+  - scenario_id: 20
+    test_id: "TS-GH-79-020"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify label dispatch bypasses is_authorized check"
+      what: |
+        Tests that the label-triggered dispatch path does not invoke
+        is_authorized, confirming implicit authorization via write access.
+      why: |
+        Label application requires write access to the repository, which
+        serves as an implicit authorization gate.
+      acceptance_criteria:
+        - "Label dispatch path does not call is_authorized"
+        - "STAGE is set based on label name alone"
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+    specific_preconditions: []
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Configure label event"
+          command: "Set EVENT=issues, ACTION=labeled, LABEL_NAME=ready-to-code"
+          validation: "Variables set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify no authorization check on label path"
+          command: "Trace dispatch routing — confirm is_authorized not called"
+          validation: "Authorization function not invoked"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Reset environment"
+          command: "Unset variables"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Label dispatch bypasses authorization"
+        condition: "is_authorized not called on issues.labeled path"
+        failure_impact: "Label-based workflows incorrectly gated by authorization"
+
+  # =========================================================================
+  # 3.6 Bot User Blocking (P1)
+  # =========================================================================
+  - scenario_id: 21
+    test_id: "TS-GH-79-021"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify Bot user blocked from slash commands"
+      what: |
+        Tests that when COMMENT_USER_TYPE is Bot, slash commands are rejected
+        before the authorization check is reached.
+      why: |
+        Bot users (automated accounts) must be short-circuited early to prevent
+        infinite loops and resource waste from bot-to-bot interactions.
+      acceptance_criteria:
+        - "Bot user type causes early exit before is_authorized"
+        - "STAGE is not set for Bot users on slash commands"
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+    specific_preconditions: []
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Configure Bot user slash command"
+          command: "Set COMMENT_USER_TYPE=Bot, COMMENT_BODY=/fs-triage, COMMENT_AUTHOR_ASSOC=MEMBER"
+          validation: "Variables set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute dispatch routing"
+          command: "Run dispatch routing"
+          validation: "STAGE is not set despite MEMBER association"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Reset environment"
+          command: "Unset variables"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Bot user blocked from slash commands"
+        condition: "STAGE empty when COMMENT_USER_TYPE=Bot"
+        failure_impact: "Bot accounts can trigger agent runs causing infinite loops"
+
+  - scenario_id: 22
+    test_id: "TS-GH-79-022"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify Bot check precedes authorization check"
+      what: |
+        Tests that the Bot user type check occurs before the is_authorized
+        call in the dispatch routing logic.
+      why: |
+        Bot blocking must happen first to short-circuit before any
+        authorization logic runs.
+      acceptance_criteria:
+        - "Bot check evaluates before is_authorized"
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+    specific_preconditions: []
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Configure Bot user with authorized association"
+          command: "Set COMMENT_USER_TYPE=Bot, COMMENT_AUTHOR_ASSOC=OWNER"
+          validation: "Variables set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify Bot blocked despite OWNER association"
+          command: "Run dispatch routing"
+          validation: "STAGE not set — Bot check precedes authorization"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Reset environment"
+          command: "Unset variables"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Bot check precedes authorization"
+        condition: "Bot with OWNER association still blocked"
+        failure_impact: "Bot users bypass blocking via authorized association"
+
+  - scenario_id: 23
+    test_id: "TS-GH-79-023"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify bot-suffix user login handled correctly"
+      what: |
+        Tests that user logins ending with [bot] suffix are correctly
+        identified and handled by the bot detection logic.
+      why: |
+        GitHub Apps have logins like 'dependabot[bot]' with a [bot] suffix.
+        These must be caught by the bot detection.
+      acceptance_criteria:
+        - "User with [bot] suffix in login is treated as bot"
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+    specific_preconditions: []
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Configure user with bot suffix"
+          command: "Set COMMENT_USER_TYPE=Bot, COMMENT_USER_LOGIN=dependabot[bot]"
+          validation: "Variables set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute dispatch routing"
+          command: "Run dispatch routing"
+          validation: "User treated as bot, STAGE not set"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Reset environment"
+          command: "Unset variables"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Bot-suffix login handled correctly"
+        condition: "User with [bot] suffix blocked from dispatch"
+        failure_impact: "GitHub App bots bypass bot detection"
+
+  # =========================================================================
+  # 3.7 Authorization Association Evaluation (P1)
+  # =========================================================================
+  - scenario_id: 24
+    test_id: "TS-GH-79-024"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify org owners are recognized as authorized"
+      what: |
+        Tests that OWNER association passes the is_authorized function.
+      why: |
+        Organization owners are the highest privilege level and must always
+        be authorized.
+      acceptance_criteria:
+        - "is_authorized returns 0 for OWNER"
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+    specific_preconditions: []
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Set COMMENT_AUTHOR_ASSOC=OWNER"
+          command: "Export variable"
+          validation: "Variable set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call is_authorized"
+          command: "Execute is_authorized()"
+          validation: "Returns 0"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Reset"
+          command: "Unset variable"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "OWNER recognized as authorized"
+        condition: "is_authorized() == 0 for OWNER"
+        failure_impact: "Org owners incorrectly blocked"
+
+  - scenario_id: 25
+    test_id: "TS-GH-79-025"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify org members are recognized as authorized"
+      what: |
+        Tests that MEMBER association passes the is_authorized function.
+      why: |
+        Organization members are the primary users and must be authorized.
+      acceptance_criteria:
+        - "is_authorized returns 0 for MEMBER"
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+    specific_preconditions: []
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Set COMMENT_AUTHOR_ASSOC=MEMBER"
+          command: "Export variable"
+          validation: "Variable set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call is_authorized"
+          command: "Execute is_authorized()"
+          validation: "Returns 0"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Reset"
+          command: "Unset variable"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "MEMBER recognized as authorized"
+        condition: "is_authorized() == 0 for MEMBER"
+        failure_impact: "Org members incorrectly blocked"
+
+  - scenario_id: 26
+    test_id: "TS-GH-79-026"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify repository collaborators are recognized as authorized"
+      what: |
+        Tests that COLLABORATOR association passes is_authorized.
+      why: |
+        External collaborators with explicit repo access must be authorized.
+      acceptance_criteria:
+        - "is_authorized returns 0 for COLLABORATOR"
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+    specific_preconditions: []
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Set COMMENT_AUTHOR_ASSOC=COLLABORATOR"
+          command: "Export variable"
+          validation: "Variable set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call is_authorized"
+          command: "Execute is_authorized()"
+          validation: "Returns 0"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Reset"
+          command: "Unset variable"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "COLLABORATOR recognized as authorized"
+        condition: "is_authorized() == 0 for COLLABORATOR"
+        failure_impact: "Repository collaborators incorrectly blocked"
+
+  - scenario_id: 27
+    test_id: "TS-GH-79-027"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify one-time contributors are rejected as unauthorized"
+      what: |
+        Tests that CONTRIBUTOR association fails is_authorized.
+      why: |
+        CONTRIBUTOR (one-time contributors) are not in the authorized set
+        and should not trigger agent runs.
+      acceptance_criteria:
+        - "is_authorized returns non-zero for CONTRIBUTOR"
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+    specific_preconditions: []
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Set COMMENT_AUTHOR_ASSOC=CONTRIBUTOR"
+          command: "Export variable"
+          validation: "Variable set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call is_authorized"
+          command: "Execute is_authorized()"
+          validation: "Returns non-zero"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Reset"
+          command: "Unset variable"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "CONTRIBUTOR rejected as unauthorized"
+        condition: "is_authorized() != 0 for CONTRIBUTOR"
+        failure_impact: "One-time contributors can trigger agent runs"
+
+  - scenario_id: 28
+    test_id: "TS-GH-79-028"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify PR author with no association is rejected"
+      what: |
+        Tests that is_event_actor_authorized rejects a PR author with NONE
+        association.
+      why: |
+        PR authors from forks with no repository relationship must not
+        trigger auto-review.
+      acceptance_criteria:
+        - "is_event_actor_authorized returns non-zero for NONE"
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+    specific_preconditions: []
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Set PR_AUTHOR_ASSOC=NONE"
+          command: "Export variable"
+          validation: "Variable set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call is_event_actor_authorized"
+          command: "Execute is_event_actor_authorized(NONE)"
+          validation: "Returns non-zero"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Reset"
+          command: "Unset variable"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "NONE PR author rejected"
+        condition: "is_event_actor_authorized() != 0 for NONE"
+        failure_impact: "Fork PR authors trigger auto-review"
+
+  # =========================================================================
+  # 3.8 Needs-Info Re-Triage (P2)
+  # =========================================================================
+  - scenario_id: 29
+    test_id: "TS-GH-79-029"
+    test_type: "functional"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify issue author re-triggers triage on needs-info"
+      what: |
+        Tests that when the original issue author comments on a needs-info
+        labeled issue, triage is re-triggered.
+      why: |
+        Issue authors providing requested information should automatically
+        trigger re-triage to process their response.
+      acceptance_criteria:
+        - "Issue author comment on needs-info issue sets STAGE=triage"
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+    specific_preconditions:
+      - name: "needs-info label"
+        requirement: "Issue has needs-info label but not feature label"
+        validation: "ISSUE_LABELS contains needs-info"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Configure issue comment by author on needs-info issue"
+          command: "Set is_issue_author=true, ISSUE_LABELS=needs-info, COMMENT_AUTHOR_ASSOC=NONE"
+          validation: "Variables set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute dispatch routing"
+          command: "Run dispatch routing for issue_comment"
+          validation: "STAGE=triage"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Reset environment"
+          command: "Unset variables"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Issue author triggers re-triage on needs-info"
+        condition: "STAGE=triage when is_issue_author and needs-info label"
+        failure_impact: "Author responses to needs-info not auto-triaged"
+
+  - scenario_id: 30
+    test_id: "TS-GH-79-030"
+    test_type: "functional"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify CONTRIBUTOR comment triggers needs-info triage"
+      what: |
+        Tests that a CONTRIBUTOR (non-NONE) commenting on a needs-info issue
+        triggers re-triage.
+      why: |
+        Non-NONE associations should trigger re-triage on needs-info issues
+        to process community contributions.
+      acceptance_criteria:
+        - "CONTRIBUTOR on needs-info issue sets STAGE=triage"
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+    specific_preconditions: []
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Configure CONTRIBUTOR comment on needs-info issue"
+          command: "Set COMMENT_AUTHOR_ASSOC=CONTRIBUTOR, ISSUE_LABELS=needs-info, is_issue_author=false"
+          validation: "Variables set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute dispatch routing"
+          command: "Run dispatch routing"
+          validation: "STAGE=triage"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Reset"
+          command: "Unset variables"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "CONTRIBUTOR triggers re-triage on needs-info"
+        condition: "STAGE=triage for CONTRIBUTOR on needs-info issue"
+        failure_impact: "Community contributions on needs-info issues not re-triaged"
+
+  - scenario_id: 31
+    test_id: "TS-GH-79-031"
+    test_type: "functional"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify NONE non-author blocked from needs-info triage"
+      what: |
+        Tests that a NONE user who is NOT the issue author is blocked from
+        triggering re-triage on a needs-info issue.
+      why: |
+        Random external users should not trigger re-triage by commenting on
+        needs-info issues unless they are the issue author.
+      acceptance_criteria:
+        - "NONE non-author on needs-info issue does NOT set STAGE=triage"
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+    specific_preconditions: []
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Configure NONE non-author on needs-info issue"
+          command: "Set COMMENT_AUTHOR_ASSOC=NONE, is_issue_author=false, ISSUE_LABELS=needs-info"
+          validation: "Variables set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute dispatch routing"
+          command: "Run dispatch routing"
+          validation: "STAGE is not set to triage"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Reset"
+          command: "Unset variables"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "NONE non-author blocked from needs-info triage"
+        condition: "STAGE != 'triage' for NONE non-author on needs-info"
+        failure_impact: "Random users can trigger re-triage by commenting"
+
+  - scenario_id: 32
+    test_id: "TS-GH-79-032"
+    test_type: "functional"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify feature-labeled issues skip needs-info triage"
+      what: |
+        Tests that issues with both needs-info and feature labels do not
+        trigger the needs-info re-triage path.
+      why: |
+        Feature-labeled issues should follow the feature workflow, not the
+        needs-info re-triage path.
+      acceptance_criteria:
+        - "Issue with feature label does not trigger needs-info triage"
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+    specific_preconditions: []
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Configure comment on issue with needs-info + feature labels"
+          command: "Set ISSUE_LABELS=needs-info,feature, COMMENT_AUTHOR_ASSOC=MEMBER"
+          validation: "Variables set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute dispatch routing"
+          command: "Run dispatch routing"
+          validation: "Needs-info triage path not taken"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Reset"
+          command: "Unset variables"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Feature label prevents needs-info triage"
+        condition: "Needs-info triage skipped when feature label present"
+        failure_impact: "Feature issues incorrectly enter needs-info workflow"
+
+  # =========================================================================
+  # 3.9 CLI Infrastructure Compatibility (P1)
+  # =========================================================================
+  - scenario_id: 33
+    test_id: "TS-GH-79-033"
+    test_type: "e2e"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify agent run pipeline completes successfully"
+      what: |
+        Tests that the full agent run pipeline (dispatch → sandbox → agent
+        execution → result posting) completes with the updated CLI
+        infrastructure.
+      why: |
+        The PR modifies 100 files including core CLI, forge, harness, and
+        config packages. End-to-end validation ensures nothing is broken.
+      acceptance_criteria:
+        - "Agent run completes without errors"
+        - "Results posted back to the issue/PR"
+    classification:
+      test_type: "E2E"
+      scope: "Multi-component"
+      automation_approach: "Go test with testify assertions"
+    specific_preconditions:
+      - name: "Full infrastructure"
+        requirement: "GitHub Actions runner with all agent dependencies"
+        validation: "Runner available and configured"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Prepare agent run environment"
+          command: "Configure runner with updated CLI binary and config"
+          validation: "CLI binary available"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Trigger agent run via dispatch"
+          command: "Simulate authorized slash command dispatch"
+          validation: "Agent sandbox created"
+        - step_id: "TEST-02"
+          action: "Verify agent execution"
+          command: "Monitor agent run to completion"
+          validation: "Agent exits cleanly"
+        - step_id: "TEST-03"
+          action: "Verify result posting"
+          command: "Check issue/PR for agent response"
+          validation: "Result comment posted"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Clean up sandbox"
+          command: "Remove sandbox artifacts"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Agent pipeline completes"
+        condition: "Agent run exits 0 and posts results"
+        failure_impact: "Agent pipeline broken by infrastructure changes"
+
+  - scenario_id: 34
+    test_id: "TS-GH-79-034"
+    test_type: "e2e"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify harness loading with updated config structure"
+      what: |
+        Tests that the harness loading pipeline works with the updated config
+        structure, including new discovery and linting changes.
+      why: |
+        Harness loading is on the critical path for all agent runs. Changes
+        to discover_remote.go, harness.go, and lint.go must not break loading.
+      acceptance_criteria:
+        - "Harness loads successfully with updated config"
+        - "No panics or errors during harness initialization"
+    classification:
+      test_type: "E2E"
+      scope: "Multi-component"
+      automation_approach: "Go test with testify assertions"
+    specific_preconditions: []
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Prepare harness config"
+          command: "Create test harness configuration"
+          validation: "Config file created"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Load harness with updated code"
+          command: "Call harness.LoadWithBase()"
+          validation: "Returns without error"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Clean up config"
+          command: "Remove test config"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Harness loads without errors"
+        condition: "harness.LoadWithBase() returns nil error"
+        failure_impact: "All agent runs fail at harness loading"
+
+  - scenario_id: 35
+    test_id: "TS-GH-79-035"
+    test_type: "e2e"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify forge.Client interface compatibility"
+      what: |
+        Tests that the updated forge.Client interface (new methods, fake
+        implementation) is compatible with all 36 consuming files.
+      why: |
+        forge.Client has 115 references across 36 files. Interface changes
+        must not break any consumer.
+      acceptance_criteria:
+        - "All forge.Client consumers compile successfully"
+        - "Fake implementation satisfies interface"
+    classification:
+      test_type: "E2E"
+      scope: "Multi-component"
+      automation_approach: "Go test with testify assertions"
+    specific_preconditions: []
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Build project with updated forge interface"
+          command: "go build ./..."
+          validation: "Compilation succeeds"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run forge-related tests"
+          command: "go test ./internal/forge/..."
+          validation: "All tests pass"
+        - step_id: "TEST-02"
+          action: "Verify fake implementation"
+          command: "go test -run TestFake ./internal/forge/..."
+          validation: "Fake satisfies interface"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Clean build cache"
+          command: "go clean -testcache"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "forge.Client interface compatible"
+        condition: "All forge consumers compile and tests pass"
+        failure_impact: "36 files broken by interface changes"
+
+  # =========================================================================
+  # 3.10 Visible Feedback for Unauthorized Users (P1) — BLOCKED
+  # =========================================================================
+  - scenario_id: 36
+    test_id: "TS-GH-79-036"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    blocked: true
+    blocked_reason: "Visible feedback not implemented in this PR — ADR 0051 requires it for future implementation"
+    test_objective:
+      title: "Verify unauthorized slash command attempt produces visible feedback"
+      what: |
+        Tests that when an unauthorized user issues a slash command, they
+        receive visible feedback (reaction or comment) indicating their
+        command was received but not executed.
+      why: |
+        ADR 0051 mandates visible feedback so users know their command was
+        received. Without it, unauthorized users may repeatedly retry.
+      acceptance_criteria:
+        - "Reaction or comment posted on unauthorized slash command"
+        - "Feedback indicates command was not authorized"
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+    specific_preconditions:
+      - name: "Visible feedback implementation"
+        requirement: "Feedback mechanism must be implemented first"
+        validation: "Check for reaction/comment posting code in dispatch"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Configure unauthorized user slash command"
+          command: "Set COMMENT_AUTHOR_ASSOC=NONE, COMMENT_BODY=/fs-triage"
+          validation: "Variables set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute dispatch routing"
+          command: "Run dispatch routing"
+          validation: "Feedback mechanism triggered"
+        - step_id: "TEST-02"
+          action: "Verify visible feedback"
+          command: "Check for reaction/comment on the original comment"
+          validation: "Feedback present"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Reset environment"
+          command: "Unset variables"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Visible feedback on unauthorized slash command"
+        condition: "Reaction or comment posted for unauthorized user"
+        failure_impact: "Users receive no indication their command was not authorized"
+
+  - scenario_id: 37
+    test_id: "TS-GH-79-037"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    blocked: true
+    blocked_reason: "Visible feedback not implemented in this PR"
+    test_objective:
+      title: "Verify unauthorized PR-triggered dispatch produces visible feedback"
+      what: |
+        Tests that when an unauthorized PR author's PR triggers auto-review
+        and fails authorization, visible feedback is provided.
+      why: |
+        ADR 0051 requires visible response for all authorization failures.
+      acceptance_criteria:
+        - "Feedback provided on PR for unauthorized auto-review attempt"
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+    specific_preconditions:
+      - name: "Visible feedback implementation"
+        requirement: "PR feedback mechanism must be implemented"
+        validation: "Check for feedback code in PR dispatch path"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Configure unauthorized PR author"
+          command: "Set PR_AUTHOR_ASSOC=NONE, EVENT=pull_request_target, ACTION=opened"
+          validation: "Variables set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute PR dispatch routing"
+          command: "Run dispatch routing"
+          validation: "Feedback mechanism triggered"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Reset environment"
+          command: "Unset variables"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Visible feedback on unauthorized PR dispatch"
+        condition: "Feedback posted on PR for unauthorized author"
+        failure_impact: "External PR authors receive no feedback on authorization failure"
+
+  # =========================================================================
+  # 3.11 Platform-Level Authorization Invariant (P2)
+  # =========================================================================
+  - scenario_id: 38
+    test_id: "TS-GH-79-038"
+    test_type: "functional"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify per-repo configuration cannot bypass authorization checks"
+      what: |
+        Tests that authorization enforcement in the reusable workflow cannot
+        be disabled or bypassed by per-repo configuration.
+      why: |
+        ADR 0051 mandates that authorization is platform-level. Individual
+        repos must not be able to disable it.
+      acceptance_criteria:
+        - "Authorization enforced regardless of per-repo config"
+        - "No config option can disable is_authorized"
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+    specific_preconditions: []
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Configure per-repo settings attempting to bypass auth"
+          command: "Set repo-level config that might disable authorization"
+          validation: "Config applied"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Verify authorization still enforced"
+          command: "Execute dispatch with unauthorized user"
+          validation: "User still blocked despite repo config"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Reset config"
+          command: "Remove test repo config"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Per-repo config cannot bypass authorization"
+        condition: "Authorization enforced regardless of repo config"
+        failure_impact: "Individual repos can disable security controls"
+
+  # =========================================================================
+  # 3.12 PR Retro Dispatch (P2)
+  # =========================================================================
+  - scenario_id: 39
+    test_id: "TS-GH-79-039"
+    test_type: "functional"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify PR closure triggers retro unconditionally"
+      what: |
+        Tests that when a PR is closed, the dispatch unconditionally sets
+        STAGE=retro without authorization check.
+      why: |
+        PR retro is always safe since the merge itself requires write access.
+        Ungated retro ensures retrospective analysis on all merged PRs.
+      acceptance_criteria:
+        - "PR close event sets STAGE=retro without authorization"
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+    specific_preconditions: []
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Configure PR close event"
+          command: "Set EVENT=pull_request_target, ACTION=closed"
+          validation: "Variables set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute dispatch routing"
+          command: "Run dispatch routing"
+          validation: "STAGE=retro"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Reset environment"
+          command: "Unset variables"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "PR close triggers unconditional retro"
+        condition: "STAGE=retro on pull_request_target.closed"
+        failure_impact: "PR retrospectives not triggered on merge"
+
+  - scenario_id: 40
+    test_id: "TS-GH-79-040"
+    test_type: "functional"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify external user PR merge triggers retro"
+      what: |
+        Tests that even when an external user's PR is merged, the retro
+        dispatch fires.
+      why: |
+        Retro should fire for all merged PRs regardless of author association.
+        The merge act itself is authorization (requires write access).
+      acceptance_criteria:
+        - "External user's merged PR triggers STAGE=retro"
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go test with testify assertions"
+    specific_preconditions: []
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Configure PR close with external author"
+          command: "Set EVENT=pull_request_target, ACTION=closed, PR_AUTHOR_ASSOC=NONE, merged=true"
+          validation: "Variables set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute dispatch routing"
+          command: "Run dispatch routing"
+          validation: "STAGE=retro"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Reset environment"
+          command: "Unset variables"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "External user PR merge triggers retro"
+        condition: "STAGE=retro for NONE author on closed PR"
+        failure_impact: "External PR merges miss retrospective analysis"

@@ -1,0 +1,68 @@
+version: 1
+ticket_id: "GH-79"
+project_id: "auto-detected"
+display_name: "pr-repo"
+created: "2026-06-22T00:00:00Z"
+updated: "2026-06-22T00:01:00Z"
+
+phases:
+  stp:
+    status: completed
+    started: "2026-06-22T00:00:00Z"
+    completed: "2026-06-22T00:00:00Z"
+    output: "outputs/stp/GH-79/GH-79_test_plan.md"
+    output_checksum: "sha256:40eb1a0fe301bbd6af011f162c0a18f3a9cee81755af832ae8325909d18ef721"
+    skills_used: []
+    error: null
+
+  stp_review:
+    status: completed
+    started: "2026-06-22T00:00:00Z"
+    completed: "2026-06-22T00:00:00Z"
+    output: "outputs/reviews/GH-79/GH-79_stp_review.md"
+    verdict: APPROVED
+    findings:
+      critical: 0
+      major: 0
+      minor: 2
+    error: null
+
+  stp_refine:
+    status: skipped
+    error: null
+
+  std:
+    status: completed
+    started: "2026-06-22T00:00:00Z"
+    completed: "2026-06-22T00:01:00Z"
+    output: "outputs/std/GH-79/GH-79_test_description.yaml"
+    output_checksum: "sha256:9cb26200ffa603b096140ec63061e962116bfbaf0a4a93173bd27edf2f08c375"
+    stp_checksum_at_generation: "sha256:40eb1a0fe301bbd6af011f162c0a18f3a9cee81755af832ae8325909d18ef721"
+    scenario_counts:
+      total: 40
+      functional: 37
+      e2e: 3
+    stubs:
+      go: "outputs/std/GH-79/go-tests/"
+    error: null
+
+  std_review:
+    status: pending
+    verdict: null
+    findings: null
+    error: null
+
+  go_codegen:
+    status: pending
+    output: null
+    error: null
+
+  python_codegen:
+    status: pending
+    output: null
+    error: null
+
+  cluster_tests:
+    status: pending
+    output: null
+    error: null
