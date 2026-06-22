@@ -1,0 +1,56 @@
+---
+status: success
+component: std-orchestrator
+jira_id: GH-69
+phase: phase1
+stp_file: outputs/stp/GH-69/GH-69_test_plan.md
+output_dir: outputs/std/GH-69/
+
+execution_summary:
+  total_stp_scenarios: 12
+  unit_scenarios: 11
+  functional_scenarios: 1
+  std_file_generated: "GH-69_test_description.yaml"
+  scenarios_in_std: 12
+  test_strategy_mode: "auto"
+
+code_generation:
+  phase: phase1
+  go_tests:
+    file_count: 6
+    test_count: 12
+    total_lines: 348
+    status: "stubs_generated"
+    files:
+      - sanitize_review_body_stubs_test.go
+      - sanitize_findings_stubs_test.go
+      - unicode_obfuscation_stubs_test.go
+      - empty_body_handling_stubs_test.go
+      - redaction_warning_stubs_test.go
+      - post_review_integration_stubs_test.go
+  python_tests:
+    file_count: 0
+    test_count: 0
+    status: "not_applicable"
+
+validation_results:
+  std_file:
+    file: GH-69_test_description.yaml
+    status: valid
+    yaml_syntax: passed
+    required_sections: passed
+    scenarios_count: 12
+  coverage_validation:
+    std_scenarios: 12
+    generated_stubs: 12
+    status: complete
+
+errors: []
+warnings: []
+
+notes:
+  - "STD YAML generated as v2.1-enhanced internal format"
+  - "Auto mode: Go stdlib testing + testify (detected from repo)"
+  - "All 12 scenarios have t.Run() stubs with PSE comments"
+  - "Stubs excluded from execution via t.Skip()"
+---
