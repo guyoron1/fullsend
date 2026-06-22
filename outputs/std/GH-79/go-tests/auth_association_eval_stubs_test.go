@@ -14,49 +14,66 @@ Jira: GH-79
 func TestAuthAssociationEvaluation(t *testing.T) {
 	/*
 	Preconditions:
-	    - is_authorized and is_event_actor_authorized functions available
-	    - Case-statement matching OWNER|MEMBER|COLLABORATOR implemented
+	    - is_authorized and is_event_actor_authorized shell functions available
+	      in reusable-dispatch.yml
+	    - Case-statement matching OWNER|MEMBER|COLLABORATOR implemented per ADR 0051
 	*/
 
 	t.Run("org owners recognized as authorized", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
+		TS-GH-79-024
+
 		Preconditions:
-		    - COMMENT_AUTHOR_ASSOC=OWNER
+		    - User has OWNER association with the repository (organization owner)
+		    - Dispatch routing environment is configured for comment event
 
 		Steps:
-		    1. Call is_authorized()
+		    1. Configure the dispatch context with OWNER as the comment author association
+		    2. Invoke the is_authorized function with the OWNER association
 
 		Expected:
-		    - is_authorized returns 0 for OWNER
+		    - Assert is_authorized() returns exit code 0 (authorized), confirming
+		      the case-statement matches OWNER in the OWNER|MEMBER|COLLABORATOR set
 		*/
 	})
 
 	t.Run("org members recognized as authorized", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
+		TS-GH-79-025
+
 		Preconditions:
-		    - COMMENT_AUTHOR_ASSOC=MEMBER
+		    - User has MEMBER association with the repository (organization member)
+		    - Dispatch routing environment is configured for comment event
 
 		Steps:
-		    1. Call is_authorized()
+		    1. Configure the dispatch context with MEMBER as the comment author association
+		    2. Invoke the is_authorized function with the MEMBER association
 
 		Expected:
-		    - is_authorized returns 0 for MEMBER
+		    - Assert is_authorized() returns exit code 0 (authorized), confirming
+		      the case-statement matches MEMBER in the OWNER|MEMBER|COLLABORATOR set
 		*/
 	})
 
 	t.Run("repository collaborators recognized as authorized", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
+		TS-GH-79-026
+
 		Preconditions:
-		    - COMMENT_AUTHOR_ASSOC=COLLABORATOR
+		    - User has COLLABORATOR association with the repository (external collaborator
+		      with explicit repository access)
+		    - Dispatch routing environment is configured for comment event
 
 		Steps:
-		    1. Call is_authorized()
+		    1. Configure the dispatch context with COLLABORATOR as the comment author association
+		    2. Invoke the is_authorized function with the COLLABORATOR association
 
 		Expected:
-		    - is_authorized returns 0 for COLLABORATOR
+		    - Assert is_authorized() returns exit code 0 (authorized), confirming
+		      the case-statement matches COLLABORATOR in the OWNER|MEMBER|COLLABORATOR set
 		*/
 	})
 
@@ -64,14 +81,20 @@ func TestAuthAssociationEvaluation(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		[NEGATIVE]
+		TS-GH-79-027
+
 		Preconditions:
-		    - COMMENT_AUTHOR_ASSOC=CONTRIBUTOR
+		    - User has CONTRIBUTOR association with the repository (one-time contributor,
+		      not in the authorized set)
+		    - Dispatch routing environment is configured for comment event
 
 		Steps:
-		    1. Call is_authorized()
+		    1. Configure the dispatch context with CONTRIBUTOR as the comment author association
+		    2. Invoke the is_authorized function with the CONTRIBUTOR association
 
 		Expected:
-		    - is_authorized returns non-zero for CONTRIBUTOR
+		    - Assert is_authorized() returns non-zero exit code (unauthorized), confirming
+		      CONTRIBUTOR does not match the OWNER|MEMBER|COLLABORATOR case-statement
 		*/
 	})
 
@@ -79,14 +102,21 @@ func TestAuthAssociationEvaluation(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		[NEGATIVE]
+		TS-GH-79-028
+
 		Preconditions:
-		    - PR_AUTHOR_ASSOC=NONE
+		    - PR author has NONE association with the repository (no relationship,
+		      typically a fork-based contributor)
+		    - Dispatch routing environment is configured for pull_request_target event
 
 		Steps:
-		    1. Call is_event_actor_authorized(NONE)
+		    1. Configure the dispatch context with NONE as the PR author association
+		    2. Invoke the is_event_actor_authorized function with the NONE association
 
 		Expected:
-		    - is_event_actor_authorized returns non-zero for NONE
+		    - Assert is_event_actor_authorized() returns non-zero exit code (unauthorized),
+		      confirming NONE does not match the authorized association set
+		    - Auto-review is not triggered for the external PR author
 		*/
 	})
 }
