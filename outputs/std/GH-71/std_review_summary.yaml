@@ -1,0 +1,24 @@
+status: success
+jira_id: GH-71
+verdict: APPROVED_WITH_FINDINGS
+confidence: LOW
+weighted_score: 87
+findings:
+  critical: 0
+  major: 2
+  minor: 5
+  actionable: 4
+  total: 7
+artifacts_reviewed:
+  std_yaml: true
+  go_stubs: true
+  python_stubs: false
+  stp_available: true
+dimension_scores:
+  traceability: 97
+  yaml_structure: 82
+  pattern_matching: 75
+  step_quality: 85
+  content_policy: 85
+  pse_quality: 92
+  codegen_readiness: 72
