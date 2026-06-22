@@ -1,0 +1,23 @@
+status: success
+jira_id: GH-69
+file_path: /sandbox/workspace/output/GH-69_test_plan.md
+test_counts:
+  unit_tests: 10
+  functional: 1
+  total: 11
+project_context:
+  project_id: auto-detected
+  display_name: fullsend
+  language: go
+  framework: testing
+  assertion_library: testify
+data_sources:
+  github_issue: true
+  github_pr: true
+  lsp_analysis: true
+  jira: false
+lsp_calls:
+  documentSymbol: 2
+  findReferences: 2
+  incomingCalls: 2
+  total: 6
