@@ -1,23 +1,22 @@
 status: success
 jira_id: GH-69
-file_path: /sandbox/workspace/output/GH-69_test_plan.md
-test_counts:
-  unit_tests: 10
-  functional: 1
-  total: 11
-project_context:
-  project_id: auto-detected
-  display_name: fullsend
-  language: go
-  framework: testing
-  assertion_library: testify
-data_sources:
-  github_issue: true
-  github_pr: true
-  lsp_analysis: true
-  jira: false
-lsp_calls:
-  documentSymbol: 2
-  findReferences: 2
-  incomingCalls: 2
-  total: 6
+verdict: NEEDS_REVISION
+confidence: LOW
+weighted_score: 68
+findings:
+  critical: 2
+  major: 4
+  minor: 4
+  actionable: 10
+  total: 10
+reviewed: outputs/stp/GH-69/GH-69_test_plan.md
+report: GH-69_stp_review.md
+dimension_scores:
+  rule_compliance: 72
+  requirement_coverage: 62
+  scenario_quality: 75
+  risk_accuracy: 85
+  scope_boundary: 50
+  strategy: 90
+  metadata: 75
+scope_downgrade: false
