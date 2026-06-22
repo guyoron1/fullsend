@@ -1,0 +1,7 @@
+status: success
+jira_id: GH-71
+file_path: /sandbox/workspace/output/GH-71_test_plan.md
+test_counts:
+  unit_tests: 10
+  functional: 12
+  total: 22
