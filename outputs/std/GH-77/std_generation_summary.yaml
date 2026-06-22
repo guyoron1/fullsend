@@ -1,0 +1,58 @@
+---
+status: success
+component: std-orchestrator
+jira_id: GH-77
+phase: phase1
+stp_file: outputs/stp/GH-77/GH-77_test_plan.md
+output_dir: outputs/std/GH-77/
+
+execution_summary:
+  total_stp_scenarios: 15
+  functional_scenarios: 15
+  test_strategy_mode: auto
+  detected_language: go
+  detected_framework: testing
+  assertion_library: testify
+  std_file_generated: "GH-77_test_description.yaml"
+  scenarios_in_std: 15
+
+code_generation:
+  phase: phase1
+  go_tests:
+    file_count: 6
+    test_count: 15
+    status: "stubs_generated"
+    files:
+      - "qf_drift_detection_stubs_test.go"
+      - "qf_stale_detection_stubs_test.go"
+      - "qf_pre_sentinel_fallback_stubs_test.go"
+      - "qf_skip_behavior_stubs_test.go"
+      - "qf_crlf_normalization_stubs_test.go"
+      - "qf_content_injection_guard_stubs_test.go"
+  python_tests:
+    file_count: 0
+    test_count: 0
+    status: "not_applicable"
+
+validation_results:
+  std_file:
+    file: GH-77_test_description.yaml
+    status: valid
+    yaml_syntax: passed
+    required_sections: passed
+    scenarios_count: 15
+  coverage:
+    std_scenarios: 15
+    generated_stubs: 15
+    coverage_percent: 100
+    missing_scenarios: []
+
+errors: []
+warnings: []
+
+notes:
+  - "Auto-detected project: Go with stdlib testing + testify"
+  - "All 15 scenarios are functional tests for reconcile-repos.sh bash script"
+  - "STD YAML generated as internal format for automation"
+  - "Go test stubs use t.Run() + t.Skip() pattern (stdlib testing)"
+  - "No Python stubs generated (auto mode detected Go as project language)"
