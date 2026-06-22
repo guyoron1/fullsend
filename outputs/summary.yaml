@@ -1,0 +1,25 @@
+status: success
+jira_id: GH-79
+file_path: /sandbox/workspace/output/GH-79_test_plan.md
+test_counts:
+  functional: 35
+  end_to_end: 5
+  total: 40
+project_context:
+  project_id: auto-detected
+  display_name: fullsend
+  language: go
+  framework: testing
+  assertion_library: testify
+  lsp_analysis: true
+  lsp_calls: 8
+pipeline_steps:
+  project_resolution: success
+  data_collection: success
+  pr_fetching: success
+  lsp_analysis: success
+  requirement_mapping: success
+  scenario_building: success
+  tier_classification: success
+  template_engine: success
+  output_validation: success
