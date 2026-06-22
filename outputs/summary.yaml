@@ -1,0 +1,31 @@
+status: success
+jira_id: GH-76
+file_path: /sandbox/workspace/output/GH-76_test_plan.md
+test_counts:
+  unit_tests: 33
+  functional: 15
+  total: 48
+pr_analyzed:
+  url: https://github.com/guyoron1/fullsend/pull/76
+  title: "perf(#2354): bound enrollment wait with timeout and backoff"
+  files_changed: 47
+  additions: 3373
+  deletions: 179
+lsp_analysis:
+  calls_made: 7
+  symbols_traced:
+    - awaitWorkflowRun (enrollment.go:121) -> called by Install, Uninstall
+    - nextInterval (enrollment.go:173) -> called by awaitWorkflowRun
+    - NewEnrollmentLayer (enrollment.go:47) -> called by admin.go:1674, admin.go:1869
+    - Install (enrollment.go:81) -> called by InstallAll in layers.go:104
+  regression_impact:
+    - EnrollmentLayer Install/Uninstall lifecycle
+    - admin CLI layer stack construction
+    - Status comment notification lifecycle
+project_context:
+  project_id: auto-detected
+  display_name: fullsend
+  language: go
+  framework: testing
+  assertion_library: testify
+  config_dir: null
