@@ -4,8 +4,8 @@
 
 ### **Metadata & Tracking**
 
-- **Enhancement(s):** [GH-74](https://github.com/guyoron1/fullsend/issues/74)
-- **Feature Tracking:** [GH-74](https://github.com/guyoron1/fullsend/issues/74) — Mirror of upstream fullsend-ai/fullsend#2436
+- **Enhancement(s):** [GH-2436](https://github.com/fullsend-ai/fullsend/issues/2436) (fork PR: [guyoron1/fullsend#74](https://github.com/guyoron1/fullsend/issues/74))
+- **Feature Tracking:** [GH-2436](https://github.com/fullsend-ai/fullsend/issues/2436)
 - **Epic Tracking:** [GH-2433](https://github.com/fullsend-ai/fullsend/issues/2433) — Data consistency guard
 - **QE Owner(s):** Unassigned
 - **Owning SIG:** N/A
@@ -113,7 +113,7 @@ Testing validates that the restored data consistency guard in `EnsureOrgInMint` 
 - [ ] **Scale Testing** — Validates feature behavior under increased load and at production-like scale
   - *Details:* Not applicable. The guard is a single conditional check on env var values.
 - [ ] **Security Testing** — Verifies security requirements, RBAC, authentication, authorization, and vulnerability scanning
-  - *Details:* The guard is a defense-in-depth measure that prevents silent data loss. It does not modify authentication or authorization flows.
+  - *Details:* Not applicable — the guard validates internal data consistency. No changes to authentication, authorization, or security boundaries.
 - [ ] **Usability Testing** — Validates user experience and accessibility requirements
   - *Details:* The error message includes role count, project ID, and a suggested `fullsend mint status` command for operator investigation.
 - [ ] **Monitoring** — Does the feature require metrics and/or alerts?
@@ -150,9 +150,8 @@ Testing validates that the restored data consistency guard in `EnsureOrgInMint` 
 
 #### **3.1. Testing Tools & Frameworks**
 
-- **Test Framework:** Go standard `testing` package
+- **Test Framework:** Standard project tools (no additional tools required)
 - **CI/CD:** Standard (no special tools)
-- **Other Tools:** `testify/assert` and `testify/require` for assertions
 
 #### **4. Entry Criteria**
 
@@ -199,73 +198,66 @@ This section links requirements to test coverage, enabling reviewers to verify a
 - **Requirement:** Data consistency guard detects and blocks enrollment when ALLOWED_ORGS is empty but ROLE_APP_IDS has configured roles
 - **Evidence:** EnsureOrgInMint guard at provisioner.go:419-431 checks for empty ALLOWED_ORGS with populated role-only ROLE_APP_IDS entries
 - **Test Scenarios:**
-  - TS-GH-74-001: Verify guard returns error on empty ALLOWED_ORGS with role-only entries (Unit Tests, P0)
-  - TS-GH-74-002: Verify no env var update attempted when guard fires (Unit Tests, P0)
-  - TS-GH-74-003: Verify guard permits enrollment when ALLOWED_ORGS populated (Unit Tests, P0)
+  - TS-GH-2433-001: Verify guard returns error on empty ALLOWED_ORGS with role-only entries (Unit Tests, P0)
+  - TS-GH-2433-002: Verify no env var update attempted when guard fires — UpdateServiceEnvVars not called (Unit Tests, P0)
+  - TS-GH-2433-003: Verify guard permits enrollment when ALLOWED_ORGS populated (Unit Tests, P0)
 
 ---
 
 - **Requirement:** First enrollment succeeds when both ALLOWED_ORGS and ROLE_APP_IDS are empty
 - **Evidence:** Guard must not fire when no prior state exists — both env vars empty is a clean state
 - **Test Scenarios:**
-  - TS-GH-74-004: Verify first enrollment proceeds with empty state (Unit Tests, P0)
-  - TS-GH-74-005: Verify UpdateServiceEnvVars called on first enrollment (Unit Tests, P0)
+  - TS-GH-2433-004: Verify first enrollment proceeds with empty state (Unit Tests, P0)
+  - TS-GH-2433-005: Verify UpdateServiceEnvVars called on first enrollment (Unit Tests, P0)
 
 ---
 
 - **Requirement:** Guard is bypassed when ALLOWED_ORGS already has enrolled orgs
 - **Evidence:** Non-empty ALLOWED_ORGS indicates healthy state; guard only applies to empty ALLOWED_ORGS
 - **Test Scenarios:**
-  - TS-GH-74-006: Verify guard bypassed with populated ALLOWED_ORGS (Unit Tests, P0)
-  - TS-GH-74-007: Verify existing orgs preserved during new enrollment (Unit Tests, P1)
+  - TS-GH-2433-006: Verify guard bypassed with populated ALLOWED_ORGS (Unit Tests, P0)
+  - TS-GH-2433-007: Verify existing orgs preserved during new enrollment (Unit Tests, P1)
 
 ---
 
 - **Requirement:** Guard correctly filters legacy org/role keys from role-only keys
 - **Evidence:** mintcore.RoleOnlyAppIDs filters keys; legacy keys like "org/agent" should not trigger guard
 - **Test Scenarios:**
-  - TS-GH-74-008: Verify legacy-only keys do not trigger guard (Unit Tests, P1)
-  - TS-GH-74-009: Verify mixed legacy and role-only keys trigger guard (Unit Tests, P1)
+  - TS-GH-2433-008: Verify legacy-only keys do not trigger guard (Unit Tests, P1)
+  - TS-GH-2433-009: Verify mixed legacy and role-only keys trigger guard (Unit Tests, P1)
 
 ---
 
 - **Requirement:** Guard error message contains actionable diagnostic information
 - **Evidence:** Error format at provisioner.go:427-429 includes role count, project ID, and fullsend mint status command
 - **Test Scenarios:**
-  - TS-GH-74-010: Verify error contains role count and project ID (Unit Tests, P1)
-  - TS-GH-74-011: Verify error contains suggested mint status command (Unit Tests, P1)
+  - TS-GH-2433-010: Verify error contains role count and project ID (Unit Tests, P1)
+  - TS-GH-2433-011: Verify error contains suggested mint status command (Unit Tests, P1)
 
 ---
 
 - **Requirement:** Guard handles ROLE_APP_IDS edge cases without triggering
 - **Evidence:** json.Unmarshal silently fails on bad input; empty/missing maps have len 0; guard must not false-positive
 - **Test Scenarios:**
-  - TS-GH-74-012: Verify guard safe on malformed ROLE_APP_IDS JSON (Unit Tests, P1)
-  - TS-GH-74-013: Verify guard safe on empty or missing ROLE_APP_IDS (Unit Tests, P1)
-  - TS-GH-74-014: Verify guard safe on empty JSON object ROLE_APP_IDS (Unit Tests, P1)
+  - TS-GH-2433-012: Verify guard safe on malformed ROLE_APP_IDS JSON (Unit Tests, P1)
+  - TS-GH-2433-013: Verify guard safe on empty or missing ROLE_APP_IDS (Unit Tests, P1)
+  - TS-GH-2433-014: Verify guard safe on empty JSON object ROLE_APP_IDS (Unit Tests, P1)
 
 ---
 
 - **Requirement:** Guard errors propagate through provisioning flows
 - **Evidence:** LSP incomingCalls shows EnsureOrgInMint called from provisionWithExistingMint (line 622) and provisionSelfManaged (line 897)
 - **Test Scenarios:**
-  - TS-GH-74-015: Verify provisionWithExistingMint propagates guard error (Unit Tests, P1)
-  - TS-GH-74-016: Verify provisionSelfManaged propagates guard error (Unit Tests, P1)
+  - TS-GH-2433-015: Verify provisionWithExistingMint propagates guard error (Unit Tests, P1)
+  - TS-GH-2433-016: Verify provisionSelfManaged propagates guard error (Unit Tests, P1)
 
 ---
 
 - **Requirement:** Guard fires independently per goroutine under concurrent enrollment
 - **Evidence:** EnsureOrgInMint is called per-org in parallel enrollment scenarios; each call reads its own env var state
 - **Test Scenarios:**
-  - TS-GH-74-017: Verify concurrent enrollments isolate guard evaluation (Unit Tests, P2)
-  - TS-GH-74-018: Verify stale-read goroutine fails while fresh succeeds (Unit Tests, P2)
-
----
-
-- **Requirement:** No env var update is attempted when the guard fires
-- **Evidence:** Guard returns error before reaching UpdateServiceEnvVars call at provisioner.go:462
-- **Test Scenarios:**
-  - TS-GH-74-019: Verify UpdateServiceEnvVars not called on guard trigger (Unit Tests, P1)
+  - TS-GH-2433-017: Verify concurrent enrollments isolate guard evaluation (Unit Tests, P2)
+  - TS-GH-2433-018: Verify stale-read goroutine fails while fresh succeeds (Unit Tests, P2)
 
 ---
 
