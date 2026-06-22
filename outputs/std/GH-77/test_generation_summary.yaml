@@ -1,0 +1,21 @@
+status: success
+jira_id: GH-77
+std_source: outputs/std/GH-77/GH-77_test_description.yaml
+languages:
+  - language: go
+    framework: testing
+    files:
+      - qf_reconcile_test_helpers_test.go
+      - qf_drift_detection_test.go
+      - qf_stale_detection_test.go
+      - qf_pre_sentinel_fallback_test.go
+      - qf_skip_behavior_test.go
+      - qf_crlf_normalization_test.go
+      - qf_content_injection_guard_test.go
+    test_count: 15
+total_test_count: 15
+lsp_patterns_used: false
+compile_gate_passed: true
+all_tests_pass: true
+test_placement: co-located
+target_package: internal/scaffold
