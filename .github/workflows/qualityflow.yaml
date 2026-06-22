@@ -1054,10 +1054,10 @@ jobs:
           GO_DIRS=""
           PY_DIRS=""
           if [[ "${GO_COUNT}" -gt 0 ]]; then
-            GO_DIRS=$(find . -name "qf_*_test.go" -not -path "*/outputs/*" -not -path "*/.git/*" -printf '%h\n' 2>/dev/null | sort -u | head -3 | sed 's|^\./||' || true)
+            GO_DIRS=$(find . -name "qf_*_test.go" -not -path "*/outputs/*" -not -path "*/.git/*" -exec dirname {} \; 2>/dev/null | sort -u | head -3 | sed 's|^\./||' | paste -sd ',' - || true)
           fi
           if [[ "${PY_COUNT}" -gt 0 ]]; then
-            PY_DIRS=$(find . -name "qf_test_*.py" -not -path "*/outputs/*" -not -path "*/.git/*" -printf '%h\n' 2>/dev/null | sort -u | head -3 | sed 's|^\./||' || true)
+            PY_DIRS=$(find . -name "qf_test_*.py" -not -path "*/outputs/*" -not -path "*/.git/*" -exec dirname {} \; 2>/dev/null | sort -u | head -3 | sed 's|^\./||' | paste -sd ',' - || true)
           fi
 
           # --- Remove intermediate artifacts (STP, STD, reviews, metadata) ---
@@ -1126,12 +1126,12 @@ jobs:
           PY_DIRS="${{ steps.organize-tests.outputs.py_dirs }}"
           TEST_ROWS=""
           if [[ "${GO_COUNT}" -gt 0 ]]; then
-            GO_LOC=$(echo "${GO_DIRS:-source tree}" | head -1)
+            GO_LOC=$(echo "${GO_DIRS:-source tree}" | cut -d',' -f1)
             TEST_ROWS="${TEST_ROWS}
           | Go | **${GO_COUNT}** files | \`${GO_LOC}/qf_*_test.go\` |"
           fi
           if [[ "${PY_COUNT}" -gt 0 ]]; then
-            PY_LOC=$(echo "${PY_DIRS:-source tree}" | head -1)
+            PY_LOC=$(echo "${PY_DIRS:-source tree}" | cut -d',' -f1)
             TEST_ROWS="${TEST_ROWS}
           | Python | **${PY_COUNT}** files | \`${PY_LOC}/qf_test_*.py\` |"
           fi
