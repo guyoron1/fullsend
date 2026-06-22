@@ -1,0 +1,7 @@
+status: success
+jira_id: GH-70
+file_path: /sandbox/workspace/output/GH-70_test_plan.md
+test_counts:
+  functional: 15
+  e2e: 0
+  total: 15
