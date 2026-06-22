@@ -1,24 +1,24 @@
 status: success
 jira_id: GH-79
-file_path: /sandbox/workspace/output/GH-79_test_plan.md
-test_counts:
-  p0: 14
-  p1: 17
-  p2: 6
-  total: 37
-analysis:
-  pr_number: 79
-  files_changed: 100
-  additions: 17909
-  deletions: 2316
-  lsp_calls: 8
-  key_symbols_traced:
-    - "forge.Client (115 refs, 36 files)"
-    - "runAgent (13 incoming calls)"
-    - "config.ValidRoles (5 refs, 3 files)"
-    - "bootstrapCommon (2 refs)"
-  project_context:
-    project_id: auto-detected
-    language: go
-    framework: testing
-    assertion_library: testify
+verdict: APPROVED_WITH_FINDINGS
+confidence: LOW
+weighted_score: 77
+findings:
+  critical: 0
+  major: 8
+  minor: 6
+  actionable: 12
+  total: 14
+artifacts_reviewed:
+  std_yaml: true
+  go_stubs: true
+  python_stubs: false
+  stp_available: true
+dimension_scores:
+  traceability: 95
+  yaml_structure: 60
+  pattern_matching: null  # skipped — no pattern library
+  step_quality: 78
+  content_policy: 55
+  pse_quality: 75
+  codegen_readiness: 50
