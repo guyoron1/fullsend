@@ -13,17 +13,6 @@ document_metadata:
     file: "outputs/stp/GH-75/GH-75_test_plan.md"
     version: "v1"
     sections_covered: "Section 3 - Test Scenarios"
-  related_prs:
-    - repo: "guyoron1/fullsend"
-      pr_number: 75
-      url: "https://github.com/guyoron1/fullsend/pull/75"
-      title: "fix(#2432): retry merge on 409 after updating PR branch"
-      merged: false
-    - repo: "fullsend-ai/fullsend"
-      pr_number: 2434
-      url: "https://github.com/fullsend-ai/fullsend/pull/2434"
-      title: "Upstream PR"
-      merged: false
   total_scenarios: 7
   tier_1_count: 0
   tier_2_count: 0
@@ -260,7 +249,7 @@ scenarios:
               "should have retried merge after update-branch failure")
 
       - assertion_id: "ASSERT-03"
-        priority: "P0"
+        priority: "P1"
         description: "Update-branch endpoint was called"
         condition: "updateCalls >= 1"
         failure_impact: "409 handler did not attempt to update the branch"

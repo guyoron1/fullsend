@@ -28,6 +28,8 @@ func TestMergeChangeProposal_UpdateBranchResilience(t *testing.T) {
 
 		Steps:
 		    1. Call MergeChangeProposal(ctx, "org", "repo", 7)
+		       (internally: first merge attempt returns 409, update-branch returns 403,
+		        retry proceeds despite update-branch failure, second merge returns 200)
 
 		Expected:
 		    - Method returns nil (merge eventually succeeds despite update-branch failure)
