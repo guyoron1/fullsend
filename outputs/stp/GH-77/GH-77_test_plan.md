@@ -4,11 +4,11 @@
 
 ### Metadata & Tracking
 
-- **Enhancement:** [GH-77](https://github.com/guyoron1/fullsend/pull/77)
-- **Feature Tracking:** [GH-77](https://github.com/guyoron1/fullsend/pull/77) — fix(#2247): compare decoded text in shim drift detection
+- **Enhancement:** [GH-77 / fullsend-ai/fullsend#2254](https://github.com/fullsend-ai/fullsend/pull/2254) (fork PR: [guyoron1/fullsend#77](https://github.com/guyoron1/fullsend/pull/77))
+- **Feature Tracking:** [GH-77](https://github.com/fullsend-ai/fullsend/pull/2254) — fix(#2247): compare decoded text in shim drift detection
 - **Epic Tracking:** [GH-2247](https://github.com/fullsend-ai/fullsend/issues/2247) — Shim drift false-positive from trailing newline encoding differences
 - **QE Owner:** Unassigned
-- **Owning SIG:** N/A
+- **Owning SIG:** Dispatch
 - **Participating SIGs:** N/A
 
 **Document Conventions:** Standard QualityFlow STP format. "Verify" denotes a positive validation; "Validate" denotes a constraint or negative check.
@@ -52,6 +52,7 @@ This fix addresses false-positive shim drift detection in the `reconcile-repos.s
 
 - [ ] **Developer handoff completed; design reviewed with development team.**
   - PR mirrors upstream fullsend-ai/fullsend#2254. The fix is a 12-line change to the comparison block in `reconcile-repos.sh`, replacing `managed_content_b64()` calls with inline `base64 -d | tr -d '\r'` decoding.
+  - QE engaged post-implementation; scope is a well-defined bug fix with clear acceptance criteria, making post-implementation test planning appropriate.
 
 - [ ] **Technology challenges and constraints identified.**
   - No new technology introduced. The fix uses standard shell utilities (`base64`, `tr`, `printf`) already present in the script.
@@ -195,34 +196,40 @@ No new or special tools required. Standard Go `testing` + `testify` and bash tes
 #### III.1 — Requirements Mapping
 
 - **GH-77** — Shim drift detection correctly identifies identical content regardless of encoding differences
-  - Verify identical content with different trailing newlines is not flagged as stale — Functional — P0
-  - Verify genuine content change is correctly flagged as stale — Functional — P0
-  - Verify GitHub API base64 line-wrapping does not cause false drift — Functional — P1
+  - Verify identical content with different trailing newlines is not flagged as stale — Functional (Unit) — P0
+  - Verify comparison logic returns stale for genuinely different content — Functional (Unit) — P0
+  - Verify GitHub API base64 line-wrapping does not cause false drift — Functional (Unit) — P1
 
 - **GH-77** — Base64 encode/decode round-trip preserves content integrity for drift comparison
-  - Verify base64 round-trip preserves multi-line YAML — Functional — P1
-  - Verify round-trip with empty content — Functional — P2
+  - Verify base64 round-trip preserves multi-line YAML — Functional (Unit) — P1
+  - Verify base64 round-trip of empty content produces empty decoded text without errors — Functional (Unit) — P2
 
 - **GH-77** — Sentinel-based managed content extraction works on decoded text
-  - Verify managed content extracted from sentinel onward — Functional — P1
-  - Verify empty result when no sentinel present — Functional — P1
+  - Verify managed content extracted from sentinel onward — Functional (Unit) — P1
+  - Verify empty result when no sentinel present — Functional (Unit) — P1
 
 - **GH-77** — Pre-sentinel shim fallback compares full decoded content
-  - Verify full content comparison for pre-sentinel shims — Functional — P1
-  - Verify pre-sentinel drift detected for different content — Functional — P1
-  - Verify fallback does not trigger when sentinel exists — Functional — P1
+  - Verify full content comparison for pre-sentinel shims — Functional (Unit) — P1
+  - Verify pre-sentinel drift detected for different content — Functional (Unit) — P1
+  - Verify fallback does not trigger when sentinel exists — Functional (Unit) — P1
 
 - **GH-77** — User-owned headers above sentinel are preserved during shim updates
-  - Verify comment headers preserved after drift update — Functional — P2
-  - Verify non-comment header injection rejected — Functional — P2
+  - Verify comment headers preserved after drift update — Functional (Unit) — P2
+  - Verify non-comment header injection rejected — Functional (Unit) — P2
 
-- **GH-77** — Genuine shim drift is still detected and triggers update PR
-  - Verify stale shim triggers update PR creation — Functional — P0
-  - Verify up-to-date shim skips PR creation — Functional — P0
+- **GH-77** — Genuine shim drift triggers update PR creation while up-to-date shims are skipped
+  - Verify stale detection triggers PR creation workflow — Functional (Integration) — P0
+  - Verify up-to-date shim skips PR creation — Functional (Integration) — P0
 
 - **GH-77** — Carriage return normalization prevents platform-specific comparison failures
-  - Verify CRLF and LF content compared as equivalent — Functional — P2
-  - Verify mixed line endings handled correctly — Functional — P2
+  - Verify CRLF and LF content compared as equivalent — Functional (Unit) — P2
+  - Verify mixed line endings handled correctly — Functional (Unit) — P2
+
+- **GH-77** — Existing reconcile functionality is not regressed by the comparison logic change
+  - Verify repository enrollment workflow completes successfully — Regression (Integration) — P1
+  - Verify repository unenrollment removes shim correctly — Regression (Integration) — P1
+  - Verify user-owned headers are preserved during shim update — Regression (Integration) — P1
+  - Verify content-injection guard still rejects non-comment content above sentinel — Regression (Integration) — P1
 
 ---
 
