@@ -1,0 +1,67 @@
+version: 1
+ticket_id: "GH-71"
+project_id: "auto-detected"
+display_name: "fullsend"
+created: "2026-06-22T00:00:00Z"
+updated: "2026-06-22T00:01:00Z"
+
+phases:
+  stp:
+    status: completed
+    started: "2026-06-22T00:00:00Z"
+    completed: "2026-06-22T00:00:00Z"
+    output: "outputs/stp/GH-71/GH-71_test_plan.md"
+    output_checksum: "sha256:1b05725867d8e8734f91adcf42b2a139ea71cba2a7e97e51b639e08df391b966"
+    error: null
+
+  stp_review:
+    status: completed
+    started: "2026-06-22T00:00:00Z"
+    completed: "2026-06-22T00:00:00Z"
+    output: "outputs/reviews/GH-71/GH-71_stp_review.md"
+    verdict: APPROVED_WITH_FINDINGS
+    findings:
+      critical: 0
+      major: 4
+      minor: 5
+    error: null
+
+  stp_refine:
+    status: pending
+    error: null
+
+  std:
+    status: completed
+    started: "2026-06-22T00:00:00Z"
+    completed: "2026-06-22T00:01:00Z"
+    output: "outputs/std/GH-71/GH-71_test_description.yaml"
+    output_checksum: "sha256:ce73238c01024ee8886933eb4f90af1546e3ae5cbf28a4fbb02273bc1a7aef98"
+    stp_checksum_at_generation: "sha256:1b05725867d8e8734f91adcf42b2a139ea71cba2a7e97e51b639e08df391b966"
+    scenario_counts:
+      total: 22
+      unit: 10
+      functional: 12
+    stubs:
+      go: "outputs/std/GH-71/go-tests/"
+    error: null
+
+  std_review:
+    status: pending
+    verdict: null
+    findings: null
+    error: null
+
+  go_codegen:
+    status: pending
+    output: null
+    error: null
+
+  python_codegen:
+    status: pending
+    output: null
+    error: null
+
+  cluster_tests:
+    status: pending
+    output: null
+    error: null

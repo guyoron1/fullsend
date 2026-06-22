@@ -1,0 +1,45 @@
+---
+status: success
+component: std-orchestrator
+jira_id: GH-71
+phase: phase1
+stp_file: outputs/stp/GH-71/GH-71_test_plan.md
+output_dir: outputs/std/GH-71/
+
+execution_summary:
+  total_stp_scenarios: 22
+  unit_scenarios: 10
+  functional_scenarios: 12
+  e2e_scenarios: 0
+  p0_scenarios: 8
+  p1_scenarios: 11
+  p2_scenarios: 3
+  std_file_generated: "GH-71_test_description.yaml"
+  scenarios_in_std: 22
+  test_strategy_mode: "auto"
+
+code_generation:
+  phase: phase1
+  language: go
+  framework: testing
+  assertion_library: testify
+  target_test_directory: "internal/cli"
+
+validation_results:
+  std_file:
+    file: GH-71_test_description.yaml
+    status: valid
+    yaml_syntax: passed
+    required_sections: passed
+    scenarios_count: 22
+    unique_test_ids: passed
+
+errors: []
+warnings: []
+
+notes:
+  - "STD YAML generated as internal format (auto mode)"
+  - "Language detected: Go with stdlib testing + testify"
+  - "All 22 scenarios from STP Section III included"
+  - "Use go-stub-generator for Phase 1 test stubs"
+---

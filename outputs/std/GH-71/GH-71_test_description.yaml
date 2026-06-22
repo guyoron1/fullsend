@@ -1,0 +1,1499 @@
+---
+# Software Test Description (STD) - GH-71
+# Report Failure When Agent Errors With No Commits
+# Generated: 2026-06-22
+
+document_metadata:
+  std_version: "2.1-enhanced"
+  generated_date: "2026-06-22"
+  jira_issue: "GH-71"
+  jira_summary: "fix(#2378): report failure when agent errors with no commits"
+  source_bugs:
+    - "#2378"
+  stp_reference:
+    file: "outputs/stp/GH-71/GH-71_test_plan.md"
+    version: "v1"
+    sections_covered: "Section III - Test Scenarios & Traceability"
+  related_prs:
+    - repo: "guyoron1/fullsend"
+      pr_number: 71
+      url: "https://github.com/guyoron1/fullsend/pull/71"
+      title: "fix(#2378): report failure when agent errors with no commits"
+      merged: false
+  owning_sig: "N/A"
+  participating_sigs: []
+  total_scenarios: 22
+  tier_1_count: 0
+  tier_2_count: 0
+  unit_count: 10
+  functional_count: 12
+  e2e_count: 0
+  p0_count: 8
+  p1_count: 11
+  p2_count: 3
+  existing_coverage_count: 0
+  new_count: 22
+  test_strategy_mode: "auto"
+
+code_generation_config:
+  std_version: "2.1-enhanced"
+  framework: "testing"
+  assertion_library: "testify"
+  language: "go"
+  package_name: "cli"
+  target_test_directory: "internal/cli"
+  filename_prefix: "qf_"
+  imports:
+    standard:
+      - "context"
+      - "os"
+      - "os/exec"
+      - "path/filepath"
+      - "testing"
+    framework:
+      - "github.com/stretchr/testify/assert"
+      - "github.com/stretchr/testify/require"
+    project:
+      - "github.com/fullsend-ai/fullsend/internal/cli"
+      - "github.com/fullsend-ai/fullsend/internal/forge"
+      - "github.com/fullsend-ai/fullsend/internal/statuscomment"
+      - "github.com/fullsend-ai/fullsend/internal/config"
+
+common_preconditions:
+  infrastructure:
+    - name: "Go development environment"
+      requirement: "Go 1.26+ installed"
+      validation: "go version"
+    - name: "Git repository"
+      requirement: "PR #71 changes available on test branch"
+      validation: "git log --oneline -1"
+    - name: "Module dependencies"
+      requirement: "All Go module dependencies resolved"
+      validation: "go mod download"
+  operators: []
+  cluster_configuration:
+    topology: "N/A"
+    cpu_virtualization: "N/A"
+    storage: "Standard filesystem"
+    network: "GitHub API access (mocked in unit tests)"
+  rbac_requirements: []
+
+scenarios:
+  # ============================================================
+  # Group 1: Exit Code Propagation (P0, Unit Tests)
+  # Requirement: Agent exit code is propagated to post-script
+  # ============================================================
+
+  - scenario_id: 1
+    test_id: "TS-GH-71-001"
+    test_type: "unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-71"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify AGENT_EXIT_CODE set when agent exits non-zero"
+      what: |
+        Tests that when the agent process (runAgent) exits with a non-zero exit code,
+        the AGENT_EXIT_CODE environment variable is set to that exit code value in the
+        post-script environment. This validates the core propagation mechanism from
+        runAgent's lastExitCode to the deferred post-script execution.
+      why: |
+        Without exit code propagation, post-scripts cannot distinguish between agent
+        failures and successful no-op runs. This is the root cause of issue #2378
+        where failed agent runs silently succeeded.
+      acceptance_criteria:
+        - "AGENT_EXIT_CODE environment variable is set to the non-zero exit code"
+        - "Post-script receives the exit code via its environment"
+        - "Exit code value matches the agent process's actual exit code"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go testing with testify"
+
+    specific_preconditions:
+      - name: "runAgent function accessible"
+        requirement: "Internal CLI package test (same-package)"
+        validation: "go test ./internal/cli/ -run TestAgentExitCode"
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create a mock agent runtime that exits with code 1"
+          command: "Configure sandbox mock to return exit code 1"
+          validation: "Mock is configured"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute runAgent with the mock runtime"
+          command: "Call runAgent() with mocked sandbox"
+          validation: "Function returns without panic"
+        - step_id: "TEST-02"
+          action: "Inspect the environment variables passed to post-script"
+          command: "Check AGENT_EXIT_CODE in post-script env"
+          validation: "AGENT_EXIT_CODE equals '1'"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Reset environment"
+          command: "os.Unsetenv('AGENT_EXIT_CODE')"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "AGENT_EXIT_CODE is set to the non-zero exit code"
+        condition: "env['AGENT_EXIT_CODE'] == '1'"
+        failure_impact: "Post-scripts cannot detect agent failures, silently succeed"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 2
+    test_id: "TS-GH-71-002"
+    test_type: "unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-71"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify AGENT_EXIT_CODE is zero on successful agent run"
+      what: |
+        Tests that when the agent process exits successfully (exit code 0),
+        the AGENT_EXIT_CODE environment variable is set to '0', allowing
+        post-scripts to confirm the agent completed without error.
+      why: |
+        Post-scripts need to distinguish between a successful agent run that
+        produced no changes (no-op) and a failed agent run. Both produce no
+        commits, but only the failure case should report an error.
+      acceptance_criteria:
+        - "AGENT_EXIT_CODE is set to '0' on successful agent exit"
+        - "Post-script can read the value correctly"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go testing with testify"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create a mock agent runtime that exits with code 0"
+          command: "Configure sandbox mock to return exit code 0"
+          validation: "Mock is configured"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute runAgent with the mock runtime"
+          command: "Call runAgent() with mocked sandbox"
+          validation: "Function completes successfully"
+        - step_id: "TEST-02"
+          action: "Inspect AGENT_EXIT_CODE in post-script environment"
+          command: "Check AGENT_EXIT_CODE value"
+          validation: "AGENT_EXIT_CODE equals '0'"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "AGENT_EXIT_CODE is '0' on successful run"
+        condition: "env['AGENT_EXIT_CODE'] == '0'"
+        failure_impact: "Successful runs could be misidentified as failures"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 3
+    test_id: "TS-GH-71-003"
+    test_type: "unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-71"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify post-script receives exit code via environment"
+      what: |
+        Tests the integration point where the deferred post-script execution
+        in run.go receives the AGENT_EXIT_CODE environment variable. Validates
+        that the env var is correctly injected into the exec.Command environment
+        for the post-script subprocess.
+      why: |
+        The defer block in run.go must correctly pass lastExitCode to the
+        post-script. If the env injection fails, the post-script receives
+        no exit code and defaults to treating the run as successful.
+      acceptance_criteria:
+        - "Post-script exec.Command receives AGENT_EXIT_CODE in its Env slice"
+        - "Value is a string representation of the integer exit code"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go testing with testify"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Set up a post-script that echoes AGENT_EXIT_CODE"
+          command: "Create temp script: echo $AGENT_EXIT_CODE"
+          validation: "Script is executable"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute the run command with a failing agent"
+          command: "Trigger deferred post-script execution"
+          validation: "Post-script runs and can read AGENT_EXIT_CODE"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Remove temp script"
+          command: "os.Remove(tempScript)"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Post-script process environment contains AGENT_EXIT_CODE"
+        condition: "Post-script output contains the exit code value"
+        failure_impact: "Broken env var propagation renders the entire fix non-functional"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 4
+    test_id: "TS-GH-71-004"
+    test_type: "unit"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-71"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify lastExitCode updated after each iteration"
+      what: |
+        Tests that in multi-iteration validation loops, the lastExitCode
+        variable is updated to reflect the exit code of the most recent
+        agent iteration, not a stale value from a previous iteration.
+      why: |
+        The known limitation states that only the last iteration's exit code
+        is captured. This test ensures the variable is at least correctly
+        updated on each iteration, preventing stale values.
+      acceptance_criteria:
+        - "lastExitCode reflects the final iteration's exit code"
+        - "Previous iteration exit codes do not persist"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go testing with testify"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock agent that fails on iteration 1 and succeeds on iteration 2"
+          command: "Configure mock with iteration-dependent exit codes"
+          validation: "Mock returns [1, 0] for sequential calls"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute runAgent through two iterations"
+          command: "Call runAgent with maxIterations=2"
+          validation: "Both iterations execute"
+        - step_id: "TEST-02"
+          action: "Check AGENT_EXIT_CODE after completion"
+          command: "Read AGENT_EXIT_CODE from post-script env"
+          validation: "Value is '0' (from last successful iteration)"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "lastExitCode reflects the final iteration's exit code"
+        condition: "AGENT_EXIT_CODE == '0' after [fail, succeed] sequence"
+        failure_impact: "Stale exit codes could cause false failure reports"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Group 2: Failure Comment Posting (P0, Functional)
+  # Requirement: Post-code script reports failure to issue
+  # ============================================================
+
+  - scenario_id: 5
+    test_id: "TS-GH-71-005"
+    test_type: "functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-71"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify failure comment posted on agent error without branch"
+      what: |
+        Tests the report_failure_to_issue() function in post-code.sh: when
+        AGENT_EXIT_CODE is non-zero and no feature branch was created (still
+        on main/master), the script posts a failure comment to the originating
+        GitHub issue using 'gh issue comment'.
+      why: |
+        This is the primary user-facing fix for #2378. Users triggering
+        /fs-code must receive feedback when the agent fails without producing
+        any work.
+      acceptance_criteria:
+        - "gh issue comment is called with the correct issue number"
+        - "Comment body describes the agent failure"
+        - "Comment includes a link to the workflow run"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Shell script testing with mock gh binary"
+
+    specific_preconditions:
+      - name: "Mock gh CLI"
+        requirement: "A mock gh binary that records invocations"
+        validation: "which gh (mock)"
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock gh binary that records arguments"
+          command: "Create script that logs args to temp file"
+          validation: "Mock gh is on PATH"
+        - step_id: "SETUP-02"
+          action: "Set environment variables"
+          command: "export AGENT_EXIT_CODE=1 GITHUB_SERVER_URL=https://github.com GITHUB_REPOSITORY=org/repo GITHUB_RUN_ID=12345 ISSUE_NUMBER=42"
+          validation: "Variables are set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Source post-code.sh and trigger failure path"
+          command: "Simulate: on main branch, no feature branch, AGENT_EXIT_CODE=1"
+          validation: "Script calls gh issue comment"
+        - step_id: "TEST-02"
+          action: "Verify gh was called with correct arguments"
+          command: "Read mock gh invocation log"
+          validation: "gh issue comment 42 --body contains failure message"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Remove mock gh and temp files"
+          command: "rm -f mock_gh invocation_log"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "gh issue comment is invoked for the correct issue"
+        condition: "Mock gh log contains: issue comment 42"
+        failure_impact: "Users receive no feedback on agent failure"
+      - assertion_id: "ASSERT-02"
+        priority: "P0"
+        description: "Comment body contains workflow run URL"
+        condition: "Comment body contains https://github.com/org/repo/actions/runs/12345"
+        failure_impact: "Users cannot debug the failed run"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "gh CLI (mocked)"
+      scenario_specific_rbac: []
+
+  - scenario_id: 6
+    test_id: "TS-GH-71-006"
+    test_type: "functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-71"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify failure comment includes workflow run URL"
+      what: |
+        Tests that the failure comment posted by report_failure_to_issue()
+        includes the full URL to the GitHub Actions workflow run, constructed
+        from GITHUB_SERVER_URL, GITHUB_REPOSITORY, and GITHUB_RUN_ID.
+      why: |
+        The workflow run URL enables users to immediately navigate to the
+        failed run's logs for debugging, which is critical for actionable
+        failure feedback.
+      acceptance_criteria:
+        - "Comment contains the full workflow run URL"
+        - "URL format is {GITHUB_SERVER_URL}/{GITHUB_REPOSITORY}/actions/runs/{GITHUB_RUN_ID}"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Shell script testing with mock gh binary"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Set up mock gh and environment variables"
+          command: "Create mock gh; export GITHUB_SERVER_URL, GITHUB_REPOSITORY, GITHUB_RUN_ID"
+          validation: "Environment configured"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Trigger failure comment path"
+          command: "Run post-code.sh failure path"
+          validation: "Comment is posted"
+        - step_id: "TEST-02"
+          action: "Extract URL from comment body"
+          command: "Parse mock gh invocation for URL"
+          validation: "URL matches expected format"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Workflow run URL is present in failure comment"
+        condition: "Comment body matches regex: https://github.com/.+/actions/runs/\\d+"
+        failure_impact: "Users cannot navigate to failed run for debugging"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "gh CLI (mocked)"
+      scenario_specific_rbac: []
+
+  - scenario_id: 7
+    test_id: "TS-GH-71-007"
+    test_type: "functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-71"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify failure comment distinguishes agent error from post-script error"
+      what: |
+        Tests that the failure comment correctly identifies the source of the
+        failure as the agent process (AGENT_EXIT_CODE non-zero) versus a
+        post-script error (ERR trap without AGENT_EXIT_CODE). The comment
+        message should clearly state it was an agent error.
+      why: |
+        Users need to know whether the failure occurred in the agent itself
+        or in the post-processing pipeline to take appropriate corrective
+        action.
+      acceptance_criteria:
+        - "Comment mentions 'agent' as the source of the error"
+        - "Comment includes the exit code value"
+        - "AGENT_ERROR_EXIT flag is set to 'true'"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Shell script testing with mock gh binary"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Set up mock gh and AGENT_EXIT_CODE=2"
+          command: "Create mock; export AGENT_EXIT_CODE=2"
+          validation: "Environment configured"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Trigger failure detection in post-code.sh"
+          command: "Run the failure detection logic"
+          validation: "AGENT_ERROR_EXIT is set to 'true'"
+        - step_id: "TEST-02"
+          action: "Check failure comment content"
+          command: "Read mock gh invocation"
+          validation: "Comment references agent error and exit code 2"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "AGENT_ERROR_EXIT is set to 'true'"
+        condition: "AGENT_ERROR_EXIT == 'true'"
+        failure_impact: "Downstream logic cannot distinguish error types"
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "Comment body references the exit code value"
+        condition: "Comment body contains 'exit code' and '2'"
+        failure_impact: "Users lack specifics about the failure"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "gh CLI (mocked)"
+      scenario_specific_rbac: []
+
+  - scenario_id: 8
+    test_id: "TS-GH-71-008"
+    test_type: "functional"
+    priority: "P0"
+    mvp: true
+    requirement_id: "GH-71"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify no comment when gh CLI unavailable"
+      what: |
+        Tests the best-effort nature of report_failure_to_issue(): when the gh
+        CLI is not available on PATH, the function should fail silently without
+        crashing the post-script. The script should still exit non-zero.
+      why: |
+        The function is documented as best-effort. If gh is unavailable (e.g.,
+        token expired, CLI not installed), the script must still complete its
+        other duties and exit with the correct status code.
+      acceptance_criteria:
+        - "Script does not crash when gh is missing"
+        - "Script still exits non-zero when AGENT_EXIT_CODE is non-zero"
+        - "No comment is posted (gh not called)"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Shell script testing without gh on PATH"
+
+    specific_preconditions:
+      - name: "No gh CLI on PATH"
+        requirement: "gh binary is not available"
+        validation: "! which gh"
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Remove gh from PATH"
+          command: "Modify PATH to exclude gh"
+          validation: "which gh returns not found"
+        - step_id: "SETUP-02"
+          action: "Set AGENT_EXIT_CODE=1"
+          command: "export AGENT_EXIT_CODE=1"
+          validation: "Variable set"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Trigger failure path in post-code.sh"
+          command: "Run post-code.sh failure detection"
+          validation: "Script does not crash"
+        - step_id: "TEST-02"
+          action: "Check exit code of post-code.sh"
+          command: "echo $?"
+          validation: "Exit code is non-zero"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P0"
+        description: "Script exits non-zero despite gh unavailability"
+        condition: "exit_code != 0"
+        failure_impact: "Failed runs could appear successful when gh is unavailable"
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "No crash or unhandled error"
+        condition: "Script stderr does not contain 'unbound variable' or segfault"
+        failure_impact: "Script crashes would mask the actual failure"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Group 3: Agent Error vs No-Op (P1, Functional)
+  # Requirement: Distinguish agent error from no-op
+  # ============================================================
+
+  - scenario_id: 9
+    test_id: "TS-GH-71-009"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-71"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify clean exit when agent succeeds with no branch"
+      what: |
+        Tests that when the agent exits with code 0 but produces no feature
+        branch (stays on main/master), the post-code script treats this as
+        a successful no-op and exits cleanly (exit code 0).
+      why: |
+        An agent may legitimately decide no changes are needed (e.g., issue
+        already resolved). This should not trigger a failure report.
+      acceptance_criteria:
+        - "Post-code script exits with code 0"
+        - "No failure comment is posted"
+        - "AGENT_ERROR_EXIT is not set or is 'false'"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Shell script testing"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Set AGENT_EXIT_CODE=0, simulate main branch, no feature branch"
+          command: "export AGENT_EXIT_CODE=0; git checkout main"
+          validation: "On main branch with exit code 0"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run post-code.sh"
+          command: "Execute post-code.sh"
+          validation: "Script exits cleanly"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Script exits with code 0"
+        condition: "exit_code == 0"
+        failure_impact: "Successful no-op runs incorrectly reported as failures"
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "No failure comment posted"
+        condition: "gh issue comment not called"
+        failure_impact: "False failure reports on no-op runs"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 10
+    test_id: "TS-GH-71-010"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-71"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify error exit when agent fails with no branch"
+      what: |
+        Tests that when the agent exits with a non-zero code and no feature
+        branch was created, the post-code script sets AGENT_ERROR_EXIT=true
+        and exits non-zero.
+      why: |
+        This is the core failure detection path. A non-zero exit with no
+        branch means the agent encountered an error and produced nothing.
+      acceptance_criteria:
+        - "Post-code script exits non-zero"
+        - "AGENT_ERROR_EXIT is set to 'true'"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Shell script testing"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Set AGENT_EXIT_CODE=1, simulate main branch"
+          command: "export AGENT_EXIT_CODE=1; git checkout main"
+          validation: "Environment configured"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run post-code.sh failure detection"
+          command: "Execute post-code.sh"
+          validation: "Script detects agent failure"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Script exits non-zero"
+        condition: "exit_code != 0"
+        failure_impact: "Agent failures silently succeed"
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "AGENT_ERROR_EXIT is 'true'"
+        condition: "AGENT_ERROR_EXIT == 'true'"
+        failure_impact: "Downstream cannot identify agent error"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 11
+    test_id: "TS-GH-71-011"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-71"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify clean exit when agent succeeds with no changes"
+      what: |
+        Tests that when the agent exits with code 0, is on a feature branch,
+        but produced no changed files (empty git diff), the post-code script
+        treats this as a successful no-op.
+      why: |
+        The agent may have reviewed code and decided no changes are necessary.
+        This is a valid outcome that should not trigger failure reporting.
+      acceptance_criteria:
+        - "Post-code script exits with code 0"
+        - "No failure comment posted"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Shell script testing"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Set AGENT_EXIT_CODE=0, simulate feature branch with no changes"
+          command: "export AGENT_EXIT_CODE=0; git checkout -b feature-branch; # no file changes"
+          validation: "On feature branch, no changes, exit code 0"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run post-code.sh"
+          command: "Execute post-code.sh"
+          validation: "Script exits cleanly"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Remove feature branch"
+          command: "git checkout main; git branch -D feature-branch"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Script exits with code 0"
+        condition: "exit_code == 0"
+        failure_impact: "Successful no-change runs incorrectly reported as failures"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 12
+    test_id: "TS-GH-71-012"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-71"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify error exit when agent fails with no changes"
+      what: |
+        Tests that when the agent exits with a non-zero code, is on a feature
+        branch, but produced no changed files, the post-code script detects
+        this as an agent error and exits non-zero.
+      why: |
+        An agent that errors out on a feature branch without producing changes
+        is a failure scenario that must be reported to the user.
+      acceptance_criteria:
+        - "Post-code script exits non-zero"
+        - "AGENT_ERROR_EXIT is set to 'true'"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Shell script testing"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Set AGENT_EXIT_CODE=1, feature branch with no changes"
+          command: "export AGENT_EXIT_CODE=1; git checkout -b feature-branch"
+          validation: "On feature branch, no changes, exit code 1"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run post-code.sh failure detection"
+          command: "Execute post-code.sh"
+          validation: "Agent error detected"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Remove feature branch"
+          command: "git checkout main; git branch -D feature-branch"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Script exits non-zero"
+        condition: "exit_code != 0"
+        failure_impact: "Failed agent runs with no output silently succeed"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Group 4: Main/Master Branch Detection (P1, Functional)
+  # Requirement: Detect agent error on main/master
+  # ============================================================
+
+  - scenario_id: 13
+    test_id: "TS-GH-71-013"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-71"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify error reported when on main with non-zero exit"
+      what: |
+        Tests that when the current branch is main (or master) and the agent
+        exited non-zero, the post-code script reports this as an agent error.
+        Being on main means no feature branch was created, confirming the
+        agent produced no work.
+      why: |
+        The main/master branch check is the primary mechanism for detecting
+        that no feature branch was created, which combined with a non-zero
+        exit code confirms an agent failure.
+      acceptance_criteria:
+        - "AGENT_ERROR_EXIT set to 'true'"
+        - "Failure comment posted to the issue"
+        - "Script exits non-zero"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Shell script testing with mock gh"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Set AGENT_EXIT_CODE=1, ensure on main branch"
+          command: "export AGENT_EXIT_CODE=1; git checkout main"
+          validation: "On main with non-zero exit code"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run post-code.sh"
+          command: "Execute post-code.sh"
+          validation: "Error path triggered"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Error is reported on main with non-zero exit"
+        condition: "AGENT_ERROR_EXIT == 'true' && exit_code != 0"
+        failure_impact: "Agent failures on main branch go undetected"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "gh CLI (mocked)"
+      scenario_specific_rbac: []
+
+  - scenario_id: 14
+    test_id: "TS-GH-71-014"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-71"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify no-op notice when on main with zero exit"
+      what: |
+        Tests that when the current branch is main and the agent exited with
+        code 0, the post-code script treats this as a no-op (agent decided
+        no changes needed) and exits cleanly without error.
+      why: |
+        A successful agent run that produces no branch is a legitimate no-op,
+        not a failure. The script must not report this as an error.
+      acceptance_criteria:
+        - "Script exits with code 0"
+        - "No failure comment posted"
+        - "AGENT_ERROR_EXIT is not set"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Shell script testing"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Set AGENT_EXIT_CODE=0, ensure on main branch"
+          command: "export AGENT_EXIT_CODE=0; git checkout main"
+          validation: "On main with zero exit code"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run post-code.sh"
+          command: "Execute post-code.sh"
+          validation: "Script exits cleanly"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "No-op with zero exit does not trigger error"
+        condition: "exit_code == 0 && AGENT_ERROR_EXIT is unset"
+        failure_impact: "Successful no-ops incorrectly flagged as failures"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Group 5: Empty Changeset Detection (P1, Functional)
+  # Requirement: Detect agent error with no changed files
+  # ============================================================
+
+  - scenario_id: 15
+    test_id: "TS-GH-71-015"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-71"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify error reported with empty changeset and non-zero exit"
+      what: |
+        Tests that when the agent exits non-zero and git diff shows no changed
+        files (empty changeset), the post-code script detects this as an agent
+        error and reports the failure.
+      why: |
+        An empty changeset combined with a non-zero exit confirms the agent
+        errored out without producing useful work, which must be reported.
+      acceptance_criteria:
+        - "AGENT_ERROR_EXIT set to 'true'"
+        - "Script exits non-zero"
+        - "Failure comment posted"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Shell script testing with mock gh"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Set AGENT_EXIT_CODE=1, feature branch with empty changeset"
+          command: "export AGENT_EXIT_CODE=1; git checkout -b test-branch"
+          validation: "Feature branch with no changes"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run post-code.sh changeset detection"
+          command: "Execute post-code.sh"
+          validation: "Empty changeset detected with non-zero exit"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Remove test branch"
+          command: "git checkout main; git branch -D test-branch"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Empty changeset with non-zero exit triggers error"
+        condition: "AGENT_ERROR_EXIT == 'true' && exit_code != 0"
+        failure_impact: "Failed runs with empty changesets go unreported"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools:
+        - "gh CLI (mocked)"
+      scenario_specific_rbac: []
+
+  - scenario_id: 16
+    test_id: "TS-GH-71-016"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-71"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify no-op when empty changeset and zero exit"
+      what: |
+        Tests that when the agent exits with code 0 and there are no changed
+        files, the post-code script treats this as a successful no-op (agent
+        reviewed but decided no changes needed).
+      why: |
+        An agent that successfully runs and decides no changes are needed is
+        a valid outcome. The empty changeset with zero exit should not be
+        treated as a failure.
+      acceptance_criteria:
+        - "Script exits with code 0"
+        - "No failure comment posted"
+
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Shell script testing"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Set AGENT_EXIT_CODE=0, feature branch, no changes"
+          command: "export AGENT_EXIT_CODE=0; git checkout -b test-branch"
+          validation: "Environment configured"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run post-code.sh"
+          command: "Execute post-code.sh"
+          validation: "No-op path taken"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Remove test branch"
+          command: "git checkout main; git branch -D test-branch"
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Empty changeset with zero exit is treated as no-op"
+        condition: "exit_code == 0"
+        failure_impact: "Successful no-ops incorrectly flagged as failures"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Group 6: Status Comment (P1, Unit Tests)
+  # Requirement: Status comment reflects failure on non-zero exit
+  # ============================================================
+
+  - scenario_id: 17
+    test_id: "TS-GH-71-017"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-71"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify status comment posts failure on non-zero exit"
+      what: |
+        Tests the statuscomment.Notifier.PostCompletion method: when called
+        with a non-zero lastExitCode, it posts a status comment indicating
+        the agent run failed, using the appropriate failure emoji and message.
+      why: |
+        The status comment provides a persistent record on the PR/issue of
+        the agent run outcome. It must correctly reflect failures so users
+        can see at a glance that the agent errored.
+      acceptance_criteria:
+        - "PostCompletion posts a comment with failure status"
+        - "Comment contains failure indicator (emoji/text)"
+        - "Comment includes workflow run link"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go testing with testify and forge.FakeClient"
+
+    specific_preconditions:
+      - name: "forge.FakeClient"
+        requirement: "Mock forge client for testing"
+        validation: "Import github.com/fullsend-ai/fullsend/internal/forge"
+
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create FakeClient and Notifier with test config"
+          command: "fc := forge.NewFakeClient(); n := newTestNotifier(fc, cfg)"
+          validation: "Notifier is initialized"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call PostCompletion with non-zero exit code"
+          command: "n.PostCompletion(ctx, 1, false)"
+          validation: "Comment is posted to FakeClient"
+        - step_id: "TEST-02"
+          action: "Verify comment content indicates failure"
+          command: "Check fc.IssueComments for failure marker"
+          validation: "Comment contains failure indicator"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Status comment indicates failure"
+        condition: "Comment body contains failure emoji/text"
+        failure_impact: "Status comments show incorrect success for failed runs"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 18
+    test_id: "TS-GH-71-018"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-71"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify status comment posts success on zero exit"
+      what: |
+        Tests that PostCompletion with lastExitCode=0 posts a status comment
+        indicating successful completion of the agent run.
+      why: |
+        The success path must still work correctly after the failure handling
+        changes. Regression protection for the happy path.
+      acceptance_criteria:
+        - "PostCompletion posts a comment with success status"
+        - "Comment contains success indicator"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go testing with testify and forge.FakeClient"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create FakeClient and Notifier"
+          command: "fc := forge.NewFakeClient(); n := newTestNotifier(fc, cfg)"
+          validation: "Notifier initialized"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call PostCompletion with exit code 0"
+          command: "n.PostCompletion(ctx, 0, false)"
+          validation: "Comment posted"
+        - step_id: "TEST-02"
+          action: "Verify comment indicates success"
+          command: "Check comment body for success marker"
+          validation: "Success indicator present"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Status comment indicates success"
+        condition: "Comment body contains success emoji/text"
+        failure_impact: "Successful runs incorrectly marked as failures"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 19
+    test_id: "TS-GH-71-019"
+    test_type: "unit"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-71"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify status comment posts cancelled on context cancellation"
+      what: |
+        Tests that PostCompletion correctly handles context cancellation
+        scenarios, posting a status comment that indicates the run was
+        cancelled rather than failed or succeeded.
+      why: |
+        Cancelled runs (e.g., user-initiated cancellation, timeout) should
+        be distinguished from failures. The cancelled state provides accurate
+        run history for debugging and tracking.
+      acceptance_criteria:
+        - "PostCompletion posts a comment with cancelled status"
+        - "Comment contains cancellation indicator"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go testing with testify and forge.FakeClient"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create FakeClient and Notifier"
+          command: "fc := forge.NewFakeClient(); n := newTestNotifier(fc, cfg)"
+          validation: "Notifier initialized"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Call PostCompletion with cancelled=true"
+          command: "n.PostCompletion(ctx, 0, true)"
+          validation: "Comment posted"
+        - step_id: "TEST-02"
+          action: "Verify comment indicates cancellation"
+          command: "Check comment body for cancelled marker"
+          validation: "Cancellation indicator present"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Status comment indicates cancellation"
+        condition: "Comment body contains cancelled emoji/text"
+        failure_impact: "Cancelled runs incorrectly shown as success or failure"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  # ============================================================
+  # Group 7: Reconcile-Status (P2, Unit Tests)
+  # Requirement: Finalize orphaned status comments
+  # ============================================================
+
+  - scenario_id: 20
+    test_id: "TS-GH-71-020"
+    test_type: "unit"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-71"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify orphaned comment finalized as terminated"
+      what: |
+        Tests the reconcile-status command: when an in-progress status comment
+        is found with no corresponding active run, the command finalizes it
+        with a 'terminated' status.
+      why: |
+        Orphaned comments (from crashed runs, network failures, etc.) must be
+        cleaned up to provide accurate run history and avoid confusion.
+      acceptance_criteria:
+        - "Orphaned comment is updated with terminated status"
+        - "Comment body reflects finalization"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go testing with testify"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create FakeClient with an in-progress status comment"
+          command: "fc := forge.NewFakeClient(); add orphaned comment"
+          validation: "Orphaned comment exists"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run reconcile-status with reason=terminated"
+          command: "Execute reconcileStatusCmd"
+          validation: "Command completes successfully"
+        - step_id: "TEST-02"
+          action: "Verify comment was finalized"
+          command: "Check updated comment in FakeClient"
+          validation: "Comment reflects terminated status"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Orphaned comment finalized as terminated"
+        condition: "Updated comment body contains terminated indicator"
+        failure_impact: "Orphaned comments remain indefinitely, confusing users"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 21
+    test_id: "TS-GH-71-021"
+    test_type: "unit"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-71"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify orphaned comment finalized as cancelled"
+      what: |
+        Tests reconcile-status with reason=cancelled: when an in-progress
+        status comment is found and the reason flag specifies 'cancelled',
+        the comment is finalized with a cancelled status.
+      why: |
+        Different finalization reasons (terminated vs cancelled) provide
+        more specific information about why the run ended.
+      acceptance_criteria:
+        - "Orphaned comment updated with cancelled status"
+        - "Reason is correctly reflected in the finalized comment"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go testing with testify"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create FakeClient with an in-progress status comment"
+          command: "fc := forge.NewFakeClient(); add orphaned comment"
+          validation: "Orphaned comment exists"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run reconcile-status with reason=cancelled"
+          command: "Execute reconcileStatusCmd --reason cancelled"
+          validation: "Command completes"
+        - step_id: "TEST-02"
+          action: "Verify comment finalized as cancelled"
+          command: "Check updated comment"
+          validation: "Comment contains cancelled indicator"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Comment finalized as cancelled"
+        condition: "Updated comment body contains cancelled indicator"
+        failure_impact: "Incorrect finalization reason"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: 22
+    test_id: "TS-GH-71-022"
+    test_type: "unit"
+    priority: "P2"
+    mvp: false
+    requirement_id: "GH-71"
+    coverage_status: "NEW"
+
+    test_objective:
+      title: "Verify no-op when comment already finalized"
+      what: |
+        Tests that reconcile-status is idempotent: when the status comment
+        has already been finalized (completed, terminated, or cancelled),
+        running reconcile-status again does not modify it.
+      why: |
+        Idempotency prevents duplicate finalization messages and ensures
+        the reconcile-status command is safe to run multiple times.
+      acceptance_criteria:
+        - "Already-finalized comment is not modified"
+        - "Command exits successfully (no error)"
+
+    classification:
+      test_type: "Unit"
+      scope: "Single-component"
+      automation_approach: "Go testing with testify"
+
+    specific_preconditions: []
+    test_data:
+      resource_definitions: []
+      api_endpoints: []
+
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create FakeClient with an already-finalized status comment"
+          command: "fc := forge.NewFakeClient(); add completed comment"
+          validation: "Finalized comment exists"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run reconcile-status"
+          command: "Execute reconcileStatusCmd"
+          validation: "Command completes without error"
+        - step_id: "TEST-02"
+          action: "Verify comment was not modified"
+          command: "Compare comment before and after"
+          validation: "Comment body unchanged"
+      cleanup: []
+
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P2"
+        description: "Already-finalized comment is not modified"
+        condition: "Comment body before == comment body after"
+        failure_impact: "Duplicate finalization messages confuse run history"
+
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
