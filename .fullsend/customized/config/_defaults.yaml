@@ -21,10 +21,14 @@ output_structure:
   std: "outputs/std/{JIRA_ID}/{JIRA_ID}_test_description.yaml"
   go_stubs: "outputs/std/{JIRA_ID}/go-tests/{feature}_stubs_test.go"
   python_stubs: "outputs/std/{JIRA_ID}/python-tests/test_{feature}_stubs.py"
-  go_tests: "outputs/go-tests/{JIRA_ID}/{feature}_test.go"
-  python_tests: "outputs/python-tests/{JIRA_ID}/test_{feature}.py"
+  go_tests: "{target_test_directory}/qf_{feature}_test.go"
+  python_tests: "{target_test_directory}/qf_test_{feature}.py"
+  go_tests_fallback: "outputs/go-tests/{JIRA_ID}/qf_{feature}_test.go"
+  python_tests_fallback: "outputs/python-tests/{JIRA_ID}/qf_test_{feature}.py"
   stp_review: "outputs/reviews/{JIRA_ID}/{JIRA_ID}_stp_review.md"
   std_review: "outputs/reviews/{JIRA_ID}/{JIRA_ID}_std_review.md"
+
+test_file_prefix: "qf_"
 
 test_id_format: "TS-{JIRA_ID}-{NUM:03d}"
 

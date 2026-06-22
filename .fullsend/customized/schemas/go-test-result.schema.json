@@ -19,11 +19,29 @@
       "type": "array",
       "items": { "type": "string" },
       "minItems": 1,
-      "description": "Paths to generated Go test files"
+      "description": "Paths to generated Go test files (relative to repo root, with qf_ prefix)"
+    },
+    "target_directory": {
+      "type": ["string", "null"],
+      "description": "Source package directory where test files were co-located, or null for fallback mode"
+    },
+    "output_mode": {
+      "type": "string",
+      "enum": ["co-located", "fallback"],
+      "description": "Whether tests were placed in the source tree or in outputs/"
     },
     "build_verified": {
       "type": "boolean",
       "description": "Whether the generated tests passed build verification"
+    },
+    "compile_gate_passed": {
+      "type": "boolean",
+      "description": "Whether generated tests passed the compile gate (go test -run='^$')"
+    },
+    "compile_gate_retries": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of compile-fix-retry iterations needed"
     },
     "lsp_patterns": {
       "type": "string",
@@ -36,7 +54,7 @@
     },
     "reason": {
       "type": "string",
-      "enum": ["std-not-found", "config-error", "timeout", "build-failed", "no-go-scenarios"]
+      "enum": ["std-not-found", "config-error", "timeout", "build-failed", "compile-failed", "no-go-scenarios"]
     }
   },
   "allOf": [

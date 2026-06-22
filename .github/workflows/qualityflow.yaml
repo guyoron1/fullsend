@@ -165,45 +165,12 @@ jobs:
             fi
           fi
 
-          # Fallback: upstream issue number from conventional commit title.
-          # Mirrored upstream PRs use titles like "fix(#1835): ..." or "feat(#2096): ..."
-          # where #N is the upstream issue number, not the fork PR number.
-          if [[ -z "${JIRA_TICKET}" ]]; then
-            if [[ -z "${PR_TITLE:-}" ]]; then
-              PR_TITLE=$(gh api "repos/${{ github.repository }}/pulls/${PR_NUMBER}" --jq '.title' 2>/dev/null || true)
-            fi
-            if [[ -n "${PR_TITLE}" ]]; then
-              UPSTREAM_ISSUE=$(printf '%s\n' "${PR_TITLE}" | grep -oE '\(#[0-9]+\)' | head -1 | grep -oE '[0-9]+' || true)
-              if [[ -n "${UPSTREAM_ISSUE}" && "${UPSTREAM_ISSUE}" != "${PR_NUMBER}" ]]; then
-                JIRA_TICKET="GH-${UPSTREAM_ISSUE}"
-                echo "issue_source=github" >> "${GITHUB_OUTPUT}"
-                echo "issue_number=${UPSTREAM_ISSUE}" >> "${GITHUB_OUTPUT}"
-                echo "::notice::Upstream issue #${UPSTREAM_ISSUE} from PR title → ticket ${JIRA_TICKET}"
-              fi
-            fi
-          fi
-
-          # Fallback: upstream issue number from mirror branch name.
-          # Mirror branches use the pattern "mirror/{upstream_pr}-{issue}-{slug}".
-          if [[ -z "${JIRA_TICKET}" ]]; then
-            HEAD_REF="${{ steps.pr-info.outputs.head_ref }}"
-            if [[ "${HEAD_REF}" =~ ^mirror/[0-9]+-([0-9]+)- ]]; then
-              UPSTREAM_ISSUE="${BASH_REMATCH[1]}"
-              if [[ -n "${UPSTREAM_ISSUE}" && "${UPSTREAM_ISSUE}" != "${PR_NUMBER}" ]]; then
-                JIRA_TICKET="GH-${UPSTREAM_ISSUE}"
-                echo "issue_source=github" >> "${GITHUB_OUTPUT}"
-                echo "issue_number=${UPSTREAM_ISSUE}" >> "${GITHUB_OUTPUT}"
-                echo "::notice::Upstream issue #${UPSTREAM_ISSUE} from branch name → ticket ${JIRA_TICKET}"
-              fi
-            fi
-          fi
-
           # Last resort: use the PR number itself as the ticket.
           if [[ -z "${JIRA_TICKET}" ]]; then
             JIRA_TICKET="GH-${PR_NUMBER}"
             echo "issue_source=github" >> "${GITHUB_OUTPUT}"
             echo "issue_number=${PR_NUMBER}" >> "${GITHUB_OUTPUT}"
-            echo "::warning::No linked Issue found — using PR number as ticket: ${JIRA_TICKET}. This may analyze the wrong issue if the fork has issues with the same number."
+            echo "::notice::No linked Issue found — using PR number as ticket: ${JIRA_TICKET}"
           fi
 
           # Set issue_source to jira if not already set to github.
@@ -957,33 +924,45 @@ jobs:
           ISSUE_SOURCE: ${{ steps.jira.outputs.issue_source }}
         run: |
           cat > "${{ github.workspace }}/pr-repo/CLAUDE.md" << 'AGENT_EOF'
-          # QualityFlow Agent — Output Preservation
+          # QualityFlow Agent — Test Generation (Stage 7)
 
-          CRITICAL REQUIREMENT: Before finishing your task, you MUST push all
-          generated output files to the PR branch. The sandbox file extraction
-          channel is unreliable and output will be lost if you skip this step.
+          CRITICAL REQUIREMENT: Generated test files MUST be placed directly in
+          the source package directories with `qf_` filename prefix. Do NOT write
+          tests to qf-tests/ — they must be co-located with production code so
+          they can import internal/ packages and compile.
 
-          After writing all output files to $FULLSEND_OUTPUT_DIR, run these
-          commands to push them to the PR branch:
+          Read `target_test_directory` from the STD YAML's `code_generation_config`
+          to determine where test files should be placed.
+
+          After generating test files:
+
+          1. Write qf_*_test.go / qf_test_*.py files into the target package
+             directory (from code_generation_config.target_test_directory)
+          2. Run compile gate: `go test -run='^$' -count=1 ./...`
+          3. Fix any compilation errors, retry up to 3 times
+          4. Push only files that compile:
 
           ```bash
-          # Copy output to target repo
-          DEST="$FULLSEND_TARGET_REPO_DIR/outputs"
           cd "$FULLSEND_TARGET_REPO_DIR"
           git config user.email "qualityflow[bot]@users.noreply.github.com"
           git config user.name "QualityFlow"
-
-          # Derive repo and branch from git state
           REMOTE_URL=$(git remote get-url origin)
           REPO_NAME=$(echo "$REMOTE_URL" | sed -n 's|.*github\.com[:/]\(.*\)\.git|\1|p')
           BRANCH=$(git rev-parse --abbrev-ref HEAD)
-
-          # Authenticate and push
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${REPO_NAME}.git"
-          git add outputs/
-          git commit -m "Add QualityFlow output for $JIRA_TICKET [skip ci]" || true
+
+          # Stage co-located test files from source tree
+          find . \( -name 'qf_*_test.go' -o -name 'qf_test_*.py' \) -not -path '*/outputs/*' -exec git add {} +
+
+          # Also stage metadata for post-pipeline summary
+          git add outputs/ 2>/dev/null || true
+
+          git commit -m "Add QualityFlow tests for $JIRA_TICKET [skip ci]" || true
           git push origin "HEAD:$BRANCH" || echo "Push failed — output available in sandbox artifacts"
           ```
+
+          If target_test_directory is null or SOURCE_REPO_DIR is unavailable,
+          fall back to writing tests to outputs/ with qf_ prefix.
 
           This is MANDATORY. Do not consider your task complete until you have
           attempted the git push.
@@ -1042,7 +1021,7 @@ jobs:
           fi
           echo "::notice::PR repo HEAD: $(git -C "${PR_REPO}" log --oneline -1)"
 
-      - name: Organize tests and clean artifacts
+      - name: Clean artifacts and count co-located tests
         id: organize-tests
         env:
           GH_TOKEN: ${{ steps.post-token.outputs.token }}
@@ -1052,7 +1031,6 @@ jobs:
           set -euo pipefail
           PR_REPO="${GITHUB_WORKSPACE}/pr-repo"
           HEAD_REF="${{ steps.pr-info.outputs.head_ref }}"
-          QF_DIR="qf-tests/${JIRA_TICKET}"
 
           cd "${PR_REPO}"
           git config user.email "guyoron1@users.noreply.github.com"
@@ -1060,89 +1038,57 @@ jobs:
           git remote set-url origin \
             "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
 
-          # --- Collect Go test files ---
-          GO_SRC="outputs/go-tests/${JIRA_TICKET}"
-          GO_COUNT=0
-          if [[ -d "${GO_SRC}" ]]; then
-            mkdir -p "${QF_DIR}/go"
-            for testfile in "${GO_SRC}"/*_test.go; do
-              [[ -f "${testfile}" ]] || continue
-              cp "${testfile}" "${QF_DIR}/go/"
-              GO_COUNT=$((GO_COUNT + 1))
-            done
+          # --- Count co-located qf_ test files in source tree ---
+          GO_COUNT=$(find . -name "qf_*_test.go" -not -path "*/outputs/*" -not -path "*/.git/*" 2>/dev/null | wc -l | tr -d ' ')
+          PY_COUNT=$(find . -name "qf_test_*.py" -not -path "*/outputs/*" -not -path "*/.git/*" 2>/dev/null | wc -l | tr -d ' ')
+
+          # --- Fallback: check outputs/ for tests in fallback mode ---
+          if [[ "$((GO_COUNT + PY_COUNT))" -eq 0 ]]; then
+            GO_COUNT=$(find outputs/ -name "qf_*_test.go" 2>/dev/null | wc -l | tr -d ' ')
+            PY_COUNT=$(find outputs/ -name "qf_test_*.py" 2>/dev/null | wc -l | tr -d ' ')
           fi
 
-          # --- Collect Python test files ---
-          PY_SRC="outputs/python-tests/${JIRA_TICKET}"
-          PY_COUNT=0
-          if [[ -d "${PY_SRC}" ]]; then
-            mkdir -p "${QF_DIR}/python"
-            for pyfile in "${PY_SRC}"/test_*.py "${PY_SRC}"/conftest.py; do
-              [[ -f "${pyfile}" ]] || continue
-              cp "${pyfile}" "${QF_DIR}/python/"
-              PY_COUNT=$((PY_COUNT + 1))
-            done
+          TOTAL_COUNT=$((GO_COUNT + PY_COUNT))
+
+          # --- Collect directory locations for summary ---
+          GO_DIRS=""
+          PY_DIRS=""
+          if [[ "${GO_COUNT}" -gt 0 ]]; then
+            GO_DIRS=$(find . -name "qf_*_test.go" -not -path "*/outputs/*" -not -path "*/.git/*" -printf '%h\n' 2>/dev/null | sort -u | head -3 | sed 's|^\./||' || true)
+          fi
+          if [[ "${PY_COUNT}" -gt 0 ]]; then
+            PY_DIRS=$(find . -name "qf_test_*.py" -not -path "*/outputs/*" -not -path "*/.git/*" -printf '%h\n' 2>/dev/null | sort -u | head -3 | sed 's|^\./||' || true)
           fi
 
-          # --- Collect other language test files ---
-          OTHER_COUNT=0
-          if [[ -d "outputs/tests/${JIRA_TICKET}" ]]; then
-            for lang_dir in outputs/tests/${JIRA_TICKET}/*/; do
-              [[ -d "${lang_dir}" ]] || continue
-              lang=$(basename "${lang_dir}")
-              mkdir -p "${QF_DIR}/${lang}"
-              cp -r "${lang_dir}"* "${QF_DIR}/${lang}/" 2>/dev/null || true
-              lang_count=$(find "${QF_DIR}/${lang}" -type f 2>/dev/null | wc -l)
-              OTHER_COUNT=$((OTHER_COUNT + lang_count))
-            done
-          fi
-
-          TOTAL_COUNT=$((GO_COUNT + PY_COUNT + OTHER_COUNT))
-
-          # --- Write README ---
-          if [[ "${TOTAL_COUNT}" -gt 0 ]]; then
-            {
-              echo "# QualityFlow Tests — ${JIRA_TICKET}"
-              echo ""
-              echo "Generated by the QualityFlow pipeline."
-              echo ""
-              echo "| Directory | Count | Framework |"
-              echo "|-----------|-------|-----------|"
-              [[ "${GO_COUNT}" -gt 0 ]] && echo "| \`go/\` | ${GO_COUNT} files | Go |"
-              [[ "${PY_COUNT}" -gt 0 ]] && echo "| \`python/\` | ${PY_COUNT} files | Python/pytest |"
-              [[ "${OTHER_COUNT}" -gt 0 ]] && echo "| \`other/\` | ${OTHER_COUNT} files | See subdirectories |"
-            } > "${QF_DIR}/README.md"
-          fi
-
-          # --- Remove intermediate artifacts ---
+          # --- Remove intermediate artifacts (STP, STD, reviews, metadata) ---
           git rm -rf outputs/ 2>/dev/null || true
           git rm -f CLAUDE.md 2>/dev/null || true
 
-          # --- Stage test files ---
-          git add qf-tests/ 2>/dev/null || true
-
           if git diff --cached --quiet; then
-            echo "::warning::No changes to commit"
-            echo "test_count=0" >> "${GITHUB_OUTPUT}"
-            echo "go_count=0" >> "${GITHUB_OUTPUT}"
-            echo "py_count=0" >> "${GITHUB_OUTPUT}"
+            echo "::warning::No cleanup changes to commit"
+            echo "test_count=${TOTAL_COUNT}" >> "${GITHUB_OUTPUT}"
+            echo "go_count=${GO_COUNT}" >> "${GITHUB_OUTPUT}"
+            echo "py_count=${PY_COUNT}" >> "${GITHUB_OUTPUT}"
+            echo "go_dirs=${GO_DIRS}" >> "${GITHUB_OUTPUT}"
+            echo "py_dirs=${PY_DIRS}" >> "${GITHUB_OUTPUT}"
             exit 0
           fi
 
-          git commit -m "Add QualityFlow tests for ${JIRA_TICKET}
+          git commit -m "Clean QualityFlow artifacts for ${JIRA_TICKET}
 
-          Replaces intermediate pipeline artifacts with organized test files.
-
-          Total: ${TOTAL_COUNT} test files → qf-tests/${JIRA_TICKET}/
+          Removes intermediate pipeline artifacts (STP, STD, reviews).
+          Test files (${TOTAL_COUNT}) are co-located in source tree with qf_ prefix.
           Jira: ${JIRA_TICKET}
           [skip ci]"
 
           git push origin "HEAD:${HEAD_REF}"
-          echo "::notice::Pushed ${TOTAL_COUNT} test files to code PR"
+          echo "::notice::Cleaned artifacts, ${TOTAL_COUNT} test files in source tree"
 
           echo "test_count=${TOTAL_COUNT}" >> "${GITHUB_OUTPUT}"
           echo "go_count=${GO_COUNT}" >> "${GITHUB_OUTPUT}"
           echo "py_count=${PY_COUNT}" >> "${GITHUB_OUTPUT}"
+          echo "go_dirs=${GO_DIRS}" >> "${GITHUB_OUTPUT}"
+          echo "py_dirs=${PY_DIRS}" >> "${GITHUB_OUTPUT}"
 
       - name: Post pipeline summary
         if: always()
@@ -1176,18 +1122,22 @@ jobs:
           }
 
           # Build test output rows dynamically
+          GO_DIRS="${{ steps.organize-tests.outputs.go_dirs }}"
+          PY_DIRS="${{ steps.organize-tests.outputs.py_dirs }}"
           TEST_ROWS=""
           if [[ "${GO_COUNT}" -gt 0 ]]; then
+            GO_LOC=$(echo "${GO_DIRS:-source tree}" | head -1)
             TEST_ROWS="${TEST_ROWS}
-          | Go | **${GO_COUNT}** files | \`qf-tests/${JIRA_TICKET}/go/\` |"
+          | Go | **${GO_COUNT}** files | \`${GO_LOC}/qf_*_test.go\` |"
           fi
           if [[ "${PY_COUNT}" -gt 0 ]]; then
+            PY_LOC=$(echo "${PY_DIRS:-source tree}" | head -1)
             TEST_ROWS="${TEST_ROWS}
-          | Python | **${PY_COUNT}** files | \`qf-tests/${JIRA_TICKET}/python/\` |"
+          | Python | **${PY_COUNT}** files | \`${PY_LOC}/qf_test_*.py\` |"
           fi
           if [[ -z "${TEST_ROWS}" ]]; then
             TEST_ROWS="
-          | — | **${TOTAL_COUNT}** files | \`qf-tests/${JIRA_TICKET}/\` |"
+          | — | **${TOTAL_COUNT}** files | co-located in source tree |"
           fi
 
           BODY="<!-- qf-summary -->

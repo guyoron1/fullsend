@@ -33,19 +33,28 @@ configured language/framework.
 
 ## Output
 
-```
-outputs/go-tests/{JIRA_ID}/           (if Go enabled)
-├── {feature}_test.go
-└── summary.yaml
+**Co-located mode** (when `code_generation_config.target_test_directory` is set):
 
-outputs/python-tests/{JIRA_ID}/       (if Python enabled)
-├── test_{feature}.py
-├── conftest.py
-└── summary.yaml
+Test files are written directly into the source package directory with
+`qf_` filename prefix, co-located with production code:
 
-outputs/tests/{JIRA_ID}/{language}/   (any other language)
-└── ...
 ```
+{target_test_directory}/qf_{feature}_test.go      (Go)
+{target_test_directory}/qf_test_{feature}.py       (Python)
+outputs/go-tests/{JIRA_ID}/summary.yaml            (metadata only)
+outputs/python-tests/{JIRA_ID}/summary.yaml        (metadata only)
+```
+
+**Fallback mode** (when `target_test_directory` is null or `SOURCE_REPO_PATH` unavailable):
+
+```
+outputs/go-tests/{JIRA_ID}/qf_{feature}_test.go
+outputs/python-tests/{JIRA_ID}/qf_test_{feature}.py
+outputs/tests/{JIRA_ID}/{language}/qf_*             (any other language)
+```
+
+The `qf_` filename prefix is always used regardless of mode — it makes
+QF-generated tests discoverable via `find . -name 'qf_*'`.
 
 ---
 
@@ -130,10 +139,65 @@ Extract:
 projects). Instead, read existing test files in `SOURCE_REPO_PATH` to learn
 conventions (indentation, assertion style, helper patterns) directly from the repo.
 
+### Step 3.5: Scan Existing Tests in Target Package
+
+If `code_generation_config.target_test_directory` is set and
+`SOURCE_REPO_PATH` is available:
+
+```bash
+ls $SOURCE_REPO_PATH/{target_test_directory}/*_test.go 2>/dev/null
+```
+
+Read these files to extract:
+- The `package` declaration (use exactly this — do not guess)
+- Existing test helper functions (reuse, don't recreate)
+- Import patterns (match the existing style)
+- Existing test function names (avoid duplicating)
+
+Pass this context to the framework-specific generation below.
+
 ### Step 4: Generate Tests Per Language
 
 For each enabled language config, generate test files using the
 appropriate framework section below.
+
+**File naming (all frameworks):** Use the `qf_` prefix from
+`code_generation_config.filename_prefix`:
+- Go: `qf_{feature}_test.go`
+- Python: `qf_test_{feature}.py`
+
+**File placement (all frameworks):**
+- If `target_test_directory` is set → write to
+  `$SOURCE_REPO_PATH/{target_test_directory}/`
+- If `target_test_directory` is null → fall back to
+  `outputs/{language}-tests/{JIRA_ID}/`
+
+---
+
+## Co-location Rules (MANDATORY for all Go frameworks)
+
+When writing tests co-located with production code, these rules are
+**critical** for compilation:
+
+1. **Import production types — NEVER redeclare them.** The test is in the
+   same package (or module), so all types are directly importable. Do NOT
+   copy struct definitions, interfaces, or constants into the test file.
+
+2. **Match the existing package declaration exactly.** Read the `package`
+   line from existing files in `target_test_directory` — use that, not
+   what the STD YAML says, if they differ.
+
+3. **Reuse existing test helpers.** If the target directory already has
+   `_test.go` files with setup functions, fixtures, or utilities, import
+   and use them instead of reimplementing.
+
+4. **Import from real packages.** Use the import paths from
+   `code_generation_config.imports.project` to import production types.
+   These are real Go import paths that resolve within the module.
+
+5. **No type stubs or shims.** If you need a type from `internal/foo`,
+   import `internal/foo` — you can, because the test file lives inside
+   the module tree.
 
 ---
 
@@ -151,14 +215,14 @@ import (
     "testing"
     // standard imports from config
     // framework imports from config
-    // project imports from config
+    // project imports from code_generation_config.imports.project
 )
 
-func TestFeatureName(t *testing.T) {
-    // shared setup
+func TestQF_FeatureName(t *testing.T) {
+    // shared setup — use production constructors/helpers
 
     t.Run("scenario description", func(t *testing.T) {
-        // test implementation
+        // test implementation using REAL production types
         // use assert.Equal(t, expected, actual)
         // use require.NoError(t, err) for fatal checks
     })
@@ -171,7 +235,9 @@ func TestFeatureName(t *testing.T) {
 - Assertion style from `test_patterns.assertion_style` (default: "testify")
 - Build tags from `build_tags` array → `//go:build tag1 && tag2`
 - Import paths from `imports.standard`, `imports.test_framework`, `imports.project`
-- Package name from `default_package` or derived from test file location
+- Package name from existing files in `target_test_directory` (preferred)
+  or `default_package`
+- **MUST import production types, not redeclare them** (see Co-location Rules)
 
 **Validation:**
 - Count `t.Run(` calls = count of STD scenarios
@@ -197,7 +263,7 @@ import (
 var _ = Describe("[JIRA-ID] Feature", func() {
     Context("scenario group", func() {
         It("[test_id:TS-XXX] should do X", func() {
-            // test implementation
+            // test implementation using REAL production types
         })
     })
 })
@@ -209,6 +275,7 @@ var _ = Describe("[JIRA-ID] Feature", func() {
 - `[test_id:TS-XXX]` labels in `It()` descriptions
 - `BeforeEach` for shared setup
 - `Expect().To()` / `Expect().NotTo()` for assertions
+- **MUST import production types, not redeclare them** (see Co-location Rules)
 
 **Validation:**
 - Count `It(` blocks = count of STD Functional scenarios
@@ -287,6 +354,61 @@ After all files generated:
 
 ---
 
+## Step 5.5: Compile Gate
+
+**Purpose:** Verify generated tests compile before committing. This catches
+import errors, undefined types, and package mismatches immediately.
+
+### Go compile gate
+
+If Go test files were generated and `SOURCE_REPO_PATH` is available:
+
+```bash
+cd $SOURCE_REPO_PATH
+go test -run='^$' -count=1 ./{target_test_directory}/...
+```
+
+The `-run='^$'` flag matches no test names, so tests compile but don't
+execute. `-count=1` prevents caching.
+
+**If compilation fails:**
+
+1. Parse the error output to identify the failure category:
+   - **Missing imports:** Add the import from `code_generation_config.imports`
+   - **Undefined types:** The test redeclared a type instead of importing
+     it — replace with the real import
+   - **Package mismatch:** The `package` line doesn't match the directory —
+     fix to match existing files
+   - **Unused imports:** Remove the unused import
+2. Fix the generated file(s)
+3. Re-run the compile check
+4. **Maximum 3 retry iterations**
+5. If still failing after 3 retries: log errors, rename files with
+   `.invalid` extension, report in summary
+
+### Python syntax gate
+
+For Python test files:
+
+```bash
+python3 -m py_compile {target_test_directory}/qf_test_{feature}.py
+```
+
+If `pytest` is available, also run:
+
+```bash
+pytest --collect-only {target_test_directory}/qf_test_{feature}.py
+```
+
+### Compile gate skip conditions
+
+Skip the compile gate when:
+- `SOURCE_REPO_PATH` is not set (fallback mode — tests in `outputs/`)
+- The project uses a non-standard build system (e.g., `build_command`
+  in config is set to something other than `go test`)
+
+---
+
 ## Step 6: Report Results
 
 Generate summary per language:
@@ -294,6 +416,9 @@ Generate summary per language:
 - Files generated, line counts
 - Test count, scenario coverage
 - LSP patterns used (true/false)
+- **Target directory** (where files were placed)
+- **Compile gate result** (passed/failed/skipped)
+- **Compile gate retries** (number of fix iterations needed)
 - Any errors or warnings
 
 ---
@@ -310,6 +435,10 @@ with auto mode. Suggest re-running `/std-builder`.
 **Pattern not recognized:** Warning + fall back to direct STD-to-test generation.
 
 **Validation fails:** Save to `.invalid` extension, show errors, continue.
+
+**Compile gate fails after retries:** Save files with `.invalid` extension,
+report the compilation errors in summary.yaml, continue with any files
+that did compile.
 
 ---
 

@@ -191,6 +191,10 @@ code_generation_config:
   language: "{test_strategy.language}"              # e.g., "go"
   package_name: "{test_strategy.package_name}"      # e.g., "cli"
 
+  # Co-located test placement (NEW)
+  target_test_directory: "{resolved_directory}"     # e.g., "internal/cli"
+  filename_prefix: "qf_"                            # prefix for generated test files
+
   imports:
     standard: "{test_strategy.imports.standard}"
     framework: "{test_strategy.imports.framework}"
@@ -200,6 +204,19 @@ code_generation_config:
   # context_init, dot_imports, k8s_core, kubevirt_base, kubevirt_api
   # timeout_constants, helper_library_imports
 ```
+
+**Resolving `target_test_directory` (auto mode):**
+
+1. From the PR diff `changed_files`, identify the primary package directory
+   where production code was modified (e.g., `internal/cli/run.go` → `internal/cli`)
+2. Verify that directory contains existing `_test.go` files (confirming
+   tests belong there)
+3. If multiple directories changed, pick the one with the most changes
+4. **Fallback:** Derive from `imports.project[0]` — translate the import
+   path to a filesystem path relative to the module root (e.g.,
+   `github.com/org/repo/internal/cli` → `internal/cli`)
+5. If nothing resolves, set to `null` — the test generator will fall back
+   to writing to `outputs/` (backward-compatible)
 
 Skip CNV-specific fields (context_init, dot_imports, k8s imports, KubeVirt helpers,
 timeout constants, helper_library_imports) when in auto mode. These are project-specific
@@ -214,6 +231,10 @@ code_generation_config:
   assertion_library: "gomega"
   language: "go"
   package_name: "{INFER_FROM_SIG}"  # sig-network → "network", sig-compute → "compute"
+
+  # Co-located test placement (NEW)
+  target_test_directory: "{INFER_FROM_SIG_AND_COMPONENT}"  # e.g., "tests/network/"
+  filename_prefix: "qf_"
 
   # Context initialization (injected at BeforeAll start)
   context_init:
@@ -281,6 +302,14 @@ code_generation_config:
   - sig-storage → "storage"
   - sig-migration → "migration"
   - default → "tests"
+- **target_test_directory** (tier mode): Resolve from `components.yaml`
+  `component_package_map` if available, or derive from `owning_sig`:
+  - sig-network → `tests/network/`
+  - sig-compute → `tests/compute/`
+  - sig-storage → `tests/storage/`
+  - If `config_dir` has `repositories.yaml` with a `test_directory` field, use that
+  - Set to `null` if unresolvable — the test generator falls back to `outputs/`
+- **filename_prefix**: Always `"qf_"` (from `_defaults.yaml` `test_file_prefix`)
 - All other fields are STATIC (copy from template above)
 
 ---

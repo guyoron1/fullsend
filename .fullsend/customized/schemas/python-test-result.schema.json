@@ -19,15 +19,28 @@
       "type": "array",
       "items": { "type": "string" },
       "minItems": 1,
-      "description": "Paths to generated Python test files"
+      "description": "Paths to generated Python test files (relative to repo root, with qf_ prefix)"
+    },
+    "target_directory": {
+      "type": ["string", "null"],
+      "description": "Source directory where test files were co-located, or null for fallback mode"
+    },
+    "output_mode": {
+      "type": "string",
+      "enum": ["co-located", "fallback"],
+      "description": "Whether tests were placed in the source tree or in outputs/"
     },
     "collection_verified": {
       "type": "boolean",
       "description": "Whether the generated tests passed pytest collection"
     },
+    "syntax_check_passed": {
+      "type": "boolean",
+      "description": "Whether generated tests passed py_compile syntax check"
+    },
     "conftest": {
-      "type": "string",
-      "description": "Path to generated conftest.py"
+      "type": ["string", "null"],
+      "description": "Path to generated conftest.py, or null if existing conftest was reused"
     },
     "lsp_patterns": {
       "type": "string",
@@ -40,7 +53,7 @@
     },
     "reason": {
       "type": "string",
-      "enum": ["std-not-found", "config-error", "timeout", "collection-failed", "no-python-scenarios"]
+      "enum": ["std-not-found", "config-error", "timeout", "collection-failed", "syntax-failed", "no-python-scenarios"]
     }
   },
   "allOf": [

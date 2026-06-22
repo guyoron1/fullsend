@@ -45,4 +45,4 @@ runner_env:
   TARGET_BRANCH: "${TARGET_BRANCH}"
   FULLSEND_OUTPUT_SCHEMA: ${FULLSEND_DIR}/schemas/test-result.schema.json
 
-timeout_minutes: 25
+timeout_minutes: 35
