@@ -1,0 +1,22 @@
+status: success
+jira_id: GH-71
+verdict: APPROVED_WITH_FINDINGS
+confidence: LOW
+weighted_score: 76.5
+findings:
+  critical: 0
+  major: 4
+  minor: 5
+  actionable: 9
+  total: 9
+reviewed: outputs/stp/GH-71/GH-71_test_plan.md
+report: /sandbox/workspace/output/GH-71_stp_review.md
+dimension_scores:
+  rule_compliance: 78
+  requirement_coverage: 75
+  scenario_quality: 80
+  risk_accuracy: 85
+  scope_boundary: 70
+  strategy: 80
+  metadata: 60
+scope_downgrade: false
