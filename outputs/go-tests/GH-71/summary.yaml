@@ -1,0 +1,116 @@
+---
+status: success
+jira_id: GH-71
+std_source: outputs/std/GH-71/GH-71_test_description.yaml
+languages:
+  - language: go
+    framework: testing
+    assertion_library: testify
+    files:
+      - internal/cli/qf_exit_code_propagation_test.go
+      - internal/cli/qf_post_code_failure_test.go
+      - internal/cli/qf_reconcile_status_test.go
+      - internal/statuscomment/qf_status_completion_test.go
+    test_count: 22
+    compile_gate: passed
+    compile_retries: 0
+total_test_count: 22
+lsp_patterns_used: false
+test_strategy_mode: auto
+discovery:
+  language: go
+  framework: testing
+  assertion_library: testify
+  package_convention: same-package
+target_directories:
+  - internal/cli
+  - internal/statuscomment
+scenario_coverage:
+  - test_id: TS-GH-71-001
+    file: internal/cli/qf_exit_code_propagation_test.go
+    function: TestQF_AgentExitCodePropagation
+    subtest: "[test_id:TS-GH-71-001] should set AGENT_EXIT_CODE when agent exits non-zero"
+  - test_id: TS-GH-71-002
+    file: internal/cli/qf_exit_code_propagation_test.go
+    function: TestQF_AgentExitCodePropagation
+    subtest: "[test_id:TS-GH-71-002] should set AGENT_EXIT_CODE to zero on successful agent run"
+  - test_id: TS-GH-71-003
+    file: internal/cli/qf_exit_code_propagation_test.go
+    function: TestQF_AgentExitCodePropagation
+    subtest: "[test_id:TS-GH-71-003] should pass exit code to post-script exec.Command environment"
+  - test_id: TS-GH-71-004
+    file: internal/cli/qf_exit_code_propagation_test.go
+    function: TestQF_AgentExitCodePropagation
+    subtest: "[test_id:TS-GH-71-004] should update lastExitCode after each iteration"
+  - test_id: TS-GH-71-005
+    file: internal/cli/qf_post_code_failure_test.go
+    function: TestQF_PostCodeFailureComment
+    subtest: "[test_id:TS-GH-71-005] should post failure comment on agent error without branch"
+  - test_id: TS-GH-71-006
+    file: internal/cli/qf_post_code_failure_test.go
+    function: TestQF_PostCodeFailureComment
+    subtest: "[test_id:TS-GH-71-006] should include workflow run URL in failure comment"
+  - test_id: TS-GH-71-007
+    file: internal/cli/qf_post_code_failure_test.go
+    function: TestQF_PostCodeFailureComment
+    subtest: "[test_id:TS-GH-71-007] should distinguish agent error from post-script error"
+  - test_id: TS-GH-71-008
+    file: internal/cli/qf_post_code_failure_test.go
+    function: TestQF_PostCodeFailureComment
+    subtest: "[test_id:TS-GH-71-008] should not crash when gh CLI unavailable"
+  - test_id: TS-GH-71-009
+    file: internal/cli/qf_post_code_failure_test.go
+    function: TestQF_PostCodeAgentErrorVsNoOp
+    subtest: "[test_id:TS-GH-71-009] should exit cleanly when agent succeeds with no branch"
+  - test_id: TS-GH-71-010
+    file: internal/cli/qf_post_code_failure_test.go
+    function: TestQF_PostCodeAgentErrorVsNoOp
+    subtest: "[test_id:TS-GH-71-010] should exit non-zero when agent fails with no branch"
+  - test_id: TS-GH-71-011
+    file: internal/cli/qf_post_code_failure_test.go
+    function: TestQF_PostCodeAgentErrorVsNoOp
+    subtest: "[test_id:TS-GH-71-011] should exit cleanly when agent succeeds with no changes"
+  - test_id: TS-GH-71-012
+    file: internal/cli/qf_post_code_failure_test.go
+    function: TestQF_PostCodeAgentErrorVsNoOp
+    subtest: "[test_id:TS-GH-71-012] should exit non-zero when agent fails with no changes"
+  - test_id: TS-GH-71-013
+    file: internal/cli/qf_post_code_failure_test.go
+    function: TestQF_PostCodeMainBranchDetection
+    subtest: "[test_id:TS-GH-71-013] should report error when on main with non-zero exit"
+  - test_id: TS-GH-71-014
+    file: internal/cli/qf_post_code_failure_test.go
+    function: TestQF_PostCodeMainBranchDetection
+    subtest: "[test_id:TS-GH-71-014] should emit no-op notice when on main with zero exit"
+  - test_id: TS-GH-71-015
+    file: internal/cli/qf_post_code_failure_test.go
+    function: TestQF_PostCodeEmptyChangeset
+    subtest: "[test_id:TS-GH-71-015] should report error with empty changeset and non-zero exit"
+  - test_id: TS-GH-71-016
+    file: internal/cli/qf_post_code_failure_test.go
+    function: TestQF_PostCodeEmptyChangeset
+    subtest: "[test_id:TS-GH-71-016] should treat empty changeset with zero exit as no-op"
+  - test_id: TS-GH-71-017
+    file: internal/statuscomment/qf_status_completion_test.go
+    function: TestQF_PostCompletionExitCodeHandling
+    subtest: "[test_id:TS-GH-71-017] should post failure status comment on non-zero exit"
+  - test_id: TS-GH-71-018
+    file: internal/statuscomment/qf_status_completion_test.go
+    function: TestQF_PostCompletionExitCodeHandling
+    subtest: "[test_id:TS-GH-71-018] should post success status comment on zero exit"
+  - test_id: TS-GH-71-019
+    file: internal/statuscomment/qf_status_completion_test.go
+    function: TestQF_PostCompletionExitCodeHandling
+    subtest: "[test_id:TS-GH-71-019] should post cancelled status on context cancellation"
+  - test_id: TS-GH-71-020
+    file: internal/cli/qf_reconcile_status_test.go
+    function: TestQF_ReconcileStatusOrphanedComments
+    subtest: "[test_id:TS-GH-71-020] should finalize orphaned comment as terminated"
+  - test_id: TS-GH-71-021
+    file: internal/cli/qf_reconcile_status_test.go
+    function: TestQF_ReconcileStatusOrphanedComments
+    subtest: "[test_id:TS-GH-71-021] should finalize orphaned comment as cancelled"
+  - test_id: TS-GH-71-022
+    file: internal/cli/qf_reconcile_status_test.go
+    function: TestQF_ReconcileStatusOrphanedComments
+    subtest: "[test_id:TS-GH-71-022] should be idempotent when comment already finalized"
