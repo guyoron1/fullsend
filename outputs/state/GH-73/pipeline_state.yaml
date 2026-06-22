@@ -1,0 +1,64 @@
+# Pipeline State v1
+version: 1
+ticket_id: "GH-73"
+project_id: "auto-detected"
+display_name: "fullsend"
+created: "2026-06-22T00:00:00Z"
+updated: "2026-06-22T00:00:00Z"
+
+phases:
+  stp:
+    status: completed
+    started: "2026-06-22T00:00:00Z"
+    completed: "2026-06-22T00:00:00Z"
+    output: "outputs/stp/GH-73/GH-73_test_plan.md"
+    output_checksum: "sha256:bbf84c68dca04a3623fa6da95e31fbf42525045a4235f8c4c7dbc69f89efcaec"
+    skills_used: []
+    error: null
+
+  stp_review:
+    status: pending
+    verdict: null
+    findings: null
+    error: null
+
+  stp_refine:
+    status: pending
+    error: null
+
+  std:
+    status: completed
+    started: "2026-06-22T00:00:00Z"
+    completed: "2026-06-22T00:00:00Z"
+    output: "outputs/std/GH-73/GH-73_test_description.yaml"
+    output_checksum: "sha256:870bb0954249b4ee404c32798d65d6e01a4f67206cc4af006d1c2f01429ef429"
+    stp_checksum_at_generation: "sha256:bbf84c68dca04a3623fa6da95e31fbf42525045a4235f8c4c7dbc69f89efcaec"
+    scenario_counts:
+      total: 46
+      unit: 36
+      functional: 9
+      e2e: 1
+    stubs:
+      go: "outputs/std/GH-73/go-tests/"
+    error: null
+
+  std_review:
+    status: pending
+    verdict: null
+    findings: null
+    error: null
+
+  go_codegen:
+    status: pending
+    output: null
+    error: null
+
+  python_codegen:
+    status: pending
+    output: null
+    error: null
+
+  cluster_tests:
+    status: pending
+    output: null
+    error: null

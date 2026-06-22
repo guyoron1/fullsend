@@ -1,0 +1,1379 @@
+---
+# Software Test Description (STD) — GH-73
+# Two-Pass Review Strategy for Large PRs
+# Generated: 2026-06-22
+# Source STP: outputs/stp/GH-73/GH-73_test_plan.md
+
+document_metadata:
+  std_version: "2.1-enhanced"
+  test_strategy_mode: "auto"
+  jira_id: "GH-73"
+  title: "Two-Pass Review Strategy for Large PRs"
+  stp_source: "outputs/stp/GH-73/GH-73_test_plan.md"
+  generated_date: "2026-06-22"
+  scenario_counts:
+    total: 46
+    tier1: 0
+    tier2: 0
+    unit_count: 36
+    functional_count: 9
+    e2e_count: 1
+  priority_counts:
+    p0: 10
+    p1: 30
+    p2: 6
+
+code_generation_config:
+  framework: "testing"
+  assertion_library: "testify"
+  language: "go"
+  package_name: "cli"
+  target_test_directory: "internal/cli"
+  filename_prefix: "qf_"
+  imports:
+    standard:
+      - "context"
+      - "testing"
+      - "os"
+      - "path/filepath"
+      - "net/http"
+      - "net/http/httptest"
+    framework:
+      - "github.com/stretchr/testify/assert"
+      - "github.com/stretchr/testify/require"
+    project:
+      - "github.com/fullsend-ai/fullsend/internal/cli"
+      - "github.com/fullsend-ai/fullsend/internal/binary"
+      - "github.com/fullsend-ai/fullsend/internal/forge"
+      - "github.com/fullsend-ai/fullsend/internal/harness"
+
+common_preconditions:
+  - "Go 1.26+ toolchain installed and available on PATH"
+  - "All Go module dependencies resolved (go mod download)"
+  - "testify assertion library available"
+  - "Project compiles without errors (go build ./...)"
+
+test_environment:
+  platform: "Linux amd64"
+  go_version: "1.26+"
+  ci_runner: "Standard CI runner"
+  network: "httptest servers for HTTP mocking; no external network required"
+  storage: "Local filesystem for temp dirs and extracted archives"
+  env_vars:
+    - name: "FULLSEND_SANDBOX_ARCH"
+      description: "Override architecture for cross-compilation tests"
+      required: false
+
+# ---------------------------------------------------------------------------
+# Requirement Group 1: Agent sandbox run lifecycle
+# ---------------------------------------------------------------------------
+requirement_groups:
+  - id: "RG-01"
+    requirement: "Agent sandbox run lifecycle completes successfully with all bootstrap phases"
+    jira_id: "GH-73"
+    scenarios:
+
+      - id: "GH-73-TC-001"
+        title: "Verify agent run completes full lifecycle"
+        test_type: "e2e"
+        priority: "P0"
+        coverage_status: "NEW"
+        test_objective: >
+          Validate that a fullsend agent run progresses through all lifecycle
+          phases (bootstrap, validation, execution, cleanup) and terminates
+          with a success status when all dependencies are available.
+        common_preconditions:
+          - "Fake forge client configured with valid repo/PR data"
+          - "Sandbox binary available at expected path"
+          - "Mock openshell endpoint reachable"
+        test_steps:
+          - step: 1
+            action: "Configure a fake forge client with a valid repository, PR, and commit SHA"
+            expected: "Forge client is initialized without error"
+          - step: 2
+            action: "Invoke runAgent with the configured context"
+            expected: "Agent enters bootstrap phase"
+          - step: 3
+            action: "Allow agent to proceed through bootstrap, validation, and execution phases"
+            expected: "Each phase completes without error"
+          - step: 4
+            action: "Observe final agent status"
+            expected: "Agent returns success status and exit code 0"
+        assertions:
+          - "Agent exit code equals 0"
+          - "All lifecycle phases executed in order: bootstrap, validate, execute, cleanup"
+          - "No error logs emitted during run"
+        classification:
+          component: "cli"
+          function_under_test: "runAgent"
+
+      - id: "GH-73-TC-002"
+        title: "Verify sandbox cleanup after successful run"
+        test_type: "functional"
+        priority: "P0"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that after a successful agent run, all temporary sandbox
+          resources (temp dirs, extracted archives) are cleaned up.
+        common_preconditions:
+          - "Fake forge client configured"
+          - "Temp directory created for sandbox workspace"
+        test_steps:
+          - step: 1
+            action: "Create a temp directory to serve as the sandbox workspace"
+            expected: "Temp directory exists on filesystem"
+          - step: 2
+            action: "Run the agent to successful completion"
+            expected: "Agent returns success"
+          - step: 3
+            action: "Check whether the temp directory still exists"
+            expected: "Temp directory has been removed"
+        assertions:
+          - "Sandbox temp directory does not exist after successful run"
+        classification:
+          component: "cli"
+          function_under_test: "runAgent"
+
+      - id: "GH-73-TC-003"
+        title: "Verify run fails gracefully when openshell unavailable"
+        test_type: "unit"
+        priority: "P0"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that when the openshell endpoint is unreachable, the agent
+          run returns a clear error without panicking or hanging.
+        common_preconditions:
+          - "Fake forge client configured"
+          - "No openshell mock server running"
+        test_steps:
+          - step: 1
+            action: "Configure agent context with an invalid/unreachable openshell URL"
+            expected: "Context created successfully"
+          - step: 2
+            action: "Invoke runAgent"
+            expected: "Function returns an error"
+          - step: 3
+            action: "Inspect the returned error"
+            expected: "Error message indicates openshell is unavailable"
+        assertions:
+          - "runAgent returns a non-nil error"
+          - "Error message contains reference to openshell connectivity failure"
+        classification:
+          component: "cli"
+          function_under_test: "runAgent"
+
+      - id: "GH-73-TC-004"
+        title: "Verify run aborts on bootstrap failure"
+        test_type: "unit"
+        priority: "P0"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that if bootstrapCommon returns an error, the agent run
+          aborts immediately and propagates the error.
+        common_preconditions:
+          - "Fake forge client configured"
+          - "Bootstrap dependency missing or misconfigured to trigger failure"
+        test_steps:
+          - step: 1
+            action: "Configure context so that bootstrapCommon will fail (e.g., invalid binary path)"
+            expected: "Context created"
+          - step: 2
+            action: "Invoke runAgent"
+            expected: "Function returns an error from bootstrap phase"
+          - step: 3
+            action: "Inspect the error"
+            expected: "Error originates from bootstrapCommon"
+        assertions:
+          - "runAgent returns a non-nil error"
+          - "Error wraps or references bootstrap failure"
+          - "Execution phase is never reached"
+        classification:
+          component: "cli"
+          function_under_test: "runAgent"
+
+      - id: "GH-73-TC-005"
+        title: "Verify validation loop retries on failure"
+        test_type: "functional"
+        priority: "P0"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that the validation loop retries on transient failures
+          before eventually succeeding or exhausting retries.
+        common_preconditions:
+          - "Fake forge client configured"
+          - "Validation endpoint configured to fail N times then succeed"
+        test_steps:
+          - step: 1
+            action: "Configure a mock validation endpoint that returns failure for the first 2 attempts, then success"
+            expected: "Mock endpoint configured"
+          - step: 2
+            action: "Invoke the validation loop"
+            expected: "Loop retries and eventually succeeds"
+          - step: 3
+            action: "Count the number of attempts made"
+            expected: "Exactly 3 attempts recorded (2 failures + 1 success)"
+        assertions:
+          - "Validation loop completes successfully"
+          - "Number of retry attempts matches expected count"
+        classification:
+          component: "cli"
+          function_under_test: "runAgent"
+
+  # ---------------------------------------------------------------------------
+  # Requirement Group 2: Binary download and checksum verification
+  # ---------------------------------------------------------------------------
+  - id: "RG-02"
+    requirement: "Binary download and checksum verification ensures integrity of cross-compiled binaries"
+    jira_id: "GH-73"
+    scenarios:
+
+      - id: "GH-73-TC-006"
+        title: "Verify release download with valid checksum"
+        test_type: "unit"
+        priority: "P0"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that DownloadRelease successfully downloads a release archive
+          when the server-provided SHA256 checksum matches the archive content.
+        common_preconditions:
+          - "httptest server serving a valid tar.gz archive"
+          - "Corresponding SHA256 checksums file available at expected URL"
+        test_steps:
+          - step: 1
+            action: "Create a valid tar.gz archive in memory with known content"
+            expected: "Archive created"
+          - step: 2
+            action: "Compute SHA256 checksum of the archive"
+            expected: "Checksum computed"
+          - step: 3
+            action: "Start httptest server serving the archive and checksums file"
+            expected: "Server listening"
+          - step: 4
+            action: "Call DownloadRelease with ReleaseBaseURL pointing to httptest server"
+            expected: "Function returns extracted content without error"
+          - step: 5
+            action: "Verify extracted files match original archive content"
+            expected: "Files match"
+        assertions:
+          - "DownloadRelease returns nil error"
+          - "Extracted files are present in the target directory"
+          - "File contents match the original archive entries"
+        classification:
+          component: "binary"
+          function_under_test: "DownloadRelease"
+
+      - id: "GH-73-TC-007"
+        title: "Verify rejection of tampered archive"
+        test_type: "unit"
+        priority: "P0"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that DownloadRelease rejects an archive whose SHA256
+          checksum does not match the checksums file.
+        common_preconditions:
+          - "httptest server serving a tar.gz archive"
+          - "Checksums file contains a different (wrong) SHA256 value"
+        test_steps:
+          - step: 1
+            action: "Create a tar.gz archive"
+            expected: "Archive created"
+          - step: 2
+            action: "Create a checksums file with an incorrect SHA256 value"
+            expected: "Checksums file created"
+          - step: 3
+            action: "Start httptest server serving both files"
+            expected: "Server listening"
+          - step: 4
+            action: "Call DownloadRelease"
+            expected: "Function returns a checksum mismatch error"
+        assertions:
+          - "DownloadRelease returns a non-nil error"
+          - "Error message indicates checksum mismatch"
+          - "No files are extracted to the target directory"
+        classification:
+          component: "binary"
+          function_under_test: "DownloadRelease"
+
+      - id: "GH-73-TC-008"
+        title: "Verify rejection of oversized download"
+        test_type: "unit"
+        priority: "P0"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that DownloadRelease rejects archives that exceed the
+          200MB compressed size limit.
+        common_preconditions:
+          - "httptest server configured to serve a response with Content-Length exceeding 200MB"
+        test_steps:
+          - step: 1
+            action: "Configure httptest server to advertise Content-Length > 200MB"
+            expected: "Server configured"
+          - step: 2
+            action: "Call DownloadRelease"
+            expected: "Function returns a size limit error"
+        assertions:
+          - "DownloadRelease returns a non-nil error"
+          - "Error message references size limit exceeded"
+        classification:
+          component: "binary"
+          function_under_test: "DownloadRelease"
+
+      - id: "GH-73-TC-009"
+        title: "Verify latest release tag resolution"
+        test_type: "unit"
+        priority: "P0"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that when no explicit version is specified, DownloadRelease
+          resolves and uses the latest release tag from the GitHub API.
+        common_preconditions:
+          - "httptest server serving GitHub Releases API response with tagged releases"
+        test_steps:
+          - step: 1
+            action: "Configure httptest server with a mock GitHub Releases API listing multiple tags"
+            expected: "Server configured"
+          - step: 2
+            action: "Call DownloadRelease without specifying a version"
+            expected: "Function resolves the latest tag"
+          - step: 3
+            action: "Verify the resolved tag matches the expected latest release"
+            expected: "Tag matches"
+        assertions:
+          - "Resolved tag equals the most recent release tag from the API"
+          - "Download URL includes the resolved tag"
+        classification:
+          component: "binary"
+          function_under_test: "DownloadRelease"
+
+      - id: "GH-73-TC-010"
+        title: "Verify source tree extraction strips root prefix"
+        test_type: "unit"
+        priority: "P0"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that when extracting a source tree from a tar archive, the
+          root directory prefix is stripped so files appear at the target root.
+        common_preconditions:
+          - "tar.gz archive with a single root directory prefix (e.g., fullsend-v1.0.0/)"
+        test_steps:
+          - step: 1
+            action: "Create a tar.gz with entries under a root prefix (e.g., fullsend-v1.0.0/main.go)"
+            expected: "Archive created"
+          - step: 2
+            action: "Extract using the source tree extraction function"
+            expected: "Files extracted"
+          - step: 3
+            action: "Check that files appear without the root prefix"
+            expected: "main.go exists at target root, not under fullsend-v1.0.0/"
+        assertions:
+          - "Extracted file paths do not contain the root prefix"
+          - "File contents are intact after extraction"
+        classification:
+          component: "binary"
+          function_under_test: "extractSourceTree"
+
+  # ---------------------------------------------------------------------------
+  # Requirement Group 3: Vendor source root resolution
+  # ---------------------------------------------------------------------------
+  - id: "RG-03"
+    requirement: "Vendor source root resolution falls back through local checkout, module root, and remote fetch"
+    jira_id: "GH-73"
+    scenarios:
+
+      - id: "GH-73-TC-011"
+        title: "Verify explicit source dir takes precedence"
+        test_type: "unit"
+        priority: "P1"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that when an explicit source directory is provided,
+          ResolveVendorRoot uses it without checking ModuleRoot or fetching remotely.
+        common_preconditions:
+          - "Temp directory created with valid Go source files"
+        test_steps:
+          - step: 1
+            action: "Create a temp directory with a go.mod file"
+            expected: "Directory created"
+          - step: 2
+            action: "Call ResolveVendorRoot with the explicit source dir path"
+            expected: "Function returns the explicit path"
+          - step: 3
+            action: "Verify no network calls were made"
+            expected: "No HTTP requests recorded"
+        assertions:
+          - "Returned path equals the explicitly provided source directory"
+          - "No fallback mechanisms were invoked"
+        classification:
+          component: "binary"
+          function_under_test: "ResolveVendorRoot"
+
+      - id: "GH-73-TC-012"
+        title: "Verify fallback to ModuleRoot"
+        test_type: "unit"
+        priority: "P1"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that when no explicit source dir is provided but the binary
+          is a release build, ResolveVendorRoot falls back to ModuleRoot.
+        common_preconditions:
+          - "No explicit source dir provided"
+          - "Binary built as release (not dev)"
+          - "ModuleRoot returns a valid path"
+        test_steps:
+          - step: 1
+            action: "Call ResolveVendorRoot without an explicit source dir, with a release binary"
+            expected: "Function falls back to ModuleRoot"
+          - step: 2
+            action: "Verify the returned path matches ModuleRoot output"
+            expected: "Paths match"
+        assertions:
+          - "Returned path equals the ModuleRoot value"
+        classification:
+          component: "binary"
+          function_under_test: "ResolveVendorRoot"
+
+      - id: "GH-73-TC-013"
+        title: "Verify fallback to GitHub source fetch"
+        test_type: "unit"
+        priority: "P1"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that when no explicit source dir is provided and ModuleRoot
+          is unavailable, ResolveVendorRoot fetches source from GitHub releases.
+        common_preconditions:
+          - "No explicit source dir provided"
+          - "ModuleRoot returns empty/error"
+          - "httptest server serving source archive"
+        test_steps:
+          - step: 1
+            action: "Configure ModuleRoot to return an error or empty string"
+            expected: "ModuleRoot fallback disabled"
+          - step: 2
+            action: "Start httptest server serving source tree archive"
+            expected: "Server listening"
+          - step: 3
+            action: "Call ResolveVendorRoot"
+            expected: "Function fetches source from remote"
+          - step: 4
+            action: "Verify returned path contains fetched source files"
+            expected: "Source files present"
+        assertions:
+          - "Returned path contains extracted source files"
+          - "HTTP request was made to the release URL"
+        classification:
+          component: "binary"
+          function_under_test: "ResolveVendorRoot"
+
+      - id: "GH-73-TC-014"
+        title: "Verify error for dev build without checkout"
+        test_type: "unit"
+        priority: "P1"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that ResolveVendorRoot returns an error when the binary is
+          a dev build and no local checkout is available.
+        common_preconditions:
+          - "Binary is a dev build (no version embedded)"
+          - "No local git checkout available"
+        test_steps:
+          - step: 1
+            action: "Configure binary as dev build with no local checkout"
+            expected: "Configuration set"
+          - step: 2
+            action: "Call ResolveVendorRoot"
+            expected: "Function returns an error"
+        assertions:
+          - "ResolveVendorRoot returns a non-nil error"
+          - "Error message indicates dev build requires a local checkout"
+        classification:
+          component: "binary"
+          function_under_test: "ResolveVendorRoot"
+
+  # ---------------------------------------------------------------------------
+  # Requirement Group 4: Post-review CLI
+  # ---------------------------------------------------------------------------
+  - id: "RG-04"
+    requirement: "Post-review CLI correctly handles stale-head detection and inline diff comments"
+    jira_id: "GH-73"
+    scenarios:
+
+      - id: "GH-73-TC-015"
+        title: "Verify stale-head detection discards review"
+        test_type: "unit"
+        priority: "P1"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that when the PR head SHA has changed since the review
+          started, the review is discarded to avoid commenting on outdated code.
+        common_preconditions:
+          - "Fake forge client configured"
+          - "PR head SHA differs from the SHA recorded at review start"
+        test_steps:
+          - step: 1
+            action: "Configure forge client to return a different head SHA than the review's recorded SHA"
+            expected: "Head SHA mismatch configured"
+          - step: 2
+            action: "Call submitFormalReview with the stale SHA"
+            expected: "Function detects stale head and skips review submission"
+        assertions:
+          - "No review is submitted to the forge"
+          - "Function returns without error (graceful skip)"
+          - "Log output indicates stale head detected"
+        classification:
+          component: "cli"
+          function_under_test: "submitFormalReview"
+
+      - id: "GH-73-TC-016"
+        title: "Verify inline comments map to diff hunks"
+        test_type: "unit"
+        priority: "P1"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that findingsToReviewComments correctly maps findings to
+          inline review comments positioned within the correct diff hunks.
+        common_preconditions:
+          - "Diff hunks available for the target file"
+          - "Findings reference line numbers within hunk ranges"
+        test_steps:
+          - step: 1
+            action: "Create diff hunks for a file covering lines 10-20 and 50-60"
+            expected: "Hunks created"
+          - step: 2
+            action: "Create findings at lines 15 and 55"
+            expected: "Findings created"
+          - step: 3
+            action: "Call findingsToReviewComments"
+            expected: "Each finding maps to the correct hunk"
+          - step: 4
+            action: "Verify the review comments have correct line positions"
+            expected: "Line positions match the finding line numbers"
+        assertions:
+          - "Number of review comments equals number of findings"
+          - "Each comment references the correct file path"
+          - "Each comment line number falls within the corresponding hunk range"
+        classification:
+          component: "cli"
+          function_under_test: "findingsToReviewComments"
+
+      - id: "GH-73-TC-017"
+        title: "Verify file-level fallback for out-of-hunk lines"
+        test_type: "unit"
+        priority: "P1"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that when a finding references a line outside any diff hunk,
+          the comment falls back to a file-level comment instead of an inline one.
+        common_preconditions:
+          - "Diff hunks for a file covering lines 10-20"
+          - "Finding at line 100 (outside any hunk)"
+        test_steps:
+          - step: 1
+            action: "Create diff hunks covering only lines 10-20"
+            expected: "Hunks created"
+          - step: 2
+            action: "Create a finding at line 100"
+            expected: "Finding created"
+          - step: 3
+            action: "Call findingsToReviewComments"
+            expected: "Comment falls back to file-level"
+        assertions:
+          - "Review comment is created as a file-level comment (no line position)"
+          - "Comment body includes the original line reference for context"
+        classification:
+          component: "cli"
+          function_under_test: "findingsToReviewComments"
+
+      - id: "GH-73-TC-018"
+        title: "Verify stale reviews are minimized"
+        test_type: "unit"
+        priority: "P1"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that when new reviews are submitted, previous stale reviews
+          from the same bot are minimized (collapsed) to reduce noise.
+        common_preconditions:
+          - "Fake forge client with existing reviews from the bot user"
+        test_steps:
+          - step: 1
+            action: "Configure forge client with 2 existing reviews from the bot"
+            expected: "Previous reviews exist"
+          - step: 2
+            action: "Submit a new formal review"
+            expected: "New review created"
+          - step: 3
+            action: "Check that previous reviews were minimized"
+            expected: "DismissPullRequestReview called for each previous review"
+        assertions:
+          - "DismissPullRequestReview called for each prior bot review"
+          - "New review is submitted successfully"
+        classification:
+          component: "cli"
+          function_under_test: "submitFormalReview"
+
+      - id: "GH-73-TC-019"
+        title: "Verify COMMENT review skipped without inline findings"
+        test_type: "unit"
+        priority: "P1"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that when there are no inline findings, the COMMENT review
+          type is skipped entirely rather than posting an empty review.
+        common_preconditions:
+          - "Fake forge client configured"
+          - "Review contains body text but no inline findings"
+        test_steps:
+          - step: 1
+            action: "Create a review result with body text but zero inline findings"
+            expected: "Review result created"
+          - step: 2
+            action: "Call submitFormalReview"
+            expected: "Function skips COMMENT review submission"
+        assertions:
+          - "No COMMENT-type review is submitted to the forge"
+          - "Function returns without error"
+        classification:
+          component: "cli"
+          function_under_test: "submitFormalReview"
+
+      - id: "GH-73-TC-020"
+        title: "Verify error for empty review body"
+        test_type: "unit"
+        priority: "P1"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that attempting to submit a review with an empty body
+          returns a validation error.
+        common_preconditions:
+          - "Fake forge client configured"
+        test_steps:
+          - step: 1
+            action: "Create a review result with an empty body and no findings"
+            expected: "Review result created"
+          - step: 2
+            action: "Call submitFormalReview"
+            expected: "Function returns an error"
+        assertions:
+          - "Function returns a non-nil error"
+          - "Error indicates empty review body is not allowed"
+        classification:
+          component: "cli"
+          function_under_test: "submitFormalReview"
+
+  # ---------------------------------------------------------------------------
+  # Requirement Group 5: Remote agent discovery
+  # ---------------------------------------------------------------------------
+  - id: "RG-05"
+    requirement: "Remote agent discovery identifies roles and slugs from harness files in config repos"
+    jira_id: "GH-73"
+    scenarios:
+
+      - id: "GH-73-TC-021"
+        title: "Verify discovery parses role and slug from YAML"
+        test_type: "unit"
+        priority: "P1"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that DiscoverAgents correctly parses harness YAML files
+          and extracts role and slug fields from each agent definition.
+        common_preconditions:
+          - "Fake forge client returning directory listing with harness YAML files"
+          - "YAML files contain valid role and slug fields"
+        test_steps:
+          - step: 1
+            action: "Configure fake forge client to return a directory listing with 2 harness YAML files"
+            expected: "Directory listing configured"
+          - step: 2
+            action: "Configure YAML content with role='reviewer' and slug='my-agent'"
+            expected: "YAML content configured"
+          - step: 3
+            action: "Call DiscoverAgents"
+            expected: "Function returns parsed agent entries"
+        assertions:
+          - "Returned slice contains 2 entries"
+          - "First entry has correct role and slug values"
+          - "No errors returned"
+        classification:
+          component: "harness"
+          function_under_test: "DiscoverAgents"
+
+      - id: "GH-73-TC-022"
+        title: "Verify slug derivation from role and appSet"
+        test_type: "unit"
+        priority: "P1"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that when a harness YAML specifies a role but no explicit
+          slug, the slug is derived from the role name and appSet identifier.
+        common_preconditions:
+          - "Harness YAML with role field but no slug field"
+          - "appSet identifier available"
+        test_steps:
+          - step: 1
+            action: "Configure YAML with role='triage' and no slug, appSet='myapp'"
+            expected: "YAML configured"
+          - step: 2
+            action: "Call DiscoverAgents"
+            expected: "Slug is derived as '{appSet}-{role}'"
+        assertions:
+          - "Derived slug equals 'myapp-triage'"
+        classification:
+          component: "harness"
+          function_under_test: "DiscoverAgents"
+
+      - id: "GH-73-TC-023"
+        title: "Verify deduplication of discovered slugs"
+        test_type: "unit"
+        priority: "P1"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that when multiple harness files produce the same slug,
+          DiscoverAgents deduplicates and returns unique entries only.
+        common_preconditions:
+          - "Multiple harness YAML files producing the same slug"
+        test_steps:
+          - step: 1
+            action: "Configure 3 harness YAML files, 2 of which produce the same slug"
+            expected: "Files configured"
+          - step: 2
+            action: "Call DiscoverAgents"
+            expected: "Returns deduplicated list"
+        assertions:
+          - "Returned slice contains 2 unique entries (not 3)"
+        classification:
+          component: "harness"
+          function_under_test: "DiscoverAgents"
+
+      - id: "GH-73-TC-024"
+        title: "Verify graceful handling of partial parse errors"
+        test_type: "unit"
+        priority: "P1"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that when one harness YAML is malformed, DiscoverAgents
+          still returns results from the valid files and logs a warning.
+        common_preconditions:
+          - "Mix of valid and invalid YAML files in harness directory"
+        test_steps:
+          - step: 1
+            action: "Configure 3 harness files: 2 valid YAML, 1 invalid YAML"
+            expected: "Files configured"
+          - step: 2
+            action: "Call DiscoverAgents"
+            expected: "Returns entries from valid files only"
+        assertions:
+          - "Returned slice contains 2 entries from valid files"
+          - "No panic or fatal error"
+          - "Warning logged for the malformed file"
+        classification:
+          component: "harness"
+          function_under_test: "DiscoverAgents"
+
+      - id: "GH-73-TC-025"
+        title: "Verify nil return when harness dir missing"
+        test_type: "unit"
+        priority: "P1"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that DiscoverAgents returns nil (not an error) when the
+          harness directory does not exist in the config repo.
+        common_preconditions:
+          - "Fake forge client configured with no harness directory"
+        test_steps:
+          - step: 1
+            action: "Configure forge client to return 404 for harness directory listing"
+            expected: "Directory missing configured"
+          - step: 2
+            action: "Call DiscoverAgents"
+            expected: "Returns nil slice without error"
+        assertions:
+          - "Returned slice is nil"
+          - "No error returned"
+        classification:
+          component: "harness"
+          function_under_test: "DiscoverAgents"
+
+  # ---------------------------------------------------------------------------
+  # Requirement Group 6: Mint setup and role provisioning
+  # ---------------------------------------------------------------------------
+  - id: "RG-06"
+    requirement: "Mint setup and role provisioning operates correctly with browser, PEM, and existing-secret modes"
+    jira_id: "GH-73"
+    scenarios:
+
+      - id: "GH-73-TC-026"
+        title: "Verify add-role with slug and PEM file"
+        test_type: "functional"
+        priority: "P1"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that mint add-role correctly provisions a new role when
+          given a slug and a path to a PEM private key file.
+        common_preconditions:
+          - "Temp PEM file with valid RSA key content"
+          - "Fake forge client or mock API for role creation"
+        test_steps:
+          - step: 1
+            action: "Create a temp PEM file with RSA key content"
+            expected: "PEM file created"
+          - step: 2
+            action: "Call mint add-role with --slug=test-agent and --pem-file=<path>"
+            expected: "Role provisioning completes"
+          - step: 3
+            action: "Verify the role was created with correct slug"
+            expected: "Role exists with slug 'test-agent'"
+        assertions:
+          - "Role creation succeeds without error"
+          - "Created role has the correct slug"
+          - "PEM key content is associated with the role"
+        classification:
+          component: "cli"
+          function_under_test: "mintAddRole"
+
+      - id: "GH-73-TC-027"
+        title: "Verify add-role with existing PEM secret"
+        test_type: "functional"
+        priority: "P1"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that mint add-role provisions a role using a reference
+          to an existing secret instead of a PEM file path.
+        common_preconditions:
+          - "Existing PEM secret name configured in the project"
+        test_steps:
+          - step: 1
+            action: "Call mint add-role with --slug=test-agent and --existing-secret=my-pem-secret"
+            expected: "Role provisioning completes using existing secret"
+          - step: 2
+            action: "Verify the role references the existing secret"
+            expected: "Role uses secret reference instead of inline PEM"
+        assertions:
+          - "Role creation succeeds without error"
+          - "Role configuration references the existing secret name"
+        classification:
+          component: "cli"
+          function_under_test: "mintAddRole"
+
+      - id: "GH-73-TC-028"
+        title: "Verify error for missing project flag"
+        test_type: "unit"
+        priority: "P1"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that mint add-role returns a validation error when the
+          required --project flag is not provided.
+        common_preconditions: []
+        test_steps:
+          - step: 1
+            action: "Call mint add-role without --project flag"
+            expected: "Function returns a validation error"
+        assertions:
+          - "Function returns a non-nil error"
+          - "Error message indicates --project flag is required"
+        classification:
+          component: "cli"
+          function_under_test: "mintAddRole"
+
+      - id: "GH-73-TC-029"
+        title: "Verify mutual exclusivity of input modes"
+        test_type: "unit"
+        priority: "P1"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that providing both --pem-file and --existing-secret
+          simultaneously returns a validation error.
+        common_preconditions: []
+        test_steps:
+          - step: 1
+            action: "Call mint add-role with both --pem-file and --existing-secret"
+            expected: "Function returns a validation error"
+        assertions:
+          - "Function returns a non-nil error"
+          - "Error message indicates mutually exclusive flags"
+        classification:
+          component: "cli"
+          function_under_test: "mintAddRole"
+
+  # ---------------------------------------------------------------------------
+  # Requirement Group 7: Harness lint diagnostics
+  # ---------------------------------------------------------------------------
+  - id: "RG-07"
+    requirement: "Harness lint diagnostics detect missing role field and emit appropriate severity"
+    jira_id: "GH-73"
+    scenarios:
+
+      - id: "GH-73-TC-030"
+        title: "Verify lint warns on missing role"
+        test_type: "unit"
+        priority: "P2"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that the harness linter emits a warning-level diagnostic
+          when a harness YAML file is missing the required role field.
+        common_preconditions:
+          - "Harness YAML file without a role field"
+        test_steps:
+          - step: 1
+            action: "Create a harness YAML file missing the role field"
+            expected: "File created"
+          - step: 2
+            action: "Run the harness linter on the file"
+            expected: "Linter returns diagnostics"
+          - step: 3
+            action: "Inspect diagnostics"
+            expected: "Warning-level diagnostic for missing role"
+        assertions:
+          - "Diagnostics contain exactly one entry"
+          - "Diagnostic severity is 'warning'"
+          - "Diagnostic message references the missing 'role' field"
+        classification:
+          component: "harness"
+          function_under_test: "Lint"
+
+      - id: "GH-73-TC-031"
+        title: "Verify no diagnostics for valid harness"
+        test_type: "unit"
+        priority: "P2"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that the harness linter returns zero diagnostics for a
+          fully valid harness YAML file.
+        common_preconditions:
+          - "Harness YAML file with all required fields present"
+        test_steps:
+          - step: 1
+            action: "Create a valid harness YAML file with role, slug, and all required fields"
+            expected: "File created"
+          - step: 2
+            action: "Run the harness linter on the file"
+            expected: "Linter returns empty diagnostics"
+        assertions:
+          - "Diagnostics slice is empty"
+          - "No error returned"
+        classification:
+          component: "harness"
+          function_under_test: "Lint"
+
+  # ---------------------------------------------------------------------------
+  # Requirement Group 8: GCF provisioner
+  # ---------------------------------------------------------------------------
+  - id: "RG-08"
+    requirement: "GCF provisioner and fake client correctly provision and manage cloud functions"
+    jira_id: "GH-73"
+    scenarios:
+
+      - id: "GH-73-TC-032"
+        title: "Verify cloud function creation and deployment"
+        test_type: "functional"
+        priority: "P1"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that the GCF provisioner creates a new cloud function
+          with the correct configuration and deploys it.
+        common_preconditions:
+          - "Fake GCF client configured"
+          - "Valid project ID and function configuration"
+        test_steps:
+          - step: 1
+            action: "Configure fake GCF client"
+            expected: "Client ready"
+          - step: 2
+            action: "Call Provision with a valid function spec"
+            expected: "Function is created and deployed"
+          - step: 3
+            action: "Verify the function exists in the fake client state"
+            expected: "Function present with correct configuration"
+        assertions:
+          - "Provision returns nil error"
+          - "Function exists in fake client with correct name"
+          - "Function configuration matches the provided spec"
+        classification:
+          component: "cli"
+          function_under_test: "Provision"
+
+      - id: "GH-73-TC-033"
+        title: "Verify environment variable updates on function"
+        test_type: "functional"
+        priority: "P1"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that updating environment variables on an existing cloud
+          function merges new values with existing ones.
+        common_preconditions:
+          - "Fake GCF client with an existing function"
+          - "Function has existing env vars"
+        test_steps:
+          - step: 1
+            action: "Create a function with env vars {KEY1: val1}"
+            expected: "Function created"
+          - step: 2
+            action: "Update function with env vars {KEY2: val2}"
+            expected: "Update completes"
+          - step: 3
+            action: "Retrieve function configuration"
+            expected: "Both KEY1 and KEY2 present"
+        assertions:
+          - "Function env vars contain both KEY1 and KEY2"
+          - "Existing env var values are not overwritten"
+        classification:
+          component: "cli"
+          function_under_test: "Provision"
+
+      - id: "GH-73-TC-034"
+        title: "Verify error handling for invalid project ID"
+        test_type: "unit"
+        priority: "P1"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that the GCF provisioner returns an error when given
+          an invalid or nonexistent project ID.
+        common_preconditions:
+          - "Fake GCF client configured to reject invalid project IDs"
+        test_steps:
+          - step: 1
+            action: "Call Provision with project ID 'invalid-project-!!'"
+            expected: "Function returns an error"
+        assertions:
+          - "Provision returns a non-nil error"
+          - "Error message references invalid project ID"
+        classification:
+          component: "cli"
+          function_under_test: "Provision"
+
+      - id: "GH-73-TC-035"
+        title: "Verify fake client simulates API behavior"
+        test_type: "unit"
+        priority: "P1"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that the fake GCF client correctly simulates the real
+          GCF API behavior including create, get, update, and delete operations.
+        common_preconditions:
+          - "Fake GCF client instantiated"
+        test_steps:
+          - step: 1
+            action: "Create a function via fake client"
+            expected: "Function stored in fake state"
+          - step: 2
+            action: "Get the function by name"
+            expected: "Returns the created function"
+          - step: 3
+            action: "Update the function"
+            expected: "Changes reflected in state"
+          - step: 4
+            action: "Delete the function"
+            expected: "Function removed from state"
+          - step: 5
+            action: "Get the deleted function"
+            expected: "Returns not-found error"
+        assertions:
+          - "Create stores function in state"
+          - "Get returns stored function"
+          - "Update modifies stored function"
+          - "Delete removes function from state"
+          - "Get after delete returns not-found"
+        classification:
+          component: "cli"
+          function_under_test: "FakeGCFClient"
+
+  # ---------------------------------------------------------------------------
+  # Requirement Group 9: Enrollment and vendor layers
+  # ---------------------------------------------------------------------------
+  - id: "RG-09"
+    requirement: "Enrollment and vendor layers handle vendored binary installation and workflow generation"
+    jira_id: "GH-73"
+    scenarios:
+
+      - id: "GH-73-TC-036"
+        title: "Verify enrollment provisions new repository"
+        test_type: "functional"
+        priority: "P1"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that the enrollment flow provisions a new repository with
+          the correct workflow files, harness configuration, and binary setup.
+        common_preconditions:
+          - "Fake forge client configured"
+          - "Template files available"
+        test_steps:
+          - step: 1
+            action: "Configure fake forge client for a new repository"
+            expected: "Client configured"
+          - step: 2
+            action: "Run the enrollment provisioner"
+            expected: "Repository provisioned with workflow and harness files"
+          - step: 3
+            action: "Verify created files in the repository"
+            expected: "Workflow YAML and harness files exist"
+        assertions:
+          - "Enrollment completes without error"
+          - "Workflow YAML file created in .github/workflows/"
+          - "Harness configuration file created"
+        classification:
+          component: "cli"
+          function_under_test: "Enroll"
+
+      - id: "GH-73-TC-037"
+        title: "Verify vendored binary installs cross-platform"
+        test_type: "functional"
+        priority: "P1"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that the vendor layer installs the correct binary for the
+          target platform (linux/amd64) when running in a sandbox.
+        common_preconditions:
+          - "httptest server serving platform-specific binaries"
+          - "FULLSEND_SANDBOX_ARCH not set (defaults to runtime.GOARCH)"
+        test_steps:
+          - step: 1
+            action: "Start httptest server serving linux/amd64 binary archive"
+            expected: "Server listening"
+          - step: 2
+            action: "Call the vendor install function"
+            expected: "Binary downloaded and installed"
+          - step: 3
+            action: "Verify installed binary path and architecture"
+            expected: "Binary is linux/amd64"
+        assertions:
+          - "Binary installed at expected path"
+          - "Downloaded archive matches linux/amd64 platform"
+        classification:
+          component: "binary"
+          function_under_test: "VendorInstall"
+
+      - id: "GH-73-TC-038"
+        title: "Verify workflow YAML renders correctly"
+        test_type: "unit"
+        priority: "P1"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that the workflow YAML template renders with the correct
+          repository name, agent slug, and trigger configuration.
+        common_preconditions:
+          - "Template files available"
+        test_steps:
+          - step: 1
+            action: "Render workflow YAML with repo='owner/repo', slug='my-agent'"
+            expected: "YAML rendered"
+          - step: 2
+            action: "Parse the rendered YAML"
+            expected: "Valid YAML structure"
+          - step: 3
+            action: "Verify template variables are substituted"
+            expected: "Repository and slug appear in rendered output"
+        assertions:
+          - "Rendered YAML is valid"
+          - "Repository name appears in the workflow"
+          - "Agent slug appears in the job configuration"
+        classification:
+          component: "cli"
+          function_under_test: "RenderWorkflow"
+
+      - id: "GH-73-TC-039"
+        title: "Verify error for unsupported architecture"
+        test_type: "unit"
+        priority: "P1"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that the vendor layer returns an error when the target
+          architecture is not supported (e.g., arm32, mips).
+        common_preconditions: []
+        test_steps:
+          - step: 1
+            action: "Set FULLSEND_SANDBOX_ARCH to 'mips'"
+            expected: "Env var set"
+          - step: 2
+            action: "Call the vendor install function"
+            expected: "Function returns an error"
+        assertions:
+          - "Function returns a non-nil error"
+          - "Error message references unsupported architecture"
+        classification:
+          component: "binary"
+          function_under_test: "VendorInstall"
+
+  # ---------------------------------------------------------------------------
+  # Requirement Group 10: Status reconciliation
+  # ---------------------------------------------------------------------------
+  - id: "RG-10"
+    requirement: "Status reconciliation finalizes orphaned status comments from hard-killed agent processes"
+    jira_id: "GH-73"
+    scenarios:
+
+      - id: "GH-73-TC-040"
+        title: "Verify orphaned comment finalized to interrupted"
+        test_type: "unit"
+        priority: "P2"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that reconcile-status detects an orphaned in-progress
+          status comment and updates it to the interrupted final state.
+        common_preconditions:
+          - "Fake forge client with an in-progress status comment"
+          - "No active agent process for the comment"
+        test_steps:
+          - step: 1
+            action: "Create an in-progress status comment via fake forge client"
+            expected: "Comment created"
+          - step: 2
+            action: "Run reconcile-status"
+            expected: "Comment updated to interrupted state"
+          - step: 3
+            action: "Read the updated comment"
+            expected: "Comment body indicates interrupted status"
+        assertions:
+          - "Comment body updated to reflect interrupted status"
+          - "Reconciliation completes without error"
+        classification:
+          component: "cli"
+          function_under_test: "reconcileStatus"
+
+      - id: "GH-73-TC-041"
+        title: "Verify idempotent on already-finalized comment"
+        test_type: "unit"
+        priority: "P2"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that reconcile-status is idempotent: running it on an
+          already-finalized comment does not modify it further.
+        common_preconditions:
+          - "Fake forge client with a finalized status comment"
+        test_steps:
+          - step: 1
+            action: "Create a status comment already in finalized state"
+            expected: "Comment created"
+          - step: 2
+            action: "Run reconcile-status"
+            expected: "No modification made"
+          - step: 3
+            action: "Verify comment is unchanged"
+            expected: "Comment body identical to before reconciliation"
+        assertions:
+          - "Comment body is unchanged after reconciliation"
+          - "No update API call made to the forge"
+        classification:
+          component: "cli"
+          function_under_test: "reconcileStatus"
+
+      - id: "GH-73-TC-042"
+        title: "Verify cancelled reason handled correctly"
+        test_type: "unit"
+        priority: "P2"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that reconcile-status correctly handles the cancelled
+          reason when finalizing an orphaned comment.
+        common_preconditions:
+          - "Fake forge client with an in-progress status comment"
+          - "Cancellation reason available"
+        test_steps:
+          - step: 1
+            action: "Create an in-progress status comment"
+            expected: "Comment created"
+          - step: 2
+            action: "Run reconcile-status with reason='cancelled'"
+            expected: "Comment updated with cancelled reason"
+          - step: 3
+            action: "Read the updated comment"
+            expected: "Comment body indicates cancelled status with reason"
+        assertions:
+          - "Comment body contains 'cancelled' status"
+          - "Cancellation reason is included in the comment"
+        classification:
+          component: "cli"
+          function_under_test: "reconcileStatus"
+
+  # ---------------------------------------------------------------------------
+  # Requirement Group 11: Invalid inputs and error conditions
+  # ---------------------------------------------------------------------------
+  - id: "RG-11"
+    requirement: "Invalid inputs and error conditions are handled gracefully across CLI commands"
+    jira_id: "GH-73"
+    scenarios:
+
+      - id: "GH-73-TC-043"
+        title: "Verify rejection of invalid repo format"
+        test_type: "unit"
+        priority: "P1"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that CLI commands reject repository identifiers that do not
+          match the expected owner/repo format.
+        common_preconditions: []
+        test_steps:
+          - step: 1
+            action: "Call CLI command with repo='not-a-valid-format'"
+            expected: "Validation error returned"
+        assertions:
+          - "Function returns a non-nil error"
+          - "Error message indicates invalid repository format"
+          - "Error message suggests the expected owner/repo format"
+        classification:
+          component: "cli"
+          function_under_test: "validateInputs"
+
+      - id: "GH-73-TC-044"
+        title: "Verify rejection of negative PR numbers"
+        test_type: "unit"
+        priority: "P1"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that CLI commands reject negative PR numbers as invalid input.
+        common_preconditions: []
+        test_steps:
+          - step: 1
+            action: "Call CLI command with pr=-1"
+            expected: "Validation error returned"
+        assertions:
+          - "Function returns a non-nil error"
+          - "Error message indicates PR number must be positive"
+        classification:
+          component: "cli"
+          function_under_test: "validateInputs"
+
+      - id: "GH-73-TC-045"
+        title: "Verify rejection of missing required tokens"
+        test_type: "unit"
+        priority: "P1"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that CLI commands reject execution when required
+          authentication tokens are not provided.
+        common_preconditions:
+          - "Required token environment variables unset"
+        test_steps:
+          - step: 1
+            action: "Unset all token environment variables"
+            expected: "Variables unset"
+          - step: 2
+            action: "Call CLI command that requires authentication"
+            expected: "Validation error returned"
+        assertions:
+          - "Function returns a non-nil error"
+          - "Error message indicates missing required token"
+        classification:
+          component: "cli"
+          function_under_test: "validateInputs"
+
+      - id: "GH-73-TC-046"
+        title: "Verify rejection of invalid SHA format"
+        test_type: "unit"
+        priority: "P1"
+        coverage_status: "NEW"
+        test_objective: >
+          Confirm that CLI commands reject commit SHA values that are not
+          valid 40-character hexadecimal strings.
+        common_preconditions: []
+        test_steps:
+          - step: 1
+            action: "Call CLI command with sha='not-a-sha'"
+            expected: "Validation error returned"
+          - step: 2
+            action: "Call CLI command with sha='abc123' (too short)"
+            expected: "Validation error returned"
+        assertions:
+          - "Function returns a non-nil error for non-hex input"
+          - "Function returns a non-nil error for too-short input"
+          - "Error message indicates invalid SHA format"
+        classification:
+          component: "cli"
+          function_under_test: "validateInputs"
