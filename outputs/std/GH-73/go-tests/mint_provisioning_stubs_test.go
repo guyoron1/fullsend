@@ -7,7 +7,7 @@ import (
 /*
 Mint Setup and Role Provisioning Tests
 
-STP Reference: outputs/stp/GH-73/GH-73_test_plan.md
+STP Reference: outputs/stp/GH-73/GH-73_test_plan.md (Two-Pass Review Strategy for Large PRs)
 Jira: GH-73
 */
 
@@ -56,7 +56,7 @@ func TestMintProvisioning(t *testing.T) {
 		/*
 		[NEGATIVE]
 		Preconditions:
-			- No special preconditions
+			- mintAddRole function is callable
 
 		Steps:
 			1. Call mint add-role without --project flag
@@ -72,7 +72,7 @@ func TestMintProvisioning(t *testing.T) {
 		/*
 		[NEGATIVE]
 		Preconditions:
-			- No special preconditions
+			- mintAddRole function is callable
 
 		Steps:
 			1. Call mint add-role with both --pem-file and --existing-secret

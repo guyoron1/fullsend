@@ -7,14 +7,14 @@ import (
 /*
 Input Validation and Error Handling Tests
 
-STP Reference: outputs/stp/GH-73/GH-73_test_plan.md
+STP Reference: outputs/stp/GH-73/GH-73_test_plan.md (Two-Pass Review Strategy for Large PRs)
 Jira: GH-73
 */
 
 func TestInputValidation(t *testing.T) {
 	/*
 	Preconditions:
-		- No special preconditions; pure input validation tests
+		- validateInputs function is callable
 	*/
 
 	t.Run("[test_id:GH-73-TC-043] should reject invalid repo format", func(t *testing.T) {
@@ -22,7 +22,7 @@ func TestInputValidation(t *testing.T) {
 		/*
 		[NEGATIVE]
 		Preconditions:
-			- No special preconditions
+			- validateInputs function is callable
 
 		Steps:
 			1. Call CLI command with repo='not-a-valid-format'
@@ -39,7 +39,7 @@ func TestInputValidation(t *testing.T) {
 		/*
 		[NEGATIVE]
 		Preconditions:
-			- No special preconditions
+			- validateInputs function is callable
 
 		Steps:
 			1. Call CLI command with pr=-1
@@ -72,7 +72,7 @@ func TestInputValidation(t *testing.T) {
 		/*
 		[NEGATIVE]
 		Preconditions:
-			- No special preconditions
+			- validateInputs function is callable
 
 		Steps:
 			1. Call CLI command with sha='not-a-sha'

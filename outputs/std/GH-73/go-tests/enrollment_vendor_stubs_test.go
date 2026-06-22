@@ -7,7 +7,7 @@ import (
 /*
 Enrollment and Vendor Layer Tests
 
-STP Reference: outputs/stp/GH-73/GH-73_test_plan.md
+STP Reference: outputs/stp/GH-73/GH-73_test_plan.md (Two-Pass Review Strategy for Large PRs)
 Jira: GH-73
 */
 
@@ -79,7 +79,8 @@ func TestEnrollmentVendor(t *testing.T) {
 		/*
 		[NEGATIVE]
 		Preconditions:
-			- No special preconditions
+			- VendorInstall function is callable
+			- FULLSEND_SANDBOX_ARCH environment variable can be set
 
 		Steps:
 			1. Set FULLSEND_SANDBOX_ARCH to 'mips'

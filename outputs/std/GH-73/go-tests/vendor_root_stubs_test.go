@@ -7,7 +7,7 @@ import (
 /*
 Vendor Source Root Resolution Tests
 
-STP Reference: outputs/stp/GH-73/GH-73_test_plan.md
+STP Reference: outputs/stp/GH-73/GH-73_test_plan.md (Two-Pass Review Strategy for Large PRs)
 Jira: GH-73
 */
 

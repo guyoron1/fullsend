@@ -7,7 +7,7 @@ import (
 /*
 Agent Sandbox Run Lifecycle Tests
 
-STP Reference: outputs/stp/GH-73/GH-73_test_plan.md
+STP Reference: outputs/stp/GH-73/GH-73_test_plan.md (Two-Pass Review Strategy for Large PRs)
 Jira: GH-73
 */
 
@@ -30,7 +30,7 @@ func TestAgentLifecycle(t *testing.T) {
 		Steps:
 			1. Configure a fake forge client with a valid repository, PR, and commit SHA
 			2. Invoke runAgent with the configured context
-			3. Allow agent to proceed through bootstrap, validation, and execution phases
+			3. Wait for runAgent to complete execution through all lifecycle phases (bootstrap, validation, execution, cleanup)
 			4. Observe final agent status
 
 		Expected:
