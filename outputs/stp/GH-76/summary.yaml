@@ -1,0 +1,22 @@
+status: success
+jira_id: GH-76
+verdict: APPROVED_WITH_FINDINGS
+confidence: LOW
+weighted_score: 79
+findings:
+  critical: 0
+  major: 5
+  minor: 6
+  actionable: 9
+  total: 11
+reviewed: outputs/stp/GH-76/GH-76_test_plan.md
+report: GH-76_stp_review.md
+dimension_scores:
+  rule_compliance: 83
+  requirement_coverage: 80
+  scenario_quality: 85
+  risk_accuracy: 80
+  scope_boundary: 75
+  strategy: 70
+  metadata: 50
+scope_downgrade: false
