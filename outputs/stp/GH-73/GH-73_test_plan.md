@@ -10,12 +10,145 @@
 | **Status** | Open |
 | **Branch** | `mirror/2303-2096-two-pass-review-strategy` → `main` |
 | **Upstream** | fullsend-ai/fullsend#2303 |
+| **QE Owner** | TBD |
+| **Team** | fullsend |
+| **Enhancement** | [fullsend-ai/fullsend#2303](https://github.com/fullsend-ai/fullsend/pull/2303) |
+
+---
+
+## I. Pre-Test Analysis
+
+### I.1 Requirements Review
+
+- [x] **Review Requirements**
+  - PR introduces two-pass review strategy for large PRs, including review posting, stale-head detection, inline comment mapping, stale review cleanup, and formal review submission
+  - Upstream PR fullsend-ai/fullsend#2303 with 18,029 additions / 2,300 deletions across 174 files
+- [x] **Understand Value and Customer Use Cases**
+  - Improves review quality for large PRs by enabling structured review with inline comments on specific diff hunks
+  - Prevents approval of unreviewed code through stale-head detection
+  - Automates cleanup of outdated review comments
+- [x] **Testability**
+  - All core review pipeline functions are testable via the existing `forge.FakeClient` interface
+  - Stale-head detection, inline comment mapping, and review submission are deterministic and unit-testable
+  - SHA validation and input sanitization are pure functions
+- [x] **Acceptance Criteria**
+  - Post-review command correctly parses JSON and plaintext review input
+  - Stale-head detection prevents review when PR HEAD has changed
+  - Inline comments are mapped to correct diff hunk lines
+  - Stale reviews are dismissed or minimized on new review submission
+  - Exit code 10 propagates for stale-head condition
+- [x] **Non-Functional Requirements**
+  - GitHub API rate limiting handled gracefully with fallback behavior
+  - SHA validation prevents injection attacks
+
+### I.2 Known Limitations
+
+- [ ] **No real GitHub API integration tests** — E2E tests use fake forge client; actual GitHub API behavior differences (422 errors for out-of-hunk comments) cannot be validated without live API access
+- [ ] **Shell script exit code propagation untested** — `StaleHeadExitCode` (10) is tested in Go but propagation through `post-review.sh` requires manual verification
+- [ ] **Binary vendoring cross-platform coverage** — Cross-compilation tests are limited to the CI platform; other OS/arch combinations require manual verification
+
+### I.3 Technology Review
+
+- [x] **Developer Handoff**
+  - QE kickoff should be scheduled during feature design phase; this is a mirror of upstream PR so handoff is implicit
+- [x] **Technology Challenges**
+  - GitHub API constraints on inline review comments: comments must reference lines within diff hunks or the API returns 422 errors
+  - Stale-head race condition: PR HEAD can change between detection and review submission
+- [x] **API Extensions**
+  - New `forge.Client` interface methods: `ListPullRequestFileDiffs`, `DismissPullRequestReview`, `MinimizeComment`
+  - New `forge.ReviewComment` and `forge.PullRequestFileDiff` types
+- [x] **Test Environment Needs**
+  - Standard Go test environment with `go test` runner
+  - No external services required — all API interactions use `forge.FakeClient`
+- [x] **Topology**
+  - Single-binary CLI tool; no multi-node topology required for testing
 
 ---
 
 ## 1. Summary
 
-This PR mirrors upstream fullsend-ai/fullsend#2303 and introduces a two-pass review strategy to improve review quality and coverage for large PRs. The change is wide-scoped (17,037 additions / 2,300 deletions across 90+ files) and includes enhancements to the post-review CLI, forge interface, reconcile-status command, CLI infrastructure (vendor, mint, admin, run, discover-slugs), GCF provisioner, harness discovery/lint, scaffold, and binary vendoring.
+This PR mirrors upstream fullsend-ai/fullsend#2303 and introduces a two-pass review strategy to improve review quality and coverage for large PRs. The change is wide-scoped (18,029 additions / 2,300 deletions across 174 files) and includes enhancements to the post-review CLI, forge interface, reconcile-status command, CLI infrastructure (vendor, mint, admin, run, discover-slugs), GCF provisioner, harness discovery/lint, scaffold, and binary vendoring.
+
+## II. Test Planning
+
+### II.1 Scope of Testing
+
+- [x] **Post-review CLI command** — Review result parsing, formal review submission, stale-head detection, failure notices
+- [x] **Inline comment mapping** — Finding-to-diff-hunk mapping, file-level fallback, severity passthrough
+- [x] **Stale review cleanup** — Dismiss prior CHANGES_REQUESTED reviews, minimize prior COMMENT reviews
+- [x] **Diff hunk parsing** — Parse unified diff `@@` headers into line ranges for comment eligibility
+- [x] **Input validation** — SHA format validation, reason sanitization, repo format validation
+- [x] **Reconcile status command** — Input validation, reason mapping
+- [x] **Forge interface extensions** — New methods on `forge.Client` interface and GitHub implementation
+- [x] **Binary vendoring** — Vendor root discovery, download with checksum, platform selection
+- [x] **CLI commands** — Vendor, Mint, Admin, Run, Discover Slugs command changes
+- [x] **Harness enhancements** — Remote discovery, linting, scaffold integration
+- [x] **GCF provisioner** — Refactored provisioner interface, fake client
+
+**Out of Scope:**
+
+- [ ] **GitHub Actions workflow YAML changes** — `.github/workflows/` changes are configuration; validated by CI, not unit tests
+- [ ] **Documentation and ADR changes** — Multiple ADRs and agent docs added; these are prose documents not requiring functional testing
+- [ ] **UI/frontend behavior** — No UI components exist in this change set
+- [ ] **Performance benchmarking** — Two-pass review adds one additional API call per review; binary download is a one-time operation during vendor setup; review API calls are bounded by finding count (typically <50); no user-facing latency SLA exists for the review pipeline
+- [ ] **Live GitHub API integration** — All tests use `forge.FakeClient`; live API testing is outside automated test scope (see Known Limitations I.2)
+
+### II.2 Testing Goals
+
+1. Verify the post-review command correctly parses both JSON and plaintext review input into structured `ReviewResult` objects
+2. Verify stale-head detection prevents review submission when the PR HEAD SHA has changed since the review was generated
+3. Verify inline comments are placed on correct diff hunk lines and fall back to file-level comments when lines are outside hunks
+4. Verify stale review cleanup dismisses prior bot reviews without affecting other users' reviews
+5. Verify input validation rejects malformed SHAs and injection attempts while accepting valid formats
+6. Verify all new `forge.Client` interface methods are correctly implemented by both the live GitHub client and the fake test client
+
+### II.3 Test Environment
+
+- Go 1.22+ with `go test` runner
+- `github.com/stretchr/testify` for assertions (assert + require)
+- `forge.FakeClient` providing in-memory forge implementation for all API interactions
+- No external services, databases, or network access required for unit/integration tests
+- E2E tests (`e2e/admin/`) require a running fullsend instance
+
+#### II.3.1 Testing Tools & Frameworks
+
+- No non-standard tools required — all tests use the Go stdlib `testing` package and testify assertions
+
+### II.4 Entry / Exit Criteria
+
+**Entry Criteria:**
+- PR branch compiles without errors (`go build ./...`)
+- All existing tests pass on the base branch (`go test ./...`)
+- `forge.FakeClient` implements all new interface methods
+
+**Exit Criteria:**
+- All test scenarios in Section 3 pass
+- No CRITICAL or HIGH-priority test failures
+- Code coverage for `internal/cli/postreview.go` ≥ 80%
+
+### II.5 Test Strategy Classifications
+
+- [x] **Functional Testing** — Core feature; all test scenarios validate functional behavior
+- [x] **Automation Testing** — All tests are automated Go tests
+- [ ] **Performance Testing** — N/A; two-pass review adds one additional API call with negligible latency impact
+- [x] **Security Testing** — SHA validation and input sanitization prevent injection attacks (TC-054 through TC-062)
+- [ ] **Usability Testing** — N/A; no UI components in this change
+- [ ] **Upgrade Testing** — N/A; CLI tool with no persistent state requiring migration
+- [x] **Regression Testing** — Backward compatibility of CLI commands and forge interface verified through existing test suite
+- [ ] **Monitoring Testing** — N/A; no new metrics or alerts introduced
+- [x] **Dependencies** — None; all changes are self-contained within the fullsend repository
+
+### II.6 Risks
+
+| Risk | Likelihood | Impact | Mitigation |
+|:-----|:-----------|:-------|:-----------|
+| Large PR scope masks subtle regressions | Medium | High | Focus testing on LSP-traced call chains (see Section 4.1); prioritize review pipeline tests for `submitFormalReview`, `findingsToReviewComments`, and `checkStaleHead` |
+| GitHub API rate limiting during inline comment posting | Low | Medium | Graceful fallback when `ListPullRequestFileDiffs` fails |
+| Stale-head race condition (HEAD changes between check and review submit) | Low | High | `commitSHA` parameter pins review to checked commit |
+| Forge interface breakage (missing method implementations) | Low | High | Compile-time interface check (`var _ forge.Client = (*LiveClient)(nil)`) |
+| Exit code 10 not propagated through shell scripts | Low | Medium | Verify post-review.sh handles `StaleHeadExitCode` |
+
+---
 
 ## 2. Scope of Changes
 
@@ -40,49 +173,28 @@ This PR mirrors upstream fullsend-ai/fullsend#2303 and introduces a two-pass rev
 | Workflows | `.github/workflows/e2e.yml`, `.github/workflows/reusable-*.yml` | Modified |
 | Documentation | Multiple ADRs, agent docs, plans, specs | Added / Modified |
 
-### 2.2 Key Functions (LSP Call Graph Analysis)
+### 2.2 Critical Integration Points
 
-The following functions form the critical path of the review posting pipeline:
+The review posting pipeline has five key integration points that drive test prioritization:
 
-```
-newPostReviewCmd()
-  ├── parseReviewResult()     — Parse JSON/plaintext review input
-  ├── checkStaleHead()        — Compare reviewed SHA vs current PR HEAD
-  │   └── forge.Client.GetPullRequestHeadSHA()
-  ├── postStaleHeadNotice()   — Post failure when HEAD moved (returns staleHeadError)
-  │   └── sticky.Post()
-  ├── postFailureNotice()     — Post failure notice for agent errors
-  │   └── sticky.Post()
-  ├── sticky.Post()           — Upsert sticky review comment
-  └── submitFormalReview()    — Core review submission
-      ├── forge.Client.GetAuthenticatedUser()
-      ├── forge.Client.ListPullRequestReviews()
-      ├── dismissStaleRequestChanges()
-      │   └── forge.Client.DismissPullRequestReview()
-      ├── minimizeStaleReviews()
-      │   └── forge.Client.MinimizeComment()
-      ├── forge.Client.ListPullRequestFileDiffs()
-      ├── findingsToReviewComments()   — Convert findings to inline comments
-      │   ├── lineInHunks()
-      │   ├── parseDiffLineRanges()
-      │   └── formatFindingComment()
-      └── forge.Client.CreatePullRequestReview()
-```
-
-### 2.3 Data Types
-
-| Type | Location | Purpose |
-|:-----|:---------|:--------|
-| `ReviewResult` | `internal/cli/postreview.go:150` | Parsed review input (body, action, head_sha, reason, findings) |
-| `ReviewFinding` | `internal/cli/postreview.go:159` | Structured finding (severity, category, file, line, description, remediation) |
-| `staleHeadError` | `internal/cli/postreview.go:214` | Error type carrying `StaleHeadExitCode` (10) |
-| `forge.ReviewComment` | `internal/forge/forge.go:125` | Inline review comment (path, line, body); `Line==0` = file-level |
-| `forge.PullRequestFileDiff` | `internal/forge/forge.go:134` | File path + unified diff patch |
-| `forge.PullRequestReview` | `internal/forge/forge.go:107` | Review metadata (ID, NodeID, User, State, Body) |
+- **Review result parsing** → `parseReviewResult()` — Entry point for all review input; supports both JSON and plaintext formats
+- **Stale-head detection** → `checkStaleHead()` — Safety gate comparing reviewed SHA against current PR HEAD; returns `staleHeadError` with exit code 10 on mismatch
+- **Formal review submission** → `submitFormalReview()` — Orchestrates stale review cleanup, inline comment mapping, and GitHub review creation
+- **Inline comment mapping** → `findingsToReviewComments()` — Converts structured findings to diff-hunk-aware inline comments; falls back to file-level comments for lines outside hunks
+- **Forge interface** → `forge.Client` — Extended with `ListPullRequestFileDiffs`, `DismissPullRequestReview`, and `MinimizeComment` methods; all implementations (live + fake) must satisfy the interface
 
 ---
 
 ## 3. Test Scenarios
+
+### 3.0 Two-Pass Review Orchestration
+
+| ID | Scenario | Expected Result | Priority |
+|:---|:---------|:----------------|:---------|
+| TC-095 | PR with diff exceeding large-PR threshold triggers two review passes | Review agent dispatched twice; second pass receives first-pass context | High |
+| TC-096 | PR with diff below large-PR threshold triggers single review pass | Review agent dispatched once; no second-pass dispatch | High |
+| TC-097 | Second pass produces findings that refine or override first-pass findings | Final review comment reflects merged findings from both passes | High |
+| TC-098 | First pass fails with error; second pass is not dispatched | Error propagated; no second pass attempted | Medium |
 
 ### 3.1 Post-Review — Review Result Parsing
 
@@ -133,9 +245,9 @@ newPostReviewCmd()
 | TC-028 | Bot has prior CHANGES_REQUESTED, new verdict is REQUEST_CHANGES | Prior CR reviews NOT dismissed (same severity) | High |
 | TC-029 | Other user's CHANGES_REQUESTED reviews | Not dismissed by bot | High |
 | TC-030 | Multiple stale CR reviews by bot | All dismissed | Medium |
-| TC-031 | MinimizeComment API error | Soft-fail; no panic, review still submitted | Medium |
-| TC-032 | GetAuthenticatedUser error | Skips cleanup; review still submitted | Medium |
-| TC-033 | ListPullRequestReviews error | Skips cleanup; review still submitted | Medium |
+| TC-031 | MinimizeComment API error | Soft-fail; no panic, review still submitted | Low |
+| TC-032 | GetAuthenticatedUser error | Skips cleanup; review still submitted | Low |
+| TC-033 | ListPullRequestReviews error | Skips cleanup; review still submitted | Low |
 
 ### 3.5 Post-Review — Inline Comment Mapping
 
@@ -211,34 +323,42 @@ newPostReviewCmd()
 
 | ID | Scenario | Expected Result | Priority |
 |:---|:---------|:----------------|:---------|
-| TC-074 | Vendor root discovery | Correct path resolved | Medium |
-| TC-075 | Download with checksum verification | Hash matches expected SHA256 | Medium |
-| TC-076 | Cross-compilation support | Correct platform binary selected | Low |
+| TC-074 | Resolve vendor root from project directory with `.vendor` marker | Returns path to nearest ancestor containing `.vendor` directory | Medium |
+| TC-075 | Resolve vendor root when no `.vendor` marker exists | Returns default vendor path under user home directory | Medium |
+| TC-076 | Download binary and verify SHA256 checksum matches manifest entry | Download succeeds; computed hash equals manifest SHA256 | High |
+| TC-077 | Download binary with checksum mismatch | Download fails with checksum verification error; partial file cleaned up | High |
+| TC-078 | Select platform-specific binary for linux/amd64 | URL and filename contain correct OS and architecture suffix | Medium |
 
 ### 3.12 CLI — Vendor, Mint, Admin, Run
 
 | ID | Scenario | Expected Result | Priority |
 |:---|:---------|:----------------|:---------|
-| TC-077 | Vendor command basic flow | Successfully vendors dependencies | Medium |
-| TC-078 | Mint setup command | Creates mint configuration | Medium |
-| TC-079 | Admin command changes | Backward-compatible behavior | Medium |
-| TC-080 | Run command with new flags | Correctly processes arguments | Medium |
-| TC-081 | Discover slugs command | Returns expected slug list | Medium |
+| TC-079 | Vendor command downloads and places binary at vendor root path | Binary exists at `{vendor_root}/bin/{tool_name}` with correct permissions | Medium |
+| TC-080 | Vendor command with `--force` re-downloads even if binary exists | Existing binary replaced; new checksum verified | Medium |
+| TC-081 | Mint setup creates WIF provider configuration with correct project ID | Config file written with GCP project, pool, and provider fields populated | Medium |
+| TC-082 | Mint token command returns valid JWT for enrolled repository | Token is parseable JWT with correct `aud` and `sub` claims | High |
+| TC-083 | Admin command preserves existing lock file format after refactor | Lock file written by new code is readable by previous version's parser | Medium |
+| TC-084 | Run command accepts `--reviewed-sha` flag and passes SHA to post-review | ReviewResult.HeadSHA equals the provided flag value | High |
+| TC-085 | Run command with `--dry-run` flag skips all API calls | No forge client methods invoked; exit code 0 | Medium |
+| TC-086 | Discover slugs returns unique repository slugs from harness config | Output contains one slug per configured repository with no duplicates | Medium |
 
 ### 3.13 Harness Enhancements
 
 | ID | Scenario | Expected Result | Priority |
 |:---|:---------|:----------------|:---------|
-| TC-082 | Remote discovery | Discovers remote harness configurations | Medium |
-| TC-083 | Harness linting | Detects invalid harness YAML | Medium |
-| TC-084 | Scaffold integration | End-to-end scaffold produces valid harness | Medium |
+| TC-087 | Remote discovery fetches harness YAML from GitHub repository default branch | Returned config matches content of remote `.fullsend.yml` file | Medium |
+| TC-088 | Remote discovery with unreachable repository returns descriptive error | Error message contains repository URL and HTTP status code | Medium |
+| TC-089 | Lint detects harness YAML with missing required `agent` field | Lint output includes finding for missing `agent` field with line number | High |
+| TC-090 | Lint detects harness YAML with invalid `model` value | Lint output includes finding for invalid model with accepted values list | Medium |
+| TC-091 | Scaffold integration produces valid harness YAML that passes lint | Generated YAML passes all lint rules with zero findings | Medium |
 
 ### 3.14 GCF Provisioner
 
 | ID | Scenario | Expected Result | Priority |
 |:---|:---------|:----------------|:---------|
-| TC-085 | Provisioner with refactored interface | Correct function deployment | Medium |
-| TC-086 | FakeClient for testing | Implements full interface for test isolation | Low |
+| TC-092 | Provisioner deploys function with correct entry point and runtime | Deployed function config has `runtime=go122` and `entry_point=Handler` | Medium |
+| TC-093 | Provisioner handles deployment failure with retryable error | Returns error wrapping the GCF API error; does not panic | Medium |
+| TC-094 | FakeClient records all method calls for test assertion | After calling `Deploy`, `fakeclient.Calls` contains entry with correct arguments | Low |
 
 ---
 
@@ -282,12 +402,12 @@ The following dependency chains were traced via LSP `incomingCalls` and `findRef
 
 ### 5.2 Test Tiers
 
-| Tier | Count | Description |
-|:-----|:------|:------------|
-| Unit Tests | 72 | Function-level tests with fake forge client |
-| Integration Tests | 8 | Multi-component tests (harness scaffold, admin E2E) |
-| E2E Tests | 6 | End-to-end admin/CLI tests |
-| **Total** | **86** | |
+| Tier | Scenarios | Description |
+|:-----|:----------|:------------|
+| Unit Tests | TC-001 to TC-066, TC-074 to TC-086, TC-092 to TC-094, TC-096, TC-098 | Function-level tests with fake forge client |
+| Integration Tests | TC-067 to TC-073, TC-087, TC-091, TC-095, TC-097 | Multi-component tests (forge integration, harness scaffold, two-pass orchestration) |
+| E2E Tests | TC-088 to TC-090 | Harness remote discovery and linting |
+| **Total** | **98** | |
 
 ### 5.3 Existing Test Coverage
 
@@ -308,19 +428,7 @@ The PR already includes extensive test coverage in:
 
 ---
 
-## 6. Risks and Mitigations
-
-| Risk | Likelihood | Impact | Mitigation |
-|:-----|:-----------|:-------|:-----------|
-| Large PR scope masks subtle regressions | Medium | High | Focus testing on LSP-traced call chains; prioritize review pipeline tests |
-| GitHub API rate limiting during inline comment posting | Low | Medium | Graceful fallback when `ListPullRequestFileDiffs` fails |
-| Stale-head race condition (HEAD changes between check and review submit) | Low | High | `commitSHA` parameter pins review to checked commit |
-| Forge interface breakage (missing method implementations) | Low | High | Compile-time interface check (`var _ forge.Client = (*LiveClient)(nil)`) |
-| Exit code 10 not propagated through shell scripts | Low | Medium | Verify post-review.sh handles `StaleHeadExitCode` |
-
----
-
-## 7. Recommendations
+## 6. Recommendations
 
 1. **Priority Testing**: Focus on TC-008 through TC-013 (stale-head detection) and TC-034 through TC-041 (inline comment mapping) — these are the highest-risk scenarios unique to the two-pass review strategy.
 2. **Integration Validation**: Run the full E2E admin test suite (`e2e/admin/`) to validate backward compatibility of CLI changes.
