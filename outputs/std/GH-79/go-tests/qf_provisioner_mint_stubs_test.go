@@ -17,7 +17,7 @@ func TestProvisionerMintEnrollment(t *testing.T) {
 	       - Mock provisioner and storage backends
 	*/
 
-	t.Run("provisioner stores agent PEM for authorized roles", func(t *testing.T) {
+	t.Run("TS-GH-79-026/Verify provisioner stores agent PEM for authorized roles", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   Preconditions:
@@ -33,7 +33,7 @@ func TestProvisionerMintEnrollment(t *testing.T) {
 		*/
 	})
 
-	t.Run("provisioner adds role to mint with correct app ID", func(t *testing.T) {
+	t.Run("TS-GH-79-027/Verify provisioner adds role to mint with correct app ID", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   Preconditions:
@@ -47,7 +47,7 @@ func TestProvisionerMintEnrollment(t *testing.T) {
 		*/
 	})
 
-	t.Run("provisioner registers per-repo WIF provider", func(t *testing.T) {
+	t.Run("TS-GH-79-028/Verify provisioner registers per-repo WIF provider", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   Preconditions:
@@ -62,7 +62,7 @@ func TestProvisionerMintEnrollment(t *testing.T) {
 		*/
 	})
 
-	t.Run("provisioner discovers existing mint configuration", func(t *testing.T) {
+	t.Run("TS-GH-79-029/Verify provisioner discovers existing mint configuration", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   Preconditions:

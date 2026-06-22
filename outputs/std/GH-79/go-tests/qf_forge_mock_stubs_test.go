@@ -16,7 +16,7 @@ func TestForgeClientMock(t *testing.T) {
 	       - Forge package accessible
 	*/
 
-	t.Run("test mock implements all required forge client operations", func(t *testing.T) {
+	t.Run("TS-GH-79-030/Verify forge mock client implements ForgeClient interface", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   Preconditions:
@@ -30,7 +30,7 @@ func TestForgeClientMock(t *testing.T) {
 		*/
 	})
 
-	t.Run("test mock returns configured test responses", func(t *testing.T) {
+	t.Run("TS-GH-79-031/Verify forge mock records method invocations for assertions", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   Preconditions:

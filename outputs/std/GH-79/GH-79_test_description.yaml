@@ -2,10 +2,10 @@
 # Software Test Description (STD) — GH-79
 # Authorization Enforcement on Agent Dispatch Paths
 # Generated: 2026-06-22
-# STD Version: 2.1-enhanced (auto mode)
+# STD Version: 2.1-auto
 
 document_metadata:
-  std_version: "2.1-enhanced"
+  std_version: "2.1-auto"
   generated_date: "2026-06-22"
   jira_issue: "GH-79"
   jira_summary: "Authorization enforcement on all agent dispatch paths"
@@ -14,32 +14,26 @@ document_metadata:
     file: "outputs/stp/GH-79/GH-79_test_plan.md"
     version: "v1"
     sections_covered: "Section III - Test Scenarios & Traceability"
-  related_prs:
-    - repo: "fullsend-ai/fullsend"
-      pr_number: 1688
-      url: "https://github.com/fullsend-ai/fullsend/pull/1688"
-      title: "Authorization enforcement on all agent dispatch paths"
-      merged: true
   owning_sig: "security"
   participating_sigs:
     - "dispatch"
     - "cli"
     - "infrastructure"
-  total_scenarios: 44
+  total_scenarios: 47
   tier_1_count: 0
   tier_2_count: 0
   unit_count: 0
-  functional_count: 38
+  functional_count: 41
   e2e_count: 6
   p0_count: 17
-  p1_count: 22
+  p1_count: 25
   p2_count: 5
   existing_coverage_count: 0
-  new_count: 44
+  new_count: 47
   test_strategy_mode: "auto"
 
 code_generation_config:
-  std_version: "2.1-enhanced"
+  std_version: "2.1-auto"
   framework: "testing"
   assertion_library: "testify"
   language: "go"
@@ -2311,11 +2305,11 @@ scenarios:
           validation: "Comment posted"
         - step_id: "TEST-02"
           action: "Verify dispatch workflow triggered"
-          command: "Poll workflow runs"
-          validation: "Workflow run started"
+          command: "Poll workflow runs with 60s timeout, 5s interval"
+          validation: "Workflow run started within timeout"
         - step_id: "TEST-03"
           action: "Verify stage dispatched"
-          command: "Check workflow output"
+          command: "Check workflow output within 120s timeout"
           validation: "STAGE set correctly"
       cleanup:
         - step_id: "CLEANUP-01"
@@ -2383,11 +2377,11 @@ scenarios:
           validation: "Comment posted"
         - step_id: "TEST-02"
           action: "Verify visible feedback received"
-          command: "Check for reaction or reply comment"
-          validation: "Feedback present"
+          command: "Check for reaction or reply comment with 30s timeout"
+          validation: "Feedback present within timeout"
         - step_id: "TEST-03"
           action: "Verify no dispatch occurred"
-          command: "Check workflow outputs"
+          command: "Check workflow outputs with 60s observation window"
           validation: "No STAGE set"
       cleanup:
         - step_id: "CLEANUP-01"
@@ -2456,8 +2450,8 @@ scenarios:
       test_execution:
         - step_id: "TEST-01"
           action: "Wait for dispatch workflow"
-          command: "Monitor workflow runs"
-          validation: "No review dispatch triggered"
+          command: "Monitor workflow runs with 60s observation window, 5s poll interval"
+          validation: "No review dispatch triggered within observation window"
       cleanup:
         - step_id: "CLEANUP-01"
           action: "Close test PR"
@@ -2515,7 +2509,7 @@ scenarios:
           validation: "Comment posted"
         - step_id: "TEST-02"
           action: "Verify feedback content"
-          command: "Check reaction emoji or comment text"
+          command: "Check reaction emoji or comment text with 30s timeout"
           validation: "Feedback indicates command not executed"
       cleanup:
         - step_id: "CLEANUP-01"
@@ -2651,6 +2645,203 @@ scenarios:
         description: "Custom roles propagated to dispatch"
         condition: "Only configured roles dispatch, others skipped"
         failure_impact: "Custom role configuration ignored during dispatch"
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  # ===============================================================
+  # Requirement Group 16: Provisioner Error Handling (P1 Negative)
+  # ===============================================================
+  - scenario_id: "045"
+    test_id: "TS-GH-79-045"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify provisioner handles storage backend failure gracefully"
+      what: |
+        Tests that the provisioner returns a descriptive error and does not panic
+        when the storage backend fails during PEM storage. The provisioner must
+        propagate the error without partial state corruption.
+      why: |
+        Storage failures are a plausible production failure mode. The provisioner
+        must fail safely without leaving partial enrollment state that could cause
+        subsequent operations to behave inconsistently.
+      acceptance_criteria:
+        - "Storage error propagated to caller"
+        - "No panic or goroutine leak"
+        - "No partial PEM state left in storage"
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go testing with testify assertions"
+    specific_preconditions: []
+    test_data:
+      resource_definitions:
+        - name: "failing_storage_backend"
+          type: "Mock"
+          yaml: |
+            mock_storage:
+              store_agent_pem: "return error('storage unavailable')"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock provisioner with failing storage backend"
+          command: "Configure mock storage to return error on StoreAgentPEM"
+          validation: "Mock configured"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Execute provisioner StoreAgentPEM"
+          command: "Call StoreAgentPEM with valid role and failing backend"
+          validation: "Error returned, not nil"
+        - step_id: "TEST-02"
+          action: "Verify error message is descriptive"
+          command: "Check error contains storage-related context"
+          validation: "Error message includes 'storage' or backend identifier"
+      cleanup: []
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Storage failure propagated as error"
+        condition: "StoreAgentPEM returns non-nil error"
+        failure_impact: "Storage failures silently ignored, leading to missing PEM state"
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "No panic on storage failure"
+        condition: "Function returns normally (no panic recovery needed)"
+        failure_impact: "Provisioner crashes on transient storage issues"
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  - scenario_id: "046"
+    test_id: "TS-GH-79-046"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify provisioner rejects invalid app ID during role registration"
+      what: |
+        Tests that the provisioner validates the app ID before attempting role
+        registration in the mint service. An empty or malformed app ID should
+        produce a clear validation error rather than a cryptic downstream failure.
+      why: |
+        Invalid app IDs can cause silent failures in the mint enrollment pipeline.
+        Early validation prevents wasted API calls and provides actionable error
+        messages for operators.
+      acceptance_criteria:
+        - "Empty app ID rejected with validation error"
+        - "Error message indicates the app ID is invalid"
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go testing with testify assertions"
+    specific_preconditions: []
+    test_data:
+      resource_definitions:
+        - name: "invalid_app_ids"
+          type: "Table"
+          yaml: |
+            cases:
+              - app_id: ""
+                description: "empty app ID"
+              - app_id: "   "
+                description: "whitespace-only app ID"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create mock provisioner with valid mint client"
+          command: "Configure mock mint client"
+          validation: "Mock configured"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Attempt role registration with invalid app IDs"
+          command: "Call AddRole with each invalid app ID from test data"
+          validation: "Error returned for each case"
+      cleanup: []
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Invalid app ID rejected"
+        condition: "AddRole returns non-nil error for empty/whitespace app ID"
+        failure_impact: "Invalid app IDs silently accepted, causing downstream mint failures"
+    dependencies:
+      kubernetes_resources: []
+      external_tools: []
+      scenario_specific_rbac: []
+
+  # ===============================================================
+  # Requirement Group 17: CLI Admin Error Handling (P1 Negative)
+  # ===============================================================
+  - scenario_id: "047"
+    test_id: "TS-GH-79-047"
+    test_type: "functional"
+    priority: "P1"
+    mvp: false
+    requirement_id: "GH-79"
+    coverage_status: "NEW"
+    test_objective:
+      title: "Verify per-repo install fails gracefully when target directory is not writable"
+      what: |
+        Tests that the CLI admin per-repo install command produces a clear error
+        message when the target directory is read-only or does not exist, rather
+        than panicking or producing a partial config file.
+      why: |
+        Operators may misconfigure the install path. The CLI must fail with an
+        actionable error message rather than leaving partial state or crashing.
+      acceptance_criteria:
+        - "Install returns non-zero exit or error"
+        - "Error message mentions directory or permission"
+        - "No partial config file created"
+    classification:
+      test_type: "Functional"
+      scope: "Single-component"
+      automation_approach: "Go testing with testify assertions"
+    specific_preconditions: []
+    test_data:
+      resource_definitions:
+        - name: "readonly_directory"
+          type: "Filesystem"
+          yaml: |
+            directory:
+              path: "/tmp/qf-test-readonly"
+              permissions: "0444"
+    test_steps:
+      setup:
+        - step_id: "SETUP-01"
+          action: "Create read-only temporary directory"
+          command: "Create dir via t.TempDir() then chmod 0444"
+          validation: "Directory exists and is not writable"
+      test_execution:
+        - step_id: "TEST-01"
+          action: "Run CLI admin per-repo install targeting read-only directory"
+          command: "Invoke CLI install with read-only target path"
+          validation: "Error returned"
+        - step_id: "TEST-02"
+          action: "Verify no partial config file created"
+          command: "Check target directory for config files"
+          validation: "No config file exists"
+      cleanup:
+        - step_id: "CLEANUP-01"
+          action: "Restore directory permissions and clean up"
+          command: "chmod 0755 and remove directory"
+    assertions:
+      - assertion_id: "ASSERT-01"
+        priority: "P1"
+        description: "Install fails with permission error"
+        condition: "CLI returns error mentioning directory or permission"
+        failure_impact: "CLI crashes or creates partial config on permission issues"
+      - assertion_id: "ASSERT-02"
+        priority: "P1"
+        description: "No partial state left"
+        condition: "Target directory contains no config files after failed install"
+        failure_impact: "Partial config causes confusing behavior on retry"
     dependencies:
       kubernetes_resources: []
       external_tools: []

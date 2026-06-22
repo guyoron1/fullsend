@@ -16,7 +16,7 @@ func TestForkPRBlocking(t *testing.T) {
 	       - Dispatch package accessible
 	*/
 
-	t.Run("fork PR is blocked from fix agent dispatch", func(t *testing.T) {
+	t.Run("TS-GH-79-015/Verify fork PR from external contributor is blocked from dispatch", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   [NEGATIVE]
@@ -33,7 +33,7 @@ func TestForkPRBlocking(t *testing.T) {
 		*/
 	})
 
-	t.Run("same-repo PR is allowed for fix agent dispatch", func(t *testing.T) {
+	t.Run("TS-GH-79-016/Verify fork PR blocking produces visible feedback", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   Preconditions:

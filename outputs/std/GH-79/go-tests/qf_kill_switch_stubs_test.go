@@ -16,7 +16,7 @@ func TestKillSwitch(t *testing.T) {
 	       - Dispatch package accessible
 	*/
 
-	t.Run("kill switch halts all dispatch stages", func(t *testing.T) {
+	t.Run("TS-GH-79-024/Verify kill switch blocks all dispatch when enabled", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   Preconditions:
@@ -32,7 +32,7 @@ func TestKillSwitch(t *testing.T) {
 		*/
 	})
 
-	t.Run("dispatch proceeds when kill switch is disabled", func(t *testing.T) {
+	t.Run("TS-GH-79-025/Verify kill switch disabled allows normal dispatch", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   Preconditions:

@@ -16,7 +16,7 @@ func TestSlashCommandAuthorization(t *testing.T) {
 	       - Dispatch package accessible
 	*/
 
-	t.Run("authorized MEMBER can trigger fs-triage dispatch", func(t *testing.T) {
+	t.Run("TS-GH-79-001/Verify authorized user (MEMBER) can trigger /fs-triage dispatch", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   Preconditions:
@@ -32,7 +32,7 @@ func TestSlashCommandAuthorization(t *testing.T) {
 		*/
 	})
 
-	t.Run("authorized COLLABORATOR can trigger fs-code dispatch", func(t *testing.T) {
+	t.Run("TS-GH-79-002/Verify authorized user (COLLABORATOR) can trigger /fs-code dispatch", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   Preconditions:
@@ -48,7 +48,7 @@ func TestSlashCommandAuthorization(t *testing.T) {
 		*/
 	})
 
-	t.Run("authorized OWNER can trigger fs-review dispatch", func(t *testing.T) {
+	t.Run("TS-GH-79-003/Verify authorized user (OWNER) can trigger /fs-review dispatch", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   Preconditions:
@@ -64,7 +64,7 @@ func TestSlashCommandAuthorization(t *testing.T) {
 		*/
 	})
 
-	t.Run("unauthorized NONE user is blocked from all slash commands", func(t *testing.T) {
+	t.Run("TS-GH-79-004/Verify unauthorized user (NONE) is blocked from all slash commands", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   Preconditions:
@@ -80,7 +80,7 @@ func TestSlashCommandAuthorization(t *testing.T) {
 		*/
 	})
 
-	t.Run("Bot user type is excluded from slash command dispatch", func(t *testing.T) {
+	t.Run("TS-GH-79-005/Verify Bot user type is excluded from slash command dispatch", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   Preconditions:

@@ -16,7 +16,7 @@ func TestPREventAuthorization(t *testing.T) {
 	       - Dispatch package accessible
 	*/
 
-	t.Run("PR from authorized MEMBER triggers review dispatch", func(t *testing.T) {
+	t.Run("TS-GH-79-006/Verify PR from authorized author (MEMBER) triggers review dispatch", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   Preconditions:
@@ -32,7 +32,7 @@ func TestPREventAuthorization(t *testing.T) {
 		*/
 	})
 
-	t.Run("PR from unauthorized NONE author is blocked from review dispatch", func(t *testing.T) {
+	t.Run("TS-GH-79-008/Verify PR from unauthorized author (NONE) does not trigger review dispatch", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   Preconditions:
@@ -48,7 +48,7 @@ func TestPREventAuthorization(t *testing.T) {
 		*/
 	})
 
-	t.Run("PR event authorization accepts OWNER MEMBER COLLABORATOR", func(t *testing.T) {
+	t.Run("TS-GH-79-007/Verify PR synchronize event from authorized author triggers review dispatch", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   Preconditions:
@@ -62,7 +62,7 @@ func TestPREventAuthorization(t *testing.T) {
 		*/
 	})
 
-	t.Run("PR event authorization rejects NONE and FIRST_TIME_CONTRIBUTOR", func(t *testing.T) {
+	t.Run("TS-GH-79-009/Verify PR ready_for_review event from authorized author triggers review dispatch", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   Preconditions:

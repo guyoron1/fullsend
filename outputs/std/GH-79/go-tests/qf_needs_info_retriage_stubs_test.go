@@ -16,7 +16,7 @@ func TestNeedsInfoRetriage(t *testing.T) {
 	       - Dispatch package accessible
 	*/
 
-	t.Run("issue author with NONE association can re-trigger triage on needs-info issue", func(t *testing.T) {
+	t.Run("TS-GH-79-012/Verify needs-info label comment from issue author triggers re-triage", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   Preconditions:
@@ -32,7 +32,7 @@ func TestNeedsInfoRetriage(t *testing.T) {
 		*/
 	})
 
-	t.Run("non-author with NONE association is blocked from re-triggering triage", func(t *testing.T) {
+	t.Run("TS-GH-79-013/Verify needs-info label comment from non-author does not trigger re-triage", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   [NEGATIVE]
@@ -50,7 +50,7 @@ func TestNeedsInfoRetriage(t *testing.T) {
 		*/
 	})
 
-	t.Run("non-Bot user with non-NONE association can re-trigger triage", func(t *testing.T) {
+	t.Run("TS-GH-79-014/Verify needs-info re-triage preserves original issue metadata", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   Preconditions:

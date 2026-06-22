@@ -17,7 +17,7 @@ func TestUnauthorizedUserFeedback(t *testing.T) {
 	       - Mock forge client for feedback verification
 	*/
 
-	t.Run("unauthorized slash command produces visible feedback", func(t *testing.T) {
+	t.Run("TS-GH-79-032/Verify unauthorized slash command adds reaction to comment", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   Preconditions:
@@ -34,7 +34,7 @@ func TestUnauthorizedUserFeedback(t *testing.T) {
 		*/
 	})
 
-	t.Run("unauthorized PR event produces no dispatch but logs rejection", func(t *testing.T) {
+	t.Run("TS-GH-79-033/Verify unauthorized slash command posts explanatory reply comment", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   Preconditions:

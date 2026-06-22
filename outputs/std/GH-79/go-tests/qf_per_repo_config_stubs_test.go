@@ -16,7 +16,7 @@ func TestPerRepoConfiguration(t *testing.T) {
 	       - Config package accessible
 	*/
 
-	t.Run("per-repo configuration accepts valid role definitions", func(t *testing.T) {
+	t.Run("TS-GH-79-017/Verify per-repo config loads default roles correctly", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   Preconditions:
@@ -31,7 +31,7 @@ func TestPerRepoConfiguration(t *testing.T) {
 		*/
 	})
 
-	t.Run("per-repo configuration rejects invalid role names", func(t *testing.T) {
+	t.Run("TS-GH-79-018/Verify per-repo config YAML roundtrip preserves structure", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   [NEGATIVE]
@@ -47,7 +47,7 @@ func TestPerRepoConfiguration(t *testing.T) {
 		*/
 	})
 
-	t.Run("per-repo configuration roundtrip preserves data integrity", func(t *testing.T) {
+	t.Run("TS-GH-79-019/Verify per-repo config with custom roles limits dispatch", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   Preconditions:
@@ -64,7 +64,7 @@ func TestPerRepoConfiguration(t *testing.T) {
 		*/
 	})
 
-	t.Run("default roles for per-repo installation match expected set", func(t *testing.T) {
+	t.Run("TS-GH-79-020/Verify per-repo config merges with org-level defaults", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   Preconditions:

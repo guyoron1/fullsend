@@ -16,7 +16,7 @@ func TestCLIAdminPerRepoInstall(t *testing.T) {
 	       - CLI package accessible
 	*/
 
-	t.Run("per-repo install creates valid configuration", func(t *testing.T) {
+	t.Run("TS-GH-79-043/Verify per-repo install creates valid configuration", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   Preconditions:
@@ -34,7 +34,7 @@ func TestCLIAdminPerRepoInstall(t *testing.T) {
 		*/
 	})
 
-	t.Run("per-repo install with custom roles propagates to dispatch", func(t *testing.T) {
+	t.Run("TS-GH-79-044/Verify per-repo install with custom roles propagates to dispatch", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   Preconditions:

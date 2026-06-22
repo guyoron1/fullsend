@@ -16,7 +16,7 @@ func TestAuthorizationBoundaryEdgeCases(t *testing.T) {
 	       - Dispatch package accessible
 	*/
 
-	t.Run("authorization handles missing association value gracefully", func(t *testing.T) {
+	t.Run("TS-GH-79-036/Verify empty author_association defaults to unauthorized", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   [NEGATIVE]
@@ -32,7 +32,7 @@ func TestAuthorizationBoundaryEdgeCases(t *testing.T) {
 		*/
 	})
 
-	t.Run("authorization check is case-sensitive per GitHub API contract", func(t *testing.T) {
+	t.Run("TS-GH-79-037/Verify authorization is case-sensitive for association values", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   Preconditions:
@@ -47,7 +47,7 @@ func TestAuthorizationBoundaryEdgeCases(t *testing.T) {
 		*/
 	})
 
-	t.Run("authorization handles empty association string without error", func(t *testing.T) {
+	t.Run("TS-GH-79-038/Verify concurrent slash commands from mixed authorization levels are handled independently", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   [NEGATIVE]

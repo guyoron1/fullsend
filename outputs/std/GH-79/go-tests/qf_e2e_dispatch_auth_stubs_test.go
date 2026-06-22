@@ -17,7 +17,7 @@ func TestE2EDispatchAuthorization(t *testing.T) {
 	       - Test org with controllable membership
 	*/
 
-	t.Run("authorized user slash command triggers full dispatch pipeline", func(t *testing.T) {
+	t.Run("TS-GH-79-039/Verify authorized user slash command triggers full dispatch pipeline", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   Preconditions:
@@ -35,7 +35,7 @@ func TestE2EDispatchAuthorization(t *testing.T) {
 		*/
 	})
 
-	t.Run("unauthorized user slash command produces visible feedback and no dispatch", func(t *testing.T) {
+	t.Run("TS-GH-79-040/Verify unauthorized user slash command produces visible feedback and no dispatch output", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   Preconditions:
@@ -53,7 +53,7 @@ func TestE2EDispatchAuthorization(t *testing.T) {
 		*/
 	})
 
-	t.Run("PR from external contributor does not trigger review agent", func(t *testing.T) {
+	t.Run("TS-GH-79-041/Verify PR from external contributor does not trigger review agent", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   Preconditions:
@@ -69,7 +69,7 @@ func TestE2EDispatchAuthorization(t *testing.T) {
 		*/
 	})
 
-	t.Run("unauthorized user receives reaction or comment indicating command was not executed", func(t *testing.T) {
+	t.Run("TS-GH-79-042/Verify unauthorized user receives reaction or comment indicating command was not executed", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   Preconditions:

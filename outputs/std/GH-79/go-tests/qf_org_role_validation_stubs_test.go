@@ -16,7 +16,7 @@ func TestOrgRoleValidation(t *testing.T) {
 	       - Config package accessible
 	*/
 
-	t.Run("role validation recognizes all seven agent roles", func(t *testing.T) {
+	t.Run("TS-GH-79-021/Verify org role validation accepts valid association levels", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   Preconditions:
@@ -30,7 +30,7 @@ func TestOrgRoleValidation(t *testing.T) {
 		*/
 	})
 
-	t.Run("organization configuration rejects unknown role names", func(t *testing.T) {
+	t.Run("TS-GH-79-022/Verify org role validation rejects unknown association values", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   [NEGATIVE]
@@ -45,7 +45,7 @@ func TestOrgRoleValidation(t *testing.T) {
 		*/
 	})
 
-	t.Run("dispatch is skipped when stage role is not in configured roles", func(t *testing.T) {
+	t.Run("TS-GH-79-023/Verify org role validation is case-sensitive", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   Preconditions:

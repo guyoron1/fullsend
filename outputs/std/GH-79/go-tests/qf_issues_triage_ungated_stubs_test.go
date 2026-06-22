@@ -16,7 +16,7 @@ func TestIssuesTriageUngated(t *testing.T) {
 	       - Dispatch package accessible
 	*/
 
-	t.Run("issues.opened triggers triage without authorization check", func(t *testing.T) {
+	t.Run("TS-GH-79-010/Verify issues.opened event triggers triage without authorization check", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   Preconditions:
@@ -32,7 +32,7 @@ func TestIssuesTriageUngated(t *testing.T) {
 		*/
 	})
 
-	t.Run("issues.edited triggers triage without authorization check", func(t *testing.T) {
+	t.Run("TS-GH-79-011/Verify issues.edited event triggers triage without authorization check", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   Preconditions:

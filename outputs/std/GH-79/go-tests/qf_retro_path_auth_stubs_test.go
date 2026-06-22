@@ -16,7 +16,7 @@ func TestRetroPathAuthorization(t *testing.T) {
 	       - Dispatch package accessible
 	*/
 
-	t.Run("PR closure by authorized user triggers retro dispatch", func(t *testing.T) {
+	t.Run("TS-GH-79-034/Verify PR close event from authorized author triggers retro dispatch", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   Preconditions:
@@ -31,7 +31,7 @@ func TestRetroPathAuthorization(t *testing.T) {
 		*/
 	})
 
-	t.Run("PR closure by external contributor does not trigger unauthorized retro", func(t *testing.T) {
+	t.Run("TS-GH-79-035/Verify PR close event from external author does not trigger retro dispatch", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
 		   Preconditions:
