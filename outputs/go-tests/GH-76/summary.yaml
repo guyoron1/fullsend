@@ -1,0 +1,17 @@
+status: success
+jira_id: GH-76
+std_source: outputs/stp/GH-76/GH-76_test_plan.md
+note: STD YAML not found; tests generated from STP test plan
+languages:
+  - language: go
+    framework: testing
+    files:
+      - internal/layers/qf_enrollment_test.go
+      - internal/statuscomment/qf_statuscomment_test.go
+      - internal/cli/qf_reconcilestatus_test.go
+    test_count: 58
+total_test_count: 58
+lsp_patterns_used: false
+compile_gate: passed
+test_gate: passed
+co_located: true
