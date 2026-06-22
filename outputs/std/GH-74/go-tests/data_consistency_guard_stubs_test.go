@@ -50,7 +50,6 @@ func TestEnsureOrgInMint_GuardDetection(t *testing.T) {
 
 		Steps:
 		    1. Call EnsureOrgInMint with a new org
-		    2. Inspect fake.calls for UpdateServiceEnvVars
 
 		Expected:
 		    - fake.calls does not contain "UpdateServiceEnvVars"
@@ -105,7 +104,6 @@ func TestEnsureOrgInMint_FirstEnrollment(t *testing.T) {
 
 		Steps:
 		    1. Call EnsureOrgInMint for first org
-		    2. Inspect fake.calls for UpdateServiceEnvVars
 
 		Expected:
 		    - fake.calls contains "UpdateServiceEnvVars"
@@ -145,10 +143,9 @@ func TestEnsureOrgInMint_GuardBypass(t *testing.T) {
 
 		Steps:
 		    1. Call EnsureOrgInMint with "new-org"
-		    2. Inspect fake.lastUpdateServiceEnvVars["ALLOWED_ORGS"]
 
 		Expected:
-		    - ALLOWED_ORGS contains both "existing-org" and "new-org"
+		    - ALLOWED_ORGS in fake.lastUpdateServiceEnvVars contains both "existing-org" and "new-org"
 		*/
 	})
 }
@@ -217,7 +214,6 @@ func TestEnsureOrgInMint_ErrorMessage(t *testing.T) {
 
 		Steps:
 		    1. Call EnsureOrgInMint to trigger guard
-		    2. Inspect error message content
 
 		Expected:
 		    - Error contains "2 configured roles"
@@ -234,7 +230,6 @@ func TestEnsureOrgInMint_ErrorMessage(t *testing.T) {
 
 		Steps:
 		    1. Call EnsureOrgInMint to trigger guard
-		    2. Inspect error message for suggested command
 
 		Expected:
 		    - Error contains "fullsend mint status --project="

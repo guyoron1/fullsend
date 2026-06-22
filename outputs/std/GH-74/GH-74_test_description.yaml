@@ -14,12 +14,6 @@ document_metadata:
     file: "outputs/stp/GH-74/GH-74_test_plan.md"
     version: "v1"
     sections_covered: "Section III - Test Scenarios & Traceability"
-  related_prs:
-    - repo: "guyoron1/fullsend"
-      pr_number: 74
-      url: "https://github.com/guyoron1/fullsend/issues/74"
-      title: "Restore data consistency guard in EnsureOrgInMint"
-      merged: false
   owning_sig: "N/A"
   participating_sigs: []
   total_scenarios: 18
@@ -54,7 +48,6 @@ code_generation_config:
       - path: "github.com/stretchr/testify/assert"
       - path: "github.com/stretchr/testify/require"
     project:
-      - path: "github.com/fullsend-ai/fullsend/internal/dispatch/gcf"
       - path: "github.com/fullsend-ai/fullsend/internal/mintcore"
 
 common_preconditions:
@@ -209,10 +202,6 @@ scenarios:
           action: "Call EnsureOrgInMint"
           command: "p.EnsureOrgInMint(ctx, expectedURL, \"new-org\")"
           validation: "Error returned"
-        - step_id: "TEST-02"
-          action: "Verify UpdateServiceEnvVars was not called"
-          command: "assert.NotContains(t, fake.calls, \"UpdateServiceEnvVars\")"
-          validation: "Assertion passes"
       cleanup: []
 
     assertions:
@@ -418,10 +407,6 @@ scenarios:
           action: "Call EnsureOrgInMint"
           command: "p.EnsureOrgInMint(ctx, expectedURL, \"first-org\")"
           validation: "No error"
-        - step_id: "TEST-02"
-          action: "Verify UpdateServiceEnvVars was called"
-          command: "assert.Contains(t, fake.calls, \"UpdateServiceEnvVars\")"
-          validation: "Assertion passes"
       cleanup: []
 
     assertions:
@@ -558,10 +543,6 @@ scenarios:
           action: "Call EnsureOrgInMint with new org"
           command: "p.EnsureOrgInMint(ctx, expectedURL, \"new-org\")"
           validation: "No error"
-        - step_id: "TEST-02"
-          action: "Verify both orgs in ALLOWED_ORGS"
-          command: "Check fake.lastUpdateServiceEnvVars[\"ALLOWED_ORGS\"]"
-          validation: "Contains both 'existing-org' and 'new-org'"
       cleanup: []
 
     assertions:
@@ -782,10 +763,6 @@ scenarios:
           action: "Call EnsureOrgInMint to trigger guard"
           command: "p.EnsureOrgInMint(ctx, expectedURL, \"new-org\")"
           validation: "Error returned"
-        - step_id: "TEST-02"
-          action: "Inspect error message content"
-          command: "assert.Contains on err.Error()"
-          validation: "Contains role count and project ID"
       cleanup: []
 
     assertions:
@@ -855,10 +832,6 @@ scenarios:
           action: "Call EnsureOrgInMint to trigger guard"
           command: "p.EnsureOrgInMint(ctx, expectedURL, \"new-org\")"
           validation: "Error returned"
-        - step_id: "TEST-02"
-          action: "Verify error contains suggested command"
-          command: "assert.Contains(t, errMsg, \"fullsend mint status --project=\")"
-          validation: "Assertion passes"
       cleanup: []
 
     assertions:
