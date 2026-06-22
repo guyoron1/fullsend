@@ -10,7 +10,7 @@
 | **Author** | QualityFlow |
 | **Date** | 2026-06-22 |
 | **Status** | Draft |
-| **PR** | [#79](https://github.com/guyoron1/fullsend/pull/79) |
+| **PR** | [#79](https://github.com/guyoron1/fullsend/pull/79) (upstream: [fullsend-ai/fullsend#1688](https://github.com/fullsend-ai/fullsend/pull/1688)) |
 
 ---
 
@@ -25,21 +25,25 @@ This Software Test Plan (STP) defines the test strategy for validating the autho
 **In scope:**
 
 - Authorization enforcement on all `/fs-*` slash commands in `reusable-dispatch.yml`
-- PR-triggered dispatch (`pull_request_target` opened/synchronize/ready_for_review) author association checks via `is_event_actor_authorized()`
-- Preservation of ungated auto-triage on `issues.opened/edited` (ADR 0051 exception)
-- Bot user blocking (COMMENT_USER_TYPE != "Bot" short-circuit)
+- PR-triggered dispatch (opened/synchronize/ready_for_review) author association checks for auto-review
+- Preservation of ungated auto-triage on new and edited issues (ADR 0051 exception)
+- Bot user blocking (automated accounts short-circuited before authorization)
 - Label-based bot-to-bot dispatch workflow preservation
-- Needs-info re-triage authorization rules (issue author or non-NONE association)
+- Needs-info re-triage authorization rules (issue author or recognized contributor)
 - CLI infrastructure changes (config, forge, harness, binary, dispatch packages)
 
 **Out of scope:**
 
 - Per-user rate limiting for auto-triage (deferred to #1687)
-- Visible feedback mechanism for unauthorized users (implementation detail, not tested here)
 - GitHub Actions workflow YAML syntax validation (platform-level)
 - Go module dependency resolution (build toolchain)
 
-### 1.3 References
+### 1.3 Known Limitations
+
+1. **Visible feedback for unauthorized users not implemented.** ADR 0051 requires that "the dispatch script must provide some form of visible response (e.g., a reaction, a comment, or both) so the user knows their command was received but not executed." This PR does not implement visible feedback — when authorization fails, the dispatch stage is left empty and no user-facing indication is provided. ADR 0051 uses mandatory ("must") language, so this should be addressed before GA.
+2. **Per-user rate limiting for ungated auto-triage is deferred.** Auto-triage on `issues.opened/edited` is intentionally ungated (ADR 0051 exception), but no per-user rate limiting exists to prevent abuse. Tracked as follow-up issue fullsend-ai/fullsend#1687.
+
+### 1.4 References
 
 | Document | Location |
 |:---------|:---------|
@@ -62,9 +66,9 @@ The CLI and infrastructure changes (100 files, 17909 additions) are covered by e
 
 | Classification | Description | Count |
 |:---------------|:------------|:------|
-| **Functional** | Authorization logic, dispatch routing, association checks | 34 |
+| **Functional** | Authorization logic, dispatch routing, association checks | 37 |
 | **E2E** | Agent run pipeline with updated infrastructure | 3 |
-| **Total** | | **37** |
+| **Total** | | **40** |
 
 ### 2.3 Risk Assessment
 
@@ -75,6 +79,7 @@ The CLI and infrastructure changes (100 files, 17909 additions) are covered by e
 | Bot-to-bot handoff broken | High | Test label-triggered dispatch (ready-to-code, ready-for-review) still works |
 | External users can still trigger agent runs via slash commands | Critical | Negative tests for NONE, CONTRIBUTOR, FIRST_TIME_CONTRIBUTOR associations |
 | PR auto-review still fires for external PRs | High | Test is_event_actor_authorized rejects non-member PR authors |
+| Unauthorized users receive no feedback on failed slash commands | Medium | ADR 0051 requires visible feedback but implementation is pending; track as follow-up — silent failure may confuse users who believe their command was not received |
 
 ---
 
@@ -145,15 +150,15 @@ The CLI and infrastructure changes (100 files, 17909 additions) are covered by e
 
 **Evidence:** `reusable-dispatch.yml` — `COMMENT_USER_TYPE != "Bot"` check short-circuits before `is_authorized` for all slash command paths.
 
-### 3.7 Authorization Helper Functions (P1)
+### 3.7 Authorization Association Evaluation (P1)
 
 | Req ID | Requirement | Test Scenario | Type | Priority |
 |:-------|:------------|:--------------|:-----|:---------|
-| GH-79 | is_authorized helper correctly evaluates association | Verify is_authorized accepts OWNER association | Positive | P1 |
-| | | Verify is_authorized accepts MEMBER association | Positive | P1 |
-| | | Verify is_authorized accepts COLLABORATOR association | Positive | P1 |
-| | | Verify is_authorized rejects CONTRIBUTOR association | Negative | P1 |
-| | | Verify is_event_actor_authorized with empty association | Negative | P1 |
+| GH-79 | Authorization correctly evaluates user association | Verify org owners are recognized as authorized | Positive | P1 |
+| | | Verify org members are recognized as authorized | Positive | P1 |
+| | | Verify repository collaborators are recognized as authorized | Positive | P1 |
+| | | Verify one-time contributors are rejected as unauthorized | Negative | P1 |
+| | | Verify PR author with no association is rejected | Negative | P1 |
 
 **Evidence:** `reusable-dispatch.yml` — `is_authorized()` checks `COMMENT_AUTHOR_ASSOC`; `is_event_actor_authorized()` checks passed association parameter. Both use case-statement matching OWNER|MEMBER|COLLABORATOR.
 
@@ -178,7 +183,26 @@ The CLI and infrastructure changes (100 files, 17909 additions) are covered by e
 
 **Evidence:** LSP analysis — `runAgent()` called by `newRunCmd` and 11 test functions; `forge.Client` interface referenced by 36 files across the codebase; `config.ValidRoles()` used in `mint_setup.go` and `config_test.go`.
 
-### 3.10 PR Retro Dispatch (P2)
+### 3.10 Visible Feedback for Unauthorized Users (P1) — Known Gap
+
+| Req ID | Requirement | Test Scenario | Type | Priority |
+|:-------|:------------|:--------------|:-----|:---------|
+| GH-79 | ADR 0051 requires visible feedback when authorization fails | Verify unauthorized slash command attempt produces visible feedback (reaction or comment) | Positive | P1 |
+| | | Verify unauthorized PR-triggered dispatch produces visible feedback | Positive | P1 |
+
+**Evidence:** ADR 0051 "Visible feedback for unauthorized users" section: "the dispatch script must provide some form of visible response." PR review agent finding: "[missing-feedback-mechanism] when authorization fails, STAGE is simply left empty — no reaction, comment, or other feedback is provided."
+
+**Status:** ⚠️ **BLOCKED** — Implementation not present in this PR. These scenarios document the ADR requirement for future implementation. Cannot be executed until visible feedback is implemented.
+
+### 3.11 Platform-Level Authorization Invariant (P2)
+
+| Req ID | Requirement | Test Scenario | Type | Priority |
+|:-------|:------------|:--------------|:-----|:---------|
+| GH-79 | Authorization is platform-level and cannot be disabled per-repo | Verify per-repo configuration cannot bypass authorization checks | Negative | P2 |
+
+**Evidence:** ADR 0051 "Interaction with per-repo configurability" section: "Individual repos cannot disable it." Authorization is enforced in the reusable workflow before per-repo config is loaded.
+
+### 3.12 PR Retro Dispatch (P2)
 
 | Req ID | Requirement | Test Scenario | Type | Priority |
 |:-------|:------------|:--------------|:-----|:---------|
@@ -244,7 +268,7 @@ internal/config/config.go::ValidRoles()
 |:----------|:-------------|
 | **Platform** | GitHub Actions (ubuntu-latest) |
 | **Language** | Go 1.26.0 |
-| **Test Framework** | `testing` + `testify` (assert, require) |
+| **Test Framework** | Standard project tooling (Go test + testify) |
 | **Dispatch Testing** | Shell script unit tests or workflow simulation |
 | **CI Workflow** | `reusable-dispatch.yml` dispatch routing |
 
@@ -260,11 +284,13 @@ internal/config/config.go::ValidRoles()
 | Auto-triage exception | — | 3 | — | 3 |
 | Bot-to-bot labels | — | 3 | — | 3 |
 | Bot user blocking | — | 3 | — | 3 |
-| Auth helper functions | — | 5 | — | 5 |
+| Auth association evaluation | — | 5 | — | 5 |
 | Needs-info re-triage | — | — | 4 | 4 |
 | CLI infrastructure | — | 3 | — | 3 |
+| Visible feedback (known gap) | — | 2 | — | 2 |
+| Platform-level invariant | — | — | 1 | 1 |
 | PR retro dispatch | — | — | 2 | 2 |
-| **Total** | **14** | **17** | **6** | **37** |
+| **Total** | **14** | **19** | **7** | **40** |
 
 ---
 
