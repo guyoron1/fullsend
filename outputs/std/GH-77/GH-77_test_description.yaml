@@ -14,17 +14,6 @@ document_metadata:
     file: "outputs/stp/GH-77/GH-77_test_plan.md"
     version: "v1"
     sections_covered: "Section III - Requirements-to-Tests Mapping"
-  related_prs:
-    - repo: "fullsend-ai/fullsend"
-      pr_number: 2254
-      url: "https://github.com/fullsend-ai/fullsend/pull/2254"
-      title: "fix(#2247): Compare Decoded Text in Shim Drift Detection"
-      merged: true
-    - repo: "guyoron1/fullsend"
-      pr_number: 77
-      url: "https://github.com/guyoron1/fullsend/pull/77"
-      title: "Mirror of upstream fullsend-ai/fullsend#2254"
-      merged: false
   owning_sig: "N/A"
   participating_sigs: []
   total_scenarios: 15
@@ -134,10 +123,33 @@ scenarios:
   - scenario_id: 1
     test_id: "TS-GH77-001"
     test_type: "functional"
+    tier: "functional"
     priority: "P0"
     mvp: true
     requirement_id: "GH-77"
     coverage_status: "NEW"
+    patterns:
+      primary: "drift-detection"
+      helpers_required: []
+    variables:
+      closure_scope:
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test_execution", "cleanup"]
+        - name: "scriptPath"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test_execution"]
+        - name: "stdout"
+          type: "bytes.Buffer"
+          initialized_in: "test_execution"
+          used_in: ["test_execution"]
+    test_structure:
+      framework: "testing"
+      structure: "TestFunction -> t.Run subtests"
+    code_structure:
+      template: "func TestXxx(t *testing.T) { t.Run(name, func(t *testing.T) { ... }) }"
 
     test_objective:
       title: "Verify identical content with different trailing newlines not flagged as stale"
@@ -237,10 +249,33 @@ scenarios:
   - scenario_id: 2
     test_id: "TS-GH77-002"
     test_type: "functional"
+    tier: "functional"
     priority: "P0"
     mvp: true
     requirement_id: "GH-77"
     coverage_status: "NEW"
+    patterns:
+      primary: "drift-detection"
+      helpers_required: []
+    variables:
+      closure_scope:
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test_execution", "cleanup"]
+        - name: "scriptPath"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test_execution"]
+        - name: "stdout"
+          type: "bytes.Buffer"
+          initialized_in: "test_execution"
+          used_in: ["test_execution"]
+    test_structure:
+      framework: "testing"
+      structure: "TestFunction -> t.Run subtests"
+    code_structure:
+      template: "func TestXxx(t *testing.T) { t.Run(name, func(t *testing.T) { ... }) }"
 
     test_objective:
       title: "Verify up-to-date shim produces 'already enrolled' status"
@@ -314,10 +349,33 @@ scenarios:
   - scenario_id: 3
     test_id: "TS-GH77-003"
     test_type: "functional"
+    tier: "functional"
     priority: "P0"
     mvp: true
     requirement_id: "GH-77"
     coverage_status: "NEW"
+    patterns:
+      primary: "drift-detection"
+      helpers_required: []
+    variables:
+      closure_scope:
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test_execution", "cleanup"]
+        - name: "scriptPath"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test_execution"]
+        - name: "stdout"
+          type: "bytes.Buffer"
+          initialized_in: "test_execution"
+          used_in: ["test_execution"]
+    test_structure:
+      framework: "testing"
+      structure: "TestFunction -> t.Run subtests"
+    code_structure:
+      template: "func TestXxx(t *testing.T) { t.Run(name, func(t *testing.T) { ... }) }"
 
     test_objective:
       title: "Verify no blob or PR created for encoding-only differences"
@@ -394,10 +452,33 @@ scenarios:
   - scenario_id: 4
     test_id: "TS-GH77-004"
     test_type: "functional"
+    tier: "functional"
     priority: "P0"
     mvp: true
     requirement_id: "GH-77"
     coverage_status: "NEW"
+    patterns:
+      primary: "stale-detection"
+      helpers_required: []
+    variables:
+      closure_scope:
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test_execution", "cleanup"]
+        - name: "scriptPath"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test_execution"]
+        - name: "stdout"
+          type: "bytes.Buffer"
+          initialized_in: "test_execution"
+          used_in: ["test_execution"]
+    test_structure:
+      framework: "testing"
+      structure: "TestFunction -> t.Run subtests"
+    code_structure:
+      template: "func TestXxx(t *testing.T) { t.Run(name, func(t *testing.T) { ... }) }"
 
     test_objective:
       title: "Verify stale shim triggers update PR creation"
@@ -482,10 +563,33 @@ scenarios:
   - scenario_id: 5
     test_id: "TS-GH77-005"
     test_type: "functional"
+    tier: "functional"
     priority: "P0"
     mvp: true
     requirement_id: "GH-77"
     coverage_status: "NEW"
+    patterns:
+      primary: "stale-detection"
+      helpers_required: []
+    variables:
+      closure_scope:
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test_execution", "cleanup"]
+        - name: "scriptPath"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test_execution"]
+        - name: "stdout"
+          type: "bytes.Buffer"
+          initialized_in: "test_execution"
+          used_in: ["test_execution"]
+    test_structure:
+      framework: "testing"
+      structure: "TestFunction -> t.Run subtests"
+    code_structure:
+      template: "func TestXxx(t *testing.T) { t.Run(name, func(t *testing.T) { ... }) }"
 
     test_objective:
       title: "Verify stale detection after template content change"
@@ -553,10 +657,33 @@ scenarios:
   - scenario_id: 6
     test_id: "TS-GH77-006"
     test_type: "functional"
+    tier: "functional"
     priority: "P0"
     mvp: true
     requirement_id: "GH-77"
     coverage_status: "NEW"
+    patterns:
+      primary: "stale-detection"
+      helpers_required: []
+    variables:
+      closure_scope:
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test_execution", "cleanup"]
+        - name: "scriptPath"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test_execution"]
+        - name: "stdout"
+          type: "bytes.Buffer"
+          initialized_in: "test_execution"
+          used_in: ["test_execution"]
+    test_structure:
+      framework: "testing"
+      structure: "TestFunction -> t.Run subtests"
+    code_structure:
+      template: "func TestXxx(t *testing.T) { t.Run(name, func(t *testing.T) { ... }) }"
 
     test_objective:
       title: "Verify error handling when update PR creation fails"
@@ -634,10 +761,33 @@ scenarios:
   - scenario_id: 7
     test_id: "TS-GH77-007"
     test_type: "functional"
+    tier: "functional"
     priority: "P1"
     mvp: false
     requirement_id: "GH-77"
     coverage_status: "NEW"
+    patterns:
+      primary: "pre-sentinel-fallback"
+      helpers_required: []
+    variables:
+      closure_scope:
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test_execution", "cleanup"]
+        - name: "scriptPath"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test_execution"]
+        - name: "stdout"
+          type: "bytes.Buffer"
+          initialized_in: "test_execution"
+          used_in: ["test_execution"]
+    test_structure:
+      framework: "testing"
+      structure: "TestFunction -> t.Run subtests"
+    code_structure:
+      template: "func TestXxx(t *testing.T) { t.Run(name, func(t *testing.T) { ... }) }"
 
     test_objective:
       title: "Verify pre-sentinel shim compares full decoded content"
@@ -724,10 +874,33 @@ scenarios:
   - scenario_id: 8
     test_id: "TS-GH77-008"
     test_type: "functional"
+    tier: "functional"
     priority: "P1"
     mvp: false
     requirement_id: "GH-77"
     coverage_status: "NEW"
+    patterns:
+      primary: "pre-sentinel-fallback"
+      helpers_required: []
+    variables:
+      closure_scope:
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test_execution", "cleanup"]
+        - name: "scriptPath"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test_execution"]
+        - name: "stdout"
+          type: "bytes.Buffer"
+          initialized_in: "test_execution"
+          used_in: ["test_execution"]
+    test_structure:
+      framework: "testing"
+      structure: "TestFunction -> t.Run subtests"
+    code_structure:
+      template: "func TestXxx(t *testing.T) { t.Run(name, func(t *testing.T) { ... }) }"
 
     test_objective:
       title: "Verify pre-sentinel shim with identical content not flagged stale"
@@ -794,10 +967,33 @@ scenarios:
   - scenario_id: 9
     test_id: "TS-GH77-009"
     test_type: "functional"
+    tier: "functional"
     priority: "P1"
     mvp: false
     requirement_id: "GH-77"
     coverage_status: "NEW"
+    patterns:
+      primary: "pre-sentinel-fallback"
+      helpers_required: []
+    variables:
+      closure_scope:
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test_execution", "cleanup"]
+        - name: "scriptPath"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test_execution"]
+        - name: "stdout"
+          type: "bytes.Buffer"
+          initialized_in: "test_execution"
+          used_in: ["test_execution"]
+    test_structure:
+      framework: "testing"
+      structure: "TestFunction -> t.Run subtests"
+    code_structure:
+      template: "func TestXxx(t *testing.T) { t.Run(name, func(t *testing.T) { ... }) }"
 
     test_objective:
       title: "Verify pre-sentinel shim with different content flagged stale"
@@ -866,10 +1062,33 @@ scenarios:
   - scenario_id: 10
     test_id: "TS-GH77-010"
     test_type: "functional"
+    tier: "functional"
     priority: "P1"
     mvp: false
     requirement_id: "GH-77"
     coverage_status: "NEW"
+    patterns:
+      primary: "skip-behavior"
+      helpers_required: []
+    variables:
+      closure_scope:
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test_execution", "cleanup"]
+        - name: "scriptPath"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test_execution"]
+        - name: "stdout"
+          type: "bytes.Buffer"
+          initialized_in: "test_execution"
+          used_in: ["test_execution"]
+    test_structure:
+      framework: "testing"
+      structure: "TestFunction -> t.Run subtests"
+    code_structure:
+      template: "func TestXxx(t *testing.T) { t.Run(name, func(t *testing.T) { ... }) }"
 
     test_objective:
       title: "Verify no blob created for up-to-date shim"
@@ -929,10 +1148,33 @@ scenarios:
   - scenario_id: 11
     test_id: "TS-GH77-011"
     test_type: "functional"
+    tier: "functional"
     priority: "P1"
     mvp: false
     requirement_id: "GH-77"
     coverage_status: "NEW"
+    patterns:
+      primary: "skip-behavior"
+      helpers_required: []
+    variables:
+      closure_scope:
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test_execution", "cleanup"]
+        - name: "scriptPath"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test_execution"]
+        - name: "stdout"
+          type: "bytes.Buffer"
+          initialized_in: "test_execution"
+          used_in: ["test_execution"]
+    test_structure:
+      framework: "testing"
+      structure: "TestFunction -> t.Run subtests"
+    code_structure:
+      template: "func TestXxx(t *testing.T) { t.Run(name, func(t *testing.T) { ... }) }"
 
     test_objective:
       title: "Verify skip counter incremented for current shim"
@@ -994,10 +1236,33 @@ scenarios:
   - scenario_id: 12
     test_id: "TS-GH77-012"
     test_type: "functional"
+    tier: "functional"
     priority: "P2"
     mvp: false
     requirement_id: "GH-77"
     coverage_status: "NEW"
+    patterns:
+      primary: "crlf-normalization"
+      helpers_required: []
+    variables:
+      closure_scope:
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test_execution", "cleanup"]
+        - name: "scriptPath"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test_execution"]
+        - name: "stdout"
+          type: "bytes.Buffer"
+          initialized_in: "test_execution"
+          used_in: ["test_execution"]
+    test_structure:
+      framework: "testing"
+      structure: "TestFunction -> t.Run subtests"
+    code_structure:
+      template: "func TestXxx(t *testing.T) { t.Run(name, func(t *testing.T) { ... }) }"
 
     test_objective:
       title: "Verify CRLF content normalized before comparison"
@@ -1066,10 +1331,33 @@ scenarios:
   - scenario_id: 13
     test_id: "TS-GH77-013"
     test_type: "functional"
+    tier: "functional"
     priority: "P2"
     mvp: false
     requirement_id: "GH-77"
     coverage_status: "NEW"
+    patterns:
+      primary: "crlf-normalization"
+      helpers_required: []
+    variables:
+      closure_scope:
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test_execution", "cleanup"]
+        - name: "scriptPath"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test_execution"]
+        - name: "stdout"
+          type: "bytes.Buffer"
+          initialized_in: "test_execution"
+          used_in: ["test_execution"]
+    test_structure:
+      framework: "testing"
+      structure: "TestFunction -> t.Run subtests"
+    code_structure:
+      template: "func TestXxx(t *testing.T) { t.Run(name, func(t *testing.T) { ... }) }"
 
     test_objective:
       title: "Verify mixed line endings handled correctly"
@@ -1141,10 +1429,33 @@ scenarios:
   - scenario_id: 14
     test_id: "TS-GH77-014"
     test_type: "functional"
+    tier: "functional"
     priority: "P2"
     mvp: false
     requirement_id: "GH-77"
     coverage_status: "NEW"
+    patterns:
+      primary: "content-injection-guard"
+      helpers_required: []
+    variables:
+      closure_scope:
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test_execution", "cleanup"]
+        - name: "scriptPath"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test_execution"]
+        - name: "stdout"
+          type: "bytes.Buffer"
+          initialized_in: "test_execution"
+          used_in: ["test_execution"]
+    test_structure:
+      framework: "testing"
+      structure: "TestFunction -> t.Run subtests"
+    code_structure:
+      template: "func TestXxx(t *testing.T) { t.Run(name, func(t *testing.T) { ... }) }"
 
     test_objective:
       title: "Verify non-comment YAML above sentinel rejected"
@@ -1232,10 +1543,33 @@ scenarios:
   - scenario_id: 15
     test_id: "TS-GH77-015"
     test_type: "functional"
+    tier: "functional"
     priority: "P2"
     mvp: false
     requirement_id: "GH-77"
     coverage_status: "NEW"
+    patterns:
+      primary: "content-injection-guard"
+      helpers_required: []
+    variables:
+      closure_scope:
+        - name: "tmpDir"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test_execution", "cleanup"]
+        - name: "scriptPath"
+          type: "string"
+          initialized_in: "setup"
+          used_in: ["test_execution"]
+        - name: "stdout"
+          type: "bytes.Buffer"
+          initialized_in: "test_execution"
+          used_in: ["test_execution"]
+    test_structure:
+      framework: "testing"
+      structure: "TestFunction -> t.Run subtests"
+    code_structure:
+      template: "func TestXxx(t *testing.T) { t.Run(name, func(t *testing.T) { ... }) }"
 
     test_objective:
       title: "Verify comment-only header preserved during update"

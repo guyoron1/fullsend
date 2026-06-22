@@ -13,10 +13,8 @@ Jira: GH-77
 
 func TestCRLFNormalization(t *testing.T) {
 	/*
-	Preconditions:
-	    - reconcile-repos.sh script available at internal/scaffold/fullsend-repo/scripts/
-	    - Temp directory with config.yaml, shim template, and mock gh/yq/base64 binaries
-	    - GITHUB_REPOSITORY_OWNER, GITHUB_SHA, and GH_TOKEN environment variables set
+	Common preconditions: see STD common_preconditions section
+	(Go toolchain, bash shell, temp directory, mock binaries, env vars)
 	*/
 
 	t.Run("[test_id:TS-GH77-012] should normalize CRLF content before comparison", func(t *testing.T) {
