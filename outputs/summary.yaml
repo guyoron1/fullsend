@@ -1,0 +1,10 @@
+status: success
+jira_id: GH-75
+file_path: /sandbox/workspace/output/GH-75_test_plan.md
+test_counts:
+  unit: 6
+  e2e: 1
+  total: 7
+recommendations:
+  - "Add test for update-branch API failure resilience (TS-06)"
+  - "Consider concurrent merge race scenario test"
