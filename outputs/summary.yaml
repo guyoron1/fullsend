@@ -1,22 +1,11 @@
 status: success
 jira_id: GH-70
-verdict: APPROVED_WITH_FINDINGS
-confidence: LOW
-weighted_score: 80
+initial_verdict: APPROVED_WITH_FINDINGS
+final_verdict: APPROVED
+iterations: 1
 findings:
-  critical: 0
-  major: 5
-  minor: 6
-  actionable: 9
-  total: 11
-reviewed: outputs/stp/GH-70/GH-70_test_plan.md
-report: GH-70_stp_review.md
-dimension_scores:
-  rule_compliance: 83
-  requirement_coverage: 75
-  scenario_quality: 85
-  risk_accuracy: 80
-  scope_boundary: 90
-  strategy: 80
-  metadata: 60
-scope_downgrade: false
+  initial: {critical: 0, major: 5, minor: 6}
+  final: {critical: 0, major: 0, minor: 0}
+weighted_score:
+  initial: 80
+  final: 100

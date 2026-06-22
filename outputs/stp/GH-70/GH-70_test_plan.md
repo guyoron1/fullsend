@@ -11,7 +11,7 @@
 - **Owning SIG:** N/A
 - **Participating SIGs:** N/A
 
-**Document Conventions (if applicable):** Test IDs follow the format `TS-GH-1835-NNN`. Tier classification uses Unit Tests and Functional (no End-to-End scenarios identified).
+**Document Conventions (if applicable):** Test IDs follow the format `TS-GH-1835-NNN`. Tier classification uses Functional only (no Unit Test or End-to-End scenarios identified).
 
 ### **Feature Overview**
 
@@ -48,7 +48,7 @@ technology, and testability before formal test planning.
 #### **2. Known Limitations**
 
 - Cross-file verification instructions are advisory — they guide LLM behavior but cannot mechanistically enforce file reads at runtime. Compliance depends on the model following the instructions.
-- The fix applies only to the code-review skill and correctness sub-agent. Other sub-agents (security, intent, style, docs-currency, cross-repo) are not modified by this PR.
+- The fix applies only to the code-review skill and correctness sub-agent. Other sub-agents (challenger, security, intent-coherence, style-conventions, docs-currency, cross-repo-contracts) are not modified by this PR.
 
 #### **3. Technology and Design Review**
 
@@ -86,8 +86,9 @@ Testing validates that the cross-file verification instructions are correctly pr
 **Out of Scope (Testing Scope Exclusions)**
 
 - [ ] **Runtime LLM compliance verification** — Cannot test whether the LLM actually follows cross-file verification instructions during a live review; instructions are advisory.
-- [ ] **Other sub-agent definitions** — Only correctness.md is modified; security, intent, style, docs-currency, and cross-repo sub-agents are unaffected.
+- [ ] **Other sub-agent definitions** — Only correctness.md is modified; challenger, security, intent-coherence, style-conventions, docs-currency, and cross-repo-contracts sub-agents are unaffected.
 - [ ] **End-to-end review workflow** — This STP covers content presence and deployment, not full review agent execution.
+- [ ] **Upstream content parity verification** — This fork mirrors upstream fullsend-ai/fullsend#2443; content correctness is validated by upstream CI.
 
 #### **2. Test Strategy**
 
@@ -98,7 +99,7 @@ Testing validates that the cross-file verification instructions are correctly pr
 - [ ] **Automation Testing** — Confirms test automation plan is in place for CI and regression coverage (all tests are expected to be automated)
   - *Details:* Applicable. All tests are Go unit tests using `testing` + `testify`, runnable via `go test ./qf-tests/GH-1835/go/...`.
 - [ ] **Regression Testing** — Verifies that new changes do not break existing functionality
-  - *Details:* Applicable. LSP analysis shows `FullsendRepoFile` has 41 references across 7 files. Existing scaffold tests in `internal/scaffold/scaffold_test.go` provide baseline regression coverage.
+  - *Details:* Applicable. LSP analysis shows `FullsendRepoFile` has 72 references across 11 files. Existing scaffold tests in `internal/scaffold/scaffold_test.go` provide baseline regression coverage.
 
 **Non-Functional**
 
@@ -122,7 +123,7 @@ Testing validates that the cross-file verification instructions are correctly pr
 - [ ] **Dependencies** — Blocked by deliverables from other components/products
   - *Details:* None. Self-contained change to embedded files.
 - [ ] **Cross Integrations** — Does the feature affect other features or require testing by other teams?
-  - *Details:* Layered content deployment affects all enrolled repos. `WalkLayeredContent` (3 references in `vendormanifest.go`) ensures updated files reach enrolled repositories.
+  - *Details:* Layered content deployment affects all enrolled repos. `WalkLayeredContent` (10 references across 3 files) ensures updated files reach enrolled repositories.
 
 **Infrastructure**
 
@@ -144,9 +145,7 @@ Testing validates that the cross-file verification instructions are correctly pr
 
 #### **3.1. Testing Tools & Frameworks**
 
-- **Test Framework:** Standard (`testing` + `testify` — already in use)
-- **CI/CD:** Standard (GitHub Actions — already in use)
-- **Other Tools:** None
+- None — uses standard project test infrastructure (`testing` + `testify`, GitHub Actions).
 
 #### **4. Entry Criteria**
 
@@ -189,7 +188,7 @@ This section links requirements to test coverage, enabling reviewers to verify a
 
 #### **1. Requirements-to-Tests Mapping**
 
-- **Requirement ID:** GH-70
+- **Requirement ID:** GH-1835
 - **Requirement Summary:** Code-review skill mandates reading files before asserting their contents in findings
 - **Test Scenarios:**
   - [TS-GH-1835-001] Verify SKILL.md contains cross-file verification instruction in step 2
@@ -203,7 +202,7 @@ This section links requirements to test coverage, enabling reviewers to verify a
   - [TS-GH-1835-011] Verify self-check requires re-read if file not read in step 2
   - [TS-GH-1835-012] Verify reframe instruction and prohibition against asserting unverified contents
 - **Tier:** Functional
-- **Priority:** P0
+- **Priority:** P1
 
 - **Requirement Summary:** Correctness sub-agent enforces read-before-assert for cross-file findings
 - **Test Scenarios:**
@@ -216,8 +215,9 @@ This section links requirements to test coverage, enabling reviewers to verify a
 - **Test Scenarios:**
   - [TS-GH-1835-009] Verify consistent "unable to verify the contents" fallback language in both files
   - [TS-GH-1835-010] Verify neither file contains prohibited "assume the contents" phrasing
+  - [TS-GH-1835-013] Verify SKILL.md does not contain deprecated instruction patterns from before the cross-file verification fix
 - **Tier:** Functional
-- **Priority:** P1
+- **Priority:** P2
 
 - **Requirement Summary:** Modified skill files are embedded in scaffold binary and deployable via layered content
 - **Test Scenarios:**
@@ -234,8 +234,6 @@ This section links requirements to test coverage, enabling reviewers to verify a
 This Software Test Plan requires approval from the following stakeholders:
 
 * **Reviewers:**
-  - [Name / @github-username]
-  - [Name / @github-username]
+  - TBD — pending QE lead assignment
 * **Approvers:**
-  - [Name / @github-username]
-  - [Name / @github-username]
+  - TBD — pending QE lead assignment
