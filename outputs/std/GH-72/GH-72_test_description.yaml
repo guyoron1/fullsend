@@ -1,0 +1,974 @@
+---
+# Software Test Description (STD) for GH-72
+# Batch Path-Existence Checks via Git Trees API
+#
+# This STD describes the test cases for the GH-72 PR which introduces:
+# 1. Batch path-existence checks via Git Trees API (ListRepositoryFiles)
+# 2. Mint-based token integration for status comments (ClientFactory)
+# 3. ADR-0045 Phase 3 harness features (Lint, DiscoverRemoteAgents)
+# 4. Config type expansion for triage prerequisites (AllowTargets, CreateIssuesConfig)
+
+metadata:
+  jira_id: GH-72
+  title: "Batch Path-Existence Checks via Git Trees API"
+  stp_reference: "outputs/stp/GH-72/GH-72_test_plan.md"
+  date: "2026-06-22"
+  version: "1.0"
+  language: go
+  framework: testing
+  assertion_library: testify
+
+test_suites:
+  # ==========================================================================
+  # Suite 1: Batch Path-Existence via Git Trees API
+  # ==========================================================================
+  - id: TS-GH72-001
+    title: "ComparePathPresence batch path checking"
+    package: scaffold
+    file: "internal/scaffold/pathpresence_test.go"
+    stp_requirement: "GH-72 — Batch path-existence checks operate correctly using the Git Trees API"
+    test_cases:
+      - id: TC-GH72-001
+        title: "All expected paths are present in repository"
+        priority: P0
+        type: unit
+        function_name: TestComparePathPresence_AllPresent
+        description: >
+          Verifies that ComparePathPresence returns an empty missing list when all
+          expected paths exist in the repository's file tree.
+        preconditions:
+          - "FakeClient is populated with file contents matching all expected paths"
+        steps:
+          - action: "Create FakeClient with FileContents for org/.fullsend with 3 files"
+            expected: "Client has entries for action.yml, reusable-triage.yml, and bin/fullsend"
+          - action: "Call ComparePathPresence with the same 3 paths as expected"
+            expected: "Returns nil error and empty missing slice"
+        postconditions:
+          - "No error is returned"
+          - "missing slice is empty"
+
+      - id: TC-GH72-002
+        title: "Some expected paths are missing from repository"
+        priority: P0
+        type: unit
+        function_name: TestComparePathPresence_SomeMissing
+        description: >
+          Verifies that ComparePathPresence correctly identifies which paths are
+          missing when only a subset of expected paths exist.
+        preconditions:
+          - "FakeClient has 2 of 4 expected file paths"
+        steps:
+          - action: "Create FakeClient with action.yml and bin/fullsend only"
+            expected: "Client has exactly 2 file entries"
+          - action: "Call ComparePathPresence with 4 expected paths"
+            expected: "Returns sorted slice of 2 missing paths"
+        postconditions:
+          - "Missing paths are returned in sorted order"
+          - "Present paths are not in the missing list"
+
+      - id: TC-GH72-003
+        title: "All expected paths are missing from empty repository"
+        priority: P0
+        type: unit
+        function_name: TestComparePathPresence_AllMissing
+        description: >
+          Verifies behavior when the repository tree is empty and all expected
+          paths are reported as missing.
+        preconditions:
+          - "FakeClient has empty FileContents map"
+        steps:
+          - action: "Create FakeClient with empty FileContents"
+            expected: "Client has no file entries"
+          - action: "Call ComparePathPresence with 2 expected paths"
+            expected: "Returns both paths in sorted missing slice"
+        postconditions:
+          - "All expected paths appear in the missing list"
+
+      - id: TC-GH72-004
+        title: "Empty expected list returns no missing paths"
+        priority: P0
+        type: unit
+        function_name: TestComparePathPresence_EmptyExpected
+        description: >
+          Verifies the short-circuit optimization: when no paths are expected,
+          the function returns immediately without making any API calls.
+        preconditions:
+          - "FakeClient may have file contents (irrelevant)"
+        steps:
+          - action: "Call ComparePathPresence with nil expected slice"
+            expected: "Returns nil error and nil missing slice"
+        postconditions:
+          - "No API call is made (ListRepositoryFiles not called)"
+
+      - id: TC-GH72-005
+        title: "Forge client error is propagated"
+        priority: P1
+        type: unit
+        function_name: TestComparePathPresence_ForgeError
+        description: >
+          Verifies that errors from the forge client's ListRepositoryFiles method
+          are properly wrapped and returned to the caller.
+        preconditions:
+          - "FakeClient has ListRepositoryFiles error injected"
+        steps:
+          - action: "Create FakeClient with error 'network error' on ListRepositoryFiles"
+            expected: "Error is configured"
+          - action: "Call ComparePathPresence with one expected path"
+            expected: "Returns error containing 'listing repository files'"
+        postconditions:
+          - "Error wraps the original forge client error"
+
+      - id: TC-GH72-006
+        title: "Uses single batch API call instead of per-path GetFileContent"
+        priority: P0
+        type: unit
+        function_name: TestComparePathPresence_UsesOneAPICall
+        description: >
+          Validates the O(1) API call optimization by injecting an error on
+          GetFileContent to prove it is never called. ComparePathPresence must
+          use ListRepositoryFiles exclusively.
+        preconditions:
+          - "FakeClient has FileContents for org/repo and GetFileContent error injected"
+        steps:
+          - action: "Create FakeClient with 2 files and GetFileContent error 'should not be called'"
+            expected: "Client is configured with both data and error trap"
+          - action: "Call ComparePathPresence with 3 paths (2 present, 1 missing)"
+            expected: "Returns no error and missing list with 1 path"
+        postconditions:
+          - "GetFileContent was never called (would have caused error)"
+          - "Only ListRepositoryFiles was used for batch lookup"
+
+  # ==========================================================================
+  # Suite 2: FakeClient ListRepositoryFiles Implementation
+  # ==========================================================================
+  - id: TS-GH72-002
+    title: "FakeClient ListRepositoryFiles implementation"
+    package: forge
+    file: "internal/forge/fake_test.go"
+    stp_requirement: "Git Trees API handles edge cases and error conditions gracefully"
+    test_cases:
+      - id: TC-GH72-007
+        title: "FakeClient ListRepositoryFiles error injection"
+        priority: P1
+        type: unit
+        function_name: TestFakeClient_ErrorInjection/ListRepositoryFiles
+        description: >
+          Verifies that error injection on the FakeClient's ListRepositoryFiles
+          method correctly returns the injected error.
+        preconditions:
+          - "FakeClient has ListRepositoryFiles error injected"
+        steps:
+          - action: "Create FakeClient with injected error for ListRepositoryFiles"
+            expected: "Error is configured"
+          - action: "Call ListRepositoryFiles on the FakeClient"
+            expected: "Injected error is returned"
+        postconditions:
+          - "Error matches the injected error via errors.Is"
+
+      - id: TC-GH72-008
+        title: "FakeClient thread safety for ListRepositoryFiles"
+        priority: P1
+        type: unit
+        function_name: TestFakeClient_ThreadSafety
+        description: >
+          Verifies that concurrent access to FakeClient's ListRepositoryFiles
+          (and all other methods) does not trigger data races.
+        preconditions:
+          - "FakeClient is populated with representative test data"
+        steps:
+          - action: "Launch 20 goroutines calling ListRepositoryFiles concurrently"
+            expected: "No race conditions detected by Go race detector"
+        postconditions:
+          - "All goroutines complete without panic or data race"
+
+  # ==========================================================================
+  # Suite 3: Status Comment ClientFactory Integration
+  # ==========================================================================
+  - id: TS-GH72-003
+    title: "StatusComment Notifier ClientFactory pattern"
+    package: statuscomment
+    file: "internal/statuscomment/statuscomment_test.go"
+    stp_requirement: "Status comment notifications work with mint-based token refresh"
+    test_cases:
+      - id: TC-GH72-009
+        title: "ClientFactory called before PostStart API operations"
+        priority: P0
+        type: unit
+        function_name: TestClientFactory_CalledBeforePostStart
+        description: >
+          Verifies that the client factory is invoked before PostStart makes any
+          API calls, and the factory-returned client is used for the operation.
+        preconditions:
+          - "Notifier is created with initial FakeClient fc1"
+          - "ClientFactory is set to return a different FakeClient fc2"
+        steps:
+          - action: "Create Notifier with fc1, set factory returning fc2"
+            expected: "Factory is configured"
+          - action: "Call PostStart"
+            expected: "Factory is called; comment appears on fc2, not fc1"
+        postconditions:
+          - "factoryCalled flag is true"
+          - "fc2 has the comment, fc1 has no comments"
+
+      - id: TC-GH72-010
+        title: "ClientFactory called before PostCompletion API operations"
+        priority: P0
+        type: unit
+        function_name: TestClientFactory_CalledBeforePostCompletion
+        description: >
+          Verifies that the client factory is invoked before PostCompletion API
+          calls, ensuring a fresh token is used for the completion operation.
+        preconditions:
+          - "PostStart has already been called successfully"
+          - "ClientFactory is set after PostStart to return fc2"
+        steps:
+          - action: "Call PostStart with default client"
+            expected: "Start comment created successfully"
+          - action: "Set ClientFactory returning fc2 with pre-populated comments"
+            expected: "Factory configured"
+          - action: "Call PostCompletion"
+            expected: "completionFactoryCalled is true"
+        postconditions:
+          - "Factory was called for the completion operation"
+
+      - id: TC-GH72-011
+        title: "ClientFactory error propagated on PostStart"
+        priority: P0
+        type: unit
+        function_name: TestClientFactory_ErrorPropagated
+        description: >
+          Verifies that when the ClientFactory returns an error, PostStart
+          propagates it to the caller rather than falling back to the static client.
+        preconditions:
+          - "ClientFactory is set to return error 'mint service unavailable'"
+        steps:
+          - action: "Set factory that returns error"
+            expected: "Factory configured"
+          - action: "Call PostStart"
+            expected: "Error returned containing 'mint service unavailable'"
+        postconditions:
+          - "Error is propagated, no comment is created"
+
+      - id: TC-GH72-012
+        title: "Static client used when no factory is set"
+        priority: P0
+        type: unit
+        function_name: TestClientFactory_NilUsesStaticClient
+        description: >
+          Verifies that when no ClientFactory is configured, the static client
+          passed to New() is used for all API operations.
+        preconditions:
+          - "Notifier is created with FakeClient but no factory set"
+        steps:
+          - action: "Call PostStart without setting a factory"
+            expected: "Comment created on the static FakeClient"
+        postconditions:
+          - "Static client has 1 comment"
+
+      - id: TC-GH72-013
+        title: "Completion-disabled path mints then deletes start comment"
+        priority: P0
+        type: unit
+        function_name: TestClientFactory_CompletionDisabled_DeletePath
+        description: >
+          Verifies that when completion is disabled, PostCompletion still calls
+          the factory (for token refresh) and uses the returned client to delete
+          the orphaned start comment.
+        preconditions:
+          - "Start comment exists, completion is disabled"
+          - "ClientFactory returns fc2"
+        steps:
+          - action: "Call PostStart to create start comment"
+            expected: "Start comment created"
+          - action: "Set factory returning fc2, call PostCompletion"
+            expected: "Factory called; start comment deleted via fc2"
+        postconditions:
+          - "Factory was called"
+          - "fc2.DeletedComments contains the start comment ID"
+
+      - id: TC-GH72-014
+        title: "HasClientFactory reports factory presence"
+        priority: P1
+        type: unit
+        function_name: TestHasClientFactory
+        description: >
+          Verifies HasClientFactory returns false when no factory is set and
+          true after SetClientFactory is called.
+        preconditions:
+          - "Notifier is created without factory"
+        steps:
+          - action: "Check HasClientFactory before setting factory"
+            expected: "Returns false"
+          - action: "Set factory, check HasClientFactory"
+            expected: "Returns true"
+        postconditions:
+          - "HasClientFactory accurately reflects factory state"
+
+      - id: TC-GH72-015
+        title: "ClientFactory error on PostCompletion propagated"
+        priority: P0
+        type: unit
+        function_name: TestClientFactory_ErrorOnPostCompletion
+        description: >
+          Verifies that a factory error during PostCompletion is propagated.
+        preconditions:
+          - "PostStart succeeded, factory set to return error 'token expired'"
+        steps:
+          - action: "Call PostCompletion"
+            expected: "Error returned containing 'token expired'"
+        postconditions:
+          - "Error propagated from factory"
+
+      - id: TC-GH72-016
+        title: "Both disabled means no factory call"
+        priority: P1
+        type: unit
+        function_name: TestClientFactory_BothDisabled_NoMint
+        description: >
+          Verifies that when both start and completion comments are disabled,
+          the factory is never called (avoiding unnecessary token minting).
+        preconditions:
+          - "Start and completion both disabled"
+          - "Factory configured but should not be called"
+        steps:
+          - action: "Call PostCompletion with both disabled"
+            expected: "No error, factory not called"
+        postconditions:
+          - "factoryCalled is false"
+
+      - id: TC-GH72-017
+        title: "Completion-disabled mint error is fail-open with warning"
+        priority: P1
+        type: unit
+        function_name: TestClientFactory_CompletionDisabled_MintError
+        description: >
+          Verifies that when completion is disabled and the factory fails, the
+          error is swallowed with a warning (fail-open behavior for cleanup).
+        preconditions:
+          - "Start comment exists, completion disabled"
+          - "Factory returns error 'mint service down'"
+        steps:
+          - action: "Call PostCompletion"
+            expected: "No error returned, warning emitted containing 'mint service down'"
+        postconditions:
+          - "PostCompletion returns nil (fail-open)"
+          - "Warning contains the factory error message"
+
+      - id: TC-GH72-018
+        title: "Completion-disabled delete error is fail-open with warning"
+        priority: P1
+        type: unit
+        function_name: TestClientFactory_CompletionDisabled_DeleteError
+        description: >
+          Verifies that when deletion of start comment fails, the error is
+          swallowed with a warning rather than propagated.
+        preconditions:
+          - "Start comment exists, completion disabled"
+          - "Factory returns fc2 with DeleteIssueComment error 'forbidden'"
+        steps:
+          - action: "Call PostCompletion"
+            expected: "No error returned, warning emitted containing 'forbidden'"
+        postconditions:
+          - "PostCompletion returns nil (fail-open)"
+
+  # ==========================================================================
+  # Suite 4: Harness Lint() Diagnostics
+  # ==========================================================================
+  - id: TS-GH72-004
+    title: "Harness Lint non-fatal diagnostics"
+    package: harness
+    file: "internal/harness/lint_test.go"
+    stp_requirement: "Harness Lint() produces non-fatal diagnostics without breaking Validate()"
+    test_cases:
+      - id: TC-GH72-019
+        title: "Lint returns nil when role is set"
+        priority: P2
+        type: unit
+        function_name: TestLint/role_set
+        description: >
+          Verifies that Lint returns nil diagnostics when the harness has a
+          valid role field set.
+        preconditions:
+          - "Harness has Role set to 'triage'"
+        steps:
+          - action: "Call Lint on harness with role='triage'"
+            expected: "Returns nil"
+        postconditions:
+          - "No diagnostics emitted"
+
+      - id: TC-GH72-020
+        title: "Lint warns on missing role field"
+        priority: P2
+        type: unit
+        function_name: TestLint/role_empty
+        description: >
+          Verifies that Lint produces a warning diagnostic when the role field
+          is empty, indicating it will be required in a future version.
+        preconditions:
+          - "Harness has empty Role field"
+        steps:
+          - action: "Call Lint on harness with empty role"
+            expected: "Returns 1 diagnostic with SeverityWarning, field='role'"
+        postconditions:
+          - "Diagnostic message contains 'required in a future version'"
+
+      - id: TC-GH72-021
+        title: "Lint returns nil when role and slug both set"
+        priority: P2
+        type: unit
+        function_name: TestLint/role_and_slug_set
+        description: >
+          Verifies no diagnostics when both role and slug are set.
+        preconditions:
+          - "Harness has both role and slug populated"
+        steps:
+          - action: "Call Lint on harness with role='triage', slug='my-slug'"
+            expected: "Returns nil"
+        postconditions:
+          - "No diagnostics emitted"
+
+      - id: TC-GH72-022
+        title: "Diagnostic String formatting for warning"
+        priority: P2
+        type: unit
+        function_name: TestDiagnostic_String/warning
+        description: >
+          Verifies the String() method formats warning diagnostics as
+          'warning: field: message'.
+        preconditions:
+          - "Diagnostic with SeverityWarning, Field='role', Message='msg'"
+        steps:
+          - action: "Call String() on the diagnostic"
+            expected: "Returns 'warning: role: msg'"
+        postconditions:
+          - "Format matches expected pattern"
+
+      - id: TC-GH72-023
+        title: "Diagnostic String formatting for error"
+        priority: P2
+        type: unit
+        function_name: TestDiagnostic_String/error
+        description: >
+          Verifies the String() method formats error diagnostics as
+          'error: field: message'.
+        preconditions:
+          - "Diagnostic with SeverityError"
+        steps:
+          - action: "Call String() on the diagnostic"
+            expected: "Returns 'error: role: msg'"
+        postconditions:
+          - "Format matches expected pattern"
+
+      - id: TC-GH72-024
+        title: "Diagnostic String formatting for unknown severity"
+        priority: P2
+        type: unit
+        function_name: TestDiagnostic_String/unknown_severity
+        description: >
+          Verifies the String() method handles unknown severity values by
+          using the Go stringer format.
+        preconditions:
+          - "Diagnostic with DiagnosticSeverity(99)"
+        steps:
+          - action: "Call String() on the diagnostic"
+            expected: "Returns 'DiagnosticSeverity(99): x: msg'"
+        postconditions:
+          - "Unknown severity is represented as its type name and value"
+
+  # ==========================================================================
+  # Suite 5: Remote Agent Discovery
+  # ==========================================================================
+  - id: TS-GH72-005
+    title: "DiscoverRemoteAgents harness discovery via forge API"
+    package: harness
+    file: "internal/harness/discover_remote_test.go"
+    stp_requirement: "Remote agent discovery works via forge API for harness files"
+    test_cases:
+      - id: TC-GH72-025
+        title: "Multiple harnesses discovered and sorted by role"
+        priority: P1
+        type: unit
+        function_name: TestDiscoverRemoteAgents/multiple_harnesses_sorted_by_role
+        description: >
+          Verifies that DiscoverRemoteAgents discovers multiple harness files,
+          parses role and slug from each, and returns results sorted by role.
+        preconditions:
+          - "FakeClient has 3 harness YAML files in DirContents"
+          - "FileContentsRef has valid YAML for each file"
+        steps:
+          - action: "Set up FakeClient with triage.yaml, code.yaml, review.yaml"
+            expected: "All files have valid YAML with role and slug"
+          - action: "Call DiscoverRemoteAgents"
+            expected: "Returns 3 agents sorted: coder, review, triage"
+        postconditions:
+          - "Agents are sorted alphabetically by role"
+          - "Each agent has correct role, slug, and filename"
+
+      - id: TC-GH72-026
+        title: "Missing harness directory returns nil,nil"
+        priority: P1
+        type: unit
+        function_name: TestDiscoverRemoteAgents/no_harness_directory_returns_nil_nil
+        description: >
+          Verifies that when the harness/ directory does not exist in the repo,
+          the function returns (nil, nil) rather than an error.
+        preconditions:
+          - "FakeClient has no DirContents entry for harness/"
+        steps:
+          - action: "Call DiscoverRemoteAgents on repo without harness dir"
+            expected: "Returns nil agents and nil error"
+        postconditions:
+          - "No error returned (not-found is not an error)"
+
+      - id: TC-GH72-027
+        title: "Files without role or slug are skipped"
+        priority: P1
+        type: unit
+        function_name: TestDiscoverRemoteAgents/skips_files_without_role_or_slug
+        description: >
+          Verifies that harness files where both role and slug are empty are
+          excluded from the results.
+        preconditions:
+          - "FakeClient has 2 files: legacy.yaml (no role/slug) and modern.yaml (has role/slug)"
+        steps:
+          - action: "Call DiscoverRemoteAgents"
+            expected: "Returns only 1 agent (modern.yaml)"
+        postconditions:
+          - "legacy.yaml is excluded from results"
+
+      - id: TC-GH72-028
+        title: "Malformed YAML returns partial results with multi-error"
+        priority: P1
+        type: unit
+        function_name: TestDiscoverRemoteAgents/malformed_YAML_returns_multi-error_with_valid_files
+        description: >
+          Verifies that when one harness file has invalid YAML, valid files are
+          still returned alongside a multi-error containing the parse failure.
+        preconditions:
+          - "FakeClient has good.yaml (valid) and bad.yaml (invalid YAML)"
+        steps:
+          - action: "Call DiscoverRemoteAgents"
+            expected: "Returns 1 agent and error containing 'bad.yaml'"
+        postconditions:
+          - "Valid files are returned despite errors in other files"
+          - "Error message identifies the problematic file"
+
+      - id: TC-GH72-029
+        title: "Non-YAML files and subdirectories are skipped"
+        priority: P1
+        type: unit
+        function_name: TestDiscoverRemoteAgents/skips_subdirectories
+        description: >
+          Verifies that directory entries of type 'dir' are skipped.
+        preconditions:
+          - "DirContents has a file and a subdirectory"
+        steps:
+          - action: "Call DiscoverRemoteAgents"
+            expected: "Only YAML files are processed; subdirectory is ignored"
+        postconditions:
+          - "Only 1 agent from the YAML file"
+
+      - id: TC-GH72-030
+        title: "ListDirectoryContents error propagates"
+        priority: P1
+        type: unit
+        function_name: TestDiscoverRemoteAgents/ListDirectoryContents_error_propagates
+        description: >
+          Verifies that a ListDirectoryContents error is wrapped and returned.
+        preconditions:
+          - "FakeClient has ListDirectoryContents error injected"
+        steps:
+          - action: "Call DiscoverRemoteAgents"
+            expected: "Error returned containing 'listing harness directory'"
+        postconditions:
+          - "agents is nil"
+
+      - id: TC-GH72-031
+        title: "Same role sorted by filename"
+        priority: P1
+        type: unit
+        function_name: TestDiscoverRemoteAgents/same_role_sorted_by_filename
+        description: >
+          Verifies secondary sort by filename when multiple agents share the
+          same role.
+        preconditions:
+          - "FakeClient has fix.yaml and code.yaml, both with role='coder'"
+        steps:
+          - action: "Call DiscoverRemoteAgents"
+            expected: "code.yaml appears before fix.yaml"
+        postconditions:
+          - "Deterministic ordering by filename within same role"
+
+      - id: TC-GH72-032
+        title: "Role-only file (no slug) is included"
+        priority: P1
+        type: unit
+        function_name: TestDiscoverRemoteAgents/role_only_without_slug_is_included
+        description: >
+          Verifies that a file with role set but no slug is still included.
+        preconditions:
+          - "YAML file has role='triage' but no slug field"
+        steps:
+          - action: "Call DiscoverRemoteAgents"
+            expected: "Agent returned with role='triage', empty slug"
+        postconditions:
+          - "Agent has empty Slug field"
+
+      - id: TC-GH72-033
+        title: "Slug-only file (no role) is included"
+        priority: P1
+        type: unit
+        function_name: TestDiscoverRemoteAgents/slug_only_without_role_is_included
+        description: >
+          Verifies that a file with slug set but no role is still included.
+        preconditions:
+          - "YAML file has slug='fs-triage' but no role field"
+        steps:
+          - action: "Call DiscoverRemoteAgents"
+            expected: "Agent returned with slug='fs-triage', empty role"
+        postconditions:
+          - "Agent has empty Role field"
+
+      - id: TC-GH72-034
+        title: ".yml extension files are discovered"
+        priority: P1
+        type: unit
+        function_name: TestDiscoverRemoteAgents/yml_extension_is_discovered
+        description: >
+          Verifies that both .yaml and .yml extensions are accepted.
+        preconditions:
+          - "DirContents has agent.yml"
+        steps:
+          - action: "Call DiscoverRemoteAgents"
+            expected: "agent.yml is discovered and parsed"
+        postconditions:
+          - "Filename in result is 'agent.yml'"
+
+      - id: TC-GH72-035
+        title: "Empty harness directory returns empty list"
+        priority: P1
+        type: unit
+        function_name: TestDiscoverRemoteAgents/empty_harness_directory_returns_empty_list
+        description: >
+          Verifies that an empty harness/ directory returns an empty slice
+          (not nil) with no error.
+        preconditions:
+          - "DirContents has empty entry for harness/"
+        steps:
+          - action: "Call DiscoverRemoteAgents"
+            expected: "Returns empty slice and nil error"
+        postconditions:
+          - "Result is empty but not nil"
+
+      - id: TC-GH72-036
+        title: "Path field is empty for remote agents"
+        priority: P1
+        type: unit
+        function_name: TestDiscoverRemoteAgents/path_field_is_empty_for_remote_agents
+        description: >
+          Verifies that AgentInfo.Path is empty for remotely discovered agents
+          (only local discovery populates the path).
+        preconditions:
+          - "Valid remote harness file"
+        steps:
+          - action: "Call DiscoverRemoteAgents"
+            expected: "Agent.Path is empty"
+        postconditions:
+          - "Path field is empty string"
+
+  # ==========================================================================
+  # Suite 6: Config Types (AllowTargets, CreateIssuesConfig)
+  # ==========================================================================
+  - id: TS-GH72-006
+    title: "Config types for triage prerequisites"
+    package: config
+    file: "internal/config/config_test.go"
+    stp_requirement: "Config types support create-issues allow-targets validation"
+    test_cases:
+      - id: TC-GH72-037
+        title: "AllowTargets YAML parsing and defaults"
+        priority: P2
+        type: unit
+        function_name: TestValidateCreateIssues_NilConfig
+        description: >
+          Verifies that nil CreateIssuesConfig passes validation (no-op).
+        preconditions:
+          - "CreateIssuesConfig is nil"
+        steps:
+          - action: "Call validateCreateIssues(nil)"
+            expected: "Returns nil error"
+        postconditions:
+          - "Nil config is valid"
+
+      - id: TC-GH72-038
+        title: "Validation rejects invalid repo format"
+        priority: P2
+        type: unit
+        function_name: TestValidateCreateIssues_InvalidRepoFormat
+        description: >
+          Verifies that repos in allow_targets must be in owner/name format.
+        preconditions:
+          - "CreateIssuesConfig has repo 'invalid-format' without slash"
+        steps:
+          - action: "Call validateCreateIssues with invalid repo format"
+            expected: "Error returned mentioning 'must contain owner/name'"
+        postconditions:
+          - "Validation error identifies the problematic repo"
+
+      - id: TC-GH72-039
+        title: "Validation rejects empty org"
+        priority: P2
+        type: unit
+        function_name: TestValidateCreateIssues_EmptyOrg
+        description: >
+          Verifies that empty strings in orgs list are rejected.
+        preconditions:
+          - "CreateIssuesConfig has empty string in orgs"
+        steps:
+          - action: "Call validateCreateIssues with empty org"
+            expected: "Error returned mentioning 'empty org'"
+        postconditions:
+          - "Validation catches empty org entries"
+
+  # ==========================================================================
+  # Suite 7: Reconcile-Status CLI Mint-URL Integration
+  # ==========================================================================
+  - id: TS-GH72-007
+    title: "Reconcile-status command mint-url authentication"
+    package: cli
+    file: "internal/cli/reconcilestatus_test.go"
+    stp_requirement: "Reconcile-status command supports mint-url authentication"
+    test_cases:
+      - id: TC-GH72-040
+        title: "Mint-url flag and role flags exist on reconcilestatus command"
+        priority: P1
+        type: unit
+        function_name: TestNewReconcileStatusCmd_MintURLFlags
+        description: >
+          Verifies that the reconcilestatus command exposes --mint-url and --role
+          flags with empty default values.
+        preconditions:
+          - "reconcilestatus command is created via newReconcileStatusCmd()"
+        steps:
+          - action: "Look up --mint-url and --role flags on the command"
+            expected: "Both flags exist with empty default values"
+        postconditions:
+          - "Flags are registered and accessible"
+
+      - id: TC-GH72-041
+        title: "FULLSEND_MINT_URL env var fallback when --mint-url not provided"
+        priority: P1
+        type: unit
+        function_name: TestNewReconcileStatusCmd_MintURLFromEnv
+        description: >
+          Verifies that when --mint-url is not provided, the command falls back
+          to the FULLSEND_MINT_URL environment variable.
+        preconditions:
+          - "FULLSEND_MINT_URL env var set to 'https://mint.example.com'"
+          - "--role flag provided"
+        steps:
+          - action: "Execute command without --mint-url but with FULLSEND_MINT_URL env var"
+            expected: "Command proceeds to OIDC exchange (fails due to missing token request URL)"
+        postconditions:
+          - "Error contains 'minting status token' proving env var was picked up"
+
+      - id: TC-GH72-042
+        title: "Error when --role missing with --mint-url"
+        priority: P1
+        type: unit
+        function_name: TestNewReconcileStatusCmd_ValidationErrors/mint-url_without_role
+        description: >
+          Verifies that providing --mint-url without --role produces a clear
+          validation error.
+        preconditions:
+          - "--mint-url provided, --role not provided"
+        steps:
+          - action: "Execute command with --mint-url but without --role"
+            expected: "Error returned: '--role is required when using --mint-url'"
+        postconditions:
+          - "Command does not proceed to token minting"
+
+      - id: TC-GH72-043
+        title: "Deprecated --token flag still works for backward compatibility"
+        priority: P1
+        type: functional
+        function_name: TestNewReconcileStatusCmd_DeprecatedTokenExecution
+        description: >
+          Verifies that the deprecated --token flag still functions correctly,
+          allowing reconciliation with a static token.
+        preconditions:
+          - "httptest server returning empty JSON array"
+          - "FULLSEND_MINT_URL env var unset"
+        steps:
+          - action: "Execute command with --token test-token"
+            expected: "Command executes successfully using static token"
+        postconditions:
+          - "No error returned"
+          - "--token flag is marked as deprecated"
+
+      - id: TC-GH72-044
+        title: "Error when neither --mint-url nor --token provided"
+        priority: P1
+        type: unit
+        function_name: TestNewReconcileStatusCmd_ValidationErrors/missing_mint-url
+        description: >
+          Verifies that omitting both authentication methods produces an error.
+        preconditions:
+          - "No --mint-url, no --token, no FULLSEND_MINT_URL env var"
+        steps:
+          - action: "Execute command with only --repo, --number, --run-id"
+            expected: "Error: '--mint-url or FULLSEND_MINT_URL required'"
+        postconditions:
+          - "Command fails with clear authentication error"
+
+  # ==========================================================================
+  # Suite 8: Run Command Mint-URL Integration
+  # ==========================================================================
+  - id: TS-GH72-008
+    title: "Run command mint-url for status comment authentication"
+    package: cli
+    file: "internal/cli/run_test.go"
+    stp_requirement: "Run command integrates mint-url for status comment authentication"
+    test_cases:
+      - id: TC-GH72-045
+        title: "Client factory set from --mint-url flag"
+        priority: P1
+        type: unit
+        function_name: TestSetupStatusNotifier_MintURL
+        description: >
+          Verifies that providing --mint-url to setupStatusNotifier sets a
+          ClientFactory on the Notifier for on-demand token minting.
+        preconditions:
+          - "statusOpts with mintURL set to 'https://mint.example.com'"
+          - "GITHUB_RUN_ID env var set"
+        steps:
+          - action: "Call setupStatusNotifier with mint URL in opts"
+            expected: "Returns Notifier with HasClientFactory() == true"
+        postconditions:
+          - "ClientFactory is configured for on-demand minting"
+
+      - id: TC-GH72-046
+        title: "FULLSEND_MINT_URL env var picked up by run command"
+        priority: P1
+        type: unit
+        function_name: TestSetupStatusNotifier_MintURLFromEnv
+        description: >
+          Verifies that the run command picks up FULLSEND_MINT_URL from the
+          environment when --mint-url flag is not provided.
+        preconditions:
+          - "FULLSEND_MINT_URL env var set to 'https://mint.example.com'"
+          - "statusOpts without mintURL"
+        steps:
+          - action: "Call setupStatusNotifier without mint URL in opts"
+            expected: "Returns Notifier with HasClientFactory() == true"
+        postconditions:
+          - "Env var fallback is used"
+
+      - id: TC-GH72-047
+        title: "Error when no mint-url or token available"
+        priority: P1
+        type: unit
+        function_name: TestSetupStatusNotifier_NoMintURL
+        description: >
+          Verifies that setupStatusNotifier returns an error when neither
+          --mint-url, FULLSEND_MINT_URL, nor static token is available.
+        preconditions:
+          - "No mint URL, no FULLSEND_MINT_URL env var, no static token"
+        steps:
+          - action: "Call setupStatusNotifier with empty opts"
+            expected: "Error: 'no mint URL available'"
+        postconditions:
+          - "No Notifier is created"
+
+      - id: TC-GH72-048
+        title: "Deprecated static token creates client directly without factory"
+        priority: P1
+        type: unit
+        function_name: TestSetupStatusNotifier_DeprecatedToken
+        description: >
+          Verifies that using the deprecated statusToken creates a static
+          forge client without setting a ClientFactory.
+        preconditions:
+          - "statusOpts with statusToken set, no mintURL"
+          - "FULLSEND_MINT_URL env var unset"
+        steps:
+          - action: "Call setupStatusNotifier with static token"
+            expected: "Returns Notifier with HasClientFactory() == false"
+        postconditions:
+          - "Static client is used directly, no factory"
+
+      - id: TC-GH72-049
+        title: "Run command has --mint-url flag"
+        priority: P1
+        type: unit
+        function_name: TestRunCommand_HasMintURLFlag
+        description: >
+          Verifies that the run command exposes a --mint-url flag with empty
+          default value.
+        preconditions:
+          - "Run command created via newRunCmd()"
+        steps:
+          - action: "Look up --mint-url flag on the run command"
+            expected: "Flag exists with empty default"
+        postconditions:
+          - "Flag is registered"
+
+      - id: TC-GH72-050
+        title: "Run command --status-token flag is marked deprecated"
+        priority: P1
+        type: unit
+        function_name: TestRunCommand_StatusTokenFlagDeprecated
+        description: >
+          Verifies that --status-token flag exists but is marked as deprecated.
+        preconditions:
+          - "Run command created via newRunCmd()"
+        steps:
+          - action: "Look up --status-token flag on the run command"
+            expected: "Flag exists with non-empty Deprecated field"
+        postconditions:
+          - "Flag has deprecation notice"
+
+  # ==========================================================================
+  # Suite 9: Git Trees API Truncation Handling
+  # ==========================================================================
+  - id: TS-GH72-009
+    title: "Git Trees API truncation error handling"
+    package: forge
+    file: "internal/forge/github/github_test.go"
+    stp_requirement: "Git Trees API handles edge cases and error conditions gracefully"
+    test_cases:
+      - id: TC-GH72-051
+        title: "ListRepositoryFiles returns error on truncated tree response"
+        priority: P1
+        type: unit
+        function_name: TestListRepositoryFiles_Truncated
+        description: >
+          Verifies that when the GitHub API returns a truncated tree (repo with
+          >100K files), ListRepositoryFiles returns an explicit error rather
+          than silently returning partial results.
+        preconditions:
+          - "GitHub API mock returns tree response with truncated=true"
+        steps:
+          - action: "Call ListRepositoryFiles on a repo returning truncated tree"
+            expected: "Error returned indicating tree was truncated"
+        postconditions:
+          - "Error message is descriptive for operators"
+          - "No partial file list returned"
+
+summary:
+  total_test_cases: 51
+  by_priority:
+    P0: 11
+    P1: 31
+    P2: 9
+  by_type:
+    unit: 49
+    functional: 2
+  test_suites: 9
+  packages_covered:
+    - scaffold
+    - forge
+    - statuscomment
+    - harness
+    - config
+    - cli
