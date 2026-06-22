@@ -1,29 +1,22 @@
 status: success
 jira_id: GH-78
-file_path: /sandbox/workspace/output/GH-78_test_plan.md
-test_counts:
-  functional: 17
-  end_to_end: 0
-  total: 17
-pr_analysis:
-  title: "fix(#2054): synthesize review body when findings contradict summary"
-  files_changed: 7
-  additions: 838
-  deletions: 57
-  key_functions_added:
-    - ensureBodyFindingsConsistency
-    - synthesizeReviewBody
-lsp_analysis:
-  calls_made: 6
-  call_graph:
-    - "newPostReviewCmd -> ensureBodyFindingsConsistency -> synthesizeReviewBody"
-    - "newPostReviewCmd -> ensureBodyFindingsConsistency -> reviewActionToEvent"
-  references_found:
-    ReviewResult: 22
-    ReviewFinding: 31
-    reviewActionToEvent: 4
-project_context:
-  project_id: auto-detected
-  language: go
-  framework: testing
-  assertion_library: testify
+verdict: APPROVED_WITH_FINDINGS
+confidence: LOW
+weighted_score: 84
+findings:
+  critical: 0
+  major: 5
+  minor: 6
+  actionable: 9
+  total: 11
+reviewed: outputs/stp/GH-78/GH-78_test_plan.md
+report: outputs/reviews/GH-78/GH-78_stp_review.md
+dimension_scores:
+  rule_compliance: 85
+  requirement_coverage: 85
+  scenario_quality: 90
+  risk_accuracy: 80
+  scope_boundary: 90
+  strategy: 70
+  metadata: 60
+scope_downgrade: false
