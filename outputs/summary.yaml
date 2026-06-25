@@ -1,19 +1,24 @@
 status: success
 jira_id: GH-1270
-initial_verdict: APPROVED_WITH_FINDINGS
-final_verdict: APPROVED
-iterations: 1
+verdict: APPROVED_WITH_FINDINGS
+confidence: MEDIUM
+weighted_score: 88
 findings:
-  initial: {critical: 0, major: 5, minor: 4}
-  final: {critical: 0, major: 0, minor: 3}
-weighted_score:
-  initial: 82
-  final: 95.5
+  critical: 0
+  major: 2
+  minor: 7
+  actionable: 8
+  total: 9
+artifacts_reviewed:
+  std_yaml: true
+  go_stubs: true
+  python_stubs: false
+  stp_available: true
 dimension_scores:
-  rule_compliance: 97
-  requirement_coverage: 93
-  scenario_quality: 97
-  risk_accuracy: 95
-  scope_boundary: 95
-  strategy: 100
-  metadata: 95
+  traceability: 95
+  yaml_structure: 82
+  pattern_matching: 90
+  step_quality: 88
+  content_policy: 90
+  pse_quality: 85
+  codegen_readiness: 80
