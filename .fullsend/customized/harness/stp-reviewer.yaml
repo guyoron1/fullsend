@@ -3,6 +3,8 @@
 # Needs Jira (curl) for source data comparison and GitHub (gh CLI) for PR context.
 agent: agents/stp-reviewer.md
 description: "Review an STP against QE standards using zero-trust verification"
+role: review
+slug: qualityflow-stp-reviewer
 model: opus
 image: ghcr.io/fullsend-ai/fullsend-code:latest
 policy: policies/qf-full.yaml
