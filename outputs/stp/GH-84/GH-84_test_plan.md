@@ -11,7 +11,7 @@
 - **Owning SIG:** N/A
 - **Participating SIGs:** N/A
 
-**Document Conventions:** This STP covers security hardening changes to the post-code pipeline. "Post-code" refers to the shell script that runs on the GitHub Actions runner after the sandbox is destroyed, responsible for pushing agent commits and creating PRs. "Workflow file block" refers to the new defense-in-depth gate that rejects agent commits containing `.github/workflows/` modifications.
+**Document Conventions:** "Post-code" refers to the script responsible for pushing agent commits and creating PRs after sandbox execution. "Workflow file block" refers to the defense-in-depth gate that rejects agent commits containing `.github/workflows/` modifications.
 
 ### Feature Overview
 
@@ -23,22 +23,22 @@ This change hardens the fullsend code agent's post-code pipeline against prompt 
 
 #### I.1 - Requirement & User Story Review Checklist
 
-- [ ] **Reviewed the relevant requirements.**
+- [x] **Reviewed the relevant requirements.**
   - GH-84 describes three changes: workflow file blocking in post-code.sh, token documentation correction in code-agent.env, and 6 unit tests for workflow detection logic.
   - The issue references a team sync discussion on code agent security (prompt injection attack vector).
 
-- [ ] **Confirmed clear user stories and understood. Understand the value and customer use cases.**
+- [x] **Confirmed clear user stories and understood. Understand the value and customer use cases.**
   - The value proposition is security hardening: preventing a prompt-injected agent from pushing malicious workflow files that execute arbitrary code on the org's runner with access to repo secrets.
   - User story: As a fullsend operator, I need defense-in-depth against workflow file injection so that even if the coder token gains `workflows:write` in the future, the script-level gate prevents exploitation.
 
-- [ ] **Confirmed requirements are **testable and unambiguous**.**
+- [x] **Confirmed requirements are **testable and unambiguous**.**
   - The workflow blocking logic is deterministic: any file matching `.github/workflows/*` in the changed files list triggers a hard block (exit 1).
   - Token documentation changes are informational and verifiable by code review.
 
-- [ ] **Ensured acceptance criteria are **defined clearly**.**
+- [x] **Ensured acceptance criteria are **defined clearly**.**
   - Acceptance criteria from the issue: all 58 post-code tests pass (including 6 new), shellcheck clean, security self-review approved, CI passes.
 
-- [ ] **Confirmed coverage for NFRs.**
+- [x] **Confirmed coverage for NFRs.**
   - Security: defense-in-depth against prompt injection attack vector.
   - Reliability: existing post-code pipeline behavior preserved (regression).
 
@@ -51,21 +51,21 @@ This change hardens the fullsend code agent's post-code pipeline against prompt 
 
 #### I.3 - Technology and Design Review
 
-- [ ] **Developer handoff completed.**
+- [x] **Developer handoff completed.**
   - PR #84 modifies `internal/scaffold/fullsend-repo/scripts/post-code.sh` (new section 2c), `internal/scaffold/fullsend-repo/scripts/post-code-test.sh` (6 new tests), and `internal/scaffold/fullsend-repo/env/code-agent.env` (comment correction).
 
-- [ ] **Technology challenges identified.**
+- [x] **Technology challenges identified.**
   - Shell script testing relies on function extraction and isolated execution (no git repo or network access needed for tests).
-  - The scaffold embed system (`embed.FS` in `internal/scaffold/scaffold.go`) bundles post-code.sh into the Go binary; changes propagate through `FullsendRepoFile()` -> `WalkFullsendRepo()` -> `CollectInstallFiles()` -> `Install()`.
+  - The scaffold embed system bundles post-code.sh into the Go binary via `embed.FS`. Changes to embedded files propagate automatically to all repos using the scaffold system.
 
-- [ ] **Test environment needs assessed.**
+- [x] **Test environment needs assessed.**
   - Unit tests for workflow detection run in bash without external dependencies.
   - Integration testing of the full post-code pipeline requires a GitHub Actions runner context (PUSH_TOKEN, REPO_FULL_NAME, etc.).
 
-- [ ] **API extensions reviewed.**
+- [x] **API extensions reviewed.**
   - No API changes. The workflow block is internal to the post-code script.
 
-- [ ] **Topology and deployment considerations reviewed.**
+- [x] **Topology and deployment considerations reviewed.**
   - The post-code.sh script runs on the GitHub Actions runner (not in the sandbox). Changes affect all repos using fullsend's scaffold system.
 
 ### Section II - Test Planning
@@ -76,10 +76,11 @@ This test plan covers the security hardening changes to the post-code pipeline: 
 
 **Testing Goals:**
 
-- **P0:** Verify workflow file detection blocks `.github/workflows/` changes with clear error output.
-- **P0:** Verify existing post-code pipeline functionality is preserved (title rewriting, PR body assembly, no-op detection, push retry, stale branch cleanup, artifact stripping, signed-off-by detection).
+- **P0:** Verify workflow file detection blocks `.github/workflows/` changes with file path and blocking reason in output.
+- **P0:** Verify existing post-code pipeline functionality is preserved (all 52 existing tests pass).
 - **P1:** Verify edge cases in workflow detection (nested paths, non-workflow .github/ files, empty input).
-- **P1:** Verify scaffold embedding propagates updated scripts correctly.
+- **P1:** Verify modified shell scripts pass shellcheck without new warnings.
+- **P1:** Verify error output does not allow GitHub Actions command injection.
 - **P2:** Verify error reporting comment includes correct workflow run URL.
 
 **Out of Scope (Testing Scope Exclusions):**
@@ -93,19 +94,19 @@ This test plan covers the security hardening changes to the post-code pipeline: 
 
 **Functional:**
 
-- [x] **Functional Testing** -- Core workflow file detection and blocking logic, post-code pipeline regression tests.
-  - All 6 new workflow detection tests plus all 52 existing post-code tests.
+- [x] **Functional Testing** -- Core workflow file detection and blocking logic (security gate validation), post-code pipeline regression.
+  - All 6 new workflow detection tests validate the defense-in-depth security gate as functional behavior.
+  - All 52 existing post-code tests confirm regression coverage.
 - [x] **Automation Testing** -- All tests are automated shell scripts executable via `bash post-code-test.sh`.
   - No manual test steps required.
-- [x] **Regression Testing** -- Full regression of existing post-code behaviors: title rewriting, PR body assembly, no-op detection, stale branch cleanup, push retry logic, error comment generation, artifact stripping, signed-off-by detection.
+- [x] **Regression Testing** -- Existing post-code behaviors preserved: title rewriting, PR body assembly, no-op detection, stale branch cleanup, push retry logic, error comment generation, artifact stripping, signed-off-by detection.
   - All existing test functions preserved and passing.
 
 **Non-Functional:**
 
 - [ ] **Performance Testing** -- Not applicable; shell script execution is near-instantaneous.
 - [ ] **Scale Testing** -- Not applicable; post-code processes a single PR at a time.
-- [x] **Security Testing** -- Primary focus of this change. Validates defense-in-depth against workflow file injection attack vector.
-  - Verifies blocking behavior for various `.github/workflows/` path patterns.
+- [ ] **Security Testing** -- Not applicable; this change adds a functional security gate, not a security testing methodology. The workflow file blocking logic is validated under Functional Testing.
 - [ ] **Usability Testing** -- Not applicable; no user-facing UI changes.
 - [ ] **Monitoring** -- Not applicable; no new observability instrumentation.
 
@@ -113,8 +114,8 @@ This test plan covers the security hardening changes to the post-code pipeline: 
 
 - [ ] **Compatibility Testing** -- Not applicable; bash script compatible with existing runner environments.
 - [ ] **Upgrade Testing** -- Not applicable; scaffold embedding handles propagation.
-- [x] **Dependencies** -- Verified scaffold embedding chain: `FullsendRepoFile()` -> `WalkFullsendRepo()` -> `CollectInstallFiles()` -> `Install()`.
-  - Go embed.FS in scaffold.go bundles the updated scripts.
+- [x] **Dependencies** -- Updated post-code.sh is propagated to installed repos via the scaffold embedding system.
+  - Existing scaffold tests validate that embedded file changes propagate correctly.
 - [ ] **Cross Integrations** -- Not applicable; post-code.sh is self-contained.
 
 **Infrastructure:**
@@ -172,9 +173,14 @@ No new or special tools required. Tests use standard bash with built-in assertio
   - Status: Low
 
 - [ ] **Dependencies**
-  - Risk: Scaffold embedding chain must correctly propagate updated post-code.sh to installed repos.
-  - Mitigation: Existing scaffold tests (`TestWalkFullsendRepo`, `TestCollectInstallFiles_*`) validate embedding.
+  - Risk: Scaffold embedding must correctly propagate updated post-code.sh to installed repos.
+  - Mitigation: Existing scaffold unit tests validate that embedded file changes propagate correctly.
   - Status: Mitigated
+
+- [ ] **Sandbox Token Privilege**
+  - Risk: The sandbox `GH_TOKEN` currently grants write permissions (contents:write, issues:write, pull_requests:write). Until a separate read-only sandbox token is minted, the agent operates with more privileges than necessary inside the sandbox.
+  - Mitigation: The post-code workflow file block provides defense-in-depth. A follow-up change to mint a read-only sandbox token is tracked as a TODO in the issue.
+  - Status: Accepted
 
 - [ ] **Other**
   - Risk: Future changes to post-code.sh section ordering could cause test drift if functions are refactored.
@@ -194,60 +200,19 @@ No new or special tools required. Tests use standard bash with built-in assertio
   - Verify `.github/` files outside `workflows/` are not blocked | Functional | P0
   - Verify normal source files are not blocked | Functional | P0
   - Verify empty changed files input passes | Functional | P1
-  - Verify blocked output includes clear error message | Functional | P1
+  - Verify blocked output includes file path and blocking reason | Functional | P1
+  - Verify error output does not allow GitHub Actions command injection | Functional | P1
 
-- | **Existing post-code title rewriting is preserved (regression)**
-  - Verify conventional commit without scope gets issue reference injected | Functional | P0
-  - Verify conventional commit with existing scope is not modified | Functional | P0
-  - Verify non-conventional title is not modified | Functional | P1
-  - Verify various commit types (fix, feat, chore, docs, refactor, test, ci) are handled | Functional | P1
+- **GH-84** | **Token documentation accurately reflects permissions**
+  - Verify code-agent.env comments describe the coder role's actual write permissions | Functional | P1
+  - Verify GH_TOKEN comment notes that coder role omits `workflows:write` | Functional | P1
 
-- | **PR body assembly is correct (regression)**
-  - Verify PR body contains exactly one Closes line | Functional | P0
-  - Verify PR body does not contain Changed files or Created by sections | Functional | P1
-  - Verify empty commit body uses fallback description | Functional | P1
+- **GH-84** | **Modified shell scripts pass static analysis**
+  - Verify shellcheck produces no new warnings on post-code.sh | Functional | P1
 
-- | **No-op detection works correctly (regression)**
-  - Verify no-op on main/master branch | Functional | P0
-  - Verify no-op on detached HEAD | Functional | P1
-  - Verify no-op on feature branch with no changes | Functional | P0
-  - Verify proceed on feature branch with changes | Functional | P0
-
-- | **Stale branch cleanup logic is correct (regression)**
-  - Verify skip when no remote branch exists | Functional | P1
-  - Verify delete when stale branch has no open PR | Functional | P1
-  - Verify keep when branch has open PR | Functional | P1
-
-- | **Push retry logic handles errors correctly (regression)**
-  - Verify successful push requires no retry | Functional | P1
-  - Verify non-fast-forward triggers force-with-lease retry | Functional | P1
-  - Verify unexpected error causes failure | Functional | P1
-
-- | **Error reporting comment is correct (regression)**
-  - Verify error comment includes exit code and workflow link | Functional | P1
-  - Verify org-mode uses dispatch repo URL | Functional | P1
-  - Verify non-org-mode falls back to source repo URL | Functional | P1
-
-- | **Agent artifact stripping works correctly (regression)**
-  - Verify `.agentready/` files are stripped | Functional | P1
-  - Verify `.fullsend-workspace/` files are stripped | Functional | P1
-  - Verify normal files are not stripped | Functional | P0
-  - Verify multiple artifacts stripped together | Functional | P1
-
-- | **Signed-off-by trailer detection works correctly (regression)**
-  - Verify commit with Signed-off-by trailer is blocked | Functional | P0
-  - Verify commit without trailer passes | Functional | P0
-  - Verify mid-line mention is not falsely detected | Functional | P1
-  - Verify case-sensitive detection (lowercase variant passes) | Functional | P1
-
-- | **Token documentation accurately reflects permissions**
-  - Verify code-agent.env comments describe correct token permissions | Functional | P1
-  - Verify GH_TOKEN comment mentions coder role omits workflows:write | Functional | P1
-
-- | **Scaffold embedding propagates updated scripts**
-  - Verify post-code.sh is accessible via FullsendRepoFile() | Functional | P1
-  - Verify WalkFullsendRepo includes updated post-code.sh | Functional | P1
-  - Verify CollectInstallFiles bundles post-code.sh for installation | Functional | P1
+- **GH-84** | **Existing post-code pipeline regression suite passes**
+  - Verify all 52 existing post-code tests pass without modification | Regression | P1
+  - Verify title rewriting, PR body assembly, no-op detection, push retry, stale branch cleanup, artifact stripping, signed-off-by detection, and error reporting behaviors are preserved | Regression | P1
 
 ---
 
