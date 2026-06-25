@@ -3,6 +3,8 @@
 # Needs Jira (curl) and GitHub (gh CLI) for re-verification against source data.
 agent: agents/stp-refiner.md
 description: "Review-refine loop that iterates until the STP reaches APPROVED verdict"
+role: coder
+slug: qualityflow-stp-refiner
 model: opus
 image: ghcr.io/fullsend-ai/fullsend-code:latest
 policy: policies/qf-full.yaml
