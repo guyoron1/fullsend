@@ -7,44 +7,24 @@
 
 ---
 
-## I. Overview
+## I. Requirements Review
 
-### 1.1 Summary
+### I.1 Requirements Review Checklist
 
-GH-1270 tracks expanding the `.pre-commit-tools.yaml` registry introduced by PR #1055 to close coverage gaps found during an audit of pre-commit configs across target repos. The registry is a data-driven system that auto-detects and installs tool dependencies required by a repo's `.pre-commit-config.yaml` hooks before the authoritative pre-commit check runs in CI.
+- [x] **Review Requirements** — Three specific gaps identified in GH-1270: uv match miss, tekwizely script hooks, shellcheck-py variant
+- [x] **Understand Value** — Expanding the pre-commit-tools registry ensures CI pipelines auto-detect and install all required tool dependencies without manual intervention
+- [x] **Testability** — All three gaps produce observable behavior (resolver match/no-match, warning messages, install actions) that can be verified
+- [x] **Acceptance Criteria** — Derived from issue body: (1) uv match_entry resolves "uv run" entries, (2) tekwizely hooks produce actionable warnings, (3) shellcheck-py variant is handled correctly
+- [x] **Non-Functional Requirements** — Supply-chain safety via checksum verification; no performance SLAs for CI tooling
 
-Three specific gaps were identified:
+### I.2 Known Limitations
 
-1. **`uv` match miss for local hooks** — The registry entry for `ty` matches `uvx` but not `uv run <tool>` entries.
-2. **`tekwizely/pre-commit-golang` script hooks** — Hooks using `language: script` that shell out to Go binaries (`revive`, `gosec`, `gofumpt`, `goimports`, `gocritic`, `golint`) not in the registry.
-3. **`shellcheck-py` variant** — Some repos use `shellcheck-py/shellcheck-py` (language: python, auto-managed) instead of `koalaman/shellcheck-precommit`. Documentation gap only.
+- Go linter strategy (P3) is deferred pending a design decision — tekwizely hooks require choosing between registry entries and migration to golangci-lint. Test scenarios will be added once the approach is selected.
+- No Jira instance configured; requirements derived from GitHub issue body text.
 
-### 1.2 Scope
+### I.3 Technology Review
 
-| In Scope | Out of Scope |
-|:---------|:-------------|
-| `.pre-commit-tools.yaml` registry entries | Pre-commit framework internals |
-| `resolve-precommit-tools.py` resolver logic | Target repo `.pre-commit-config.yaml` authoring |
-| `install-precommit-tools.sh` installer behavior | GitHub Actions runner base image |
-| Per-repo registry merge (`merge_registries`) | Org-level customized registry (L1 replacement) |
-| `scaffold.go` executable file registration | Kubernetes/cluster-level testing |
-| Pre/post script integration (pre-code, pre-fix, post-code, post-fix) | Gitleaks post-script (independent security gate) |
-
-### 1.3 References
-
-| Reference | Link |
-|:----------|:-----|
-| Parent Issue | [GH-1270](https://github.com/fullsend-ai/fullsend/issues/1270) |
-| Introducing PR | [PR #1055](https://github.com/fullsend-ai/fullsend/pull/1055) — feat(scaffold): auto-detect and install pre-commit tool dependencies |
-| Registry File | `internal/scaffold/fullsend-repo/scripts/.pre-commit-tools.yaml` |
-| Resolver Script | `internal/scaffold/fullsend-repo/scripts/resolve-precommit-tools.py` |
-| Installer Script | `internal/scaffold/fullsend-repo/scripts/install-precommit-tools.sh` |
-
----
-
-## II. Regression Analysis
-
-### 2.1 Call Graph (LSP-Traced)
+**Call Graph (LSP-Traced)**
 
 The following dependency chains were traced using LSP analysis on the Go source:
 
@@ -64,7 +44,7 @@ scaffold.go::executableFiles
 
 **Key finding:** Adding new scripts to `executableFiles` in `scaffold.go` propagates through `FileMode()` to both `CollectInstallFiles` (install path) and `CollectVendoredAssets` (vendor path). Both paths must handle the new entries correctly to avoid scaffold install or vendor drift.
 
-### 2.2 Impacted Components
+**Impacted Components**
 
 | Component | Files | Impact |
 |:----------|:------|:-------|
@@ -75,15 +55,83 @@ scaffold.go::executableFiles
 | Pre-scripts | `pre-code.sh`, `pre-fix.sh` | Tool resolution + install before agent runs |
 | Post-scripts | `post-code.sh`, `post-fix.sh` | Tool resolution + install before authoritative pre-commit check |
 
-### 2.3 Risk Assessment
+**References**
 
-| Risk | Severity | Mitigation |
-|:-----|:---------|:-----------|
-| Registry entry with wrong checksum blocks all pushes | High | Checksum verification test; fail-loud design is intentional |
-| Resolver fails to match hook → warning but hooks fail at pre-commit time | Medium | Test resolver matching for all entry patterns (repo+hook_id, match_entry) |
-| Per-repo merge introduces conflicting entries | Medium | Test merge_registries() override and exclude semantics |
-| New executable scripts not registered → installed as 644, fail to execute | Medium | TestFileModeMatchesFilesystem catches this |
-| install-precommit-tools.sh silent failure on unsupported arch | Low | Warning emitted; binary installs skipped gracefully |
+| Reference | Link |
+|:----------|:-----|
+| Parent Issue | [GH-1270](https://github.com/fullsend-ai/fullsend/issues/1270) |
+| Introducing PR | [PR #1055](https://github.com/fullsend-ai/fullsend/pull/1055) (merged 2026-06-25) — feat(scaffold): auto-detect and install pre-commit tool dependencies |
+| Registry File | `internal/scaffold/fullsend-repo/scripts/.pre-commit-tools.yaml` |
+| Resolver Script | `internal/scaffold/fullsend-repo/scripts/resolve-precommit-tools.py` |
+| Installer Script | `internal/scaffold/fullsend-repo/scripts/install-precommit-tools.sh` |
+
+---
+
+## II. Test Strategy
+
+### II.1 Scope of Testing
+
+While GH-1270 identifies three specific gaps, this test plan covers the entire pre-commit-tools subsystem to ensure registry expansion does not introduce regressions in existing functionality.
+
+| In Scope | Out of Scope |
+|:---------|:-------------|
+| `.pre-commit-tools.yaml` registry entries | Pre-commit framework internals |
+| `resolve-precommit-tools.py` resolver logic | Target repo `.pre-commit-config.yaml` authoring |
+| `install-precommit-tools.sh` installer behavior | GitHub Actions runner base image |
+| Per-repo registry merge (`merge_registries`) | Org-level customized registry (L1 replacement) |
+| `scaffold.go` executable file registration | Kubernetes/cluster-level testing |
+| Pre/post script integration (pre-code, pre-fix, post-code, post-fix) | Gitleaks post-script (independent security gate) |
+
+### II.2 Test Strategy Classification
+
+- [x] **Functional Testing** — Core feature validation: resolver matching, installer behavior, registry merge semantics
+- [x] **Automation Testing** — All tests are automated; no manual testing required
+- [x] **Security Testing** — Supply-chain safety via checksum verification; per-repo registry reads from base branch only
+- [x] **Regression Testing** — Existing tests (TestFileModeMatchesFilesystem, TestCollectInstallFiles, TestCollectVendoredAssets) must continue passing
+- [ ] **Performance Testing** — N/A; no latency or throughput requirements for CI tooling
+- [ ] **Usability Testing** — N/A; no UI components
+- [ ] **Upgrade Testing** — N/A; CI tooling with no persistent state across upgrades
+- [ ] **Monitoring Testing** — N/A; no metrics or alerting requirements
+
+### II.3 Test Environment
+
+- **CI Runner:** GitHub Actions Ubuntu runner with Python 3.x and Go 1.26+
+- **Dependencies:** PyYAML 6.0.2 (auto-installed by resolver if missing), pre-commit framework
+- **Fixture Data:** Mock `.pre-commit-config.yaml` files, fixture tarballs for binary install tests, mock HTTP servers for checksum verification tests
+
+### II.4 Entry/Exit Criteria
+
+**Entry Criteria:**
+- [x] PR #1055 merged (confirmed: merged 2026-06-25)
+- [ ] `blocked` label removed from GH-1270 (stale — blocker is resolved, label should be removed)
+- [x] Dev environment with `.pre-commit-config.yaml` samples available
+
+**Exit Criteria:**
+- [ ] All P0 scenarios pass (checksum verification, CI pipeline integration)
+- [ ] All P1 scenarios pass (resolver matching, installer behavior, registry merge)
+- [ ] No regressions in existing TestFileModeMatchesFilesystem
+- [ ] No regressions in TestCollectInstallFiles and TestCollectVendoredAssets
+
+### II.5 Risks
+
+| Item | Severity | Description | Mitigation |
+|:-----|:---------|:------------|:-----------|
+| Registry entry with wrong checksum blocks all pushes | High | Fail-loud design is intentional — a bad checksum hard-stops the pipeline | Checksum verification test scenarios (rows 12, 25); binary checksums validated before merge |
+| Resolver fails to match hook | Medium | Unmatched hook produces a warning but hooks fail at pre-commit time | Test resolver matching for all entry patterns (repo+hook_id, match_entry) |
+| Per-repo merge introduces conflicting entries | Medium | Override semantics may produce unexpected results | Test merge_registries() override and exclude semantics |
+| New executable scripts not registered | Medium | Scripts installed as 644 instead of 755, fail to execute | TestFileModeMatchesFilesystem catches permission mismatches |
+| install-precommit-tools.sh silent failure on unsupported arch | Low | Binary installs skipped on unsupported architectures | Warning emitted; graceful degradation tested |
+| PyYAML availability | Low | Resolver auto-installs `pyyaml==6.0.2` if missing; network access required on first run | CI runners have network access; pip install is idempotent |
+| Per-repo registry security | Low | Per-repo `.pre-commit-tools.yaml` could be weaponized via PR | Read from base branch only (not PR head) to prevent supply-chain attacks |
+| Registry changes deployed without comprehensive test coverage initially | Medium | Expanded registry could surface latent bugs in hook matching | Full subsystem test coverage via this plan mitigates risk |
+
+### II.6 Dependencies (Resolved)
+
+| Dependency | Status | Notes |
+|:-----------|:-------|:------|
+| PR #1055 | ✅ Merged (2026-06-25) | Registry expansion can proceed |
+| `blocked` label on GH-1270 | ⚠️ Stale | PR #1055 merged resolves the blocker; label should be removed from the issue |
+| Go linter strategy decision (P3) | ⏳ Pending | tekwizely hooks require a strategy decision; deferred — test scenarios will be added once approach is selected |
 
 ---
 
@@ -111,7 +159,7 @@ scaffold.go::executableFiles
 | 18 | | | Verify exclude:true suppresses matching upstream entry | Unit Tests | P1 |
 | 19 | | | Verify invalid per-repo entry (missing hook_id) emits warning | Unit Tests | P2 |
 | 20 | | | Verify empty per-repo registry falls back to upstream only | Unit Tests | P2 |
-| 21 | | Pre/post scripts integrate tool auto-detection without breaking CI | Verify post-code.sh resolves and installs tools before pre-commit check | Functional | P0 |
+| 21 | | Pre/post scripts integrate tool auto-detection without breaking CI | Verify post-code.sh resolves and installs tools before pre-commit check | Functional | P1 |
 | 22 | | | Verify pre-code.sh installs tools and adds ~/.local/bin to PATH and GITHUB_PATH | Functional | P1 |
 | 23 | | | Verify graceful degradation when resolve script fails (warning, no abort) | Functional | P1 |
 | 24 | | | Verify graceful handling when .pre-commit-config.yaml is absent | Functional | P2 |
@@ -125,6 +173,8 @@ scaffold.go::executableFiles
 | 32 | | | Verify resolver handles non-list repos field | Unit Tests | P2 |
 | 33 | | End-to-end: full resolution + install pipeline works for multi-tool repo | Verify resolver → manifest → installer pipeline for repo with lychee + uv + actionlint hooks | End-to-End | P1 |
 | 34 | | | Verify pipeline handles repo with no matching hooks (empty manifest, no install) | End-to-End | P2 |
+| 35 | | Resolver correctly handles shellcheck-py variant (auto-managed) | Verify no warning emitted for shellcheck-py/shellcheck-py hook (language: python, auto-managed) | Unit Tests | P2 |
+| 36 | | | Verify resolver identifies shellcheck-py as auto-managed and does not flag it for install | Unit Tests | P2 |
 
 ---
 
@@ -134,23 +184,23 @@ scaffold.go::executableFiles
 
 | Test Type | Count |
 |:----------|:------|
-| Unit Tests | 22 |
+| Unit Tests | 24 |
 | Functional | 10 |
 | End-to-End | 2 |
-| **Total** | **34** |
+| **Total** | **36** |
 
 ### 4.2 Test Counts by Priority
 
 | Priority | Count |
 |:---------|:------|
-| P0 | 3 |
-| P1 | 19 |
-| P2 | 12 |
-| **Total** | **34** |
+| P0 | 2 |
+| P1 | 20 |
+| P2 | 14 |
+| **Total** | **36** |
 
 ### 4.3 Implementation Notes
 
-- **Unit Tests** target `resolve-precommit-tools.py` (Python unittest/pytest) and `scaffold.go` (Go testing+testify). The resolver's `resolve()` and `merge_registries()` functions are pure functions ideal for unit testing with fixture YAML files.
+- **Unit Tests** target `resolve-precommit-tools.py` and `scaffold.go`. The resolver's `resolve()` and `merge_registries()` functions are pure functions ideal for unit testing with fixture YAML files.
 - **Functional Tests** target `install-precommit-tools.sh` behavior using mock HTTP servers or fixture tarballs to validate checksum verification and install type handling.
 - **End-to-End Tests** validate the full pipeline: `.pre-commit-config.yaml` → `resolve-precommit-tools.py` → JSON manifest → `install-precommit-tools.sh` → tools on PATH.
 
@@ -163,15 +213,3 @@ The following existing tests provide partial coverage and should be verified to 
 | `TestFileModeMatchesFilesystem` | `internal/scaffold/scaffold_test.go` | Verifies `executableFiles` map stays in sync with filesystem |
 | `TestCollectInstallFiles_*` | `internal/scaffold/installfiles_test.go` | Verifies scaffold install includes correct files with correct modes |
 | `TestCollectVendoredAssets_*` | `internal/scaffold/vendorcontent_test.go` | Verifies vendor path includes correct files |
-
----
-
-## V. Risks and Dependencies
-
-| Item | Type | Description |
-|:-----|:-----|:------------|
-| PR #1055 merge status | Dependency | PR #1055 is already merged; registry expansion can proceed |
-| `blocked` label on GH-1270 | Risk | Issue is labeled `blocked` — verify blocker is resolved before implementation |
-| Go linter strategy decision (P3) | Dependency | tekwizely hooks require a strategy decision: recommend migration to golangci-lint vs. add registry entries |
-| PyYAML availability | Risk | Resolver auto-installs `pyyaml==6.0.2` if missing; network access required on first run |
-| Per-repo registry security | Risk | Per-repo `.pre-commit-tools.yaml` is read from base branch only (not PR head) to prevent supply-chain attacks via PR |
