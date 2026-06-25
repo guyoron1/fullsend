@@ -1,0 +1,20 @@
+status: success
+jira_id: GH-1270
+file_path: /sandbox/workspace/output/GH-1270_test_plan.md
+test_counts:
+  unit_tests: 22
+  functional: 10
+  e2e: 2
+  total: 34
+priority_counts:
+  P0: 3
+  P1: 19
+  P2: 12
+issue_source: github
+project_id: auto-detected
+lsp_analysis: true
+lsp_calls: 5
+pr_data:
+  - number: 1055
+    title: "feat(scaffold): auto-detect and install pre-commit tool dependencies"
+    state: MERGED
