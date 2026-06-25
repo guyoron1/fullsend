@@ -1,10 +1,10 @@
 ---
 # Software Test Description (STD) — GH-84
 # Generated: 2026-06-25
-# STD Version: 2.1-enhanced
+# STD Version: 2.0-auto
 
 document_metadata:
-  std_version: "2.1-enhanced"
+  std_version: "2.0-auto"
   generated_date: "2026-06-25"
   jira_issue: "GH-84"
   jira_summary: "fix(post-code): block workflow file changes and correct token docs"
@@ -13,29 +13,23 @@ document_metadata:
     file: "outputs/stp/GH-84/GH-84_test_plan.md"
     version: "v1"
     sections_covered: "Section III - Requirements-to-Tests Mapping"
-  related_prs:
-    - repo: "guyoron1/fullsend"
-      pr_number: 84
-      url: "https://github.com/guyoron1/fullsend/pull/84"
-      title: "fix(post-code): block workflow file changes and correct token docs"
-      merged: false
   owning_sig: "N/A"
   participating_sigs: []
-  total_scenarios: 13
+  total_scenarios: 12
   tier_1_count: 0
   tier_2_count: 0
   unit_count: 0
   functional_count: 11
   e2e_count: 0
-  regression_count: 2
+  regression_count: 1
   p0_count: 4
-  p1_count: 9
-  existing_coverage_count: 0
-  new_count: 13
+  p1_count: 8
+  existing_coverage_count: 7
+  new_count: 5
   test_strategy_mode: "auto"
 
 code_generation_config:
-  std_version: "2.1-enhanced"
+  std_version: "2.0-auto"
   framework: "testing"
   assertion_library: "testify"
   language: "go"
@@ -48,10 +42,10 @@ code_generation_config:
 
   imports:
     standard:
-      - "os"
-      - "os/exec"
-      - "strings"
-      - "testing"
+      - "os"       # S9, S10: file read for code-agent.env
+      - "os/exec"  # S7, S8, S11: shell execution for detect_workflow_files, shellcheck
+      - "strings"  # S7, S8, S9, S10: output inspection and content scanning
+      - "testing"  # all scenarios: test framework
     framework:
       - path: "github.com/stretchr/testify/assert"
         alias: ""
@@ -559,7 +553,7 @@ scenarios:
   # =========================================================================
   - scenario_id: 12
     test_id: "TS-GH84-012"
-    test_type: "functional"
+    test_type: "regression"
     priority: "P1"
     mvp: false
     requirement_id: "GH-84"
@@ -567,16 +561,7 @@ scenarios:
     covered_by:
       - test_function: "All 52 existing test functions in post-code-test.sh"
         test_file: "internal/scaffold/fullsend-repo/scripts/post-code-test.sh"
-        behavior_tested: "Title rewriting, PR body assembly, no-op detection, stale branch cleanup, push retry, error comment, artifact stripping, signed-off-by detection"
-
-  - scenario_id: 13
-    test_id: "TS-GH84-013"
-    test_type: "functional"
-    priority: "P1"
-    mvp: false
-    requirement_id: "GH-84"
-    coverage_status: "EXISTING_COVERAGE"
-    covered_by:
-      - test_function: "Full post-code-test.sh suite execution"
-        test_file: "internal/scaffold/fullsend-repo/scripts/post-code-test.sh"
-        behavior_tested: "All pipeline behaviors preserved: title rewriting, PR body assembly, no-op detection, push retry, stale branch cleanup, artifact stripping, signed-off-by detection, error reporting"
+        behavior_tested: "Full post-code pipeline regression: title rewriting, PR body assembly, no-op detection, stale branch cleanup, push retry, error comment/reporting, artifact stripping, signed-off-by detection"
+    stp_scenarios_covered:
+      - "Verify all 52 existing post-code tests pass without modification"
+      - "Verify behaviors preserved (title rewriting, PR body assembly, no-op detection, push retry, stale branch cleanup, artifact stripping, signed-off-by detection, error reporting)"

@@ -12,18 +12,18 @@
 
 ---
 
-## Verdict: NEEDS_REVISION
+## Verdict: APPROVED
 
 ## Summary
 
 | Metric | Value |
 |:-------|:------|
 | Dimensions reviewed | 7/7 |
-| Critical findings | 2 |
-| Major findings | 2 |
+| Critical findings | 0 |
+| Major findings | 0 |
 | Minor findings | 2 |
-| Actionable findings | 6 |
-| Weighted score | 79 |
+| Actionable findings | 2 |
+| Weighted score | 92 |
 | Confidence | LOW |
 
 ## Traceability Summary
@@ -31,17 +31,19 @@
 | Metric | Value |
 |:-------|:------|
 | STP scenarios | 13 |
-| STD scenarios | 13 |
+| STD scenarios | 12 |
 | Forward coverage (STP->STD) | 13/13 (100%) |
-| Reverse coverage (STD->STP) | 13/13 (100%) |
+| Reverse coverage (STD->STP) | 12/12 (100%) |
 | Orphan STD scenarios | 0 |
 | Missing STD scenarios | 0 |
+
+**Note:** 13 STP scenarios map to 12 STD scenarios via N:1 mapping. STD scenario S12 covers two STP regression scenarios with explicit `stp_scenarios_covered` documentation.
 
 ---
 
 ## Findings by Dimension
 
-### Dimension 1: STP-STD Traceability (Weight: 30%) — Score: 65/100
+### Dimension 1: STP-STD Traceability (Weight: 30%) — Score: 95/100
 
 #### 1a. Forward Traceability (STP -> STD): PASS
 
@@ -60,49 +62,26 @@ All 13 STP Section III scenarios have corresponding STD scenarios with matching 
 | code-agent.env describes write permissions | S9 (TS-GH84-009) | Full |
 | GH_TOKEN notes workflows:write omission | S10 (TS-GH84-010) | Full |
 | shellcheck no new warnings | S11 (TS-GH84-011) | Full |
-| All 52 existing tests pass | S12 (TS-GH84-012) | Full |
-| Behaviors preserved | S13 (TS-GH84-013) | Full |
+| All 52 existing tests pass | S12 (TS-GH84-012, merged) | Full |
+| Behaviors preserved | S12 (TS-GH84-012, merged) | Full |
 
 #### 1b. Reverse Traceability (STD -> STP): PASS
 
-All 13 STD scenarios trace back to requirement_id `GH-84` which is documented in STP Section III.
+All 12 STD scenarios trace back to requirement_id `GH-84` which is documented in STP Section III.
 
-#### 1c. Count Consistency: FAIL
+#### 1c. Count Consistency: PASS
 
-**Zero-trust verification uncovered two metadata count mismatches:**
+Zero-trust verification of metadata counts against actual scenario data:
 
-> **Finding D1-1c-001** [CRITICAL]
->
-> **Description:** `existing_coverage_count` and `new_count` in `document_metadata` are incorrect.
-> Metadata claims `existing_coverage_count: 0` and `new_count: 13`, but actual scenario data shows
-> 8 scenarios with `coverage_status: "EXISTING_COVERAGE"` (S1-S6, S12-S13) and 5 scenarios with
-> `coverage_status: "NEW"` (S7-S11).
->
-> **Evidence:** `document_metadata.existing_coverage_count: 0` vs actual count of scenarios where
-> `coverage_status == "EXISTING_COVERAGE"` is 8. `document_metadata.new_count: 13` vs actual count
-> of scenarios where `coverage_status == "NEW"` is 5.
->
-> **Remediation:** Set `existing_coverage_count: 8` and `new_count: 5` in `document_metadata`.
->
-> **Actionable:** true
-
-> **Finding D1-1c-002** [CRITICAL]
->
-> **Description:** `functional_count` and `regression_count` in `document_metadata` are inconsistent
-> with actual `test_type` field values. Metadata claims `functional_count: 11` and `regression_count: 2`,
-> but all 13 scenarios have `test_type: "functional"`. The STP Section III maps scenarios 12-13 as
-> "Regression" type, but the STD YAML does not reflect this.
->
-> **Evidence:** `document_metadata.regression_count: 2` but zero scenarios have `test_type: "regression"`.
-> `document_metadata.functional_count: 11` but 13 scenarios have `test_type: "functional"`.
-> STP Section III labels "Verify all 52 existing tests pass" and "Verify behaviors preserved" as
-> `Regression | P1`, but STD scenarios 12-13 use `test_type: "functional"`.
->
-> **Remediation:** Either (a) change scenarios 12-13 to `test_type: "regression"` to match STP
-> classification and keep metadata as-is, or (b) update metadata to `functional_count: 13`,
-> `regression_count: 0` to match actual YAML. Option (a) is recommended for STP-STD consistency.
->
-> **Actionable:** true
+| Metadata Field | Claimed | Actual | Status |
+|:---------------|:--------|:-------|:-------|
+| `total_scenarios` | 12 | 12 | MATCH |
+| `existing_coverage_count` | 7 | 7 | MATCH |
+| `new_count` | 5 | 5 | MATCH |
+| `functional_count` | 11 | 11 | MATCH |
+| `regression_count` | 1 | 1 | MATCH |
+| `p0_count` | 4 | 4 | MATCH |
+| `p1_count` | 8 | 8 | MATCH |
 
 #### 1d. STP Reference: PASS
 
@@ -114,47 +93,31 @@ All 4 P0 scenarios (S1-S2, S4-S5) are fully testable and reference existing shel
 
 ---
 
-### Dimension 2: STD YAML Structure (Weight: 20%) — Score: 90/100
+### Dimension 2: STD YAML Structure (Weight: 20%) — Score: 95/100
 
 #### 2a. Document-Level Structure: PASS
 
 - [x] `document_metadata` section exists with all required fields
-- [x] `document_metadata.std_version` is "2.1-enhanced"
+- [x] `document_metadata.std_version` is "2.0-auto" (appropriate for auto-detected Go stdlib project)
 - [x] `code_generation_config` section exists
-- [x] `code_generation_config.std_version` is "2.1-enhanced"
+- [x] `code_generation_config.std_version` is "2.0-auto" (consistent with document_metadata)
 - [x] `code_generation_config.package_name` is "scaffold"
 - [x] `common_preconditions` section exists
-- [x] `scenarios` array exists and is non-empty (13 scenarios)
+- [x] `scenarios` array exists and is non-empty (12 scenarios)
 
-#### 2b. Per-Scenario Required Fields: PASS (with notes)
+#### 2b. Per-Scenario Required Fields: PASS
 
 All scenarios have: `scenario_id`, `test_id`, `test_type`, `priority`, `requirement_id`, `coverage_status`.
 
 NEW scenarios (S7-S11) additionally have: `test_objective`, `test_steps`, `assertions`, `classification`, `test_data`, `specific_preconditions`, `dependencies`.
 
-EXISTING_COVERAGE scenarios (S1-S6, S12-S13) have `covered_by` blocks instead of test details — appropriate for pre-existing tests.
+EXISTING_COVERAGE scenarios (S1-S6, S12) have `covered_by` blocks instead of test details — appropriate for pre-existing tests. S12 additionally has `stp_scenarios_covered` documenting the N:1 STP mapping.
 
 Test IDs follow expected format `TS-GH84-NNN` consistently. No duplicates.
 
-> **Finding D2-a-001** [MINOR]
->
-> **Description:** STD claims `std_version: "2.1-enhanced"` but omits v2.1-specific fields (`tier`,
-> `patterns`, `variables`, `test_structure`, `code_structure`) across all scenarios. This is
-> structurally appropriate for an auto-detected Go stdlib `testing` project (these fields are
-> Ginkgo-specific), but creates a version claim mismatch.
->
-> **Evidence:** `std_version: "2.1-enhanced"` in both `document_metadata` and `code_generation_config`,
-> but no scenario has `tier`, `patterns`, `variables`, `test_structure`, or `code_structure` fields.
->
-> **Remediation:** Consider using `std_version: "2.0-auto"` or similar to distinguish auto-detected
-> project STDs from full v2.1-enhanced Ginkgo STDs. Alternatively, document the omitted fields
-> as N/A for this project type.
->
-> **Actionable:** true
-
 #### 2c. v2.1-Specific Checks: N/A
 
-No Tier 1 (Ginkgo) or Tier 2 (pytest) scenarios. Project uses Go stdlib `testing` framework. Ginkgo-specific checks (Ordered decorator, closure scope, ExpectWithOffset) do not apply.
+No Tier 1 (Ginkgo) or Tier 2 (pytest) scenarios. Project uses Go stdlib `testing` framework. Ginkgo-specific checks (Ordered decorator, closure scope, ExpectWithOffset) do not apply. Version identifier `2.0-auto` correctly signals this is an auto-detected project without Ginkgo-specific fields.
 
 ---
 
@@ -166,7 +129,7 @@ Score is assigned at 80/100 (baseline for projects without pattern infrastructur
 
 ---
 
-### Dimension 4: Test Step Quality (Weight: 15%) — Score: 80/100
+### Dimension 4: Test Step Quality (Weight: 15%) — Score: 90/100
 
 | Scenario | Setup | Execution | Cleanup | Assertions | Isolation | Error Paths | Status |
 |:---------|:------|:----------|:--------|:-----------|:----------|:------------|:-------|
@@ -175,8 +138,6 @@ Score is assigned at 80/100 (baseline for projects without pattern infrastructur
 | S9 | 1 | 2 | 0 | 2 | PASS | N/A | PASS |
 | S10 | 1 | 1 | 0 | 1 | PASS | N/A | PASS |
 | S11 | 1 | 1 | 0 | 1 | PASS | N/A | PASS |
-| S12 | - | - | - | - | PASS | - | WARN |
-| S13 | - | - | - | - | PASS | - | WARN |
 
 **Note on empty cleanup arrays:** All NEW scenarios have `cleanup: []`. This is acceptable because:
 - S7-S8 test shell function output (no resources created)
@@ -210,52 +171,13 @@ Workflow blocking requirement has good coverage:
 - Negative paths: S4-S5 (files allowed through)
 - Edge cases: S6 (empty input), S8 (command injection via crafted paths)
 
-> **Finding D4-b-001** [MAJOR]
->
-> **Description:** Scenarios 12 and 13 are redundant. Both reference the same test file
-> (`internal/scaffold/fullsend-repo/scripts/post-code-test.sh`) and cover substantially overlapping
-> behaviors. S12 covers "All 52 existing test functions" with behaviors "Title rewriting, PR body
-> assembly, no-op detection, stale branch cleanup, push retry, error comment, artifact stripping,
-> signed-off-by detection." S13 covers "Full post-code-test.sh suite execution" with behaviors
-> "All pipeline behaviors preserved: title rewriting, PR body assembly, no-op detection, push retry,
-> stale branch cleanup, artifact stripping, signed-off-by detection, error reporting."
->
-> **Evidence:** S12 `covered_by.test_function`: "All 52 existing test functions in post-code-test.sh"
-> vs S13 `covered_by.test_function`: "Full post-code-test.sh suite execution". Behavior lists differ
-> only in "error comment" (S12) vs "error reporting" (S13) — semantically identical.
->
-> **Remediation:** Merge S12 and S13 into a single regression scenario covering the full post-code
-> test suite. Update `total_scenarios` to 12 and adjust related counts. The merged scenario should
-> list all distinct behaviors being preserved.
->
-> **Actionable:** true
-
 ---
 
-### Dimension 4.5: STD Content Policy (Weight: 10%) — Score: 75/100
+### Dimension 4.5: STD Content Policy (Weight: 10%) — Score: 100/100
 
-#### 4.5a. Banned Content: FAIL
+#### 4.5a. Banned Content: PASS
 
-> **Finding D4.5-a-001** [MAJOR]
->
-> **Description:** `document_metadata.related_prs` contains PR URLs, which are implementation
-> artifacts that belong in the STP (Section I), not in the STD. The STD describes *what* to test,
-> not *what code changed*.
->
-> **Evidence:**
-> ```yaml
-> related_prs:
->   - repo: "guyoron1/fullsend"
->     pr_number: 84
->     url: "https://github.com/guyoron1/fullsend/pull/84"
->     title: "fix(post-code): block workflow file changes and correct token docs"
->     merged: false
-> ```
->
-> **Remediation:** Remove the `related_prs` section from `document_metadata`. PR references are
-> already tracked in the STP Section I developer handoff and in Jira.
->
-> **Actionable:** true
+No `related_prs` section in `document_metadata`. No PR URLs, branch names, commit SHAs, or code review links found in metadata. Clean.
 
 #### 4.5b. No Implementation Details in Stubs: PASS
 
@@ -309,34 +231,24 @@ No misclassified items found. Steps contain actions (not verifications). Expecte
 
 ---
 
-### Dimension 6: Code Generation Readiness (Weight: 5%) — Score: 90/100
+### Dimension 6: Code Generation Readiness (Weight: 5%) — Score: 95/100
 
 #### 6a. Variable Declarations: N/A
 
 No `variables` section (not applicable for Go stdlib `testing` framework).
 
-#### 6b. Import Completeness: PASS (with note)
+#### 6b. Import Completeness: PASS
 
 `code_generation_config.imports` includes:
-- Standard: `os`, `os/exec`, `strings`, `testing`
+- Standard: `os`, `os/exec`, `strings`, `testing` — each annotated with scenario usage
 - Framework: `testify/assert`, `testify/require`
 - Project: none
 
-> **Finding D6-b-001** [MINOR]
->
-> **Description:** `code_generation_config.imports.standard` includes `os`, `os/exec`, and `strings`
-> but no scenario's test steps or assertions explicitly require these imports. They may be needed
-> at implementation time but are speculative at the STD design phase.
->
-> **Evidence:** `imports.standard: ["os", "os/exec", "strings", "testing"]`. Only `testing` is used
-> by the stub files. `os/exec` is plausible for shell execution tests (S7, S8, S11) but not
-> referenced in test_steps.
->
-> **Remediation:** Either (a) remove speculative imports and let the code generator add them based
-> on actual implementation needs, or (b) add comments in `code_generation_config` explaining which
-> scenarios require each import. Option (b) preferred for documentation clarity.
->
-> **Actionable:** true
+Import annotations document which scenarios require each import:
+- `os` — S9, S10 (file read)
+- `os/exec` — S7, S8, S11 (shell execution)
+- `strings` — S7, S8, S9, S10 (output inspection)
+- `testing` — all scenarios
 
 #### 6c. Code Structure Validity: N/A
 
@@ -348,19 +260,46 @@ No timeout references in test steps. Shell function tests and file reads are nea
 
 ---
 
+## Remaining Minor Observations
+
+> **Observation D1-note-001** [MINOR]
+>
+> **Description:** STD has 12 scenarios covering 13 STP scenarios via N:1 mapping.
+> S12 merges two STP regression scenarios into one STD scenario. This is structurally
+> valid and well-documented via the `stp_scenarios_covered` field, but differs from the
+> typical 1:1 STD-to-STP mapping.
+>
+> **Evidence:** STP Section III has two regression rows: "Verify all 52 existing tests pass"
+> and "Verify behaviors preserved." STD S12 covers both with explicit documentation.
+>
+> **Impact:** None — the N:1 mapping is a design choice, not a gap.
+>
+> **Actionable:** false
+
+> **Observation D3-baseline-001** [MINOR]
+>
+> **Description:** Pattern matching dimension scores at baseline (80/100) because this
+> auto-detected project has no pattern library infrastructure. This is expected for
+> Go stdlib `testing` projects and does not indicate a quality issue.
+>
+> **Evidence:** `config_dir: null`, no `patterns` field in any scenario.
+>
+> **Impact:** None — pattern infrastructure is not applicable for this project type.
+>
+> **Actionable:** false
+
+---
+
 ## Recommendations
 
-1. **[CRITICAL]** Coverage status metadata counts are wrong (`existing_coverage_count: 0`, `new_count: 13`). — **Remediation:** Set `existing_coverage_count: 8` and `new_count: 5` to match actual `coverage_status` values in scenarios. — **Actionable:** yes
+No actionable recommendations. All previously identified findings (2 CRITICAL, 2 MAJOR, 2 MINOR) from the initial review have been addressed:
 
-2. **[CRITICAL]** Test type metadata counts are inconsistent with actual YAML (`regression_count: 2` but no scenarios have `test_type: "regression"`). — **Remediation:** Change S12-S13 to `test_type: "regression"` to match STP classification, keeping `functional_count: 11` and `regression_count: 2`. — **Actionable:** yes
-
-3. **[MAJOR]** `related_prs` in `document_metadata` contains PR URLs (implementation artifact). — **Remediation:** Remove `related_prs` section from STD YAML. — **Actionable:** yes
-
-4. **[MAJOR]** Scenarios 12 and 13 are redundant (same test file, overlapping behaviors). — **Remediation:** Merge into a single regression scenario. Update `total_scenarios` and counts accordingly. — **Actionable:** yes
-
-5. **[MINOR]** STD claims `std_version: "2.1-enhanced"` but omits Ginkgo-specific fields. — **Remediation:** Use a version identifier appropriate for auto-detected projects, or document field omissions. — **Actionable:** yes
-
-6. **[MINOR]** Speculative imports in `code_generation_config` not referenced by any scenario. — **Remediation:** Remove unused imports or annotate which scenarios need them. — **Actionable:** yes
+1. **[RESOLVED]** Coverage status metadata counts corrected (`existing_coverage_count: 7`, `new_count: 5`)
+2. **[RESOLVED]** Regression scenario test_type corrected (`test_type: "regression"` on S12)
+3. **[RESOLVED]** `related_prs` section removed from `document_metadata`
+4. **[RESOLVED]** Redundant scenarios S12/S13 merged into single S12 with comprehensive coverage
+5. **[RESOLVED]** `std_version` changed to `"2.0-auto"` (appropriate for auto-detected project)
+6. **[RESOLVED]** Import annotations added documenting scenario-level usage
 
 ---
 
@@ -368,14 +307,14 @@ No timeout references in test steps. Shell function tests and file reads are nea
 
 | Dimension | Weight | Score | Weighted |
 |:----------|:-------|:------|:---------|
-| 1. STP-STD Traceability | 30% | 65 | 19.5 |
-| 2. STD YAML Structure | 20% | 90 | 18.0 |
+| 1. STP-STD Traceability | 30% | 95 | 28.5 |
+| 2. STD YAML Structure | 20% | 95 | 19.0 |
 | 3. Pattern Matching | 10% | 80 | 8.0 |
-| 4. Test Step Quality | 15% | 80 | 12.0 |
-| 4.5. Content Policy | 10% | 75 | 7.5 |
+| 4. Test Step Quality | 15% | 90 | 13.5 |
+| 4.5. Content Policy | 10% | 100 | 10.0 |
 | 5. PSE Docstring Quality | 10% | 95 | 9.5 |
-| 6. Code Gen Readiness | 5% | 90 | 4.5 |
-| **Total** | **100%** | | **79.0** |
+| 6. Code Gen Readiness | 5% | 95 | 4.75 |
+| **Total** | **100%** | | **93.25** |
 
 ---
 
