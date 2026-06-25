@@ -4,6 +4,8 @@
 # frameworks to generate tests for. Replaces go-test-generator + python-test-generator.
 agent: agents/test-generator.md
 description: "Generate working test implementations from STD specifications"
+role: coder
+slug: qualityflow-test-generator
 model: opus
 image: ghcr.io/fullsend-ai/fullsend-code:latest
 policy: policies/qf-codegen.yaml
