@@ -37,6 +37,7 @@ func TestResolverMatchEntry(t *testing.T) {
 	t.Run("[test_id:TS-GH-1270-002] should not match partial substrings for match_entry", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
+		[NEGATIVE]
 		Preconditions:
 		    - Fixture .pre-commit-config.yaml with hook entry "uvx-other-tool"
 		    - Default registry containing uv match_entry loaded
@@ -53,6 +54,7 @@ func TestResolverMatchEntry(t *testing.T) {
 	t.Run("[test_id:TS-GH-1270-003] should return no match for unknown entry command", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
+		[NEGATIVE]
 		Preconditions:
 		    - Fixture .pre-commit-config.yaml with hook using unknown entry "some-unknown-tool run check"
 		    - Default registry loaded

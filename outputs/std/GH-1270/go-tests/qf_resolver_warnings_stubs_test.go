@@ -52,6 +52,7 @@ func TestResolverWarnings(t *testing.T) {
 	t.Run("[test_id:TS-GH-1270-008] should not emit warning for language:python hooks", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
+		[NEGATIVE]
 		Preconditions:
 		    - Fixture with language:python hook (auto-managed by pre-commit)
 

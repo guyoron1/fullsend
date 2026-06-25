@@ -42,11 +42,12 @@ func TestScriptIntegration(t *testing.T) {
 		    - pre-code.sh available
 
 		Steps:
-		    1. Run pre-code.sh and check PATH/GITHUB_PATH
+		    1. Run pre-code.sh in the temp directory context
 
 		Expected:
 		    - ~/.local/bin appears in PATH after script execution
 		    - ~/.local/bin written to GITHUB_PATH file
+		    - Installed tools are callable from the updated PATH
 		*/
 	})
 

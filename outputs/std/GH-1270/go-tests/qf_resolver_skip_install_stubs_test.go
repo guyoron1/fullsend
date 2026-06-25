@@ -20,6 +20,7 @@ func TestResolverSkipInstall(t *testing.T) {
 	t.Run("[test_id:TS-GH-1270-009] should recognize but not install tool with skip_install true", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
+		[NEGATIVE]
 		Preconditions:
 		    - Fixture with hook matching a skip_install:true registry entry
 		    - No warning expected for the skipped tool
@@ -36,6 +37,7 @@ func TestResolverSkipInstall(t *testing.T) {
 	t.Run("[test_id:TS-GH-1270-010] should omit skip_install tool from resolved manifest output", func(t *testing.T) {
 		t.Skip("Phase 1: Design only - awaiting implementation")
 		/*
+		[NEGATIVE]
 		Preconditions:
 		    - Resolver run end-to-end with skip_install tool present in registry
 

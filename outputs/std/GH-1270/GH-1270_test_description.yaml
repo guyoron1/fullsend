@@ -13,19 +13,13 @@ document_metadata:
     file: "outputs/stp/GH-1270/GH-1270_test_plan.md"
     version: "v1"
     sections_covered: "Section III - Requirements-to-Tests Mapping"
-  related_prs:
-    - repo: "fullsend-ai/fullsend"
-      pr_number: 1055
-      url: "https://github.com/fullsend-ai/fullsend/pull/1055"
-      title: "feat(scaffold): auto-detect and install pre-commit tool dependencies"
-      merged: true
   owning_sig: "scaffold"
   participating_sigs: []
   total_scenarios: 36
   tier_1_count: 0
   tier_2_count: 0
-  unit_count: 24
-  functional_count: 10
+  unit_count: 26
+  functional_count: 8
   e2e_count: 2
   p0_count: 2
   p1_count: 20

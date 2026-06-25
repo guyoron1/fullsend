@@ -29,11 +29,11 @@ func TestPipelineE2E(t *testing.T) {
 		Steps:
 		    1. Run resolver to produce manifest
 		    2. Run installer with manifest
-		    3. Verify tools are executable
 
 		Expected:
 		    - Manifest contains all three tools
-		    - All tools installed and executable
+		    - All tools installed successfully
+		    - All three tools are found on PATH and have execute permission
 		*/
 	})
 

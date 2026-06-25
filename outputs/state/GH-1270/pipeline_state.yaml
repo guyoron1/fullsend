@@ -42,9 +42,10 @@ phases:
     error: null
 
   std_review:
-    status: pending
-    verdict: null
-    findings: null
+    status: completed
+    verdict: APPROVED_WITH_FINDINGS
+    findings: {critical: 0, major: 0, minor: 1}
+    iterations: 1
     error: null
 
   go_codegen:
