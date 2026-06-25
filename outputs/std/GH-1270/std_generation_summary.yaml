@@ -1,0 +1,58 @@
+---
+status: success
+component: std-orchestrator
+jira_id: GH-1270
+phase: phase1
+stp_file: outputs/stp/GH-1270/GH-1270_test_plan.md
+output_dir: outputs/std/GH-1270/
+
+execution_summary:
+  total_stp_scenarios: 36
+  unit_scenarios: 24
+  functional_scenarios: 10
+  e2e_scenarios: 2
+  std_file_generated: "GH-1270_test_description.yaml"
+  scenarios_in_std: 36
+  test_strategy_mode: "auto"
+
+code_generation:
+  phase: phase1
+  go_tests:
+    file_count: 12
+    test_count: 36
+    status: "stubs_generated"
+    files:
+      - qf_resolver_matching_stubs_test.go
+      - qf_resolver_dedup_stubs_test.go
+      - qf_resolver_warnings_stubs_test.go
+      - qf_resolver_skip_install_stubs_test.go
+      - qf_installer_stubs_test.go
+      - qf_registry_merge_stubs_test.go
+      - qf_script_integration_stubs_test.go
+      - qf_checksum_verification_stubs_test.go
+      - qf_scaffold_registration_stubs_test.go
+      - qf_resolver_malformed_input_stubs_test.go
+      - qf_pipeline_e2e_stubs_test.go
+      - qf_shellcheck_py_stubs_test.go
+
+validation_results:
+  std_file:
+    file: GH-1270_test_description.yaml
+    status: valid
+    yaml_syntax: passed
+    required_sections: passed
+    scenarios_count: 36
+  stubs:
+    coverage: "36/36 (100%)"
+    unique_test_ids: 36
+    total_lines: 803
+
+errors: []
+warnings: []
+
+notes:
+  - "STD YAML generated as internal format (auto mode)"
+  - "Go test stubs use stdlib testing + testify (auto-detected)"
+  - "All stubs excluded from execution via t.Skip()"
+  - "No Python stubs generated (auto mode with Go language)"
+---
