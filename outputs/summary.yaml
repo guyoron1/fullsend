@@ -1,20 +1,35 @@
 status: success
 jira_id: GH-1270
-file_path: /sandbox/workspace/output/GH-1270_test_plan.md
-test_counts:
-  unit_tests: 22
-  functional: 10
-  e2e: 2
-  total: 34
-priority_counts:
-  P0: 3
-  P1: 19
-  P2: 12
-issue_source: github
-project_id: auto-detected
-lsp_analysis: true
-lsp_calls: 5
-pr_data:
-  - number: 1055
-    title: "feat(scaffold): auto-detect and install pre-commit tool dependencies"
-    state: MERGED
+verdict: APPROVED_WITH_FINDINGS
+confidence: LOW
+weighted_score: 82
+findings:
+  critical: 0
+  major: 5
+  major_list:
+    - D1-B-001: Non-standard STP structure (missing Requirements Review, Test Strategy, Test Environment, Entry/Exit Criteria sections)
+    - D1-L-001: Risks and Dependencies combined; Scope in non-standard location
+    - D2-COV-001: shellcheck-py documentation gap not covered by any test scenario
+    - D4-RISK-001: Stale dependency/risk entries (PR #1055 merged but items not updated)
+    - D6-STRAT-001: Missing Test Strategy classification section with checkbox items
+  minor: 4
+  minor_list:
+    - D1-G-001: Standard testing tools listed in Implementation Notes
+    - D1-K-001: Stale blocked label not acknowledged as resolved
+    - D2-COV-002: Go linter strategy (P3) partially covered
+    - D3-QUAL-001: Row 21 priority inflation (P0 should be P1)
+    - D5-SCOPE-001: Scope broader than issue without explicit justification
+    - D7-META-001: Missing Entry/Exit Criteria
+  actionable: 7
+  total: 9
+reviewed: outputs/stp/GH-1270/GH-1270_test_plan.md
+report: GH-1270_stp_review.md
+dimension_scores:
+  rule_compliance: 87
+  requirement_coverage: 78
+  scenario_quality: 92
+  risk_accuracy: 85
+  scope_boundary: 80
+  strategy: 55
+  metadata: 75
+scope_downgrade: false
