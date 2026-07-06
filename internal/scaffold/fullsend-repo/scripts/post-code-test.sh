@@ -694,6 +694,89 @@ run_signoff_test "signoff-variant-casing-passes" \
 signed-off-by: bot <bot@noreply.github.com>" \
   "pass"
 
+# ---------------------------------------------------------------------------
+# Test helper — reimplements the companion script fallback resolution logic
+# used by post-fix.sh and post-prioritize.sh. When a post-script runs from
+# a content-addressed cache path (sha256/<hash>/content), companion files
+# do not exist at SCRIPT_DIR. The fallback resolves to ${FULLSEND_DIR}/scripts/.
+# ---------------------------------------------------------------------------
+resolve_companion() {
+  local script_dir="$1"
+  local companion_file="$2"
+  local fullsend_dir="$3"
+
+  local resolved="${script_dir}/${companion_file}"
+  if [ ! -f "${resolved}" ]; then
+    local fallback_dir="${fullsend_dir:-.}/scripts"
+    resolved="${fallback_dir}/${companion_file}"
+  fi
+  echo "${resolved}"
+}
+
+run_companion_test() {
+  local test_name="$1"
+  local script_dir="$2"
+  local companion_file="$3"
+  local fullsend_dir="$4"
+  local expected_suffix="$5"  # expected ending of the resolved path
+
+  local actual
+  actual="$(resolve_companion "${script_dir}" "${companion_file}" "${fullsend_dir}")"
+
+  if [[ "${actual}" != *"${expected_suffix}" ]]; then
+    echo "FAIL: ${test_name}"
+    echo "  script_dir:      '${script_dir}'"
+    echo "  companion_file:  '${companion_file}'"
+    echo "  fullsend_dir:    '${fullsend_dir}'"
+    echo "  expected suffix: '${expected_suffix}'"
+    echo "  actual:          '${actual}'"
+    FAILURES=$((FAILURES + 1))
+    return
+  fi
+
+  echo "PASS: ${test_name}"
+}
+
+# Set up temp dirs for companion resolution tests
+COMPANION_TMPDIR="$(mktemp -d)"
+trap 'rm -rf "${COMPANION_TMPDIR}"' EXIT
+
+# Create a workspace scripts dir with a companion file
+WORKSPACE_DIR="${COMPANION_TMPDIR}/workspace"
+mkdir -p "${WORKSPACE_DIR}/scripts"
+touch "${WORKSPACE_DIR}/scripts/process-fix-result.py"
+touch "${WORKSPACE_DIR}/scripts/lib/github-api-csma.sh" 2>/dev/null || {
+  mkdir -p "${WORKSPACE_DIR}/scripts/lib"
+  touch "${WORKSPACE_DIR}/scripts/lib/github-api-csma.sh"
+}
+
+# Create a co-located scripts dir (simulates local resolution)
+LOCAL_DIR="${COMPANION_TMPDIR}/local-scripts"
+mkdir -p "${LOCAL_DIR}"
+touch "${LOCAL_DIR}/process-fix-result.py"
+
+# Create a cache dir without companion files (simulates URL cache)
+CACHE_DIR="${COMPANION_TMPDIR}/cache/sha256/abc123/content"
+mkdir -p "$(dirname "${CACHE_DIR}")"
+touch "${CACHE_DIR}"  # the script itself, no companions
+
+# --- Companion resolution test cases ---
+
+# Co-located companion exists → use SCRIPT_DIR (no fallback needed)
+run_companion_test "companion-colocated-no-fallback" \
+  "${LOCAL_DIR}" "process-fix-result.py" "${WORKSPACE_DIR}" \
+  "${LOCAL_DIR}/process-fix-result.py"
+
+# Companion missing at cache path → fallback to FULLSEND_DIR/scripts/
+run_companion_test "companion-cache-fallback" \
+  "$(dirname "${CACHE_DIR}")" "process-fix-result.py" "${WORKSPACE_DIR}" \
+  "${WORKSPACE_DIR}/scripts/process-fix-result.py"
+
+# FULLSEND_DIR unset → fallback to ./scripts
+run_companion_test "companion-no-fullsend-dir" \
+  "$(dirname "${CACHE_DIR}")" "process-fix-result.py" "" \
+  "./scripts/process-fix-result.py"
+
 # --- Summary ---
 
 echo ""

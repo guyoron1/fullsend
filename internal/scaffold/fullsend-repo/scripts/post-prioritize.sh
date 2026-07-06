@@ -12,7 +12,14 @@
 
 set -euo pipefail
 
+# When the harness resolves this script from a URL-based cache, it lands at
+# a content-addressed path (sha256/<hash>/content) where companion files do
+# not exist. Fall back to ${FULLSEND_DIR}/scripts/ which is populated by
+# the "Prepare workspace" step and always has companions co-located.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ ! -f "${SCRIPT_DIR}/lib/github-api-csma.sh" ]; then
+  SCRIPT_DIR="${FULLSEND_DIR:-.}/scripts"
+fi
 # shellcheck source=lib/github-api-csma.sh
 source "${SCRIPT_DIR}/lib/github-api-csma.sh"
 

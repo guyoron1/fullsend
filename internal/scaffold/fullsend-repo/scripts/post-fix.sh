@@ -301,8 +301,16 @@ fi
 export GH_TOKEN="${PUSH_TOKEN}"
 
 # Locate process-fix-result.py relative to this script.
+# When the harness resolves this script from a URL-based cache, it lands at
+# a content-addressed path (sha256/<hash>/content) where companion files do
+# not exist. Fall back to ${FULLSEND_DIR}/scripts/ which is populated by
+# the "Prepare workspace" step and always has companions co-located.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROCESS_SCRIPT="${SCRIPT_DIR}/process-fix-result.py"
+if [ ! -f "${PROCESS_SCRIPT}" ]; then
+  SCRIPT_DIR="${FULLSEND_DIR:-.}/scripts"
+  PROCESS_SCRIPT="${SCRIPT_DIR}/process-fix-result.py"
+fi
 
 # Find fix-result.json in the output directory.
 # RUN_DIR is the original cwd (runDir = <outputBase>/<sandboxName>), saved
