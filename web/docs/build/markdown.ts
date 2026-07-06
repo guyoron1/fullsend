@@ -18,8 +18,21 @@ import { filePathToRouteKey, type DocsFilePath } from "./paths";
 
 const SLUG_FRAGMENT_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
-/** Derive display title: first heading text, else route last segment. */
-export function extractTitle(mdast: MdastRoot, routeKey: string): string {
+/** Derive display title: frontmatter `title:` first, then first H1,
+ *  else route last segment. */
+export function extractTitle(
+  mdast: MdastRoot,
+  routeKey: string,
+  frontmatter?: Record<string, unknown>,
+): string {
+  if (
+    frontmatter?.title != null &&
+    typeof frontmatter.title === "string" &&
+    frontmatter.title.trim() !== ""
+  ) {
+    return frontmatter.title.trim();
+  }
+
   let heading: string | null = null;
   visit(mdast, "heading", (node) => {
     if (heading === null && node.depth === 1) {
@@ -203,6 +216,6 @@ export async function markdownToHtml(
   const file = await processor.process(content);
   const html = String(file);
   const mdast = unified().use(remarkParse).use(remarkGfm).parse(content) as MdastRoot;
-  const title = extractTitle(mdast, routeKey);
+  const title = extractTitle(mdast, routeKey, frontmatter);
   return { title, html, frontmatter };
 }

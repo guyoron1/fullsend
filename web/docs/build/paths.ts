@@ -8,6 +8,16 @@ export type DocPathFilter = (repoRelativeMd: DocsFilePath) => boolean;
 
 const defaultFilter: DocPathFilter = () => true;
 
+/** Files that are repo infrastructure, not documentation content. */
+const EXCLUDE_FILES = new Set([
+  "AGENTS.md",
+  "CLAUDE.md",
+  "CONTRIBUTING.md",
+]);
+
+/** Directories to skip entirely during traversal. */
+const EXCLUDE_DIRS = new Set([".github", "0000-experiment-template"]);
+
 function toPosix(p: string): string {
   return p.split(path.sep).join("/");
 }
@@ -25,9 +35,12 @@ export function listDocMarkdownFiles(
 
   function walk(dir: string) {
     for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
-      const abs = path.join(dir, ent.name);
-      if (ent.isDirectory()) walk(abs);
-      else if (ent.isFile() && ent.name.endsWith(".md")) {
+      if (ent.isDirectory()) {
+        if (EXCLUDE_DIRS.has(ent.name)) continue;
+        walk(path.join(dir, ent.name));
+      } else if (ent.isFile() && ent.name.endsWith(".md")) {
+        if (EXCLUDE_FILES.has(ent.name)) continue;
+        const abs = path.join(dir, ent.name);
         const rel = toPosix(path.relative(repoRoot, abs));
         if (!rel.startsWith("docs/")) continue;
         if (filter(rel as DocsFilePath)) out.push(rel as DocsFilePath);

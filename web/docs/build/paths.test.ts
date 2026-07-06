@@ -44,4 +44,43 @@ describe("paths", () => {
     expect(filtered).toContain("docs/a/x.md");
     expect(filtered).not.toContain("docs/skip.md");
   });
+
+  it("listDocMarkdownFiles excludes non-content files", () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "fullsend-docs-"));
+    fs.mkdirSync(path.join(tmp, "docs", "guides"), { recursive: true });
+    fs.writeFileSync(path.join(tmp, "docs", "guides", "intro.md"), "# Intro\n");
+    fs.writeFileSync(path.join(tmp, "docs", "AGENTS.md"), "# Agents\n");
+    fs.writeFileSync(path.join(tmp, "docs", "CLAUDE.md"), "# Claude\n");
+    fs.writeFileSync(path.join(tmp, "docs", "CONTRIBUTING.md"), "# Contrib\n");
+
+    const result = listDocMarkdownFiles(tmp);
+    expect(result).toContain("docs/guides/intro.md");
+    expect(result).not.toContain("docs/AGENTS.md");
+    expect(result).not.toContain("docs/CLAUDE.md");
+    expect(result).not.toContain("docs/CONTRIBUTING.md");
+  });
+
+  it("listDocMarkdownFiles excludes template directories", () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "fullsend-docs-"));
+    fs.mkdirSync(path.join(tmp, "docs", "experiments", "0000-experiment-template"), {
+      recursive: true,
+    });
+    fs.mkdirSync(path.join(tmp, "docs", "experiments", "0001-real"), {
+      recursive: true,
+    });
+    fs.writeFileSync(
+      path.join(tmp, "docs", "experiments", "0000-experiment-template", "README.md"),
+      "# Template\n",
+    );
+    fs.writeFileSync(
+      path.join(tmp, "docs", "experiments", "0001-real", "README.md"),
+      "# Real\n",
+    );
+
+    const result = listDocMarkdownFiles(tmp);
+    expect(result).toContain("docs/experiments/0001-real/README.md");
+    expect(result).not.toContain(
+      "docs/experiments/0000-experiment-template/README.md",
+    );
+  });
 });

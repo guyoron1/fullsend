@@ -106,12 +106,13 @@ function manifestMetaForFile(
   f: DocsFilePath,
 ): { routeKey: string; title: string; segments: string[] } {
   const routeKey = filePathToRouteKey(f);
-  const { content } = matter(md);
+  const { data, content } = matter(md);
+  const frontmatter = data as Record<string, unknown>;
   const mdast = unified()
     .use(remarkParse)
     .use(remarkGfm)
     .parse(content) as MdastRoot;
-  const title = extractTitle(mdast, routeKey);
+  const title = extractTitle(mdast, routeKey, frontmatter);
   return {
     routeKey,
     title,

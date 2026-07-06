@@ -1,12 +1,48 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { markdownToHtml } from "./markdown";
+import { unified } from "unified";
+import remarkParse from "remark-parse";
+import remarkGfm from "remark-gfm";
+import type { Root as MdastRoot } from "mdast";
+import { markdownToHtml, extractTitle } from "./markdown";
 
 const repoRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "../../..",
 );
+
+describe("extractTitle", () => {
+  function parse(md: string): MdastRoot {
+    return unified().use(remarkParse).use(remarkGfm).parse(md) as MdastRoot;
+  }
+
+  it("prefers frontmatter title over H1", () => {
+    const mdast = parse("# Heading One\n");
+    const title = extractTitle(mdast, "guides/README", {
+      title: "Frontmatter Title",
+    });
+    expect(title).toBe("Frontmatter Title");
+  });
+
+  it("falls back to H1 when no frontmatter title", () => {
+    const mdast = parse("# Heading One\n");
+    const title = extractTitle(mdast, "guides/README");
+    expect(title).toBe("Heading One");
+  });
+
+  it("falls back to H1 when frontmatter title is empty", () => {
+    const mdast = parse("# Heading One\n");
+    const title = extractTitle(mdast, "guides/README", { title: "  " });
+    expect(title).toBe("Heading One");
+  });
+
+  it("falls back to route key when no frontmatter or H1", () => {
+    const mdast = parse("some body text\n");
+    const title = extractTitle(mdast, "guides/getting-started/install");
+    expect(title).toBe("install");
+  });
+});
 
 describe("markdownToHtml", () => {
   it("renders GFM table", async () => {
@@ -32,6 +68,12 @@ describe("markdownToHtml", () => {
     expect(frontmatter.title).toBe("Hello");
     expect(html).toContain("Body");
     expect(html).not.toContain("Hello");
+  });
+
+  it("uses frontmatter title as display title", async () => {
+    const md = "---\ntitle: Sidebar Title\n---\n\n# Heading Title\n";
+    const { title } = await markdownToHtml(md, "docs/x.md", repoRoot);
+    expect(title).toBe("Sidebar Title");
   });
 
   it("rewrites link with heading fragment to :: slug form", async () => {
