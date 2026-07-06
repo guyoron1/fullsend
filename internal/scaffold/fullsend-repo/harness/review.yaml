@@ -28,6 +28,9 @@ host_files:
   - src: ${PRIOR_REVIEW_FILE}
     dest: /sandbox/workspace/prior-review.txt
     optional: true
+  - src: env/z-costwise-proxy.env
+    dest: /sandbox/workspace/.env.d/z-costwise-proxy.env
+    expand: true
 
 pre_script: scripts/pre-review.sh
 post_script: scripts/post-review.sh

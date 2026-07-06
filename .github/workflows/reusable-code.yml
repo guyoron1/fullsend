@@ -299,6 +299,7 @@ jobs:
 
           cat > "${GITHUB_WORKSPACE}/output/costwise/metadata.json" << EOF
           {
+            "agent": "code",
             "routing_enabled": "${COSTWISE_ROUTING:-false}",
             "run_id": "${GITHUB_RUN_ID}",
             "run_url": "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"

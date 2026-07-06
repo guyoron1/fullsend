@@ -20,6 +20,9 @@ host_files:
   - src: env/prioritize.env
     dest: /sandbox/workspace/.env.d/prioritize.env
     expand: true
+  - src: env/z-costwise-proxy.env
+    dest: /sandbox/workspace/.env.d/z-costwise-proxy.env
+    expand: true
 
 pre_script: scripts/pre-prioritize.sh
 post_script: scripts/post-prioritize.sh

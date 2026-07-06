@@ -20,6 +20,9 @@ host_files:
   - src: env/triage.env
     dest: /sandbox/workspace/.env.d/triage.env
     expand: true
+  - src: env/z-costwise-proxy.env
+    dest: /sandbox/workspace/.env.d/z-costwise-proxy.env
+    expand: true
 
 skills:
   - skills/issue-labels
