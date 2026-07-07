@@ -45,3 +45,8 @@ forge:
       GH_TOKEN: ${GH_TOKEN}
       ORG: ${ORG}
       PROJECT_NUMBER: ${PROJECT_NUMBER}
+    env:
+      sandbox:
+        CLAUDE_CODE_USE_VERTEX: "0"
+        ANTHROPIC_BASE_URL: "${COSTWISE_PROXY_URL}"
+        ANTHROPIC_API_KEY: "sk-ant-api03-costwise-proxy-passthrough"

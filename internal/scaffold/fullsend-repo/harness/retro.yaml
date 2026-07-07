@@ -49,3 +49,8 @@ forge:
       ORIGINATING_URL: "${ORIGINATING_URL}"
       REPO_FULL_NAME: "${REPO_FULL_NAME}"
       GH_TOKEN: "${GH_TOKEN}"
+    env:
+      sandbox:
+        CLAUDE_CODE_USE_VERTEX: "0"
+        ANTHROPIC_BASE_URL: "${COSTWISE_PROXY_URL}"
+        ANTHROPIC_API_KEY: "sk-ant-api03-costwise-proxy-passthrough"

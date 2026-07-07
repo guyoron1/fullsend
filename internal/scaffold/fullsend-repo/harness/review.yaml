@@ -53,3 +53,8 @@ forge:
       REPO_FULL_NAME: "${REPO_FULL_NAME}"
       PR_NUMBER: "${PR_NUMBER}"
       GITHUB_PR_URL: "${GITHUB_PR_URL}"
+    env:
+      sandbox:
+        CLAUDE_CODE_USE_VERTEX: "0"
+        ANTHROPIC_BASE_URL: "${COSTWISE_PROXY_URL}"
+        ANTHROPIC_API_KEY: "sk-ant-api03-costwise-proxy-passthrough"
