@@ -40,6 +40,7 @@ This is not a product spec. It's an evolving exploration of a hard problem space
   - [Cross-Run Memory](docs/problems/cross-run-memory.md) — How agents learn from prior run outcomes without violating the ephemeral sandbox invariant
 - **[docs/problems/applied/](docs/problems/applied/)** — Organization-specific considerations for downstream consumers:
   - [konflux-ci](docs/problems/applied/konflux-ci/) — Kubernetes-native CI/CD platform (the original proving ground)
+  - [quay](docs/problems/applied/quay/) — Open-source container registry (autonomy readiness evidence tracking)
 - **[docs/plans/](docs/plans/)** — Implementation plans for accepted or in-progress designs:
   - [Universal Harness Access](docs/plans/universal-harness-access.md) — Making harnesses and agents universally accessible via URLs and paths, enabling community sharing and composability
   - [Universal Harness Access — Phase 1 Implementation](docs/plans/universal-harness-access-phase1.md) — Phased PR breakdown for ADR-0038 Phase 1 (MVP)

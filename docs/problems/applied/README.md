@@ -5,6 +5,7 @@ This directory contains organization-specific considerations for applying fullse
 ## Current consumers
 
 - **[konflux-ci](konflux-ci/)** — Kubernetes-native CI/CD platform. The original proving ground for fullsend.
+- **[quay](quay/)** — Open-source container registry. Tracking autonomy readiness evidence for CI-config-only changes.
 
 ## Adding a new consumer
 
