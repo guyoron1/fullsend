@@ -292,6 +292,7 @@ jobs:
           GITHUB_ISSUE_URL: ${{ fromJSON(inputs.event_payload).issue.html_url }}
           ISSUE_NUMBER: ${{ fromJSON(inputs.event_payload).issue.number }}
           REPO_FULL_NAME: ${{ inputs.source_repo }}
+          CODE_ALLOWED_TARGET_BRANCHES: ''
           PUSH_TOKEN: ${{ steps.app-token.outputs.token }}
           PUSH_TOKEN_SOURCE: github-app
           TARGET_BRANCH: main
