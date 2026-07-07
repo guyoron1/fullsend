@@ -210,6 +210,36 @@ Konflux-ci is an open-source project. Contributors participate for reasons beyon
 
 The relationship between governance of the agentic system and governance of Konflux itself is an open question: are they the same body, or separate?
 
+## Autonomy readiness evidence
+
+Evidence from production PRs where the review agent's analysis matched or exceeded human review quality. These data points inform decisions about where and when to relax human review requirements for specific change classes. Tracked upstream in [fullsend-ai/fullsend#3068](https://github.com/fullsend-ai/fullsend/issues/3068).
+
+### Renovate bot PRs (image digests and patch bumps)
+
+For Renovate-authored PRs in konflux-ci repos that only change container image digests or patch versions, the review agent has consistently matched or exceeded human review quality. The pattern across multiple PRs and repos:
+
+- The review agent assesses correctness (pure image reference updates, no logic changes), security (same-org images pinned by SHA256), scope (changes match Renovate group config), and CODEOWNERS compliance.
+- The human reviewer approves hours to days later with an empty review body, adding zero findings or additional context.
+- The merge latency between agent approval and human merge represents overhead with no quality contribution.
+
+| PR | Repo | Change | Agent review | Human review | Latency gap |
+|---|---|---|---|---|---|
+| [#3667](https://github.com/konflux-ci/build-definitions/pull/3667) | build-definitions | 2 image refs (digest rotation + patch bump) across 2 Tekton task YAMLs | Approved with detailed analysis; re-triggered correctly after force-push | Empty-body approval (eqrx) | ~4.5 hours |
+| [#152–#155](https://github.com/konflux-ci/crossplane-control-plane/pull/152) | crossplane-control-plane | 4 single-line digest bumps (quay.io/konflux-ci) | Approved each in 6–8 min; also caught broken double-digest in earlier PR #133 | Batch empty-body approval (amisstea) | ~6.6 days |
+
+**Discrimination capability:** The review agent has demonstrated it can distinguish safe from broken digest bumps — on crossplane-control-plane PR #133, it correctly flagged a malformed double-digest reference caused by a Renovate regex misconfiguration.
+
+**Candidate for increased autonomy:** For Renovate PRs that (a) only change image digests or patch versions, (b) use same-org images pinned by SHA256, and (c) pass CI, the evidence supports the review agent's approval being sufficient to trigger merge without waiting for human review. See [autonomy-spectrum.md](../../autonomy-spectrum.md) for the graduation criteria framework.
+
+### Other change classes with evidence
+
+| PR | Repo | Change class | Notes |
+|---|---|---|---|
+| [#94](https://github.com/konflux-ci/coverport/pull/94) | coverport | Config-only (codecov.yml) | Agent caught undocumented policy change (patch target auto→80%) that human missed; human approved 33h later with zero comments |
+| [#7935](https://github.com/konflux-ci/konflux-ci/pull/7935) | konflux-ci | Bot companion manifest PR | Agent covered correctness (SHA consistency), security (no RBAC changes), scope, and conventions; human approved 6 min later with empty body |
+
+These change classes need more data points before recommending autonomy changes.
+
 ## Experiments
 
 The experiments in this repo were originally conducted against the konflux-ci codebase:
