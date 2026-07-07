@@ -224,17 +224,36 @@ jobs:
           fi
 
           HOST_IP=$(hostname -I | awk '{print $1}')
-          COSTWISE_PROXY_URL="http://${HOST_IP}:8788/v1"
+          COSTWISE_PROXY_URL="http://${HOST_IP}:8788"
           echo "COSTWISE_PROXY_URL=${COSTWISE_PROXY_URL}" >> "${GITHUB_ENV}"
           echo "::notice::Costwise proxy URL for sandbox: ${COSTWISE_PROXY_URL}"
 
-          # Write sandbox env file with resolved URL (not variable reference)
-          cat > env/z-costwise-proxy.env << ENVEOF
+          cat >> env/gcp-vertex.env << ENVEOF
           export CLAUDE_CODE_USE_VERTEX=0
           export ANTHROPIC_BASE_URL=${COSTWISE_PROXY_URL}
           export ANTHROPIC_API_KEY=sk-ant-api03-costwise-proxy-passthrough
           ENVEOF
-          echo "::notice::Wrote env/z-costwise-proxy.env with ANTHROPIC_BASE_URL=${COSTWISE_PROXY_URL}"
+          echo "::notice::Appended costwise overrides to env/gcp-vertex.env (ANTHROPIC_BASE_URL=${COSTWISE_PROXY_URL})"
+
+          for policy_file in policies/*.yaml; do
+            if ! grep -q 'costwise_proxy' "${policy_file}" 2>/dev/null; then
+              cat >> "${policy_file}" << 'POLICYEOF'
+
+  costwise_proxy:
+    name: costwise-proxy
+    endpoints:
+      - host: "*"
+        port: 8788
+        protocol: rest
+        enforcement: enforce
+        access: read-write
+    binaries:
+      - path: "**/claude"
+      - path: "**/node"
+POLICYEOF
+              echo "::notice::Added costwise_proxy network policy to ${policy_file}"
+            fi
+          done
 
       - name: Resolve bot identity
         env:
