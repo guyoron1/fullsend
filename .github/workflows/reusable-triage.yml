@@ -233,12 +233,12 @@ jobs:
           # sandbox allows outbound connections to the proxy on port 8788.
           for policy_file in policies/*.yaml; do
             if ! grep -q 'costwise_proxy' "${policy_file}" 2>/dev/null; then
-              cat >> "${policy_file}" << 'POLICYEOF'
+              cat >> "${policy_file}" << POLICYEOF
 
             costwise_proxy:
               name: costwise-proxy
               endpoints:
-                - host: "*"
+                - host: "${HOST_IP}"
                   port: 8788
                   protocol: rest
                   enforcement: enforce
