@@ -1,0 +1,4 @@
+version: "1"
+allowed_remote_resources:
+    - "https://raw.githubusercontent.com/fullsend-ai/agents/"
+    - "https://raw.githubusercontent.com/fullsend-ai/fullsend/"
