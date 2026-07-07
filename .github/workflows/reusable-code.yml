@@ -177,6 +177,7 @@ jobs:
           enabled = true
           project_id = "${ANTHROPIC_VERTEX_PROJECT_ID}"
           region = "us-east5"
+          model_map = { "claude-opus-4-8" = "claude-opus-4-6", "claude-opus-4-7" = "claude-opus-4-6" }
 
           [costwise.routing]
           enabled = ${ROUTING_ENABLED}
