@@ -229,18 +229,18 @@ jobs:
             if ! grep -q 'costwise_proxy' "${policy_file}" 2>/dev/null; then
               cat >> "${policy_file}" << 'POLICYEOF'
 
-  costwise_proxy:
-    name: costwise-proxy
-    endpoints:
-      - host: "*"
-        port: 8788
-        protocol: rest
-        enforcement: enforce
-        access: read-write
-    binaries:
-      - path: "**/claude"
-      - path: "**/node"
-POLICYEOF
+            costwise_proxy:
+              name: costwise-proxy
+              endpoints:
+                - host: "*"
+                  port: 8788
+                  protocol: rest
+                  enforcement: enforce
+                  access: read-write
+              binaries:
+                - path: "**/claude"
+                - path: "**/node"
+          POLICYEOF
               echo "::notice::Added costwise_proxy network policy to ${policy_file}"
             fi
           done
