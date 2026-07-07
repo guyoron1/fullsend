@@ -406,7 +406,14 @@ jobs:
           ponytail_enabled = false
           TOML
 
-          costwise proxy --host 0.0.0.0 --port 8788 > "${RUNNER_TEMP}/costwise-proxy.log" 2>&1 &
+          RUNNER_GCP_CREDS=$(ls "${GITHUB_WORKSPACE}"/gha-creds-*.json 2>/dev/null | head -1)
+          if [[ -z "${RUNNER_GCP_CREDS}" ]]; then
+            echo "::error::Original GCP credential file not found"
+            exit 1
+          fi
+
+          GOOGLE_APPLICATION_CREDENTIALS="${RUNNER_GCP_CREDS}" \
+            costwise proxy --host 0.0.0.0 --port 8788 > "${RUNNER_TEMP}/costwise-proxy.log" 2>&1 &
           COSTWISE_PID=$!
           echo "COSTWISE_PID=${COSTWISE_PID}" >> "${GITHUB_ENV}"
           echo "COSTWISE_DB=${COSTWISE_DB}" >> "${GITHUB_ENV}"
