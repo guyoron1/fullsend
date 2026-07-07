@@ -176,7 +176,7 @@ jobs:
           [costwise.proxy.vertex]
           enabled = true
           project_id = "${ANTHROPIC_VERTEX_PROJECT_ID}"
-          region = "${CLOUD_ML_REGION}"
+          region = "us-east5"
 
           [costwise.routing]
           enabled = ${ROUTING_ENABLED}
