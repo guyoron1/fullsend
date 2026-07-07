@@ -250,10 +250,76 @@ dimensions are relevant:
 - Repository has documentation files → `docs-currency`
 - Always included → `style-conventions`
 
+#### 3b-1. Config-only fast-path
+
+Before applying the standard dispatch rules in 3c, check whether the
+PR qualifies for a config-only fast-path. This reduces cost and time
+for PRs that modify only known config file types, where correctness
+and style-conventions sub-agents consistently return zero findings.
+
+**Qualification criteria — ALL must be true:**
+
+1. **Every** changed file matches a known config pattern (see list
+   below).
+2. The PR does not modify any production code, test files, or
+   documentation with correctness surface area.
+3. No file has an unrecognized extension that could be code in
+   disguise (e.g., a `.conf` file containing shell scripts).
+
+**Known config file patterns:**
+
+- CI/CD config: `*.yml`, `*.yaml` in `.github/workflows/`,
+  `.github/`, or repo root (e.g., `codecov.yml`,
+  `.pre-commit-config.yaml`)
+- Linter/tool config: `.golangci.yml`, `.eslintrc*`, `.prettierrc*`,
+  `ruff.toml`, `pyproject.toml` (when only `[tool.*]` sections
+  change), `.editorconfig`
+- Dependency manager config: `renovate.json`, `renovate.json5`,
+  `.renovaterc`, `dependabot.yml`
+- Repository metadata: `.gitignore`, `.gitattributes`,
+  `.mailmap`
+- `CODEOWNERS` — qualifies for fast-path but also triggers
+  `security` (see below)
+
+**Exclusions — these do NOT qualify even if they match a pattern:**
+
+- `Makefile`, `Dockerfile`, `Containerfile` — contain executable
+  logic
+- `*.toml` or `*.yaml` files that contain inline scripts, shell
+  commands, or code blocks (inspect the diff)
+- Any file where the diff modifies string literals that could be
+  code (e.g., embedded SQL, shell commands in CI steps)
+- Mixed PRs: if **any** changed file does not match a config
+  pattern, the fast-path does not apply — fall through to 3c
+
+**Fast-path dispatch:**
+
+When the PR qualifies:
+
+- **Always dispatch:** `intent-coherence` — verifies the change
+  matches the stated intent (scope-creep, missing-authorization).
+  This is the dimension that consistently produces useful findings
+  on config changes.
+- **Conditionally dispatch:** `security` — when the config touches
+  auth, permissions, or access control (e.g., `CODEOWNERS`,
+  workflow permissions in `.github/workflows/`, RBAC configs).
+- **Skip:** `correctness`, `style-conventions`, `docs-currency`,
+  `cross-repo-contracts`. These dimensions have no useful findings
+  on non-code config files.
+- **Skip challenger:** When only one or two dimension sub-agents
+  run, the challenger adds cost without value — there is nothing
+  to cross-reference or deduplicate. Skip the challenger pass
+  (step 6d) entirely.
+
+If the fast-path applies, proceed directly to step 3d with the
+reduced sub-agent set. The rest of step 3c is skipped.
+
 #### 3c. Select sub-agents
 
 Based on the domain classification, select sub-agents for dispatch.
-All selected sub-agents run in parallel.
+All selected sub-agents run in parallel. If the config-only
+fast-path (step 3b-1) applied, this step was skipped — proceed to
+3d.
 
 **Dispatch sub-agents based on the classification — typically 3-6.**
 The orchestrator should auto-select which sub-agents are relevant for
@@ -277,6 +343,8 @@ complex PR that triggers all conditions legitimately needs all 6.
 
 | PR type                        | Agents dispatched                                                                |
 |--------------------------------|----------------------------------------------------------------------------------|
+| Config-only (codecov.yml)      | intent-coherence                                                                 |
+| Config-only (CODEOWNERS)       | intent-coherence, security                                                       |
 | Implementation plan            | correctness, style-conventions, intent-coherence, docs-currency                  |
 | Typo fix in README             | correctness, style-conventions                                                   |
 | Bug fix in auth middleware     | correctness, security, style-conventions, intent-coherence                       |
@@ -450,6 +518,13 @@ keep both** — they serve different remediation audiences. A logic error
 and an auth bypass on the same line are two distinct findings.
 
 #### 6d. Challenger pass (dedicated sub-agent)
+
+**Skip condition:** If the config-only fast-path (step 3b-1) was
+used and only one or two dimension sub-agents ran, skip the
+challenger entirely. There is nothing to cross-reference or
+deduplicate, and the additional opus invocation adds cost without
+value. Proceed directly to step 6e with the merged finding set
+from steps 6a–6c.
 
 After steps 6a–6c produce a merged finding set, dispatch the
 `challenger` sub-agent to adversarially challenge the findings with
