@@ -93,6 +93,36 @@ This addresses the gap where the binary model can miss risky changes that don't 
 - The dimensions listed above are examples, not necessarily exhaustive. Different organizations might weight or define them differently.
 - Could produce false escalations (agent is uncertain, so it escalates conservatively) or false confidence (agent misjudges blast radius). Shadow mode data would help calibrate.
 
+## Evidence-driven autonomy classes
+
+The binary per-repo model and per-decision escalation dimensions above describe autonomy in broad strokes. In practice, specific categories of agent action accumulate evidence that they can be trusted at a higher autonomy level before the repo as a whole graduates. These are **autonomy classes** — narrow, well-defined categories of agent behavior where empirical evidence supports granting the agent more authority.
+
+Each autonomy class is defined by:
+
+1. **Qualifying criteria** — what properties a change must have to fall into this class
+2. **Evidence** — observed cases where the agent outperformed or matched human review
+3. **Validation plan** — how to confirm the pattern holds before changing autonomy level
+4. **Proposed autonomy change** — what the agent would do differently once validated
+5. **Boundary conditions** — what the agent should *not* do even within this class
+
+Autonomy classes are distinct from repo-level graduation. A repo that is not autonomous can still have specific autonomy classes where the review agent operates at a higher level — as long as the class boundaries are narrow enough that false positives are acceptable and domain-specific judgment is not required.
+
+### CI-config-only changes
+
+**Qualifying criteria:**
+
+- PR modifies only CI/CD configuration files (e.g., `codecov.yml`, `.github/workflows/`, CI config)
+- No application code changes
+- Review value is scope verification and policy-change detection, not code correctness
+
+**Evidence:** On [konflux-ci/coverport PR #94](https://github.com/konflux-ci/coverport/pull/94), the review agent dispatched 3 sub-agents (correctness, style-conventions, intent-coherence) plus a challenger. The PR modified `codecov.yml` to add ignore patterns and change the patch coverage target from `auto` to `80%`. The PR title and body mentioned only the ignore patterns — the patch target change was undocumented. The intent-coherence sub-agent flagged two findings: a medium missing-authorization and a low scope-creep finding for the undocumented policy change. The challenger correctly downgraded missing-authorization to low and removed a factually incorrect pattern-ordering finding. The final review approved with two low findings. The human reviewer (psturc, who authored the referenced PR #90 that caused the coverage drop) approved 33 hours later with zero comments, not engaging with the scope-creep finding. The undocumented policy change was merged without documentation.
+
+**Boundary:** The agent's scope-verification capability is reliable for config-only PRs where changes are enumerable from the diff. Domain judgment about whether a policy change is appropriate (e.g., whether 80% is the right target) is outside the agent's reliable capability — the agent can detect that a change is undocumented, not whether it is correct.
+
+**Proposed autonomy change:** If validated, the review agent would use CHANGES_REQUESTED for undocumented policy changes in config-only PRs in qualifying repos. This increases the likelihood that findings are addressed before merge.
+
+**Validation plan:** Track config-only PRs in repos where the agent has demonstrated review quality exceeding human review. For each, compare agent findings against human reviewer engagement. Success criteria: the agent catches scope or documentation issues that human reviewers miss on at least 3 additional config-only PRs. See [applied/konflux-ci](applied/konflux-ci/) for the specific tracking data.
+
 ## Open questions
 
 - Who decides when a repo is ready for autonomy? (See [governance.md](governance.md))

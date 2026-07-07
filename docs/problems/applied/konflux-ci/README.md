@@ -100,6 +100,49 @@ The Security review sub-agent covers two Konflux-specific concerns within a sing
 - Release policy — can release gates be bypassed?
 - Artifact integrity — can artifacts be tampered with?
 
+### Autonomy readiness evidence
+
+Evidence tracking for [autonomy classes](../../autonomy-spectrum.md#evidence-driven-autonomy-classes) observed in konflux-ci repos. Each class has qualifying criteria, observed evidence, and a validation plan.
+
+#### CI-config-only changes in coverport
+
+The [konflux-ci/coverport](https://github.com/konflux-ci/coverport) repo is listed under "No coverage data" above. It qualifies for the CI-config-only autonomy class described in the [general problem doc](../../autonomy-spectrum.md#ci-config-only-changes).
+
+**Observed evidence (PR #94, Jul 2026):**
+
+[PR #94](https://github.com/konflux-ci/coverport/pull/94) modified `codecov.yml` to add ignore patterns and change the patch coverage target from `auto` to `80%`. The PR title and body mentioned only the ignore patterns. The review agent (workflow run 28770077289) dispatched 3 sub-agents (correctness, style-conventions, intent-coherence) plus a challenger. The human reviewer (psturc, who authored the referenced PR #90) approved 33 hours later with zero comments.
+
+| # | Finding | Severity | Category | Human-caught? | Addressed? |
+|---|---|---|---|---|---|
+| 1 | Undocumented policy change: patch target `auto` → `80%` not mentioned in PR description | LOW | Scope (undocumented change) | No | No — merged without documentation |
+| 2 | Missing authorization for policy change | LOW (downgraded from MEDIUM by challenger) | Authorization | No | No — merged as-is |
+
+The challenger correctly downgraded the missing-authorization finding from medium to low and removed a factually incorrect pattern-ordering finding, demonstrating effective self-correction in the review pipeline.
+
+**What the evidence shows:**
+
+- The review agent identified a real undocumented change (patch target `auto` → `80%`) that the human reviewer either missed or chose to ignore
+- The human reviewer had direct context (authored PR #90 that caused the coverage drop) but did not engage with the agent's findings
+- This adds to the pattern where the review agent matches or exceeds human review quality on config-only PRs
+- COMMENT-level findings were insufficient to prevent merge of an undocumented policy change
+
+**Validation plan:**
+
+Track config-only PRs in coverport (and other repos where the agent has demonstrated review quality exceeding human review). For each PR, record:
+
+1. Review agent findings on scope, documentation, and policy changes
+2. Human reviewer engagement with agent findings
+3. Whether undocumented changes would have been addressed with CHANGES_REQUESTED
+
+Success criteria: the agent catches scope or documentation issues that human reviewers miss on at least 3 additional config-only PRs.
+
+| PR | Agent findings | Human engagement | Undocumented changes merged? | Notes |
+|---|---|---|---|---|
+| #94 (baseline) | 2 findings (scope-creep, missing-authorization) | 0 comments, approved | Yes (patch target change) | Evidence PR — human had direct context but did not engage |
+| | | | | |
+| | | | | |
+| | | | | |
+
 ### Repo readiness
 
 Data from the [coverage dashboard](https://konflux-ci.dev/coverage-dashboard/) (as of March 2026):
