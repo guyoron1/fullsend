@@ -93,6 +93,51 @@ This addresses the gap where the binary model can miss risky changes that don't 
 - The dimensions listed above are examples, not necessarily exhaustive. Different organizations might weight or define them differently.
 - Could produce false escalations (agent is uncertain, so it escalates conservatively) or false confidence (agent misjudges blast radius). Shadow mode data would help calibrate.
 
+## Evidence-driven autonomy classes
+
+The binary per-repo model and per-decision escalation dimensions above describe autonomy in broad strokes. In practice, specific categories of agent action accumulate evidence that they can be trusted at a higher autonomy level before the repo as a whole graduates. These are **autonomy classes** — narrow, well-defined categories of agent behavior where empirical evidence supports granting the agent more authority.
+
+Each autonomy class is defined by:
+
+1. **Qualifying criteria** — what properties a change must have to fall into this class
+2. **Evidence** — observed cases where the agent outperformed or matched human review
+3. **Validation plan** — how to confirm the pattern holds before changing autonomy level
+4. **Proposed autonomy change** — what the agent would do differently once validated (e.g., CHANGES_REQUESTED instead of COMMENT)
+5. **Boundary conditions** — what the agent should *not* do even within this class
+
+Autonomy classes are distinct from repo-level graduation. A repo that is not autonomous can still have specific autonomy classes where the review agent operates at a higher level — as long as the class boundaries are narrow enough that false positives are acceptable and domain-specific judgment is not required.
+
+### Mechanical consistency in documentation repos
+
+**Qualifying criteria:**
+
+- Target repo is documentation-only (no application code)
+- Finding category is mechanical consistency: typos, numbering gaps, cross-reference validation, scope coherence between document sections
+- Finding does not require project-specific domain knowledge to evaluate
+
+**Evidence:** On [konflux-ci/architecture PR #367](https://github.com/konflux-ci/architecture/pull/367), the review agent caught 4 genuine issues across 7 review runs. Two were mechanical consistency findings (a Phase 3 numbering gap and a scope ambiguity between document sections) that none of the 5 human reviewers identified — both merged without fix. The agent also caught a status inconsistency and a typo that the author fixed. However, the agent produced one domain-incorrect finding (Kubernetes label selector immutability) that a human reviewer dismissed because the project does not use the resource types in question.
+
+**Boundary:** The domain-incorrect finding demonstrates a clear autonomy boundary. Mechanical consistency checks (pattern-matchable, document-internal) are within the agent's reliable capability. Domain-specific architectural judgments (requiring knowledge of which technologies the project actually uses) are not.
+
+**Proposed autonomy change:** If validated, the review agent would use CHANGES_REQUESTED (instead of COMMENT) for medium-severity mechanical consistency findings in qualifying repos. This increases the likelihood that findings are addressed before merge, without granting the agent authority over architectural judgments. Domain-specific findings remain at COMMENT level.
+
+**Validation plan:** Track the next 5 ADR PRs merged in the qualifying repo. For each, compare agent mechanical consistency findings against human reviewer comments. Success: the agent catches mechanical consistency issues that no human flags on at least 3 of 5 PRs. A case where a human catches a mechanical consistency issue the agent missed weakens the signal. See [applied/konflux-ci](applied/konflux-ci/) for the specific tracking data.
+
+**Cross-references:**
+
+- Distinct from the bot-dependency-bump autonomy class (where review value comes from security verification, not consistency checking)
+- The scope-ambiguity finding is evidence for auto-filing tracking issues for unresolved medium+ findings
+- The ADR number collision caught by a human reviewer (but missed by the agent) was a cross-PR context issue — a separate capability gap, not a mechanical consistency failure
+
+### Other potential autonomy classes
+
+Additional autonomy classes may emerge from operational evidence. Examples under observation:
+
+- **CI-config-only changes** — trivial workflow file modifications where human reviewers consistently approve in under 5 minutes with no substantive comments. See [applied docs](applied/) for tracking.
+- **Bot dependency bumps** — automated version bumps where review value is security verification rather than code quality
+
+Each class requires its own evidence trail and validation plan before any autonomy change.
+
 ## Open questions
 
 - Who decides when a repo is ready for autonomy? (See [governance.md](governance.md))

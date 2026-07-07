@@ -100,6 +100,53 @@ The Security review sub-agent covers two Konflux-specific concerns within a sing
 - Release policy — can release gates be bypassed?
 - Artifact integrity — can artifacts be tampered with?
 
+### Autonomy readiness evidence
+
+Evidence tracking for [autonomy classes](../../autonomy-spectrum.md#evidence-driven-autonomy-classes) observed in konflux-ci repos. Each class has qualifying criteria, observed evidence, and a validation plan.
+
+#### Mechanical consistency in the architecture repo
+
+The [konflux-ci/architecture](https://github.com/konflux-ci/architecture) repo is documentation-only (ADRs, service overviews, architecture diagrams). It qualifies for the mechanical-consistency autonomy class described in the [general problem doc](../../autonomy-spectrum.md#mechanical-consistency-in-documentation-repos).
+
+**Observed evidence (PR #367, Jun–Jul 2026):**
+
+[PR #367](https://github.com/konflux-ci/architecture/pull/367) was reviewed by 5 human reviewers (rcerven, johnbieren, cit1zen, ralphbean, arewm) and the review agent (7 runs between Jun 11 and Jul 6). The review agent produced 4 genuine findings:
+
+| # | Finding | Severity | Category | Human-caught? | Addressed? |
+|---|---|---|---|---|---|
+| 1 | AGENTS.md listed ADR status as 'Pr' but frontmatter said 'Accepted' | HIGH | Mechanical (status consistency) | No | Yes — author fixed |
+| 2 | 'occurances' should be 'occurrences' | LOW | Mechanical (typo) | No | Yes — author fixed |
+| 3 | Phase 3 action items skip from 2 to 4 | MEDIUM | Mechanical (numbering gap) | No | No — merged without fix |
+| 4 | `image.redhat.com/*` in Context but Decision criteria only cover 'appstudio' prefixes | MEDIUM | Mechanical (scope coherence) | No | No — merged without fix |
+
+The agent also raised a domain-incorrect finding about Kubernetes label selector immutability. Human reviewer mmorhun dismissed it: "We don't use such resources." This validates the autonomy boundary — the agent reliably catches mechanical consistency issues but applies generic domain knowledge incorrectly when project-specific context is needed.
+
+Human reviewer cit1zen caught an ADR number collision requiring renumbering — a cross-PR context issue the agent cannot currently detect (separate capability gap, not a mechanical consistency failure).
+
+**What the evidence shows:**
+
+- The agent caught 2 medium-severity mechanical consistency issues that 5 human reviewers missed, and both merged without fix
+- The missed findings (numbering gap, scope coherence) are exactly the kind of pattern-matchable, document-internal checks where agents have a systematic advantage
+- COMMENT-level findings were insufficient to prevent merge of medium-severity issues — CHANGES_REQUESTED would have increased the likelihood of these being addressed
+
+**Validation plan:**
+
+Track the next 5 ADR PRs merged in konflux-ci/architecture. For each PR, record:
+
+1. Review agent mechanical consistency findings (typos, numbering, cross-references, scope coherence)
+2. Human reviewer comments on mechanical consistency
+3. Whether unresolved medium+ mechanical findings would have been addressed with CHANGES_REQUESTED
+
+Success criteria: the agent catches mechanical consistency issues that no human reviewer flags on at least 3 of 5 PRs. A case where a human catches a mechanical consistency issue the agent missed weakens the signal.
+
+| PR | Agent mechanical findings | Human mechanical findings | Unresolved medium+? | Notes |
+|---|---|---|---|---|
+| #367 (baseline) | 4 (2 HIGH/LOW fixed, 2 MEDIUM unfixed) | 0 mechanical | Yes (2) | Evidence PR |
+| | | | | |
+| | | | | |
+| | | | | |
+| | | | | |
+
 ### Repo readiness
 
 Data from the [coverage dashboard](https://konflux-ci.dev/coverage-dashboard/) (as of March 2026):
