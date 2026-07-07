@@ -39,7 +39,7 @@ on:
         description: "Fullsend CLI version to use"
         required: false
         type: string
-        default: "latest"
+        default: "0.27.0"
       fullsend_ai_ref:
         description: Ref of fullsend-ai/fullsend to load actions from. Must match the ref used in the `uses:` line that calls this workflow.
         type: string
