@@ -210,6 +210,12 @@ Konflux-ci is an open-source project. Contributors participate for reasons beyon
 
 The relationship between governance of the agentic system and governance of Konflux itself is an open question: are they the same body, or separate?
 
+## Evidence
+
+Observations from production agent runs in konflux-ci repos that inform autonomy and process decisions:
+
+- **[Digest bump review coverage](evidence-digest-bump-review.md)** — Review agent fully covered human review on 4 consecutive Renovate digest bump PRs in crossplane-control-plane, with zero human-vs-agent delta and demonstrated discrimination on a broken variant
+
 ## Experiments
 
 The experiments in this repo were originally conducted against the konflux-ci codebase:
