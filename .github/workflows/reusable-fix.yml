@@ -435,6 +435,14 @@ jobs:
           echo "COSTWISE_PROXY_URL=${COSTWISE_PROXY_URL}" >> "${GITHUB_ENV}"
           echo "::notice::Costwise proxy URL for sandbox: ${COSTWISE_PROXY_URL}"
 
+          # Write sandbox env file with resolved URL (not variable reference)
+          cat > env/z-costwise-proxy.env << ENVEOF
+          export CLAUDE_CODE_USE_VERTEX=0
+          export ANTHROPIC_BASE_URL=${COSTWISE_PROXY_URL}
+          export ANTHROPIC_API_KEY=sk-ant-api03-costwise-proxy-passthrough
+          ENVEOF
+          echo "::notice::Wrote env/z-costwise-proxy.env with ANTHROPIC_BASE_URL=${COSTWISE_PROXY_URL}"
+
       - name: Setup agent environment
         env:
           AGENT_PREFIX: FIX_
@@ -507,3 +515,12 @@ jobs:
             "run_url": "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           }
           EOF
+
+      - name: Upload Costwise artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: costwise-${{ github.job }}
+          path: output/costwise/
+          if-no-files-found: warn
+          retention-days: 30

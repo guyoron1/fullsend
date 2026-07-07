@@ -70,3 +70,15 @@ network_policies:
         access: read-only
     binaries:
       - path: "**/gh"
+
+  costwise_proxy:
+    name: costwise-proxy
+    endpoints:
+      - host: "*"
+        port: 8788
+        protocol: rest
+        enforcement: enforce
+        access: read-write
+    binaries:
+      - path: "**/claude"
+      - path: "**/node"

@@ -119,3 +119,15 @@ network_policies:
       - path: "**/python3.*"
       - path: "**/go"
       - path: "**/pre-commit"
+
+  costwise_proxy:
+    name: costwise-proxy
+    endpoints:
+      - host: "*"
+        port: 8788
+        protocol: rest
+        enforcement: enforce
+        access: read-write
+    binaries:
+      - path: "**/claude"
+      - path: "**/node"
