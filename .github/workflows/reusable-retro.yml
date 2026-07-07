@@ -195,7 +195,7 @@ jobs:
             exit 1
           fi
 
-          GOOGLE_APPLICATION_CREDENTIALS="${RUNNER_GCP_CREDS}" \
+          CLOUD_ML_REGION=us-east5 GOOGLE_APPLICATION_CREDENTIALS="${RUNNER_GCP_CREDS}" \
             costwise proxy --host 0.0.0.0 --port 8788 > "${RUNNER_TEMP}/costwise-proxy.log" 2>&1 &
           COSTWISE_PID=$!
           echo "COSTWISE_PID=${COSTWISE_PID}" >> "${GITHUB_ENV}"
