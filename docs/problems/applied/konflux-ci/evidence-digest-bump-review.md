@@ -2,13 +2,13 @@
 
 Evidence from [konflux-ci/crossplane-control-plane](https://github.com/konflux-ci/crossplane-control-plane) demonstrating that the review agent provides equivalent or better coverage than human review for Renovate-authored single-line digest bump PRs.
 
-This evidence supports the autonomy readiness discussion in [autonomy-spectrum.md](../../autonomy-spectrum.md) and the graduation criteria for this change class.
+This evidence informs the autonomy readiness discussion in [autonomy-spectrum.md](../../autonomy-spectrum.md). That document defines a binary per-repo autonomy model; this evidence argues for per-change-class graduation criteria, which would extend or supplement the current model.
 
 ## Summary
 
 Across PRs #152–155 in crossplane-control-plane, the review agent approved each Renovate-authored single-line digest bump within 6–8 minutes with correct "Looks good to me" determinations. The human reviewer (org MEMBER) batch-approved all 4 with empty review bodies 6.6 days later, contributing zero additional findings.
 
-On an earlier PR (#133) in the same repo with the same change class but a broken double-digest reference from a Renovate regex misconfiguration, the review agent correctly identified the critical malformed-image-reference issue. This demonstrates the agent can discriminate between safe and broken digest bumps — it is not blindly rubber-stamping.
+On an earlier PR (#133) in the same repo with the same change class but a broken double-digest reference from a Renovate regex misconfiguration, the review agent correctly identified the critical malformed-image-reference issue. This single example suggests the agent can discriminate between safe and broken digest bumps, though one data point is not sufficient to establish the capability broadly (see Limitations).
 
 ## Data
 
@@ -31,7 +31,7 @@ PR #133 was a digest bump of the same class, but with a Renovate regex misconfig
 
 **Latency cost:** The human review gate added 6.6 days of latency with no corresponding quality contribution. For a single-line digest bump, this delay provides no security or correctness benefit.
 
-**Discrimination capability:** The agent's correct rejection of PR #133 demonstrates that it can detect anomalies within this change class. This is the critical evidence that the agent is not blindly approving — it has the discrimination capability required for autonomous operation on this change class.
+**Discrimination capability:** The agent's correct rejection of PR #133 shows it detected a syntactically obvious anomaly (malformed double-digest reference) within this change class. This is a necessary but not sufficient signal — it indicates the agent is not blindly approving, but a single data point involving a Renovate misconfiguration does not establish the discrimination capability needed for more subtle issues such as malicious digest substitution.
 
 ## Implications
 
