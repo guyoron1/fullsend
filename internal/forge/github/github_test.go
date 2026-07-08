@@ -776,6 +776,45 @@ func TestIsAlreadyExistsError(t *testing.T) {
 	}
 }
 
+func TestIsClassicPATForbiddenError(t *testing.T) {
+	tests := []struct {
+		name   string
+		apiErr *APIError
+		want   bool
+	}{
+		{
+			name:   "org forbids classic PAT",
+			apiErr: &APIError{StatusCode: 403, Message: "`acme-org` forbids access via a personal access token (classic). Please use a GitHub App, OAuth App, or a personal access token with fine-grained permissions."},
+			want:   true,
+		},
+		{
+			name:   "org name with hyphens forbids classic PAT",
+			apiErr: &APIError{StatusCode: 403, Message: "`my-cool-org` forbids access via a personal access token (classic)."},
+			want:   true,
+		},
+		{
+			name:   "generic 403 is not classic PAT forbidden",
+			apiErr: &APIError{StatusCode: 403, Message: "Resource not accessible by integration"},
+			want:   false,
+		},
+		{
+			name:   "rate limit 403 is not classic PAT forbidden",
+			apiErr: &APIError{StatusCode: 403, Message: "API rate limit exceeded"},
+			want:   false,
+		},
+		{
+			name:   "secondary rate limit 403 is not classic PAT forbidden",
+			apiErr: &APIError{StatusCode: 403, Message: "You have exceeded a secondary rate limit"},
+			want:   false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, isClassicPATForbiddenError(tt.apiErr))
+		})
+	}
+}
+
 func TestAPIError_Unwrap(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -810,8 +849,18 @@ func TestAPIError_Unwrap(t *testing.T) {
 			wantNil: true,
 		},
 		{
-			name:    "403 does not unwrap",
+			name:    "403 classic PAT forbidden unwraps to ErrClassicPATForbidden",
+			apiErr:  &APIError{StatusCode: 403, Message: "`acme-org` forbids access via a personal access token (classic). Please use a GitHub App, OAuth App, or a personal access token with fine-grained permissions."},
+			wantErr: forge.ErrClassicPATForbidden,
+		},
+		{
+			name:    "403 generic does not unwrap",
 			apiErr:  &APIError{StatusCode: 403, Message: "Resource not accessible by integration"},
+			wantNil: true,
+		},
+		{
+			name:    "403 rate limit does not unwrap to classic PAT",
+			apiErr:  &APIError{StatusCode: 403, Message: "API rate limit exceeded"},
 			wantNil: true,
 		},
 	}

@@ -1969,6 +1969,36 @@ func TestApplyPerRepoScaffold_GetRepoError(t *testing.T) {
 	assert.Contains(t, err.Error(), "getting repo info")
 }
 
+func TestApplyPerRepoScaffold_ClassicPATForbidden(t *testing.T) {
+	client := forge.NewFakeClient()
+	client.Errors["GetRepo"] = fmt.Errorf("get repo acme/widget: %w",
+		forge.ErrClassicPATForbidden)
+	printer := ui.New(&bytes.Buffer{})
+
+	err := applyPerRepoScaffold(context.Background(), client, printer,
+		"acme", "widget", nil, nil, nil)
+	require.Error(t, err)
+	assert.ErrorIs(t, err, forge.ErrClassicPATForbidden)
+	assert.Contains(t, err.Error(), "fine-grained personal access token")
+	assert.Contains(t, err.Error(), "GH_TOKEN")
+}
+
+func TestWrapClassicPATError_WrapsMatchingError(t *testing.T) {
+	inner := fmt.Errorf("some context: %w", forge.ErrClassicPATForbidden)
+	wrapped := wrapClassicPATError(inner)
+
+	assert.ErrorIs(t, wrapped, forge.ErrClassicPATForbidden)
+	assert.Contains(t, wrapped.Error(), "fine-grained personal access token")
+	assert.Contains(t, wrapped.Error(), "GH_TOKEN")
+	assert.Contains(t, wrapped.Error(), "GITHUB_TOKEN")
+}
+
+func TestWrapClassicPATError_PassthroughNonMatching(t *testing.T) {
+	inner := errors.New("generic error")
+	wrapped := wrapClassicPATError(inner)
+	assert.Equal(t, inner, wrapped)
+}
+
 func TestApplyPerRepoScaffold_CommitFilesError(t *testing.T) {
 	client := forge.NewFakeClient()
 	client.Repos = []forge.Repository{{FullName: "acme/widget", DefaultBranch: "main"}}

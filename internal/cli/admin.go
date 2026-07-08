@@ -51,6 +51,40 @@ func newAdminCmd() *cobra.Command {
 	return cmd
 }
 
+// classicPATGuidance is the actionable message printed when a GitHub org
+// rejects classic personal access tokens. It explains the token resolution
+// chain and how to switch to a fine-grained PAT.
+const classicPATGuidance = `Your GitHub organization blocks classic personal access tokens.
+
+The CLI resolves credentials in this order:
+  1. GH_TOKEN environment variable
+  2. GITHUB_TOKEN environment variable
+  3. gh auth token (output of the GitHub CLI)
+
+Whichever token resolved was rejected by the org's policy.
+
+To fix this, create a fine-grained personal access token at:
+  https://github.com/settings/personal-access-tokens/new
+
+Grant it these repository permissions (read and write):
+  Contents, Workflows, Secrets, Variables, Pull requests
+
+And Metadata (read-only, granted automatically).
+
+Then export it before running fullsend:
+  export GH_TOKEN="github_pat_..."
+
+See docs/guides/getting-started/configuring-github.md for details.`
+
+// wrapClassicPATError checks whether err is a classic-PAT-forbidden error
+// and, if so, wraps it with actionable guidance. Otherwise returns err as-is.
+func wrapClassicPATError(err error) error {
+	if forge.IsClassicPATForbidden(err) {
+		return fmt.Errorf("%s\n\n%w", classicPATGuidance, err)
+	}
+	return err
+}
+
 // resolveToken finds a GitHub token by checking, in order:
 //  1. GH_TOKEN env var
 //  2. GITHUB_TOKEN env var
@@ -433,7 +467,7 @@ Inference authentication:
 			// Discover all org repos upfront to avoid redundant API calls in runDryRun/runInstall.
 			allRepos, err := client.ListOrgRepos(ctx, org)
 			if err != nil {
-				return fmt.Errorf("listing org repos: %w", err)
+				return wrapClassicPATError(fmt.Errorf("listing org repos: %w", err))
 			}
 
 			var repos []string
@@ -1021,7 +1055,7 @@ func applyPerRepoScaffold(ctx context.Context, client forge.Client, printer *ui.
 
 	targetRepo, err := client.GetRepo(ctx, owner, repo)
 	if err != nil {
-		return fmt.Errorf("getting repo info: %w", err)
+		return wrapClassicPATError(fmt.Errorf("getting repo info: %w", err))
 	}
 	commitMsg := fmt.Sprintf("chore: initialize fullsend-%s per-repo installation", version)
 	printer.StepStart(fmt.Sprintf("Committing scaffold files to %s/%s (%s branch)",
@@ -1427,6 +1461,9 @@ func ensureConfigRepoExists(ctx context.Context, client forge.Client, printer *u
 	_, err := client.GetRepo(ctx, org, forge.ConfigRepoName)
 	if err == nil {
 		return nil
+	}
+	if forge.IsClassicPATForbidden(err) {
+		return wrapClassicPATError(fmt.Errorf("checking for config repo: %w", err))
 	}
 	if !forge.IsNotFound(err) {
 		return fmt.Errorf("checking for config repo: %w", err)
@@ -2475,6 +2512,10 @@ func loadRepoConfig(ctx context.Context, client forge.Client, printer *ui.Printe
 	printer.StepStart("Checking .fullsend repository")
 	_, err := client.GetRepo(ctx, org, forge.ConfigRepoName)
 	if err != nil {
+		if forge.IsClassicPATForbidden(err) {
+			printer.StepFail("Organization blocks classic personal access tokens")
+			return nil, wrapClassicPATError(fmt.Errorf("checking .fullsend repository: %w", err))
+		}
 		if forge.IsNotFound(err) {
 			printer.StepFail(".fullsend repository not found")
 			return nil, fmt.Errorf(".fullsend repository not found: run 'fullsend admin install %s' first", org)

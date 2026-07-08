@@ -8,6 +8,41 @@ The goal of this document is that you configure Fullsend for your GitHub reposit
 * Download the latest [fullsend](https://github.com/fullsend-ai/fullsend/releases) CLI.
 * Download the latest [gh](https://cli.github.com/) CLI and authenticate with it.
 
+### Token resolution
+
+The fullsend CLI resolves a GitHub token in this order:
+
+1. `GH_TOKEN` environment variable
+2. `GITHUB_TOKEN` environment variable
+3. `gh auth token` (output of the GitHub CLI)
+
+For most organizations, running `gh auth login` is sufficient.
+
+### Organizations that restrict classic PATs
+
+If your organization restricts personal access token types (Settings >
+Personal access tokens > restrict access via PAT type), the default
+token from `gh auth login` may be rejected by the GitHub API. In that
+case, create a fine-grained personal access token manually at
+<https://github.com/settings/personal-access-tokens/new> and grant it
+the following repository permissions:
+
+| Permission | Level | Why |
+|---|---|---|
+| Contents | Read and write | Commits `.fullsend/config.yaml` and scaffold files |
+| Workflows | Read and write | Writes/updates files under `.github/workflows/` |
+| Secrets | Read and write | Sets `FULLSEND_GCP_PROJECT_ID` / `FULLSEND_GCP_WIF_PROVIDER` |
+| Variables | Read and write | Sets `FULLSEND_MINT_URL` / `FULLSEND_GCP_REGION` |
+| Metadata | Read-only | GitHub-required baseline (granted automatically) |
+| Pull requests | Read and write | Only needed without `--direct` |
+
+Export the token before running fullsend so it takes priority:
+
+```bash
+export GH_TOKEN="github_pat_..."
+fullsend github setup <org>/<repo> ...
+```
+
 ## Installing GitHub Applications
 
 In order to use Fullsend install the following applications to your organization
