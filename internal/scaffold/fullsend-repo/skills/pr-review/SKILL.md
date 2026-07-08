@@ -636,7 +636,7 @@ judgment call about organizational values. The agent evaluates these
 documents for formatting, link validity, and consistency, but cannot
 assess whether the policy itself is sound.
 
-Default governance document patterns:
+Governance document patterns (kept in sync with `post-review.sh`):
 
 - `MAINTAINERS.md`
 - `GOVERNANCE.md`
@@ -644,18 +644,21 @@ Default governance document patterns:
 - `SECURITY.md`
 
 These patterns match files with the given name in any directory (e.g.,
-`docs/GOVERNANCE.md` matches). The governance file list may be extended
-per-repo via `AGENTS.md` or `CLAUDE.md` configuration.
+`docs/GOVERNANCE.md` matches). Matching is case-sensitive and compares
+exact filenames, not substrings — `MY_GOVERNANCE.md` does not match.
+The governance file list may be extended per-repo via `AGENTS.md` or
+`CLAUDE.md` configuration.
 
 If **all** changed files match governance document patterns, add an
-**info**-level finding:
+**info**-level finding. The description MUST list the matched
+governance files:
 
 ```json
 {
   "severity": "info",
   "category": "governance-document",
   "file": "N/A",
-  "description": "Governance documents define organizational policy and require human review. Agent findings are informational only.",
+  "description": "All changed files are governance documents (<list matched files>). Governance documents define organizational policy and require human review. Agent findings are informational only.",
   "actionable": false
 }
 ```
@@ -669,6 +672,11 @@ If the PR modifies governance documents **alongside** non-governance
 files (source code, tests, configuration), the governance-document
 check does NOT trigger. The PR follows the normal review flow — the
 governance files are reviewed as part of the full change set.
+
+If a governance document also falls under a protected path (e.g.,
+`.github/GOVERNANCE.md`), both the `governance-document` and
+`protected-path` checks may fire independently. Both converge on
+blocking approval, so there is no conflict.
 
 #### 6f. Determine overall outcome
 
@@ -689,11 +697,6 @@ and evaluate:
   change, or the PR should be closed/completely rethought → `reject`.
   Use `reject` only when no amount of code-level iteration will make
   the PR mergeable.
-
-**Outcome cap:** If a `governance-document` finding exists (step 6e),
-the outcome MUST NOT be `approve` — cap at `comment` regardless of
-finding severities. This ensures governance-only PRs always require
-human review before merging.
 
 ### 7. Produce the review result
 

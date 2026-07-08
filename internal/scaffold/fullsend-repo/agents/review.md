@@ -188,7 +188,9 @@ gh api "repos/${REPO_FULL_NAME}/issues/${ISSUE_NUMBER}"
 ### Outcome
 
 - `approve` — no medium+ findings; the change is safe (low/info
-  findings may be attached as comments)
+  findings may be attached as comments). Never used when all changed
+  files are governance documents — governance-only PRs are capped at
+  `comment`.
 - `request-changes` — findings *requiring* resolution: one or more critical or
   high findings; multiple medium-severity findings which could affect the
   intended outcome of the PR
