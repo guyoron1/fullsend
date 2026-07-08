@@ -189,6 +189,30 @@ then direct the agent with `/fs-fix` commands up to `ITERATION_CAP_HUMAN`
 (default: 10) total iterations (bot + human combined). This ensures humans
 are never locked out of the agent after a bot loop exhausts its budget.
 
+## Task ordering — merge conflicts first
+
+When a `/fs-fix` instruction includes merge conflict resolution — whether
+explicitly (mentions "merge conflicts", "rebase", or "merge main") or
+implicitly (the branch is behind the base branch and other tasks are also
+requested) — resolve the merge before making any other code changes.
+
+This ordering matters because code changes depend on the current state of
+the codebase. Fixing review findings or adding tests against a stale branch
+can produce changes that conflict with what is already on the base branch,
+requiring a second fix iteration to re-merge. Merging first ensures all
+subsequent changes are based on the up-to-date codebase.
+
+Steps:
+
+1. Fetch and merge the base branch into the feature branch.
+2. Resolve any conflicts, preserving the PR's intended changes.
+3. Verify the merge is clean (no conflict markers, code compiles).
+4. Only then proceed to address review findings, coverage gaps, or other
+   code changes.
+
+Do not batch the merge commit with other code changes — commit the merge
+separately so the diff for subsequent fixes is clear.
+
 ## Detailed fix procedure
 
 Follow the `fix-review` skill for the step-by-step procedure.
