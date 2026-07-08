@@ -154,7 +154,10 @@ Before writing any code, understand how this repository works. Use `Read`
 and `Glob` to inspect project configuration:
 
 1. **Read project-level instructions.** Use `Read` on `CLAUDE.md`,
-   `CONTRIBUTING.md`, and `AGENTS.md` (if they exist).
+   `CONTRIBUTING.md`, and `AGENTS.md` (if they exist). **Check for an
+   ADR directory** (commonly `docs/ADRs/`, `adr/`, or
+   `docs/architecture/decisions/`) — you will consult relevant ADRs
+   in step 8.
 2. **Discover build and test commands.** Use `Read` on `Makefile`,
    `package.json`, `pyproject.toml`, or equivalent build config.
 3. **Check for linter configuration.** Use `Glob` to find files like
@@ -301,13 +304,23 @@ Before writing code, form a concrete plan:
    your plan and proceed with the context you have.
    Do not chase every import — focus on references that the issue context
    points you toward.
-5. **Identify what to change** — list the specific files and functions you will
+5. **Check relevant Architecture Decision Records** — if the repo has a
+   `docs/ADRs/` directory (or equivalent, as noted in `AGENTS.md`),
+   search it for decisions related to the area you are changing. Use
+   `Grep` to search ADR files for keywords matching the component,
+   pattern, or file path you plan to modify. If an ADR constrains the
+   approach (e.g., requires deploy-time injection instead of template
+   embedding), your implementation must respect that constraint. If the
+   issue's recommended approach conflicts with an accepted ADR, follow
+   the ADR — it represents a deliberate design decision that supersedes
+   ad-hoc issue recommendations.
+6. **Identify what to change** — list the specific files and functions you will
    modify or create.
-6. **Identify what tests to write or update** — new behavior needs new tests;
+7. **Identify what tests to write or update** — new behavior needs new tests;
    changed behavior needs updated tests.
-7. **Assess risk** — will this change affect other callers? Does it change a
+8. **Assess risk** — will this change affect other callers? Does it change a
    public interface? Could it break downstream consumers?
-8. **Search for old literal values when changing constants or defaults** — when
+9. **Search for old literal values when changing constants or defaults** — when
    the task changes a constant, default, or configuration value from X to Y:
    1. Search for all references to the constant/variable **name** (symbol search).
    2. Search for the **old value X** as a string literal in test files, docs, and
@@ -315,10 +328,10 @@ Before writing code, form a concrete plan:
       values rather than referencing constants, so a symbol-only search misses them.
    3. Evaluate each match — some may be intentional (e.g., testing the non-default
       case) while others are stale assumptions that need updating.
-9. **Verify API contracts per code path** — if the fix removes, empties,
-   or changes a parameter sent to an external API, check the API documentation or
-   test each code path that uses the function. Different operations
-   (e.g., approve vs request-changes) often have different required fields.
+10. **Verify API contracts per code path** — if the fix removes, empties,
+    or changes a parameter sent to an external API, check the API documentation or
+    test each code path that uses the function. Different operations
+    (e.g., approve vs request-changes) often have different required fields.
 
 When requirements are ambiguous, distinguish between "vague but actionable"
 (you can make a reasonable conservative interpretation) and "genuinely
