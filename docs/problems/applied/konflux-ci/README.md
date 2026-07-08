@@ -123,7 +123,7 @@ The challenger correctly downgraded the missing-authorization finding from mediu
 
 - The review agent identified a real undocumented change (patch target `auto` → `80%`) that the human reviewer either missed or chose to ignore
 - The human reviewer had direct context (authored PR #90 that caused the coverage drop) but did not engage with the agent's findings
-- This adds to the pattern where the review agent matches or exceeds human review quality on config-only PRs
+- This case is consistent with the hypothesis that the review agent can match or exceed human review quality on config-only PRs
 - COMMENT-level findings were insufficient to prevent merge of an undocumented policy change
 
 **Validation plan:**

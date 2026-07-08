@@ -115,13 +115,28 @@ Autonomy classes are distinct from repo-level graduation. A repo that is not aut
 - No application code changes
 - Review value is scope verification and policy-change detection, not code correctness
 
-**Evidence:** On [konflux-ci/coverport PR #94](https://github.com/konflux-ci/coverport/pull/94), the review agent dispatched 3 sub-agents (correctness, style-conventions, intent-coherence) plus a challenger. The PR modified `codecov.yml` to add ignore patterns and change the patch coverage target from `auto` to `80%`. The PR title and body mentioned only the ignore patterns — the patch target change was undocumented. The intent-coherence sub-agent flagged two findings: a medium missing-authorization and a low scope-creep finding for the undocumented policy change. The challenger correctly downgraded missing-authorization to low and removed a factually incorrect pattern-ordering finding. The final review approved with two low findings. The human reviewer (psturc, who authored the referenced PR #90 that caused the coverage drop) approved 33 hours later with zero comments, not engaging with the scope-creep finding. The undocumented policy change was merged without documentation.
+**Evidence:** See [applied/konflux-ci/README.md](applied/konflux-ci/README.md#autonomy-readiness-evidence) for tracked cases where the review agent caught undocumented policy changes in CI configuration that human reviewers missed.
 
-**Boundary:** The agent's scope-verification capability is reliable for config-only PRs where changes are enumerable from the diff. Domain judgment about whether a policy change is appropriate (e.g., whether 80% is the right target) is outside the agent's reliable capability — the agent can detect that a change is undocumented, not whether it is correct.
+**Boundary conditions:**
 
-**Proposed autonomy change:** If validated, the review agent would use CHANGES_REQUESTED for undocumented policy changes in config-only PRs in qualifying repos. This increases the likelihood that findings are addressed before merge.
+- The agent's scope-verification capability is reliable for config-only PRs where changes are enumerable from the diff. Domain judgment about whether a policy change is appropriate (e.g., whether 80% is the right target) is outside the agent's reliable capability — the agent can detect that a change is undocumented, not whether it is correct.
+- Workflow files (`.github/workflows/`) that access secrets or modify repository state have a materially different risk profile from declarative CI config (e.g., `codecov.yml`). Changes to workflow files with security-relevant content should be excluded from this class or treated as a separate, higher-scrutiny class.
 
-**Validation plan:** Track config-only PRs in repos where the agent has demonstrated review quality exceeding human review. For each, compare agent findings against human reviewer engagement. Success criteria: the agent catches scope or documentation issues that human reviewers miss on at least 3 additional config-only PRs. See [applied/konflux-ci](applied/konflux-ci/) for the specific tracking data.
+**Proposed autonomy change:** Several options exist for how the review agent could act on validated evidence. Each has different trade-offs:
+
+1. **CHANGES_REQUESTED for undocumented policy changes.** The review agent uses CHANGES_REQUESTED (instead of COMMENT) when it detects undocumented policy changes in config-only PRs.
+   - *Pros:* Directly increases the likelihood that findings are addressed before merge. Simple to implement. Clear signal to the PR author.
+   - *Cons:* May block PRs where the policy change is intentional but undocumented. Adds friction to low-risk changes.
+
+2. **Escalate to human with structured alternatives.** The review agent flags the undocumented change and presents structured options (e.g., "this appears to be an intentional policy change — document it in the PR description" vs. "this may be an unintended side effect — revert the change").
+   - *Pros:* Preserves human decision-making on ambiguous cases. Avoids false blocking. Follows the [dual-interpretation escalation](code-review.md#dual-interpretation-escalation) pattern.
+   - *Cons:* Still relies on the human reviewer engaging with the escalation, which is the failure mode observed in the evidence.
+
+3. **Maintain COMMENT status with tracking annotation.** The review agent continues using COMMENT but adds a structured annotation indicating that the finding was not addressed, enabling post-merge tracking and trend analysis.
+   - *Pros:* No additional friction. Builds a data set for future autonomy decisions. Low risk of false blocking.
+   - *Cons:* Does not prevent the problem — undocumented changes continue to merge without documentation. Defers action in favor of measurement.
+
+**Validation plan:** Track config-only PRs in repos where the agent has demonstrated review quality exceeding human review. For each, compare agent findings against human reviewer engagement. Success criteria: the agent catches scope or documentation issues that human reviewers miss on at least 3 additional config-only PRs. See [applied/konflux-ci/README.md](applied/konflux-ci/README.md#autonomy-readiness-evidence) for the specific tracking data.
 
 ## Open questions
 
