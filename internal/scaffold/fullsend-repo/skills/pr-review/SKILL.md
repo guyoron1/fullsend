@@ -254,43 +254,58 @@ dimensions are relevant:
 
 Before applying the standard dispatch rules in 3c, check whether the
 PR qualifies for a config-only fast-path. This reduces cost and time
-for PRs that modify only known config file types, where correctness
-and style-conventions sub-agents consistently return zero findings.
+for PRs that modify only truly inert config file types, where
+correctness and style-conventions sub-agents consistently return zero
+findings.
 
 **Qualification criteria — ALL must be true:**
 
-1. **Every** changed file matches a known config pattern (see list
-   below).
+1. **Every** changed file's path and extension exactly matches an
+   entry in the known config patterns allowlist below. Files not on
+   the allowlist disqualify the PR from the fast-path — there is no
+   subjective judgment step.
 2. The PR does not modify any production code, test files, or
    documentation with correctness surface area.
-3. No file has an unrecognized extension that could be code in
-   disguise (e.g., a `.conf` file containing shell scripts).
 
-**Known config file patterns:**
+**Known config file patterns (strict allowlist):**
 
-- CI/CD config: `*.yml`, `*.yaml` in `.github/workflows/`,
-  `.github/`, or repo root (e.g., `codecov.yml`,
-  `.pre-commit-config.yaml`)
-- Linter/tool config: `.golangci.yml`, `.eslintrc*`, `.prettierrc*`,
-  `ruff.toml`, `pyproject.toml` (when only `[tool.*]` sections
-  change), `.editorconfig`
-- Dependency manager config: `renovate.json`, `renovate.json5`,
-  `.renovaterc`, `dependabot.yml`
-- Repository metadata: `.gitignore`, `.gitattributes`,
-  `.mailmap`
+Only these file paths qualify. Any file not listed here causes the
+PR to fall through to standard 3c dispatch.
+
+- Repository metadata: `.gitignore`, `.gitattributes`, `.mailmap`,
+  `.editorconfig`
+- CI metadata: `codecov.yml`, `codecov.yaml` (repo root only)
 - `CODEOWNERS` — qualifies for fast-path but also triggers
   `security` (see below)
 
-**Exclusions — these do NOT qualify even if they match a pattern:**
+The following file types are explicitly **excluded** from the
+fast-path because they have correctness-relevant or
+security-relevant semantics:
 
+- `.github/workflows/*.yml`, `.github/workflows/*.yaml` — contain
+  executable logic in `run:` steps and can escalate GitHub Actions
+  permissions, introduce workflow command injection, or reference
+  malicious actions. These follow standard 3c dispatch (which
+  includes `security`).
+- Linter/tool config: `.golangci.yml`, `.eslintrc*`, `.prettierrc*`,
+  `ruff.toml`, `pyproject.toml` — disabling security-relevant
+  linters (e.g., `gosec`, `errcheck`, `no-eval`) has correctness
+  and security implications.
+- Dependency manager config: `renovate.json`, `renovate.json5`,
+  `.renovaterc`, `dependabot.yml` — misconfigured automerge rules
+  could auto-merge malicious dependency updates.
 - `Makefile`, `Dockerfile`, `Containerfile` — contain executable
-  logic
-- `*.toml` or `*.yaml` files that contain inline scripts, shell
-  commands, or code blocks (inspect the diff)
-- Any file where the diff modifies string literals that could be
-  code (e.g., embedded SQL, shell commands in CI steps)
-- Mixed PRs: if **any** changed file does not match a config
-  pattern, the fast-path does not apply — fall through to 3c
+  logic.
+- `.pre-commit-config.yaml` — can alter which safety hooks run.
+- Mixed PRs: if **any** changed file does not match the allowlist,
+  the fast-path does not apply — fall through to 3c.
+
+Note: This fast-path intentionally overrides the broad "config
+files" trigger in step 3b's security classification. Step 3b routes
+all config file changes through `security`, but the files on this
+allowlist are inert metadata with no security surface area. The
+conditional security dispatch below covers the exception
+(`CODEOWNERS`).
 
 **Fast-path dispatch:**
 
@@ -301,15 +316,16 @@ When the PR qualifies:
   This is the dimension that consistently produces useful findings
   on config changes.
 - **Conditionally dispatch:** `security` — when the config touches
-  auth, permissions, or access control (e.g., `CODEOWNERS`,
-  workflow permissions in `.github/workflows/`, RBAC configs).
+  auth, permissions, or access control (e.g., `CODEOWNERS`).
 - **Skip:** `correctness`, `style-conventions`, `docs-currency`,
   `cross-repo-contracts`. These dimensions have no useful findings
-  on non-code config files.
-- **Skip challenger:** When only one or two dimension sub-agents
-  run, the challenger adds cost without value — there is nothing
-  to cross-reference or deduplicate. Skip the challenger pass
-  (step 6d) entirely.
+  on inert config metadata files.
+- **Skip challenger:** When the config-only fast-path was used and
+  the `security` sub-agent was **not** dispatched, skip the
+  challenger pass (step 6d) entirely — there is only one sub-agent
+  result and nothing to cross-reference or deduplicate. When
+  `security` **was** dispatched, retain the challenger to provide
+  adversarial validation of security findings.
 
 If the fast-path applies, proceed directly to step 3d with the
 reduced sub-agent set. The rest of step 3c is skipped.
@@ -317,16 +333,15 @@ reduced sub-agent set. The rest of step 3c is skipped.
 #### 3c. Select sub-agents
 
 Based on the domain classification, select sub-agents for dispatch.
-All selected sub-agents run in parallel. If the config-only
-fast-path (step 3b-1) applied, this step was skipped — proceed to
-3d.
+All selected sub-agents run in parallel.
 
 **Dispatch sub-agents based on the classification — typically 3-6.**
 The orchestrator should auto-select which sub-agents are relevant for
 the specific change rather than dispatching all agents by default. A
 complex PR that triggers all conditions legitimately needs all 6.
 
-**Always included:** `correctness` and `style-conventions`.
+**When the fast-path (step 3b-1) did not apply — always include:**
+`correctness` and `style-conventions`.
 
 **Conditionally included based on classification:**
 
@@ -343,7 +358,7 @@ complex PR that triggers all conditions legitimately needs all 6.
 
 | PR type                        | Agents dispatched                                                                |
 |--------------------------------|----------------------------------------------------------------------------------|
-| Config-only (codecov.yml)      | intent-coherence                                                                 |
+| Config-only (.gitignore)       | intent-coherence                                                                 |
 | Config-only (CODEOWNERS)       | intent-coherence, security                                                       |
 | Implementation plan            | correctness, style-conventions, intent-coherence, docs-currency                  |
 | Typo fix in README             | correctness, style-conventions                                                   |
@@ -520,11 +535,13 @@ and an auth bypass on the same line are two distinct findings.
 #### 6d. Challenger pass (dedicated sub-agent)
 
 **Skip condition:** If the config-only fast-path (step 3b-1) was
-used and only one or two dimension sub-agents ran, skip the
-challenger entirely. There is nothing to cross-reference or
-deduplicate, and the additional opus invocation adds cost without
-value. Proceed directly to step 6e with the merged finding set
-from steps 6a–6c.
+used and the `security` sub-agent was **not** dispatched (i.e.,
+only `intent-coherence` ran), skip the challenger entirely. There
+is nothing to cross-reference or deduplicate, and the additional
+opus invocation adds cost without value. Proceed directly to step
+6e with the merged finding set from steps 6a–6c. When the
+fast-path dispatched `security`, retain the challenger to
+adversarially validate security findings.
 
 After steps 6a–6c produce a merged finding set, dispatch the
 `challenger` sub-agent to adversarially challenge the findings with
