@@ -1,6 +1,7 @@
 package security
 
 import (
+	"bytes"
 	"strings"
 	"testing"
 
@@ -446,6 +447,66 @@ func TestSSRFValidator_DNSResolution(t *testing.T) {
 		r := v.ValidateURL("http://10.0.0.1/internal", false)
 		assert.False(t, r.Safe)
 		assert.True(t, hasFinding(r, "blocked_ip"))
+	})
+}
+
+func TestFormatFinding(t *testing.T) {
+	t.Run("uses Name not Scanner", func(t *testing.T) {
+		f := Finding{
+			Scanner:  "secret_redactor",
+			Name:     "aws_key",
+			Severity: "critical",
+			Detail:   "AWS access key detected",
+		}
+		got := FormatFinding(f)
+		assert.Equal(t, "[critical] aws_key: AWS access key detected", got)
+		assert.NotContains(t, got, "secret_redactor")
+	})
+
+	t.Run("format pattern", func(t *testing.T) {
+		f := Finding{
+			Scanner:  "context_injection",
+			Name:     "ignore_instructions",
+			Severity: "high",
+			Detail:   "prompt injection detected",
+		}
+		got := FormatFinding(f)
+		assert.Regexp(t, `^\[high\] .+: prompt injection detected$`, got)
+	})
+
+	t.Run("empty fields", func(t *testing.T) {
+		f := Finding{Severity: "", Name: "", Detail: ""}
+		got := FormatFinding(f)
+		assert.NotEmpty(t, got)
+	})
+}
+
+func TestLogFindings(t *testing.T) {
+	t.Run("multiple findings", func(t *testing.T) {
+		var buf bytes.Buffer
+		findings := []Finding{
+			{Severity: "high", Name: "ssrf", Detail: "potential SSRF"},
+			{Severity: "medium", Name: "injection", Detail: "possible injection"},
+		}
+		LogFindings(&buf, findings)
+		lines := strings.Split(strings.TrimRight(buf.String(), "\n"), "\n")
+		assert.Equal(t, 2, len(lines))
+		assert.Equal(t, "  [high] ssrf: potential SSRF", lines[0])
+		assert.Equal(t, "  [medium] injection: possible injection", lines[1])
+	})
+
+	t.Run("empty findings", func(t *testing.T) {
+		var buf bytes.Buffer
+		LogFindings(&buf, nil)
+		assert.Empty(t, buf.String())
+	})
+
+	t.Run("single finding", func(t *testing.T) {
+		var buf bytes.Buffer
+		LogFindings(&buf, []Finding{
+			{Severity: "critical", Name: "github_pat", Detail: "token found"},
+		})
+		assert.Equal(t, "  [critical] github_pat: token found\n", buf.String())
 	})
 }
 

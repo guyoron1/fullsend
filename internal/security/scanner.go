@@ -13,6 +13,11 @@
 // and evaluation results.
 package security
 
+import (
+	"fmt"
+	"io"
+)
+
 // Finding represents a single security issue detected by a scanner.
 type Finding struct {
 	Scanner  string // "secret_redactor", "ssrf_validator", "context_injection", "unicode_normalizer"
@@ -109,4 +114,22 @@ func HasCriticalFindings(findings []Finding) bool {
 		}
 	}
 	return false
+}
+
+// FormatFinding returns a human-readable representation of a security finding
+// in the format "[severity] name: detail". It uses the Name field (pattern
+// name or category, e.g. "github_pat", "zero_width") rather than Scanner
+// (which scanner found it, e.g. "secret_redactor"). Name identifies what was
+// found, which is more actionable for users than which scanner detected it.
+func FormatFinding(f Finding) string {
+	return fmt.Sprintf("[%s] %s: %s", f.Severity, f.Name, f.Detail)
+}
+
+// LogFindings writes a formatted list of security findings to w, one per line.
+// Each line is indented with two spaces and formatted using FormatFinding.
+// If findings is empty, nothing is written.
+func LogFindings(w io.Writer, findings []Finding) {
+	for _, f := range findings {
+		fmt.Fprintf(w, "  %s\n", FormatFinding(f))
+	}
 }
