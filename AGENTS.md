@@ -46,6 +46,16 @@ The e2e tests require GitHub credentials. There are three ways to provide them:
 
 If only `E2E_GITHUB_USERNAME` and a password source are available, `make e2e-test` will automatically generate a session file before running tests. See `make help` for all available targets.
 
+## Shell scripting
+
+### `return` vs `exit` in executed scripts
+
+`return` is valid only inside functions or in scripts that are `source`d. At the top level of an executed script (one with a shebang or run via `bash script.sh`), `return` causes a hard error — and under `set -euo pipefail`, this aborts the script.
+
+This commonly occurs when inlining library code that was previously `source`d. Library-style load guards like `[[ -n "${LOADED:-}" ]] && return 0` must be removed or replaced when the code is inlined into an executed script.
+
+**When reviewing shell scripts:** Flag any top-level `return` (outside a function body) in a script that is executed rather than sourced as a medium-severity correctness finding. Check for this especially when a PR inlines or moves code from a library/sourced file into an executable script.
+
 ## Forge abstraction
 
 All git forge operations (GitHub API calls, PR comments, issue creation, workflow dispatch, etc.) **must** go through the `forge.Client` interface defined in `internal/forge/forge.go`. This is a fundamental architectural rule — the codebase supports multiple forges (GitHub, GitLab, Forgejo) and direct coupling to any single forge breaks the abstraction.
