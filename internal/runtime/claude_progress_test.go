@@ -169,6 +169,202 @@ func TestProgressParser(t *testing.T) {
 	}
 }
 
+func TestProgressParserThinkingEvent(t *testing.T) {
+	lines := []string{
+		`{"type":"assistant","content":[{"type":"thinking","thinking":"I need to analyze the code..."}]}`,
+		`{"type":"assistant","content":[{"type":"tool_use","name":"Read","input":{"file_path":"/src/main.go"}}]}`,
+	}
+
+	input := strings.NewReader(strings.Join(lines, "\n"))
+	var buf bytes.Buffer
+	printer := ui.New(&buf)
+	metrics := &RunMetrics{}
+
+	if err := progressParser(input, printer, time.Now(), metrics); err != nil {
+		t.Fatalf("progressParser returned error: %v", err)
+	}
+
+	if metrics.ToolCalls.Load() != 1 {
+		t.Errorf("expected 1 tool call (thinking is not a tool), got %d", metrics.ToolCalls.Load())
+	}
+
+	output := buf.String()
+	if !strings.Contains(output, "Thinking") {
+		t.Errorf("expected Thinking progress, got: %s", output)
+	}
+	if strings.Contains(output, "I need to analyze") {
+		t.Errorf("thinking content should not appear in output, got: %s", output)
+	}
+}
+
+func TestProgressParserThinkingContentNotLeaked(t *testing.T) {
+	lines := []string{
+		`{"type":"assistant","content":[{"type":"thinking","thinking":"SECRET_API_KEY=abc123 sensitive data here"}]}`,
+	}
+
+	input := strings.NewReader(strings.Join(lines, "\n"))
+	var buf bytes.Buffer
+	printer := ui.New(&buf)
+	metrics := &RunMetrics{}
+
+	_ = progressParser(input, printer, time.Now(), metrics)
+
+	output := buf.String()
+	if strings.Contains(output, "SECRET_API_KEY") {
+		t.Errorf("thinking content should not leak sensitive data, got: %s", output)
+	}
+	if strings.Contains(output, "abc123") {
+		t.Errorf("thinking content should not leak sensitive data, got: %s", output)
+	}
+}
+
+func TestProgressParserResultSuccess(t *testing.T) {
+	lines := []string{
+		`{"type":"assistant","content":[{"type":"tool_use","name":"Read","input":{"file_path":"/src/main.go"}}]}`,
+		`{"type":"result","subtype":"success","is_error":false,"result":"Task completed"}`,
+	}
+
+	input := strings.NewReader(strings.Join(lines, "\n"))
+	var buf bytes.Buffer
+	printer := ui.New(&buf)
+	metrics := &RunMetrics{}
+
+	if err := progressParser(input, printer, time.Now(), metrics); err != nil {
+		t.Fatalf("progressParser returned error: %v", err)
+	}
+
+	output := buf.String()
+	if !strings.Contains(output, "Result: completed") {
+		t.Errorf("expected success result, got: %s", output)
+	}
+}
+
+func TestProgressParserResultError(t *testing.T) {
+	lines := []string{
+		`{"type":"result","subtype":"error_max_turns","is_error":true,"result":"Agent reached maximum turns"}`,
+	}
+
+	input := strings.NewReader(strings.Join(lines, "\n"))
+	var buf bytes.Buffer
+	printer := ui.New(&buf)
+	metrics := &RunMetrics{}
+
+	if err := progressParser(input, printer, time.Now(), metrics); err != nil {
+		t.Fatalf("progressParser returned error: %v", err)
+	}
+
+	output := buf.String()
+	if !strings.Contains(output, "Result: error_max_turns") {
+		t.Errorf("expected error result with subtype, got: %s", output)
+	}
+	// The actual error message content should not be in progress output.
+	if strings.Contains(output, "Agent reached maximum turns") {
+		t.Errorf("result error message content should not appear in progress, got: %s", output)
+	}
+}
+
+func TestProgressParserResultErrorNoSubtype(t *testing.T) {
+	lines := []string{
+		`{"type":"result","is_error":true}`,
+	}
+
+	input := strings.NewReader(strings.Join(lines, "\n"))
+	var buf bytes.Buffer
+	printer := ui.New(&buf)
+	metrics := &RunMetrics{}
+
+	_ = progressParser(input, printer, time.Now(), metrics)
+
+	output := buf.String()
+	if !strings.Contains(output, "Result: error") {
+		t.Errorf("expected fallback error label, got: %s", output)
+	}
+}
+
+func TestProgressParserSystemEvent(t *testing.T) {
+	lines := []string{
+		`{"type":"system","subtype":"init","session_id":"abc123"}`,
+		`{"type":"assistant","content":[{"type":"tool_use","name":"Read","input":{"file_path":"/src/main.go"}}]}`,
+	}
+
+	input := strings.NewReader(strings.Join(lines, "\n"))
+	var buf bytes.Buffer
+	printer := ui.New(&buf)
+	metrics := &RunMetrics{}
+
+	if err := progressParser(input, printer, time.Now(), metrics); err != nil {
+		t.Fatalf("progressParser returned error: %v", err)
+	}
+
+	output := buf.String()
+	if !strings.Contains(output, "System: init") {
+		t.Errorf("expected system init progress, got: %s", output)
+	}
+	// Session ID should not leak.
+	if strings.Contains(output, "abc123") {
+		t.Errorf("session_id should not appear in output, got: %s", output)
+	}
+}
+
+func TestProgressParserSystemEventNoSubtype(t *testing.T) {
+	lines := []string{
+		`{"type":"system"}`,
+	}
+
+	input := strings.NewReader(strings.Join(lines, "\n"))
+	var buf bytes.Buffer
+	printer := ui.New(&buf)
+	metrics := &RunMetrics{}
+
+	_ = progressParser(input, printer, time.Now(), metrics)
+
+	output := buf.String()
+	if !strings.Contains(output, "System: system") {
+		t.Errorf("expected fallback system label, got: %s", output)
+	}
+}
+
+func TestProgressParserMixedEventTypes(t *testing.T) {
+	lines := []string{
+		`{"type":"system","subtype":"init"}`,
+		`{"type":"assistant","content":[{"type":"thinking","thinking":"planning..."}]}`,
+		`{"type":"assistant","content":[{"type":"tool_use","name":"Read","input":{"file_path":"/src/main.go"}}]}`,
+		`{"type":"assistant","content":[{"type":"text","text":"Done"}]}`,
+		`{"type":"assistant","content":[{"type":"tool_use","name":"Bash","input":{"command":"make test"}}]}`,
+		`{"type":"result","subtype":"success","is_error":false}`,
+	}
+
+	input := strings.NewReader(strings.Join(lines, "\n"))
+	var buf bytes.Buffer
+	printer := ui.New(&buf)
+	metrics := &RunMetrics{}
+
+	if err := progressParser(input, printer, time.Now(), metrics); err != nil {
+		t.Fatalf("progressParser returned error: %v", err)
+	}
+
+	if metrics.ToolCalls.Load() != 2 {
+		t.Errorf("expected 2 tool calls, got %d", metrics.ToolCalls.Load())
+	}
+
+	output := buf.String()
+	if !strings.Contains(output, "System: init") {
+		t.Errorf("expected system event, got: %s", output)
+	}
+	if !strings.Contains(output, "Thinking") {
+		t.Errorf("expected thinking event, got: %s", output)
+	}
+	if !strings.Contains(output, "Read: /src/main.go") {
+		t.Errorf("expected Read progress, got: %s", output)
+	}
+	if !strings.Contains(output, "Bash: make") {
+		t.Errorf("expected Bash progress, got: %s", output)
+	}
+	if !strings.Contains(output, "Result: completed") {
+		t.Errorf("expected result progress, got: %s", output)
+	}
+}
+
 func TestProgressParserIgnoresStreamEvents(t *testing.T) {
 	lines := []string{
 		`{"type":"stream_event","event":{"type":"content_block_start","content_block":{"type":"tool_use","name":"Edit"}}}`,

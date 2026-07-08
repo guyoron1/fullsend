@@ -20,7 +20,9 @@ const (
 
 // streamEvent represents a single NDJSON event from Claude Code's stream-json output.
 type streamEvent struct {
-	Type string `json:"type"`
+	Type    string `json:"type"`
+	Subtype string `json:"subtype,omitempty"`
+	IsError bool   `json:"is_error,omitempty"`
 }
 
 // assistantMessage contains tool_use blocks from complete assistant messages.
@@ -79,13 +81,18 @@ func progressParser(r io.Reader, printer *ui.Printer, start time.Time, metrics *
 			continue
 		}
 
-		if evt.Type == "assistant" {
-			parseAssistantToolUse(line, printer, start, metrics, isCI)
+		switch evt.Type {
+		case "assistant":
+			parseAssistantEvent(line, printer, start, metrics, isCI)
+		case "result":
+			emitResultProgress(printer, evt, start, metrics, isCI)
+		case "system":
+			emitSystemProgress(printer, evt, start, isCI)
 		}
 	}
 }
 
-func parseAssistantToolUse(line []byte, printer *ui.Printer, start time.Time, metrics *RunMetrics, isCI bool) {
+func parseAssistantEvent(line []byte, printer *ui.Printer, start time.Time, metrics *RunMetrics, isCI bool) {
 	var msg assistantMessage
 	if err := json.Unmarshal(line, &msg); err != nil {
 		return
@@ -97,18 +104,20 @@ func parseAssistantToolUse(line []byte, printer *ui.Printer, start time.Time, me
 	}
 
 	for _, item := range items {
-		if item.Type != "tool_use" {
-			continue
+		switch item.Type {
+		case "tool_use":
+			toolName := item.Name
+			var ctx string
+			if !allowedTools[toolName] {
+				toolName = "tool"
+			} else {
+				ctx = extractSafeContext(item.Name, item.Input)
+			}
+			count := metrics.ToolCalls.Add(1)
+			emitToolProgress(printer, toolName, ctx, start, count, isCI)
+		case "thinking":
+			emitThinkingProgress(printer, start, metrics, isCI)
 		}
-		toolName := item.Name
-		var ctx string
-		if !allowedTools[toolName] {
-			toolName = "tool"
-		} else {
-			ctx = extractSafeContext(item.Name, item.Input)
-		}
-		count := metrics.ToolCalls.Add(1)
-		emitToolProgress(printer, toolName, ctx, start, count, isCI)
 	}
 }
 
@@ -204,6 +213,58 @@ func emitToolProgress(printer *ui.Printer, toolName, context string, start time.
 	}
 
 	msg = sanitizeOutput(msg)
+	if isCI {
+		fmt.Fprintf(os.Stderr, "::notice::%s\n", msg)
+	}
+	printer.Heartbeat(msg)
+}
+
+// emitThinkingProgress reports that the agent is reasoning without exposing
+// the thinking content, which may contain sensitive data from the prompt or
+// sandbox.
+func emitThinkingProgress(printer *ui.Printer, start time.Time, metrics *RunMetrics, isCI bool) {
+	elapsed := time.Since(start).Truncate(time.Second)
+	toolCount := metrics.ToolCalls.Load()
+	msg := fmt.Sprintf("Thinking (%s, %d tools)", elapsed, toolCount)
+	if isCI {
+		fmt.Fprintf(os.Stderr, "::notice::%s\n", msg)
+	}
+	printer.Heartbeat(msg)
+}
+
+// emitResultProgress reports completion or error from a result event.
+func emitResultProgress(printer *ui.Printer, evt streamEvent, start time.Time, metrics *RunMetrics, isCI bool) {
+	elapsed := time.Since(start).Truncate(time.Second)
+	toolCount := metrics.ToolCalls.Load()
+
+	var msg string
+	if evt.IsError {
+		subtype := sanitizeOutput(evt.Subtype)
+		if subtype == "" {
+			subtype = "error"
+		}
+		msg = fmt.Sprintf("Result: %s (%s, %d tools)", subtype, elapsed, toolCount)
+		if isCI {
+			fmt.Fprintf(os.Stderr, "::warning::%s\n", msg)
+		}
+		printer.StepWarn(msg)
+	} else {
+		msg = fmt.Sprintf("Result: completed (%s, %d tools)", elapsed, toolCount)
+		if isCI {
+			fmt.Fprintf(os.Stderr, "::notice::%s\n", msg)
+		}
+		printer.StepDone(msg)
+	}
+}
+
+// emitSystemProgress reports system-level events (e.g., session initialization).
+func emitSystemProgress(printer *ui.Printer, evt streamEvent, start time.Time, isCI bool) {
+	elapsed := time.Since(start).Truncate(time.Second)
+	subtype := sanitizeOutput(evt.Subtype)
+	if subtype == "" {
+		subtype = "system"
+	}
+	msg := fmt.Sprintf("System: %s (%s)", subtype, elapsed)
 	if isCI {
 		fmt.Fprintf(os.Stderr, "::notice::%s\n", msg)
 	}
