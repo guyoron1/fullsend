@@ -641,13 +641,15 @@ Deprecated path prefixes:
   should target that repository instead.
 
 **Exemptions:** PRs that *only* modify scaffold propagation or
-versioning machinery (e.g., the scaffold version field, copy/sync
-scripts that update downstream repos from the scaffold) are not
-misdirected. To qualify for the exemption, every file matched by the
-deprecated prefix must be part of the propagation or versioning
-mechanism — not agent definitions, skills, schemas, scripts, policies,
-workflows, or environment files. If any non-exempt file is present,
-the exemption does not apply.
+versioning machinery are not misdirected. Exempt files are those
+that exist solely to support the sync/deploy pipeline — for example,
+`templates/shim-per-repo.yaml` and `templates/shim-workflow-call.yaml`
+(workflow dispatch shims consumed by the propagation tooling). Agent
+definitions, skills, schemas, scripts, policies, harness configs,
+workflows, and environment files are never exempt. To qualify for the
+exemption, every file matched by the deprecated prefix must be an
+exempt file. If any non-exempt file is present, the exemption does
+not apply.
 
 For each file in the PR diff, check whether its path starts with any
 deprecated path prefix.
@@ -655,23 +657,18 @@ deprecated path prefix.
 If **any** deprecated-path files are modified (and the exemption does
 not apply):
 
-Raise a **high** finding with category `deprecated-path`. The finding
-MUST:
+Raise a **high** finding with category `deprecated-path`. The
+description MUST list the affected deprecated-path files, state that
+the content at this location has migrated to `fullsend-ai/agents`,
+and direct the author to open the PR in the correct repository. Set
+remediation to: "Close this PR and re-submit the changes in the
+`fullsend-ai/agents` repository, which is the canonical location
+for this content."
 
-- List the affected deprecated-path files.
-- State that the content at this location has migrated to
-  `fullsend-ai/agents`.
-- Direct the author to open the PR in the correct repository.
-- Set remediation to: "Close this PR and re-submit the changes in the
-  `fullsend-ai/agents` repository, which is the canonical location for
-  this content."
-
-A `deprecated-path` finding at high severity means the outcome MUST be
-`reject` — the PR is targeting the wrong location and no amount of
-code-level iteration will make it mergeable. If the PR also contains
-non-deprecated files, the deprecated-path finding still forces
-`reject` for the entire PR because the misdirected files indicate the
-author is working against the wrong repository.
+In either case, the presence of a `deprecated-path` finding means
+the outcome MUST NOT be `approve` or `request-changes` — the outcome
+MUST be `reject`. The PR is targeting the wrong location and no
+amount of code-level iteration will make it mergeable.
 
 If no deprecated-path files are modified, or if the exemption applies,
 do not add a `deprecated-path` finding.
@@ -681,7 +678,8 @@ do not add a `deprecated-path` finding.
 Merge PR-specific findings into the challenger-adjudicated finding set
 and evaluate:
 
-- Any **critical** or **high** finding → `request-changes`
+- Any **critical** or **high** finding → `request-changes` (except
+  `deprecated-path` findings, which force `reject` — see step 6e)
 - Multiple **medium** findings which could affect the intended outcome
   of the PR → `request-changes`
 - One **medium** finding (but no critical/high) → `comment-only`
@@ -692,7 +690,7 @@ and evaluate:
   `actionable: true` so the post-script can create follow-up issues)
 - No findings → `approve`
 - The approach is fundamentally wrong — wrong design, unauthorized
-  change, deprecated-path targeting, or the PR should be
+  change, deprecated-path finding, or the PR should be
   closed/completely rethought → `reject`. Use `reject` only when no
   amount of code-level iteration will make the PR mergeable.
 
@@ -831,6 +829,8 @@ wins.
   `request-changes`.
 - **Never approve when any protected-path finding exists**, regardless of
   severity.
+- **Never approve or request-changes when a deprecated-path finding
+  exists** — the outcome must be `reject`.
 - **PR-specific checks (step 6e) belong in the orchestrator only.** Do
   not push protected-path checks, scope authorization, or PR body
   injection defense into sub-agents. These require PR-level context
