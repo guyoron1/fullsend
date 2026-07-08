@@ -104,6 +104,55 @@ Policy thresholds:
 broader access than when the value is correctly set, the code is
 fail-open.
 
+## Caller-callee contract consistency
+
+**Category:** Use `fail-open` for all findings in this section.
+
+When a function receives a security-relevant field via a struct parameter
+(e.g., an allowlist, ACL, permission set, or scope list) and applies a
+permissive local default for internal use — such as
+`localVar := opts.Allowlist; if localVar == nil { localVar = defaults }`
+— without writing the default back to the struct, check whether the
+caller passes the same struct to downstream functions that interpret the
+field differently.
+
+This is a cross-function fail-open pattern: the callee behaves as if the
+field has a permissive default, but the struct still carries the original
+nil/absent value. If a subsequent callee treats nil as deny-all while the
+first callee treated nil as use-defaults, the two operations within the
+same code path apply contradictory security semantics.
+
+**Heuristic:** When a function in the diff locally defaults a
+security-relevant struct field without writing it back:
+
+1. **Identify the struct parameter** and the field being defaulted.
+2. **Trace the struct through the caller.** Find where the caller
+   obtained the struct and what other functions receive it after the
+   current function returns.
+3. **Check nil/absent semantics in each downstream callee.** If any
+   downstream function interprets nil/absent for the same field as
+   deny-all (or any semantics different from the local default), flag
+   the inconsistency.
+4. **Assess severity.** If the field controls a security boundary
+   (allowlists, permission sets, access scopes), severity is at least
+   **medium**. If the inconsistency creates a fail-open path — where
+   one function permits access while a subsequent function denies it,
+   or vice versa — severity is **high**.
+
+**Do not stop analysis at the function boundary.** The pattern is only
+visible when you trace the struct through the caller's subsequent
+operations. A function that locally defaults a field may appear safe in
+isolation but create an asymmetry that breaks downstream invariants.
+
+Edge cases that do NOT require a finding:
+
+- The function writes the default back to the struct field (the caller
+  sees the updated value).
+- The struct is not passed to any other function after the call.
+- The field is an explicitly empty value (e.g., empty slice, not nil)
+  rather than absent/nil — this signals intentional "no entries" rather
+  than "not configured."
+
 ## Permission and role changes
 
 **Categories:** `permission-expansion`, `permission-reduction`,
