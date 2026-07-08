@@ -6,6 +6,11 @@ Organization-specific considerations for applying fullsend to the
 Quay is an open-source container registry. It is a fullsend consumer
 where autonomous agents triage issues, produce code, and review PRs.
 
+> **Note:** This document currently focuses on a single investigation
+> (CI-config autonomy readiness). Additional sections covering
+> technology landscape, how general problem areas apply, and broader
+> organizational context will be added as quay is explored further.
+
 ## Autonomy readiness evidence: CI-config-only changes
 
 This section tracks evidence toward autonomy readiness for a specific
@@ -28,8 +33,8 @@ agent approval is sufficient without mandatory human review.
 
 ### Validation criteria
 
-Collect data from the next 5 CI-config-only PRs in quay/quay. For each,
-record:
+Collect data from 5 total CI-config-only PRs in quay/quay (including any
+already recorded above). For each, record:
 
 1. Human review time (from PR creation to approval)
 2. Whether the human left substantive comments (not just "LGTM")
@@ -51,11 +56,14 @@ class is autonomy-ready.
 
 1. **Evidence collection** (current phase) — populate the table above
    as CI-config-only PRs are observed.
-2. **Shadow mode** — once 3+ PRs confirm the pattern, log whether the
-   review agent would have approved before the human did, without
-   changing actual merge requirements.
-3. **Graduation** — if shadow mode validates across all 5 PRs, consider
-   adding CI workflow files to
+2. **Shadow mode** — once 3+ of the 5 target PRs confirm the pattern,
+   begin logging whether the review agent would have approved before
+   the human did, without changing actual merge requirements. Apply
+   shadow analysis retroactively to the PRs already observed during
+   evidence collection.
+3. **Graduation** — if retroactive and prospective shadow analysis
+   across all 5 observed PRs confirms the review agent would have
+   approved before the human did, consider adding CI workflow files to
    [Tier 0 standing rules](../../intent-representation.md#tier-0-standing-rules-no-per-change-intent-needed)
    or a new autonomy tier where review agent approval is sufficient.
 
@@ -66,6 +74,16 @@ class is autonomy-ready.
   checks)
 - [#148](https://github.com/fullsend-ai/fullsend/issues/148) —
   Fast-path for config-only PRs (reducing review agent cost)
+
+### Open questions
+
+- What is the decision process if the pattern does not hold (e.g., a
+  human reviewer catches something the review agent missed)? Should the
+  evidence table record negative data points explicitly?
+- Should shadow mode require a minimum observation period (calendar
+  time) in addition to the PR count threshold?
+- How should review agent version changes during the evidence
+  collection period affect the validity of earlier data points?
 
 ### Confidence level
 
