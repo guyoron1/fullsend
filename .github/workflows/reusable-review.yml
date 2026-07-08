@@ -287,6 +287,7 @@ jobs:
           PRIOR_REVIEW_SHA: ${{ steps.prior-review.outputs.prior_sha }}
           PRIOR_REVIEW_FILE: ${{ steps.prior-review.outputs.prior_review_file }}
           PRIOR_REVIEW_PROVENANCE: ${{ steps.prior-review.outputs.prior_review_provenance }}
+          REVIEW_FINDING_SEVERITY_THRESHOLD: 'low'
         with:
           agent: review
           version: ${{ inputs.fullsend_version }}
