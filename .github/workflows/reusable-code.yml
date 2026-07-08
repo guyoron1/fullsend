@@ -148,7 +148,7 @@ jobs:
       - name: Install Costwise proxy
         run: |
           set -euo pipefail
-          WHEEL=$(ls vendor/costwise-*.whl) && pip install --quiet "${WHEEL}[proxy,vertex]"
+          WHEEL=$(ls dist/costwise-*.whl) && pip install --quiet "${WHEEL}[proxy,vertex]"
           costwise --version
 
       - name: Start Costwise proxy
