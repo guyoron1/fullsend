@@ -73,3 +73,42 @@ When reviewing technical documentation, verify:
 - **Edge case correctness** — Are described edge cases (depth/breadth
   limits, zero values, error conditions) handled correctly in the
   described logic?
+
+### Shell safety in harness scripts
+
+Harness scripts (`post-code.sh`, `post-fix.sh`, `post-review.sh`, and
+similar scripts under `scripts/`) handle user- and agent-controlled
+content. Two bug classes silently corrupt data and are easy to miss:
+
+**Echo flag injection:** `echo "${VAR}"` interprets a leading dash as
+a flag. If the variable contains user- or agent-controlled content
+(e.g., a PR body, commit message, or agent output), a value starting
+with `-e` or `-n` silently changes `echo`'s behavior — escape
+sequences are interpreted or trailing newlines are suppressed,
+corrupting the output with no error.
+
+Flag `echo` with variable interpolation where the variable may contain
+user- or agent-controlled content in harness scripts as a
+medium-severity finding. Recommend `printf '%s\n' "${VAR}"` instead,
+which does not interpret its argument as flags.
+
+Do not flag `echo` with hardcoded strings (e.g., `echo "Step complete"`)
+or `echo` in non-harness scripts where the variable is demonstrably
+not user-controlled.
+
+**Unquoted heredoc expansion:** `<<TOKEN` (without quotes around TOKEN)
+allows shell expansion of `$` and backticks inside the heredoc body.
+When generating structured data (JSON, YAML) with embedded variables
+that may contain user- or agent-controlled content, shell expansion
+can silently corrupt the output — `$` in a PR body becomes a variable
+reference, and backtick-delimited text becomes command substitution.
+
+Flag unquoted heredocs (`<<TOKEN`) that generate JSON or YAML with
+embedded variable interpolation in harness scripts as a
+medium-severity finding. Recommend either `jq -n` for JSON
+construction or a quoted heredoc (`<<'TOKEN'`) combined with explicit
+variable substitution where needed.
+
+Do not flag quoted heredocs (`<<'TOKEN'` or `<<"TOKEN"`) or heredocs
+in non-harness scripts where all interpolated variables are
+demonstrably not user-controlled.
