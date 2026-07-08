@@ -125,6 +125,9 @@ When skipping, note the duplicate in your `summary` field so the human understan
 
 ### Evidence cap for tracked patterns
 
+This check applies after the duplicate check above. Only evaluate the
+evidence cap for evidence-type proposals that survive duplicate filtering.
+
 When a candidate proposal provides additional evidence for a parent issue
 that is already tracked (i.e., the proposal would be filed as
 "Evidence for #N: ..." referencing an existing open issue), check how many
@@ -133,15 +136,18 @@ open evidence issues already exist for that parent before proposing.
 Dispatch a subagent to query the count:
 
 > "Count the open issues in `<target_repo>` whose title starts with
-> 'Evidence for #N' where N is `<parent_number>`. Return the count."
+> 'Evidence for #N:' where N is `<parent_number>`. Return the count."
 
 The subagent should run:
 
 ```bash
 gh api \
-  "search/issues?q=repo:<target_repo>+is:issue+is:open+in:title+\"Evidence+for+%23<parent_number>\"" \
+  "search/issues?q=repo:<target_repo>+is:issue+is:open+in:title+\"Evidence+for+%23<parent_number>:\"" \
   --jq '.total_count'
 ```
+
+If the count query fails or returns an error, proceed with the proposal
+(fail open). Do not skip evidence proposals based on an inconclusive count.
 
 **If the count is >= 5, skip the evidence proposal entirely.** The pattern
 is already well-documented — additional evidence provides diminishing
@@ -153,7 +159,7 @@ Instead of filing the proposal:
 2. In the `summary` field, note that the pattern is already
    well-documented. Mention the parent issue number and the current PR
    as an additional data point. For example: "Pattern tracked by #N
-   already has sufficient evidence (M open data-point issues). This PR
+   already has sufficient evidence (M open data-point issues). This PR/issue
    provides another data point but no new issue was filed."
 
 This cap applies only to evidence issues for already-tracked parent
