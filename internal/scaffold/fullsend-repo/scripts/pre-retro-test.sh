@@ -59,13 +59,26 @@ fi
 
 if [[ "\$1" == "api" ]]; then
   URL="\$2"
+  # Parse --jq argument so the mock applies jq expressions like the real gh.
+  JQ_EXPR=""
+  PREV_ARG=""
+  for a in "\$@"; do
+    if [[ "\${PREV_ARG}" == "--jq" ]]; then
+      JQ_EXPR="\${a}"
+    fi
+    PREV_ARG="\${a}"
+  done
   if [[ "\${URL}" == *"/issues/"*"/comments" ]]; then
     DATA=\$(cat "\${DATA_DIR}/comments.json")
     if [[ -z "\${DATA}" ]]; then
       echo "mock: comments fetch failed" >&2
       exit 1
     fi
-    echo "\${DATA}"
+    if [[ -n "\${JQ_EXPR}" ]]; then
+      echo "\${DATA}" | jq "\${JQ_EXPR}"
+    else
+      echo "\${DATA}"
+    fi
     exit 0
   fi
   if [[ "\${URL}" == *"/pulls/"*"/reviews" ]]; then
@@ -74,7 +87,11 @@ if [[ "\$1" == "api" ]]; then
       echo "mock: reviews fetch failed" >&2
       exit 1
     fi
-    echo "\${DATA}"
+    if [[ -n "\${JQ_EXPR}" ]]; then
+      echo "\${DATA}" | jq "\${JQ_EXPR}"
+    else
+      echo "\${DATA}"
+    fi
     exit 0
   fi
   if [[ "\${URL}" == *"/actions/runs" ]]; then
@@ -83,7 +100,11 @@ if [[ "\$1" == "api" ]]; then
       echo "mock: runs fetch failed" >&2
       exit 1
     fi
-    echo "\${DATA}"
+    if [[ -n "\${JQ_EXPR}" ]]; then
+      echo "\${DATA}" | jq "\${JQ_EXPR}"
+    else
+      echo "\${DATA}"
+    fi
     exit 0
   fi
 fi

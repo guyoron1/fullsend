@@ -68,10 +68,10 @@ pr_metadata=""
 if pr_metadata=$(gh pr view "${URL_NUMBER}" \
   --repo "${URL_REPO}" \
   --json number,title,body,state,author,labels,mergedBy,baseRefName,headRefName,additions,deletions,changedFiles,commits,createdAt,closedAt,mergedAt,mergeCommit,isDraft,reviewDecision \
-  2>&1); then
+  2>/dev/null); then
   echo "Fetched PR metadata."
 else
-  echo "::warning::Failed to fetch PR metadata: ${pr_metadata}"
+  echo "::warning::Failed to fetch PR metadata"
   prefetch_failed=true
 fi
 
@@ -79,10 +79,10 @@ fi
 pr_comments=""
 if ! ${prefetch_failed}; then
   if pr_comments=$(gh api "repos/${URL_REPO}/issues/${URL_NUMBER}/comments" \
-    --paginate 2>&1); then
+    --paginate --jq '.[]' 2>/dev/null | jq -s '.'); then
     echo "Fetched PR comments."
   else
-    echo "::warning::Failed to fetch PR comments: ${pr_comments}"
+    echo "::warning::Failed to fetch PR comments"
     pr_comments="[]"
   fi
 fi
@@ -91,10 +91,10 @@ fi
 pr_reviews=""
 if ! ${prefetch_failed}; then
   if pr_reviews=$(gh api "repos/${URL_REPO}/pulls/${URL_NUMBER}/reviews" \
-    --paginate 2>&1); then
+    --paginate --jq '.[]' 2>/dev/null | jq -s '.'); then
     echo "Fetched PR reviews."
   else
-    echo "::warning::Failed to fetch PR reviews: ${pr_reviews}"
+    echo "::warning::Failed to fetch PR reviews"
     pr_reviews="[]"
   fi
 fi
@@ -107,10 +107,10 @@ if ! ${prefetch_failed}; then
     --method GET \
     -f per_page=10 \
     --jq '{workflow_runs: [.workflow_runs[] | {id, name, status, conclusion, html_url, created_at, updated_at, head_sha, head_branch, event}]}' \
-    2>&1); then
+    2>/dev/null); then
     echo "Fetched recent workflow runs."
   else
-    echo "::warning::Failed to fetch workflow runs: ${workflow_runs}"
+    echo "::warning::Failed to fetch workflow runs"
     workflow_runs='{"workflow_runs":[]}'
   fi
 fi
@@ -121,7 +121,7 @@ if ${prefetch_failed}; then
   printf '{"prefetch_status":"failed","error":"PR metadata fetch failed"}\n' \
     > "${PR_CONTEXT_FILE}"
 else
-  jq -n \
+  if jq -n \
     --arg status "ok" \
     --argjson metadata "${pr_metadata}" \
     --argjson comments "${pr_comments}" \
@@ -133,8 +133,13 @@ else
       comments: $comments,
       reviews: $reviews,
       workflow_runs: $workflow_runs.workflow_runs
-    }' > "${PR_CONTEXT_FILE}"
-  echo "PR context written to ${PR_CONTEXT_FILE}"
+    }' > "${PR_CONTEXT_FILE}"; then
+    echo "PR context written to ${PR_CONTEXT_FILE}"
+  else
+    echo "::warning::jq assembly failed — writing degraded context file"
+    printf '{"prefetch_status":"partial","error":"jq assembly failed"}\n' \
+      > "${PR_CONTEXT_FILE}"
+  fi
 fi
 
 # Output the file path for workflow integration.
