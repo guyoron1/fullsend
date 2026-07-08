@@ -627,6 +627,55 @@ attention.
 If no protected files are modified, do not add a `protected-path`
 finding.
 
+##### Deprecated paths
+
+Check whether the PR modifies files under deprecated paths. These are
+locations whose canonical content has migrated to another repository.
+Changes targeting them are almost certainly misdirected and will not
+be merged.
+
+Deprecated path prefixes:
+
+- `internal/scaffold/fullsend-repo/` — scaffold content has migrated
+  to the `fullsend-ai/agents` repository. PRs modifying files here
+  should target that repository instead.
+
+**Exemptions:** PRs that *only* modify scaffold propagation or
+versioning machinery (e.g., the scaffold version field, copy/sync
+scripts that update downstream repos from the scaffold) are not
+misdirected. To qualify for the exemption, every file matched by the
+deprecated prefix must be part of the propagation or versioning
+mechanism — not agent definitions, skills, schemas, scripts, policies,
+workflows, or environment files. If any non-exempt file is present,
+the exemption does not apply.
+
+For each file in the PR diff, check whether its path starts with any
+deprecated path prefix.
+
+If **any** deprecated-path files are modified (and the exemption does
+not apply):
+
+Raise a **high** finding with category `deprecated-path`. The finding
+MUST:
+
+- List the affected deprecated-path files.
+- State that the content at this location has migrated to
+  `fullsend-ai/agents`.
+- Direct the author to open the PR in the correct repository.
+- Set remediation to: "Close this PR and re-submit the changes in the
+  `fullsend-ai/agents` repository, which is the canonical location for
+  this content."
+
+A `deprecated-path` finding at high severity means the outcome MUST be
+`reject` — the PR is targeting the wrong location and no amount of
+code-level iteration will make it mergeable. If the PR also contains
+non-deprecated files, the deprecated-path finding still forces
+`reject` for the entire PR because the misdirected files indicate the
+author is working against the wrong repository.
+
+If no deprecated-path files are modified, or if the exemption applies,
+do not add a `deprecated-path` finding.
+
 #### 6f. Determine overall outcome
 
 Merge PR-specific findings into the challenger-adjudicated finding set
@@ -643,9 +692,9 @@ and evaluate:
   `actionable: true` so the post-script can create follow-up issues)
 - No findings → `approve`
 - The approach is fundamentally wrong — wrong design, unauthorized
-  change, or the PR should be closed/completely rethought → `reject`.
-  Use `reject` only when no amount of code-level iteration will make
-  the PR mergeable.
+  change, deprecated-path targeting, or the PR should be
+  closed/completely rethought → `reject`. Use `reject` only when no
+  amount of code-level iteration will make the PR mergeable.
 
 ### 7. Produce the review result
 
