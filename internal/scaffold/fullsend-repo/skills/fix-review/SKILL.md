@@ -48,7 +48,8 @@ At the start of each major step, emit a progress marker:
 echo "::notice::STEP <N>: <title>"
 ```
 
-**Do this at steps 1, 2, 4, 7a, 7b, 7c, and 8.**
+**Do this at steps 1, 2, 4, 7a, 7b, 7c, and 8, and at the merge-conflict
+check after step 3.**
 
 ## Time budget
 
@@ -199,7 +200,11 @@ Determine:
 - Lint command (e.g., `make lint`, `pre-commit run --files`)
 - Commit conventions (message format, signing)
 
-### 3b. Resolve merge conflicts (prerequisite)
+### Resolve merge conflicts (conditional — after step 3)
+
+```bash
+echo "::notice::Merge conflict check"
+```
 
 Before planning or implementing any fixes, check whether the branch is
 behind the base branch:
@@ -219,19 +224,24 @@ conflicts — resolve them now, before any other work:**
    ```bash
    git merge "origin/${BASE_BRANCH}" --no-edit
    ```
-2. If conflicts arise, resolve them by preserving the PR's intended
-   changes while incorporating updates from the base branch. Use `Read`
-   and `Write` to fix conflicted files — do not use `sed` or `awk`.
-3. Verify the merge is clean:
-   ```bash
-   git diff --check  # no conflict markers
-   ```
-4. Stage resolved files and commit the merge:
-   ```bash
-   git add <resolved-files>
-   git commit --no-edit  # uses the default merge commit message
-   ```
-5. Verify the code still compiles:
+2. If the merge produced conflicts (non-zero exit), resolve them:
+   1. Preserve the PR's intended changes while incorporating updates from
+      the base branch. Use `Read` and `Write` to fix conflicted files —
+      do not use `sed` or `awk`.
+   2. Scan resolved files for secrets:
+      ```bash
+      scan-secrets <resolved-files>
+      ```
+   3. Verify no conflict markers remain:
+      ```bash
+      git diff --check  # checks for conflict markers and whitespace errors
+      ```
+   4. Stage resolved files and commit the merge:
+      ```bash
+      git add <resolved-files>
+      git commit --no-edit  # uses the default merge commit message
+      ```
+3. Verify the code still compiles:
    ```bash
    # Use the build command discovered in step 3
    go build ./... 2>&1 | head -20  # or: npm run build, make build, etc.
