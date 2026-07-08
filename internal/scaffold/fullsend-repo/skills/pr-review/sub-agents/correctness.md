@@ -47,6 +47,52 @@ Exclude the files already in the diff. Any hit outside the diff is a
 Medium-severity finding: "stale reference to removed/renamed
 `<identifier>` in `<file>:<line>`."
 
+### CI path filter coverage gap
+
+When the PR modifies source files that are exercised by path-filtered CI
+workflows, check whether those files (or their parent directories) appear
+in the workflow's `paths` trigger filter. A file that is tested by a CI
+workflow but not in that workflow's path filter means the workflow will
+not run when the file changes — the tests exist but are silently skipped.
+
+**Procedure:**
+
+1. Identify CI workflow files in the repository (`.github/workflows/*.yml`
+   or `.github/workflows/*.yaml`). Read each workflow that has a `paths`
+   or `paths-ignore` filter on `push` or `pull_request` /
+   `pull_request_target` triggers.
+2. For each modified file in the PR, check whether it matches any
+   path-filtered workflow's `paths` list. Use glob semantics: `**/*.go`
+   matches all `.go` files, `internal/cli/**` matches files under that
+   directory.
+3. If a modified file is NOT in any path-filtered workflow's trigger
+   filter, but the workflow's test suite exercises code in the modified
+   file's package or directory (inferred from the workflow's test
+   commands, the paths already in the filter, or the repository's test
+   structure), flag it as a CI coverage gap.
+
+**Severity:** Medium. Category: `ci-coverage-gap`.
+
+**Description format:** "Modified file `<path>` is exercised by the
+`<workflow-name>` workflow but is not in its `paths` trigger filter.
+Changes to this file will not trigger `<workflow-name>`, so regressions
+may reach the default branch untested."
+
+**Remediation:** "Add `<path>` (or a parent glob like `<dir>/**`) to the
+`paths` filter in `.github/workflows/<workflow-file>`."
+
+**Edge cases:**
+
+- If the PR also modifies the workflow file to add the missing path, do
+  NOT flag it — the gap is being fixed in the same PR.
+- If the workflow has no `paths` filter (runs on all changes), there is
+  no gap to flag.
+- If the workflow uses `paths-ignore` instead of `paths`, check whether
+  the modified file is explicitly ignored. A file not in `paths-ignore`
+  WILL trigger the workflow, so there is no gap.
+- If a modified file is a new file in a directory that is already covered
+  by a glob pattern (e.g., `internal/cli/**`), there is no gap.
+
 ### Technical documentation with correctness surface area
 
 Not all documentation is prose. Any
