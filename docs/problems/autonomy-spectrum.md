@@ -115,11 +115,17 @@ Autonomy classes are distinct from repo-level graduation. A repo that is not aut
 - Finding category is mechanical consistency: typos, numbering gaps, cross-reference validation, scope coherence between document sections
 - Finding does not require project-specific domain knowledge to evaluate
 
-**Evidence:** On [konflux-ci/architecture PR #367](https://github.com/konflux-ci/architecture/pull/367), the review agent caught 4 genuine issues across 7 review runs. Two were mechanical consistency findings (a Phase 3 numbering gap and a scope ambiguity between document sections) that none of the 5 human reviewers identified — both merged without fix. The agent also caught a status inconsistency and a typo that the author fixed. However, the agent produced one domain-incorrect finding (Kubernetes label selector immutability) that a human reviewer dismissed because the project does not use the resource types in question.
+**Evidence:** See [applied docs](applied/) for the specific tracking data. In the baseline observation, a review agent caught mechanical consistency findings (numbering gaps, scope ambiguity between document sections) that multiple human reviewers missed — these merged without fix. The agent also caught a status inconsistency and a typo that the author fixed. However, the agent produced one domain-incorrect finding that a human reviewer dismissed because the project does not use the resource types in question.
 
-**Boundary:** The domain-incorrect finding demonstrates a clear autonomy boundary. Mechanical consistency checks (pattern-matchable, document-internal) are within the agent's reliable capability. Domain-specific architectural judgments (requiring knowledge of which technologies the project actually uses) are not.
+**Boundary conditions:** The domain-incorrect finding demonstrates a clear autonomy boundary. Mechanical consistency checks (pattern-matchable, document-internal) are within the agent's reliable capability. Domain-specific architectural judgments (requiring knowledge of which technologies the project actually uses) are not.
 
-**Proposed autonomy change:** If validated, the review agent would use CHANGES_REQUESTED (instead of COMMENT) for medium-severity mechanical consistency findings in qualifying repos. This increases the likelihood that findings are addressed before merge, without granting the agent authority over architectural judgments. Domain-specific findings remain at COMMENT level.
+**Proposed autonomy change:** Options for increasing review authority on validated mechanical consistency findings:
+
+1. **CHANGES_REQUESTED for medium+ mechanical findings** — the review agent blocks merge until the author addresses mechanical consistency findings at medium severity or above. Domain-specific findings remain at COMMENT level. This is the most direct response to the evidence (medium-severity findings merging without fix under COMMENT).
+2. **Auto-file tracking issues for unresolved findings** — instead of blocking merge, the agent files a tracking issue when medium+ mechanical findings go unresolved. Lower friction than CHANGES_REQUESTED but doesn't prevent the problem (findings still merge without fix).
+3. **COMMENT with explicit acknowledgment prompt** — keep COMMENT but require the author to explicitly acknowledge each medium+ finding (dismiss or address). This is intermediate friction — less blocking than CHANGES_REQUESTED but more than the current silent merge.
+
+Option 1 is the strongest match for the evidence (COMMENT was insufficient to prevent merge of medium-severity issues), but requires the validation plan to succeed first. Options 2 and 3 are lower-risk alternatives that could be adopted with less evidence.
 
 **Validation plan:** Track the next 5 ADR PRs merged in the qualifying repo. For each, compare agent mechanical consistency findings against human reviewer comments. Success: the agent catches mechanical consistency issues that no human flags on at least 3 of 5 PRs. A case where a human catches a mechanical consistency issue the agent missed weakens the signal. See [applied/konflux-ci](applied/konflux-ci/) for the specific tracking data.
 
@@ -133,7 +139,7 @@ Autonomy classes are distinct from repo-level graduation. A repo that is not aut
 
 Additional autonomy classes may emerge from operational evidence. Examples under observation:
 
-- **CI-config-only changes** — trivial workflow file modifications where human reviewers consistently approve in under 5 minutes with no substantive comments. See [applied docs](applied/) for tracking.
+- **CI-config-only changes** — trivial workflow file modifications where human reviewers consistently approve in under 5 minutes with no substantive comments
 - **Bot dependency bumps** — automated version bumps where review value is security verification rather than code quality
 
 Each class requires its own evidence trail and validation plan before any autonomy change.
