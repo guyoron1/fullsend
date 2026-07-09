@@ -130,6 +130,17 @@ jobs:
           gcp_wif_provider: ${{ secrets.FULLSEND_GCP_WIF_PROVIDER }}
           gcp_project_id: ${{ secrets.FULLSEND_GCP_PROJECT_ID }}
 
+      - name: Download RTK for sandbox
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          RTK_VERSION=$(curl -fsSL https://api.github.com/repos/rtk-ai/rtk/releases/latest | jq -r .tag_name)
+          curl -fsSL "https://github.com/rtk-ai/rtk/releases/download/${RTK_VERSION}/rtk-x86_64-unknown-linux-musl.tar.gz" \
+            | tar xz -C dist/
+          mv dist/rtk dist/rtk-linux-x64
+          chmod +x dist/rtk-linux-x64
+          echo "::notice::Downloaded RTK ${RTK_VERSION}"
+
       - name: Setup agent environment
         env:
           AGENT_PREFIX: RETRO_

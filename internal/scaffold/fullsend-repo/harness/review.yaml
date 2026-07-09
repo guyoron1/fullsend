@@ -28,9 +28,14 @@ host_files:
   - src: ${PRIOR_REVIEW_FILE}
     dest: /sandbox/workspace/prior-review.txt
     optional: true
-  - src: env/z-costwise-proxy.env
-    dest: /sandbox/workspace/.env.d/z-costwise-proxy.env
-    expand: true
+  - src: dist/rtk-linux-x64
+    dest: /sandbox/workspace/.costwise/rtk
+    optional: true
+  - src: env/rtk-setup.env
+    dest: /sandbox/workspace/.env.d/rtk-setup.env
+
+plugins:
+  - plugins/ponytail
 
 pre_script: scripts/pre-review.sh
 post_script: scripts/post-review.sh
@@ -53,8 +58,3 @@ forge:
       REPO_FULL_NAME: "${REPO_FULL_NAME}"
       PR_NUMBER: "${PR_NUMBER}"
       GITHUB_PR_URL: "${GITHUB_PR_URL}"
-    env:
-      sandbox:
-        CLAUDE_CODE_USE_VERTEX: "0"
-        ANTHROPIC_BASE_URL: "${COSTWISE_PROXY_URL}"
-        ANTHROPIC_API_KEY: "sk-ant-api03-costwise-proxy-passthrough"

@@ -20,9 +20,14 @@ host_files:
   - src: env/triage.env
     dest: /sandbox/workspace/.env.d/triage.env
     expand: true
-  - src: env/z-costwise-proxy.env
-    dest: /sandbox/workspace/.env.d/z-costwise-proxy.env
-    expand: true
+  - src: dist/rtk-linux-x64
+    dest: /sandbox/workspace/.costwise/rtk
+    optional: true
+  - src: env/rtk-setup.env
+    dest: /sandbox/workspace/.env.d/rtk-setup.env
+
+plugins:
+  - plugins/ponytail
 
 skills:
   - skills/issue-labels
@@ -46,8 +51,3 @@ forge:
     runner_env:
       GITHUB_ISSUE_URL: ${GITHUB_ISSUE_URL}
       GH_TOKEN: ${GH_TOKEN}
-    env:
-      sandbox:
-        CLAUDE_CODE_USE_VERTEX: "0"
-        ANTHROPIC_BASE_URL: "${COSTWISE_PROXY_URL}"
-        ANTHROPIC_API_KEY: "sk-ant-api03-costwise-proxy-passthrough"
