@@ -48,6 +48,10 @@ forge:
   github:
     pre_script: scripts/pre-triage.sh
     post_script: scripts/post-triage.sh
-    runner_env:
-      GITHUB_ISSUE_URL: ${GITHUB_ISSUE_URL}
-      GH_TOKEN: ${GH_TOKEN}
+    env:
+      runner:
+        GITHUB_ISSUE_URL: ${GITHUB_ISSUE_URL}
+        GH_TOKEN: ${GH_TOKEN}
+      sandbox:
+        GITHUB_ISSUE_URL: "${GITHUB_ISSUE_URL}"
+        GH_TOKEN: "${GH_TOKEN}"
