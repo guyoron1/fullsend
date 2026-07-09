@@ -178,7 +178,7 @@ jobs:
           REVIEW_FINDING_SEVERITY_THRESHOLD: 'low'
         with:
           agent: review
-          fullsend-dir: ${{ inputs.install_mode == 'per-repo' && '.fullsend' || '' }}
+          fullsend-dir: ''
           version: ${{ inputs.fullsend_version }}
           run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           status-repo: ${{ inputs.source_repo }}
