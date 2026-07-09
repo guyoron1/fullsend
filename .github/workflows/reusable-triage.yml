@@ -154,10 +154,12 @@ jobs:
         uses: ./.defaults/
         env:
           GITHUB_ISSUE_URL: ${{ fromJSON(inputs.event_payload).issue.html_url }}
+          REPO_FULL_NAME: ${{ inputs.source_repo }}
         with:
           agent: triage
           version: ${{ inputs.fullsend_version }}
+          fullsend-dir: ${{ inputs.install_mode == 'per-repo' && '.fullsend' || '' }}
           run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           status-repo: ${{ inputs.source_repo }}
           status-number: ${{ fromJSON(inputs.event_payload).issue.number }}
-          status-token: ${{ steps.app-token.outputs.token }}
+          mint-url: ${{ inputs.mint_url }}
