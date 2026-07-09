@@ -12,7 +12,12 @@ agent: agents/fix.md
 doc: docs/agents/fix.md
 model: opus
 image: ghcr.io/fullsend-ai/fullsend-code:latest
-policy: policies/fix.yaml
+policy: policies/base.yaml
+providers:
+  - vertex-ai
+  - github
+  - package-registries
+  - gitleaks
 
 role: coder
 slug: fullsend-ai-coder
@@ -50,15 +55,24 @@ plugins:
 skills:
   - skills/fix-review
 
-runner_env:
-  TARGET_BRANCH: "${TARGET_BRANCH}"
-  TRIGGER_SOURCE: "${TRIGGER_SOURCE}"
-  HUMAN_INSTRUCTION: "${HUMAN_INSTRUCTION}"
-  FIX_ITERATION: "${FIX_ITERATION}"
-  REVIEW_BODY_FILE: "${REVIEW_BODY_FILE}"
-  PRE_AGENT_HEAD: "${PRE_AGENT_HEAD}"
-  FULLSEND_OUTPUT_SCHEMA: ${FULLSEND_DIR}/schemas/fix-result.schema.json
-  FULLSEND_OUTPUT_FILE: fix-result.json
+env:
+  runner:
+    TARGET_BRANCH: "${TARGET_BRANCH}"
+    TRIGGER_SOURCE: "${TRIGGER_SOURCE}"
+    HUMAN_INSTRUCTION: "${HUMAN_INSTRUCTION}"
+    FIX_ITERATION: "${FIX_ITERATION}"
+    REVIEW_BODY_FILE: "${REVIEW_BODY_FILE}"
+    PRE_AGENT_HEAD: "${PRE_AGENT_HEAD}"
+    FULLSEND_OUTPUT_SCHEMA: ${FULLSEND_DIR}/schemas/fix-result.schema.json
+    FULLSEND_OUTPUT_FILE: fix-result.json
+  sandbox:
+    MAX_RETRIES: "1"
+    TIMEOUT_SECONDS: "1500"
+    STRATEGY_ESCALATION_THRESHOLD: "3"
+    ITERATION_CAP: "5"
+    ITERATION_CAP_HUMAN: "10"
+    GOPATH: "/sandbox/go"
+    GOMODCACHE: "/sandbox/go/pkg/mod"
 
 timeout_minutes: 25
 

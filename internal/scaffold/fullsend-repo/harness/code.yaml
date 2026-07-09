@@ -12,7 +12,12 @@ agent: agents/code.md
 doc: docs/agents/code.md
 model: opus
 image: ghcr.io/fullsend-ai/fullsend-code:latest
-policy: policies/code.yaml
+policy: policies/base.yaml
+providers:
+  - vertex-ai
+  - github
+  - package-registries
+  - gitleaks
 
 role: coder
 slug: fullsend-ai-coder
@@ -48,7 +53,9 @@ plugins:
 # Environment variables available to pre/post scripts on the runner.
 # These are expanded from the runner environment and NEVER enter the sandbox.
 runner_env:
-  TARGET_BRANCH: "${TARGET_BRANCH}"
+  CODE_ALLOWED_TARGET_BRANCHES: "${CODE_ALLOWED_TARGET_BRANCHES}"
+  FULLSEND_OUTPUT_SCHEMA: ${FULLSEND_DIR}/schemas/code-result.schema.json
+  FULLSEND_OUTPUT_FILE: code-result.json
 
 timeout_minutes: 35
 
@@ -62,8 +69,3 @@ forge:
       REPO_FULL_NAME: "${REPO_FULL_NAME}"
       ISSUE_NUMBER: "${ISSUE_NUMBER}"
       REPO_DIR: "${GITHUB_WORKSPACE}/target-repo"
-    env:
-      sandbox:
-        ISSUE_NUMBER: "${ISSUE_NUMBER}"
-        REPO_FULL_NAME: "${REPO_FULL_NAME}"
-        GH_TOKEN: "${GH_TOKEN}"
