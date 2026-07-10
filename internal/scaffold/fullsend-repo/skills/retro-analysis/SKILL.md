@@ -8,6 +8,33 @@ description: >
 
 # Retro Analysis
 
+## Prefetched PR context
+
+Before making live API calls, check for prefetched data:
+
+```bash
+test -f /sandbox/workspace/pr-context.json && \
+  jq -r '.prefetch_status' /sandbox/workspace/pr-context.json
+```
+
+If the file exists and `prefetch_status` is `"ok"`, read it with
+`jq` and use its fields directly:
+
+| Field | Content |
+|---|---|
+| `.pr` | PR metadata (number, title, body, state, author, labels, refs, additions/deletions, commits, timestamps, reviewDecision) |
+| `.comments` | Issue comments array |
+| `.reviews` | PR review objects array |
+| `.workflow_runs` | 10 most recent workflow runs (id, name, status, conclusion, html\_url, timestamps, head\_sha, head\_branch, event) |
+
+This replaces the `gh pr view` and comments/reviews/runs API calls in
+the tracing recipes below. You still need live `gh` calls for deeper
+exploration (downloading JSONL traces, fetching specific workflow logs,
+searching for duplicate issues).
+
+If the file is missing or `prefetch_status` is not `"ok"`, fall back to
+the live API recipes below.
+
 ## Tracing the workflow graph
 
 Given the originating PR or issue, reconstruct what agents ran and in what order.

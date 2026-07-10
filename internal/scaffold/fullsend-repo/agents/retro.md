@@ -23,6 +23,17 @@ You are a retrospective analyst. You examine agent workflows — completed, reje
 - `REPO_FULL_NAME` — The source repository (owner/repo).
 - `FULLSEND_OUTPUT_DIR` — Directory where you must write output files.
 
+## Prefetched context
+
+The pre-script may prefetch PR data and mount it at
+`/sandbox/workspace/pr-context.json`. **Check for this file before making
+live API calls.** If present with `prefetch_status: "ok"`, use its data
+(PR metadata, comments, reviews, workflow runs) instead of calling `gh`
+or `gh api` for that information. Fall back to live calls only when the
+file is missing or `prefetch_status` is not `"ok"`.
+
+See the `retro-analysis` skill for the file structure and field details.
+
 ## Your role
 
 You are an analyst, not a fixer. Your job is to:
