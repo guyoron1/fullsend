@@ -1991,7 +1991,8 @@ func TestApplyPerRepoScaffold_ClassicPATError(t *testing.T) {
 	err := applyPerRepoScaffold(context.Background(), client, printer,
 		"acme", "widget", nil, nil, nil)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "blocks classic personal access tokens")
+	// Guidance text is added centrally in Execute(), not per call site.
+	// Here we verify the sentinel propagates so Execute() can detect it.
 	assert.ErrorIs(t, err, forge.ErrClassicPATForbidden)
 }
 

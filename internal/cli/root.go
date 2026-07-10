@@ -43,6 +43,8 @@ func newRootCmd() *cobra.Command {
 }
 
 // Execute runs the root command with the given context.
+// wrapClassicPATError is applied here so every command gets guidance
+// when a GitHub org blocks classic PATs — no per-call-site wrapping needed.
 func Execute(ctx context.Context) error {
-	return newRootCmd().ExecuteContext(ctx)
+	return wrapClassicPATError(newRootCmd().ExecuteContext(ctx))
 }

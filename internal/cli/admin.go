@@ -465,7 +465,7 @@ Inference authentication:
 			// Discover all org repos upfront to avoid redundant API calls in runDryRun/runInstall.
 			allRepos, err := client.ListOrgRepos(ctx, org)
 			if err != nil {
-				return wrapClassicPATError(fmt.Errorf("listing org repos: %w", err))
+				return fmt.Errorf("listing org repos: %w", err)
 			}
 
 			var repos []string
@@ -1053,7 +1053,7 @@ func applyPerRepoScaffold(ctx context.Context, client forge.Client, printer *ui.
 
 	targetRepo, err := client.GetRepo(ctx, owner, repo)
 	if err != nil {
-		return wrapClassicPATError(fmt.Errorf("getting repo info: %w", err))
+		return fmt.Errorf("getting repo info: %w", err)
 	}
 	commitMsg := fmt.Sprintf("chore: initialize fullsend-%s per-repo installation", version)
 	printer.StepStart(fmt.Sprintf("Committing scaffold files to %s/%s (%s branch)",
@@ -1461,7 +1461,7 @@ func ensureConfigRepoExists(ctx context.Context, client forge.Client, printer *u
 		return nil
 	}
 	if !forge.IsNotFound(err) {
-		return wrapClassicPATError(fmt.Errorf("checking for config repo: %w", err))
+		return fmt.Errorf("checking for config repo: %w", err)
 	}
 
 	printer.StepStart("Creating " + forge.ConfigRepoName + " repository")
@@ -2513,7 +2513,7 @@ func loadRepoConfig(ctx context.Context, client forge.Client, printer *ui.Printe
 		}
 		printer.StepFail("Failed to check .fullsend repository")
 		printer.StepInfo("Hint: verify your token has 'repo' scope with: gh auth refresh -s repo")
-		return nil, wrapClassicPATError(fmt.Errorf("checking .fullsend repository: %w", err))
+		return nil, fmt.Errorf("checking .fullsend repository: %w", err)
 	}
 	printer.StepDone(".fullsend repository exists")
 

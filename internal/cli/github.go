@@ -351,7 +351,7 @@ func runGitHubSetupPerOrg(ctx context.Context, client forge.Client, printer *ui.
 
 	allRepos, err := client.ListOrgRepos(ctx, org)
 	if err != nil {
-		return wrapClassicPATError(fmt.Errorf("listing org repos: %w", err))
+		return fmt.Errorf("listing org repos: %w", err)
 	}
 
 	repoNames := repoNameList(allRepos)
