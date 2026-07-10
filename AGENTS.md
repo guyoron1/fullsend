@@ -20,15 +20,16 @@ Fullsend is a platform for fully autonomous agentic development for GitHub-hoste
 Agent definitions, skills, harness configs, and related content have moved to
 [`fullsend-ai/agents`](https://github.com/fullsend-ai/agents). The copies under
 `internal/scaffold/fullsend-repo/agents/` and
-`internal/scaffold/fullsend-repo/skills/` are stale and will be removed. Do not
-modify files under `internal/scaffold/fullsend-repo/agents/`,
+`internal/scaffold/fullsend-repo/skills/` are deprecated and will be removed
+after their embed and test dependencies are migrated. Do not modify files under
+`internal/scaffold/fullsend-repo/agents/`,
 `internal/scaffold/fullsend-repo/skills/`, or
 `internal/scaffold/fullsend-repo/harness/` — make changes in
 `fullsend-ai/agents` instead.
 
-Harness configs under `internal/scaffold/fullsend-repo/harness/` are still
-actively embedded into the Go binary via `//go:embed` and consumed at runtime.
-These files must remain in this repository; the runtime layering system resolves
+The entire `internal/scaffold/fullsend-repo/` tree is embedded into the Go
+binary via `//go:embed all:fullsend-repo` in `scaffold.go`. Harness configs
+must remain in this repository because the runtime layering system resolves
 harness content from the local scaffold, not from `fullsend-ai/agents` directly.
 
 ## Go code
