@@ -64,7 +64,7 @@ All git forge operations (GitHub API calls, PR comments, issue creation, workflo
 
 ## API pattern replication
 
-When implementing a new method that calls the same API endpoint or uses the same multi-step API pattern as an existing method in the file, read the existing implementation first. Replicate its error handling (e.g., truncation checks, 404-to-ErrNotFound mapping), retry logic (e.g., `retryOnTransient`, `retryOnRepoRace`), and response validation. The `internal/forge/github/github.go` file has several methods that share the Git Trees API pattern (refs → commit → tree) — all should handle truncation consistently.
+**When implementing a new method** that calls the same API endpoint or uses the same multi-step API pattern as an existing method in the file, read the existing implementation first. Replicate its error handling (e.g., truncation checks, 404-to-ErrNotFound mapping), retry logic (e.g., `retryOnTransient`), and response validation. The `internal/forge/github/github.go` file has the Git Trees API pattern (refs → commit → tree) currently centralized in `commitFilesTo` — new methods using the same endpoint should replicate its truncation handling.
 
 ## Architecture Decision Records (ADRs)
 
