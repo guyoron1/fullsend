@@ -48,7 +48,8 @@ At the start of each major step, emit a progress marker:
 echo "::notice::STEP <N>: <title>"
 ```
 
-**Do this at steps 1, 2, 4, 7a, 7b, 7c, and 8.**
+**Do this at steps 1, 2, 4, 7a, 7b, 7c, and 8, and at the merge-conflict
+check after step 3.**
 
 ## Time budget
 
@@ -198,6 +199,64 @@ Determine:
 - Test command (e.g., `make test`, `go test ./...`)
 - Lint command (e.g., `make lint`, `pre-commit run --files`)
 - Commit conventions (message format, signing)
+
+### Resolve merge conflicts (conditional — after step 3)
+
+```bash
+echo "::notice::Merge conflict check"
+```
+
+Before planning or implementing any fixes, check whether the branch is
+behind the base branch:
+
+```bash
+BASE_BRANCH=$(gh pr view "${PR_NUMBER}" --json baseRefName --jq '.baseRefName')
+git fetch origin "${BASE_BRANCH}"
+BEHIND=$(git rev-list --count "HEAD..origin/${BASE_BRANCH}")
+echo "Branch is ${BEHIND} commits behind origin/${BASE_BRANCH}"
+```
+
+**If the human instruction mentions merge conflicts, rebase, or merging
+the base branch — or if the branch is behind and has actual merge
+conflicts — resolve them now, before any other work:**
+
+1. Merge the base branch:
+   ```bash
+   git merge "origin/${BASE_BRANCH}" --no-edit
+   ```
+2. If the merge produced conflicts (non-zero exit), resolve them:
+   1. Preserve the PR's intended changes while incorporating updates from
+      the base branch. Use `Read` and `Write` to fix conflicted files —
+      do not use `sed` or `awk`.
+   2. Scan resolved files for secrets:
+      ```bash
+      scan-secrets <resolved-files>
+      ```
+   3. Verify no conflict markers remain:
+      ```bash
+      git diff --check  # checks for conflict markers and whitespace errors
+      ```
+   4. Stage resolved files and commit the merge:
+      ```bash
+      git add <resolved-files>
+      git commit --no-edit  # uses the default merge commit message
+      ```
+3. Verify the code still compiles:
+   ```bash
+   # Use the build command discovered in step 3
+   go build ./... 2>&1 | head -20  # or: npm run build, make build, etc.
+   ```
+
+**If the branch is behind but merge conflict resolution was not
+requested and there are no actual conflicts**, note the divergence but
+proceed with the requested fixes. The merge is not your responsibility
+unless explicitly requested or conflicts block your work.
+
+**If the branch is up to date**, skip to step 4.
+
+This ordering ensures all subsequent code changes are based on the
+current state of the codebase, preventing redundant fix iterations
+caused by stale-branch conflicts.
 
 ### 4. Plan fixes
 
