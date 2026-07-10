@@ -7,8 +7,6 @@ policy: policies/fix.yaml
 providers:
   - vertex-ai
   - github
-  - package-registries
-  - gitleaks
 
 role: coder
 slug: fullsend-ai-coder
