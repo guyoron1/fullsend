@@ -82,6 +82,11 @@ dimension carry over to another — each requires its own scrutiny.
   (e.g., what happens if a critical sub-component fails — does the
   caller degrade gracefully or silently proceed?). Trace the full path
   from where the mechanism is set to where it is read.
+- **Silent-failure severity escalation:** When a code path silently
+  produces wrong results or skips critical work without any error signal,
+  rate the finding **medium or higher** — regardless of how unlikely the
+  triggering condition seems. Severity reflects the failure mode (silent,
+  total, no error signal), not the probability of triggering.
 - Test adequacy: are the right behaviors tested?
 - Do the tests actually constrain the code's behavior, or do they
   merely assert it runs?
