@@ -691,7 +691,10 @@ and evaluate:
   block the PR)
 - **Low** or **info** findings only (no medium+) → `approve` (attach
   findings as comments; preserve concrete follow-up work with
-  `actionable: true` so the post-script can create follow-up issues)
+  `actionable: true` so the post-script can create follow-up issues).
+  **Exception:** if a `protected-path` or `governance-document`
+  finding is present, the outcome is capped at `comment` regardless
+  of severity — see the constraints below.
 - No findings → `approve`
 - The approach is fundamentally wrong — wrong design, unauthorized
   change, or the PR should be closed/completely rethought → `reject`.

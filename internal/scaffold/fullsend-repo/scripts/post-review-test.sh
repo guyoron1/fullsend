@@ -85,7 +85,8 @@ run_test "reject-label" \
   "reject" "false" "rejected"
 
 # Defensive: comment + downgraded=true can't occur in production (DOWNGRADED is
-# only set inside the approve branch), but verify the label logic handles it.
+# only set inside the approve branch, by either the protected-path or
+# governance-document downgrade path), but verify the label logic handles it.
 run_test "comment-with-downgrade-flag" \
   "comment" "true" "requires-manual-review"
 
@@ -98,6 +99,96 @@ run_test "failure-action-no-label" \
 
 run_test "unknown-action-no-label" \
   "banana" "false" "none"
+
+# ---------------------------------------------------------------------------
+# Governance document detection — reimplements the loop from post-review.sh
+# to verify all-governance vs mixed-file classification.
+# ---------------------------------------------------------------------------
+GOVERNANCE_DOC_PATTERNS=(
+  "MAINTAINERS.md"
+  "GOVERNANCE.md"
+  "CODE_OF_CONDUCT.md"
+  "SECURITY.md"
+)
+
+is_all_governance() {
+  local pr_files="$1"
+  local all_gov=true
+  while IFS= read -r file; do
+    [ -z "${file}" ] && continue
+    local base
+    base=$(basename "${file}")
+    local is_gov=false
+    for pattern in "${GOVERNANCE_DOC_PATTERNS[@]}"; do
+      if [ "${base}" = "${pattern}" ]; then
+        is_gov=true
+        break
+      fi
+    done
+    if [ "${is_gov}" = "false" ]; then
+      all_gov=false
+      break
+    fi
+  done <<< "${pr_files}"
+  echo "${all_gov}"
+}
+
+run_gov_test() {
+  local test_name="$1"
+  local pr_files="$2"
+  local expected="$3"
+
+  local actual
+  actual="$(is_all_governance "${pr_files}")"
+
+  if [ "${actual}" != "${expected}" ]; then
+    echo "FAIL: ${test_name}"
+    echo "  files:    '${pr_files}'"
+    echo "  expected: '${expected}'"
+    echo "  actual:   '${actual}'"
+    FAILURES=$((FAILURES + 1))
+    return
+  fi
+
+  echo "PASS: ${test_name}"
+}
+
+# --- Governance detection test cases ---
+
+# All governance files → downgrade
+run_gov_test "all-governance-single" \
+  "GOVERNANCE.md" "true"
+
+run_gov_test "all-governance-multiple" \
+  "GOVERNANCE.md
+MAINTAINERS.md
+CODE_OF_CONDUCT.md" "true"
+
+# Governance files in subdirectories → still governance
+run_gov_test "governance-in-subdir" \
+  "docs/GOVERNANCE.md
+community/CODE_OF_CONDUCT.md" "true"
+
+# Mixed: governance + non-governance → no downgrade
+run_gov_test "mixed-files-no-downgrade" \
+  "GOVERNANCE.md
+src/main.go" "false"
+
+# Non-governance only → no downgrade
+run_gov_test "non-governance-only" \
+  "src/main.go
+README.md" "false"
+
+# Substring mismatch: MY_GOVERNANCE.md is not a governance doc
+run_gov_test "substring-no-match" \
+  "MY_GOVERNANCE.md" "false"
+
+# All four governance patterns
+run_gov_test "all-four-patterns" \
+  "MAINTAINERS.md
+GOVERNANCE.md
+CODE_OF_CONDUCT.md
+SECURITY.md" "true"
 
 # --- Summary ---
 

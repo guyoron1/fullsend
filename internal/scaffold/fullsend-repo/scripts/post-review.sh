@@ -91,6 +91,11 @@ REVIEW_PROTECTED_PATHS=(
   "skills/"
 )
 
+# Temp files used by downgrade paths below; cleaned up on exit.
+MODIFIED_RESULT=""
+GOV_RESULT=""
+trap 'rm -f "${MODIFIED_RESULT}" "${GOV_RESULT}"' EXIT
+
 DOWNGRADED=false
 if [ "${ACTION}" = "approve" ]; then
   PR_FILES=$(gh pr view "${PR_NUMBER}" --repo "${REPO_FULL_NAME}" --json files --jq '.files[].path')
@@ -127,7 +132,6 @@ if [ "${ACTION}" = "approve" ]; then
 
     # Rewrite the result file with downgraded action and appended notice.
     MODIFIED_RESULT=$(mktemp)
-    trap 'rm -f "${MODIFIED_RESULT}"' EXIT
     jq --arg notice "${PROTECTED_NOTICE}" \
       '.action = "comment" | .body = (.body + $notice)' \
       "${RESULT_FILE}" > "${MODIFIED_RESULT}"
