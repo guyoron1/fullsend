@@ -25,7 +25,7 @@ If the file exists and `prefetch_status` is `"ok"`, read it with
 | `.pr` | PR metadata (number, title, body, state, author, labels, refs, additions/deletions, commits, timestamps, reviewDecision) |
 | `.comments` | Issue comments array |
 | `.reviews` | PR review objects array |
-| `.workflow_runs` | 10 most recent workflow runs (id, name, status, conclusion, html\_url, timestamps, head\_sha, head\_branch, event) |
+| `.workflow_runs` | 10 most recent workflow runs from the source repo (id, name, status, conclusion, html\_url, timestamps, head\_sha, head\_branch, event). Dispatch-repo runs are not included — use live `gh run list` against `$DISPATCH_REPO` for those. |
 
 This replaces the `gh pr view` and comments/reviews/runs API calls in
 the tracing recipes below. You still need live `gh` calls for deeper
