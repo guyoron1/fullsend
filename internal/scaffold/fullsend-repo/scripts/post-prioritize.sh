@@ -16,8 +16,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # When this script runs from a content-addressed cache path
 # (sha256/<hash>/content), companion files are not co-located.
 # Fall back to ${FULLSEND_DIR}/scripts if the companion is missing.
-if [ ! -f "${SCRIPT_DIR}/lib/github-api-csma.sh" ] && [ -d "${FULLSEND_DIR:-.}/scripts/lib" ]; then
-  SCRIPT_DIR="${FULLSEND_DIR:-.}/scripts"
+# FULLSEND_DIR is required (fail-closed) to avoid silently resolving to cwd.
+if [ ! -f "${SCRIPT_DIR}/lib/github-api-csma.sh" ] && [ -d "${FULLSEND_DIR:?FULLSEND_DIR must be set}/scripts/lib" ]; then
+  SCRIPT_DIR="${FULLSEND_DIR}/scripts"
+  echo "Using fallback companion path: ${SCRIPT_DIR}"
 fi
 # shellcheck source=lib/github-api-csma.sh
 source "${SCRIPT_DIR}/lib/github-api-csma.sh"

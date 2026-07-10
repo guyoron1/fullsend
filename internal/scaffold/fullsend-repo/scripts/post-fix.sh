@@ -304,11 +304,13 @@ export GH_TOKEN="${PUSH_TOKEN}"
 # When this script runs from a content-addressed cache path
 # (sha256/<hash>/content), companion files are not co-located.
 # Fall back to ${FULLSEND_DIR}/scripts if the companion is missing.
+# FULLSEND_DIR is required (fail-closed) to avoid silently resolving to cwd.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROCESS_SCRIPT="${SCRIPT_DIR}/process-fix-result.py"
-if [ ! -f "${PROCESS_SCRIPT}" ] && [ -d "${FULLSEND_DIR:-.}/scripts" ]; then
-  SCRIPT_DIR="${FULLSEND_DIR:-.}/scripts"
+if [ ! -f "${PROCESS_SCRIPT}" ] && [ -d "${FULLSEND_DIR:?FULLSEND_DIR must be set}/scripts" ]; then
+  SCRIPT_DIR="${FULLSEND_DIR}/scripts"
   PROCESS_SCRIPT="${SCRIPT_DIR}/process-fix-result.py"
+  echo "Using fallback companion path: ${SCRIPT_DIR}"
 fi
 
 # Find fix-result.json in the output directory.
