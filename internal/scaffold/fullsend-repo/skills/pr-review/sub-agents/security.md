@@ -135,9 +135,14 @@ security-relevant struct field without writing it back:
    the inconsistency.
 4. **Assess severity.** If the field controls a security boundary
    (allowlists, permission sets, access scopes), severity is at least
-   **medium**. If the inconsistency creates a fail-open path — where
-   one function permits access while a subsequent function denies it,
-   or vice versa — severity is **high**.
+   **medium**. Distinguish the two directions of inconsistency:
+   - **Deny-then-permit** (first callee restricts, subsequent callee
+     defaults to permissive): this is a genuine **fail-open** path —
+     severity is **high**.
+   - **Permit-then-deny** (first callee permits, subsequent callee
+     defaults to deny-all): this is a service-disruption / functional
+     correctness bug, not a security fail-open. Use category
+     `logic-error` at **medium** severity.
 
 **Do not stop analysis at the function boundary.** The pattern is only
 visible when you trace the struct through the caller's subsequent

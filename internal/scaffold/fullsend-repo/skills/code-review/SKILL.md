@@ -132,7 +132,9 @@ dimension carry over to another — each requires its own scrutiny.
   "deny all," flag the inconsistency — the two operations within the
   same code path apply contradictory security semantics. Severity is at
   least **medium** when the field controls a security boundary; **high**
-  if the inconsistency creates a fail-open path. Do not stop analysis at
+  if the deny-then-permit direction creates a genuine fail-open path
+  (use category `logic-error` at **medium** for the permit-then-deny
+  direction, which is a functional correctness bug). Do not stop analysis at
   the function boundary — the pattern is only visible by tracing the
   struct through the caller's subsequent operations. No finding is needed
   if the function writes the default back to the struct, the struct is
