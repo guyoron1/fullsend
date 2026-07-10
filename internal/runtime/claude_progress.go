@@ -239,11 +239,11 @@ func emitResultProgress(printer *ui.Printer, evt streamEvent, start time.Time, m
 
 	var msg string
 	if evt.IsError {
-		subtype := sanitizeOutput(evt.Subtype)
+		subtype := evt.Subtype
 		if subtype == "" {
 			subtype = "error"
 		}
-		msg = fmt.Sprintf("Result: %s (%s, %d tools)", subtype, elapsed, toolCount)
+		msg = sanitizeOutput(fmt.Sprintf("Result: %s (%s, %d tools)", subtype, elapsed, toolCount))
 		if isCI {
 			fmt.Fprintf(os.Stderr, "::warning::%s\n", msg)
 		}
@@ -260,11 +260,11 @@ func emitResultProgress(printer *ui.Printer, evt streamEvent, start time.Time, m
 // emitSystemProgress reports system-level events (e.g., session initialization).
 func emitSystemProgress(printer *ui.Printer, evt streamEvent, start time.Time, isCI bool) {
 	elapsed := time.Since(start).Truncate(time.Second)
-	subtype := sanitizeOutput(evt.Subtype)
+	subtype := evt.Subtype
 	if subtype == "" {
 		subtype = "system"
 	}
-	msg := fmt.Sprintf("System: %s (%s)", subtype, elapsed)
+	msg := sanitizeOutput(fmt.Sprintf("System: %s (%s)", subtype, elapsed))
 	if isCI {
 		fmt.Fprintf(os.Stderr, "::notice::%s\n", msg)
 	}
