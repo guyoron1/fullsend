@@ -213,30 +213,39 @@ behind the base branch:
 BASE_BRANCH=$(gh pr view "${PR_NUMBER}" --json baseRefName --jq '.baseRefName')
 git fetch origin "${BASE_BRANCH}"
 BEHIND=$(git rev-list --count "HEAD..origin/${BASE_BRANCH}")
-echo "Branch is ${BEHIND} commits behind origin/${BASE_BRANCH}"
+echo "Branch is ${BEHIND} commits behind origin/${BASE_BRANCH//::/_}"
 ```
 
-**If the human instruction mentions merge conflicts, rebase, or merging
-the base branch — or if the branch is behind and has actual merge
-conflicts — resolve them now, before any other work:**
+**If `BEHIND > 0`, resolve the divergence now before any other work.**
+A clean merge (no conflicts) completes instantly. If the human instruction
+explicitly mentions merge conflicts, rebase, or merging the base branch,
+this is mandatory regardless of `BEHIND` count.
 
 1. Merge the base branch:
    ```bash
    git merge "origin/${BASE_BRANCH}" --no-edit
    ```
 2. If the merge produced conflicts (non-zero exit), resolve them:
-   1. Preserve the PR's intended changes while incorporating updates from
-      the base branch. Use `Read` and `Write` to fix conflicted files —
-      do not use `sed` or `awk`.
-   2. Scan resolved files for secrets:
+   1. If any conflicted files are under protected paths (see the
+      "Protected paths" section in `agents/fix.md`), accept the base
+      branch version for those files:
+      ```bash
+      git checkout "origin/${BASE_BRANCH}" -- <protected-path-file>
+      ```
+      Do not attempt to resolve conflicts in protected-path files —
+      modifying them causes `post-fix.sh` to discard the entire run.
+   2. For non-protected files, preserve the PR's intended changes while
+      incorporating updates from the base branch. Use `Read` and `Write`
+      to fix conflicted files — do not use `sed` or `awk`.
+   3. Scan resolved files for secrets:
       ```bash
       scan-secrets <resolved-files>
       ```
-   3. Verify no conflict markers remain:
+   4. Verify no conflict markers remain:
       ```bash
       git diff --check  # checks for conflict markers and whitespace errors
       ```
-   4. Stage resolved files and commit the merge:
+   5. Stage resolved files and commit the merge:
       ```bash
       git add <resolved-files>
       git commit --no-edit  # uses the default merge commit message
@@ -247,12 +256,11 @@ conflicts — resolve them now, before any other work:**
    go build ./... 2>&1 | head -20  # or: npm run build, make build, etc.
    ```
 
-**If the branch is behind but merge conflict resolution was not
-requested and there are no actual conflicts**, note the divergence but
-proceed with the requested fixes. The merge is not your responsibility
-unless explicitly requested or conflicts block your work.
+**If the branch is behind but there are no conflicts**, merge anyway —
+a clean merge completes instantly and ensures subsequent changes are
+based on the current codebase.
 
-**If the branch is up to date**, skip to step 4.
+**If the branch is up to date** (`BEHIND == 0`), skip to step 4.
 
 This ordering ensures all subsequent code changes are based on the
 current state of the codebase, preventing redundant fix iterations
