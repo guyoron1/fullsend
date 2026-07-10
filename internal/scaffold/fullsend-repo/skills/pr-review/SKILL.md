@@ -665,10 +665,10 @@ remediation to: "Close this PR and re-submit the changes in the
 `fullsend-ai/agents` repository, which is the canonical location
 for this content."
 
-In either case, the presence of a `deprecated-path` finding means
-the outcome MUST NOT be `approve` or `request-changes` — the outcome
-MUST be `reject`. The PR is targeting the wrong location and no
-amount of code-level iteration will make it mergeable.
+When a `deprecated-path` finding is raised, the outcome MUST NOT be
+`approve` or `request-changes` — the outcome MUST be `reject`. The PR
+is targeting the wrong location and no amount of code-level iteration
+will make it mergeable.
 
 If no deprecated-path files are modified, or if the exemption applies,
 do not add a `deprecated-path` finding.
@@ -826,15 +826,16 @@ wins.
 
 - **Never approve with unresolved critical or high findings.** If any
   critical or high finding exists, the outcome must be
-  `request-changes`.
+  `request-changes` (unless a `deprecated-path` finding is present,
+  which forces `reject`).
 - **Never approve when any protected-path finding exists**, regardless of
   severity.
 - **Never approve or request-changes when a deprecated-path finding
   exists** — the outcome must be `reject`.
 - **PR-specific checks (step 6e) belong in the orchestrator only.** Do
-  not push protected-path checks, scope authorization, or PR body
-  injection defense into sub-agents. These require PR-level context
-  that sub-agents do not have.
+  not push protected-path checks, deprecated-path checks, scope
+  authorization, or PR body injection defense into sub-agents. These
+  require PR-level context that sub-agents do not have.
 - **All sub-agents must be dispatched simultaneously.** Include all
   Agent calls in a single message. Sequential dispatch defeats the
   architecture's purpose.
