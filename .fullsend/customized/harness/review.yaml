@@ -6,7 +6,7 @@ image: ghcr.io/fullsend-ai/fullsend-code:latest
 policy: policies/review.yaml
 providers:
   - vertex-ai
-  - github-ro
+  - github
 
 role: review
 slug: fullsend-ai-review
