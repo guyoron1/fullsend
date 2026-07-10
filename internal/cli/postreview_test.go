@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"io"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/fullsend-ai/fullsend/internal/forge"
+	gh "github.com/fullsend-ai/fullsend/internal/forge/github"
 	"github.com/fullsend-ai/fullsend/internal/sticky"
 	"github.com/fullsend-ai/fullsend/internal/ui"
 )
@@ -1000,4 +1002,43 @@ func TestPostApprovedFollowUpIssues_DisabledIsNoop(t *testing.T) {
 
 	err := postApprovedFollowUpIssues(context.Background(), "acme", "repo", 9, parsed, printer)
 	require.NoError(t, err)
+}
+
+func TestIsSelfReviewError(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{
+			name: "GitHub self-review 422",
+			err:  fmt.Errorf("create pull request review on #42: %w", &gh.APIError{StatusCode: 422, Message: "Validation Failed", Errors: []gh.APIErrorDetail{{Message: "Can not approve your own pull request"}}}),
+			want: true,
+		},
+		{
+			name: "alternate wording cannot",
+			err:  &gh.APIError{StatusCode: 422, Message: "You cannot review your own pull request"},
+			want: true,
+		},
+		{
+			name: "non-422 error",
+			err:  &gh.APIError{StatusCode: 403, Message: "Resource not accessible by integration"},
+			want: false,
+		},
+		{
+			name: "422 unrelated validation",
+			err:  &gh.APIError{StatusCode: 422, Message: "Validation Failed", Errors: []gh.APIErrorDetail{{Message: "commit_id is not part of the pull request"}}},
+			want: false,
+		},
+		{
+			name: "non-API error",
+			err:  fmt.Errorf("network timeout"),
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, isSelfReviewError(tt.err))
+		})
+	}
 }

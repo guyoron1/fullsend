@@ -3,7 +3,9 @@ package cli
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"regexp"
 	"strconv"
@@ -61,11 +63,16 @@ has moved, a stale-head failure is posted instead.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			printer := ui.New(os.Stdout)
 
+			tokenFallback := false
 			if token == "" {
 				token = os.Getenv("GITHUB_TOKEN")
+				tokenFallback = true
 			}
 			if token == "" {
 				return fmt.Errorf("--token or GITHUB_TOKEN required")
+			}
+			if tokenFallback {
+				printer.StepWarn("No --token provided, falling back to GITHUB_TOKEN; self-review 422 errors may occur if this token shares identity with the PR author")
 			}
 
 			if pr <= 0 {
@@ -357,10 +364,43 @@ func submitFormalReview(ctx context.Context, client forge.Client, owner, repo st
 		printer.StepInfo(fmt.Sprintf("Attaching %d inline comment(s)", len(inlineComments)))
 	}
 	if err := client.CreatePullRequestReview(ctx, owner, repo, pr, event, reviewBody, commitSHA, inlineComments); err != nil {
+		if isSelfReviewError(err) {
+			return fmt.Errorf("submitting review: %w — the token identity matches the PR author; "+
+				"set REVIEW_TOKEN to a minted token with pull-requests:write permission "+
+				"(see the mint-token action) so the review is submitted as a different identity", err)
+		}
 		return fmt.Errorf("submitting review: %w", err)
 	}
 	printer.StepDone("Review submitted")
 	return nil
+}
+
+// isSelfReviewError checks whether an error from CreatePullRequestReview is
+// a 422 caused by the authenticated user attempting to review their own PR.
+// GitHub rejects this with a validation error. Detecting it lets us surface
+// a clear message pointing operators to use a minted REVIEW_TOKEN instead of
+// the default GITHUB_TOKEN.
+func isSelfReviewError(err error) bool {
+	var apiErr *gh.APIError
+	if !errors.As(err, &apiErr) {
+		return false
+	}
+	if apiErr.StatusCode != http.StatusUnprocessableEntity {
+		return false
+	}
+	// GitHub's error message for self-review attempts varies, but the
+	// combination of 422 + validation message mentioning "review" on a
+	// review submission call is sufficient. Check both the top-level
+	// message and detail messages.
+	combined := strings.ToLower(apiErr.Message)
+	for _, d := range apiErr.Errors {
+		combined += " " + strings.ToLower(d.Message)
+	}
+	// ponytail: matches GitHub's "Can not approve your own pull request"
+	// and similar phrasings. Broader match catches future wording changes.
+	return strings.Contains(combined, "your own") ||
+		strings.Contains(combined, "can not") ||
+		strings.Contains(combined, "cannot")
 }
 
 // findingsToReviewComments converts review findings with file and line

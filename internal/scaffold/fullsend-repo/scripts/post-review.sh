@@ -18,7 +18,12 @@
 #   1 — error (review not posted or fallback comment posted)
 set -euo pipefail
 
-: "${REVIEW_TOKEN:?REVIEW_TOKEN is required}"
+if [[ -z "${REVIEW_TOKEN:-}" ]]; then
+  # ponytail: fall back to GITHUB_TOKEN with a warning instead of hard-failing.
+  # The Go CLI detects self-review 422s and gives a clear error message.
+  echo "::warning::REVIEW_TOKEN is not set; falling back to GITHUB_TOKEN — self-review 422 errors may occur if this token shares identity with the PR author"
+  REVIEW_TOKEN="${GITHUB_TOKEN:?Neither REVIEW_TOKEN nor GITHUB_TOKEN is set}"
+fi
 : "${PR_NUMBER:?PR_NUMBER is required}"
 if ! [[ "${PR_NUMBER}" =~ ^[0-9]+$ ]]; then
   echo "::error::PR_NUMBER must be a positive integer"
