@@ -2543,53 +2543,36 @@ func saveRepoConfig(ctx context.Context, client forge.Client, printer *ui.Printe
 // config.yaml push, waits for it to complete, and prints any PR URLs from its
 // annotations.
 func awaitRepoMaintenance(ctx context.Context, client forge.Client, printer *ui.Printer, org string, dispatchTime time.Time) {
-	awaitRepoMaintenanceWithInterval(ctx, client, printer, org, dispatchTime, 5*time.Second, 36)
+	awaitRepoMaintenanceWithConfig(ctx, client, printer, org, dispatchTime, layers.DefaultPollConfig())
 }
 
 func awaitRepoMaintenanceWithInterval(ctx context.Context, client forge.Client, printer *ui.Printer, org string, dispatchTime time.Time, pollInterval time.Duration, maxAttempts int) {
+	// Map legacy interval/attempts to a PollConfig and delegate.
+	cfg := layers.PollConfig{
+		InitialInterval: pollInterval,
+		MaxInterval:     pollInterval, // no backoff growth for legacy callers
+		Timeout:         pollInterval * time.Duration(maxAttempts*3),
+	}
+	awaitRepoMaintenanceWithConfig(ctx, client, printer, org, dispatchTime, cfg)
+}
+
+func awaitRepoMaintenanceWithConfig(ctx context.Context, client forge.Client, printer *ui.Printer, org string, dispatchTime time.Time, cfg layers.PollConfig) {
 	printer.Blank()
 	printer.StepStart("Watching repo-maintenance workflow")
 
-	// Poll for a workflow run created after dispatchTime.
-	var run *forge.WorkflowRun
-	for attempt := range maxAttempts {
-		select {
-		case <-ctx.Done():
+	run, err := layers.AwaitWorkflowCompletion(
+		ctx, client, org, forge.ConfigRepoName, "repo-maintenance.yml",
+		dispatchTime, cfg,
+		func(msg string) { printer.StepInfo(msg) },
+	)
+
+	if err != nil {
+		if ctx.Err() != nil {
 			printer.StepWarn("context cancelled while waiting for workflow")
-			return
-		case <-time.After(pollInterval):
+		} else {
+			printer.StepWarn("timed out waiting for repo-maintenance workflow")
+			printer.StepInfo("check the repo-maintenance workflow in .fullsend for results")
 		}
-
-		runs, err := client.ListWorkflowRuns(ctx, org, forge.ConfigRepoName, "repo-maintenance.yml")
-		if err != nil {
-			printer.StepInfo(fmt.Sprintf("waiting for workflow run (attempt %d)...", attempt+1))
-			continue
-		}
-
-		for i := range runs {
-			r := &runs[i]
-			runTime, parseErr := time.Parse(time.RFC3339, r.CreatedAt)
-			if parseErr != nil {
-				continue
-			}
-			if runTime.Before(dispatchTime) {
-				continue
-			}
-			if r.Status == "completed" {
-				run = r
-				break
-			}
-			printer.StepInfo(fmt.Sprintf("workflow run: %s (%s)", r.HTMLURL, r.Status))
-			break // found our run, keep waiting
-		}
-		if run != nil {
-			break
-		}
-	}
-
-	if run == nil {
-		printer.StepWarn("timed out waiting for repo-maintenance workflow")
-		printer.StepInfo("check the repo-maintenance workflow in .fullsend for results")
 		return
 	}
 
