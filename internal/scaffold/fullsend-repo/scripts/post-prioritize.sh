@@ -13,6 +13,12 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# When this script runs from a content-addressed cache path
+# (sha256/<hash>/content), companion files are not co-located.
+# Fall back to ${FULLSEND_DIR}/scripts if the companion is missing.
+if [ ! -f "${SCRIPT_DIR}/lib/github-api-csma.sh" ] && [ -d "${FULLSEND_DIR:-.}/scripts/lib" ]; then
+  SCRIPT_DIR="${FULLSEND_DIR:-.}/scripts"
+fi
 # shellcheck source=lib/github-api-csma.sh
 source "${SCRIPT_DIR}/lib/github-api-csma.sh"
 
