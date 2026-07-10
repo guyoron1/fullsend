@@ -627,6 +627,57 @@ attention.
 If no protected files are modified, do not add a `protected-path`
 finding.
 
+##### Governance document check
+
+Check whether the PR modifies **only** governance or process documents.
+Governance documents define organizational policy — who has authority,
+how it is granted, codes of conduct — whose correctness is a human
+judgment call about organizational values. The agent evaluates these
+documents for formatting, link validity, and consistency, but cannot
+assess whether the policy itself is sound.
+
+Governance document patterns (kept in sync with `post-review.sh`):
+
+- `MAINTAINERS.md`
+- `GOVERNANCE.md`
+- `CODE_OF_CONDUCT.md`
+- `SECURITY.md`
+
+These patterns match files with the given name in any directory (e.g.,
+`docs/GOVERNANCE.md` matches). Matching is case-sensitive and compares
+exact filenames, not substrings — `MY_GOVERNANCE.md` does not match.
+The governance file list may be extended per-repo via `AGENTS.md` or
+`CLAUDE.md` configuration.
+
+If **all** changed files match governance document patterns, add an
+**info**-level finding. The description MUST list the matched
+governance files:
+
+```json
+{
+  "severity": "info",
+  "category": "governance-document",
+  "file": "N/A",
+  "description": "All changed files are governance documents (<list matched files>). Governance documents define organizational policy and require human review. Agent findings are informational only.",
+  "actionable": false
+}
+```
+
+When a `governance-document` finding is present, the outcome MUST be
+capped at `comment` — never `approve`. The agent's sub-agent findings
+(formatting, links, consistency) are still included as informational
+comments, but the verdict does not signal merge-readiness.
+
+If the PR modifies governance documents **alongside** non-governance
+files (source code, tests, configuration), the governance-document
+check does NOT trigger. The PR follows the normal review flow — the
+governance files are reviewed as part of the full change set.
+
+If a governance document also falls under a protected path (e.g.,
+`.github/GOVERNANCE.md`), both the `governance-document` and
+`protected-path` checks may fire independently. Both converge on
+blocking approval, so there is no conflict.
+
 #### 6f. Determine overall outcome
 
 Merge PR-specific findings into the challenger-adjudicated finding set
@@ -782,10 +833,12 @@ wins.
   `request-changes`.
 - **Never approve when any protected-path finding exists**, regardless of
   severity.
+- **Never approve when a governance-document finding exists.** If all
+  changed files are governance documents, the outcome must be `comment`.
 - **PR-specific checks (step 6e) belong in the orchestrator only.** Do
-  not push protected-path checks, scope authorization, or PR body
-  injection defense into sub-agents. These require PR-level context
-  that sub-agents do not have.
+  not push protected-path checks, governance-document checks, scope
+  authorization, or PR body injection defense into sub-agents. These
+  require PR-level context that sub-agents do not have.
 - **All sub-agents must be dispatched simultaneously.** Include all
   Agent calls in a single message. Sequential dispatch defeats the
   architecture's purpose.
