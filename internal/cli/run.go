@@ -429,7 +429,7 @@ func runAgent(ctx context.Context, agentName, fullsendDir, outputBase, targetRep
 	// 2. Check openshell availability.
 	openshellStart := time.Now()
 	printer.StepStart("Checking openshell availability")
-	if err := sandbox.EnsureAvailable(); err != nil {
+	if err := sandboxEnsureAvailable(); err != nil {
 		printer.StepFail("openshell not available")
 		return fmt.Errorf("openshell is required: %w", err)
 	}
@@ -1334,6 +1334,10 @@ func openTeeReader(r io.Reader, outputPath string, printer *ui.Printer) (io.Read
 	}
 	return io.TeeReader(r, f), func() { f.Close() }
 }
+
+// sandboxEnsureAvailable checks sandbox runtime availability. Tests override
+// this to stub out the openshell dependency. See #229.
+var sandboxEnsureAvailable = sandbox.EnsureAvailable
 
 var heartbeatInterval = 30 * time.Second
 
