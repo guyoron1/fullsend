@@ -7,6 +7,7 @@ Fullsend is a platform for fully autonomous agentic development for GitHub-hoste
 - Problem documents (`docs/problems/`) should present multiple options with trade-offs, not prescribe single solutions.
 - Each problem document has an "Open questions" section — this is where unresolved issues live.
 - When adding new problem areas, create a new file in `docs/problems/` and link it from `README.md`.
+- When a new problem doc covers a topic already mentioned in existing docs, search for references to the concept across `docs/problems/` and add backlinks from those existing docs to the new doc in the same PR. This ensures readers can discover the new doc from its related contexts.
 - The security threat model (threat priority: external injection > insider > drift > supply chain) should inform all other documents.
 - Keep core problem documents organization-agnostic. Organization-specific details belong in `docs/problems/applied/<org-name>/`.
 - The target audience for problem documents is any contributor community considering autonomous agents — keep language accessible and avoid presuming solutions.
