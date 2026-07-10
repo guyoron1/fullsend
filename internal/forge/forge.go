@@ -32,6 +32,16 @@ func IsAlreadyExists(err error) bool {
 	return errors.Is(err, ErrAlreadyExists)
 }
 
+// ErrClassicPATForbidden indicates the GitHub organization blocks
+// classic personal access tokens (PATs). The user needs a fine-grained
+// PAT, GitHub App token, or OAuth App token instead.
+var ErrClassicPATForbidden = errors.New("classic PAT forbidden")
+
+// IsClassicPATForbidden reports whether err indicates a classic PAT rejection.
+func IsClassicPATForbidden(err error) bool {
+	return errors.Is(err, ErrClassicPATForbidden)
+}
+
 // ErrBranchProtected indicates that a ref update failed because the
 // target branch has protection rules that prevent direct pushes.
 var ErrBranchProtected = errors.New("branch is protected")

@@ -7,6 +7,21 @@ The goal of this document is that you configure Fullsend for your GitHub reposit
 * You have your WIF provider URL from [Getting Inference](getting-inference.md).
 * Download the latest [fullsend](https://github.com/fullsend-ai/fullsend/releases) CLI.
 * Download the latest [gh](https://cli.github.com/) CLI and authenticate with it.
+* **Token resolution order:** The fullsend CLI checks for a GitHub token in this order: `GH_TOKEN` env var → `GITHUB_TOKEN` env var → `gh auth token`. The first one found is used for all API calls.
+* **If your organization restricts personal access token types,** `gh auth login` may produce a classic PAT that the GitHub API rejects. Create a [fine-grained personal access token](https://github.com/settings/personal-access-tokens/new) scoped to your organization with the permissions below, then export it as `GH_TOKEN` before running `fullsend github setup`:
+
+  | Permission | Level | Why |
+  |---|---|---|
+  | Contents | Read and write | Commits `.fullsend/config.yaml` and scaffold files |
+  | Workflows | Read and write | Writes/updates files under `.github/workflows/` |
+  | Secrets | Read and write | Sets `FULLSEND_GCP_PROJECT_ID` / `FULLSEND_GCP_WIF_PROVIDER` |
+  | Variables | Read and write | Sets `FULLSEND_MINT_URL` / `FULLSEND_GCP_REGION` |
+  | Metadata | Read-only | GitHub-required baseline (auto-granted) |
+  | Pull requests | Read and write | Only needed without `--direct` |
+
+  ```bash
+  export GH_TOKEN=github_pat_...
+  ```
 
 ## Installing GitHub Applications
 
