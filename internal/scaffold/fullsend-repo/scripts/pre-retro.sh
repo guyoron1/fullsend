@@ -6,9 +6,9 @@
 #
 # Required env vars:
 #   ORIGINATING_URL — HTML URL of the PR or issue that triggered retro
+#   GH_TOKEN        — GitHub token; validated before sandbox starts
 #
 # Optional env vars:
-#   GH_TOKEN        — GitHub token; validated if set, warning if absent
 #   RETRO_COMMENT   — The /retro comment text (empty for automatic triggers)
 
 set -euo pipefail
@@ -26,15 +26,19 @@ echo "::notice::Retro target: ${ORIGINATING_URL}"
 # ---------------------------------------------------------------------------
 # Validate GH_TOKEN before starting the sandbox
 # ---------------------------------------------------------------------------
-if [[ -n "${GH_TOKEN:-}" ]]; then
-  if ! gh auth status 2>/dev/null; then
-    echo "::error::GH_TOKEN is invalid — retro agent requires GitHub API access"
-    exit 1
-  fi
-  echo "GH_TOKEN validated successfully."
-else
-  echo "::warning::GH_TOKEN is not set — retro agent will have limited functionality"
+# ponytail: gh auth status validates auth, not scopes — a token with only
+# contents:read would pass here but fail in post-retro.sh. Still catches the
+# #256 failure mode (expired/revoked token). Scope checks if needed later.
+if [[ -z "${GH_TOKEN:-}" ]]; then
+  echo "::error::GH_TOKEN is not set — retro agent requires GitHub API access"
+  exit 1
 fi
+echo "::add-mask::${GH_TOKEN}"
+if ! gh auth status >/dev/null 2>&1; then
+  echo "::error::GH_TOKEN is invalid — retro agent requires GitHub API access"
+  exit 1
+fi
+echo "GH_TOKEN validated successfully."
 
 if [[ -n "${RETRO_COMMENT:-}" ]]; then
   echo "Retro triggered on-demand with comment."
