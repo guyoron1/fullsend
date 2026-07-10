@@ -64,6 +64,8 @@ All git forge operations (GitHub API calls, PR comments, issue creation, workflo
 
 ## Code pattern consistency
 
+This section collects rules for flagging inconsistent code patterns within a single file during review. Currently it covers retry and backoff strategies; additional pattern rules may be added here over time.
+
 When a PR introduces or modifies a retry loop, backoff strategy, or polling interval in a file that already contains such logic, compare the strategies used. Inconsistent approaches within the same file (e.g., additive backoff in one function and exponential backoff in another) create cognitive overhead for maintainers who must reason about whether the divergence is intentional.
 
 **When reviewing PRs:** If a file uses two or more different backoff strategies (additive, exponential, constant, jitter-based, etc.), flag the inconsistency as a **low-severity informational finding** and ask the author to either harmonize the strategies or explain why they differ. Do not flag when:
