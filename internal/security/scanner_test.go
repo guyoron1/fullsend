@@ -449,6 +449,17 @@ func TestSSRFValidator_DNSResolution(t *testing.T) {
 	})
 }
 
+func TestFormatFinding(t *testing.T) {
+	f := Finding{
+		Scanner:  "secret_redactor",
+		Name:     "github_pat",
+		Severity: "critical",
+		Detail:   "GitHub personal access token detected",
+	}
+	got := FormatFinding(f)
+	assert.Equal(t, "[critical] github_pat: GitHub personal access token detected", got)
+}
+
 func hasFinding(r ScanResult, name string) bool {
 	for _, f := range r.Findings {
 		if f.Name == name {

@@ -13,6 +13,8 @@
 // and evaluation results.
 package security
 
+import "fmt"
+
 // Finding represents a single security issue detected by a scanner.
 type Finding struct {
 	Scanner  string // "secret_redactor", "ssrf_validator", "context_injection", "unicode_normalizer"
@@ -99,6 +101,15 @@ func OutputPipeline() *Pipeline {
 		NewUnicodeNormalizer(),
 		NewSecretRedactor(),
 	)
+}
+
+// FormatFinding returns a human-readable summary of a single finding.
+// The canonical format is "[severity] name: detail", using the Name field
+// (pattern name or category) rather than Scanner (scanner identifier).
+// All callers that print individual findings should use this function to
+// prevent format drift.
+func FormatFinding(f Finding) string {
+	return fmt.Sprintf("[%s] %s: %s", f.Severity, f.Name, f.Detail)
 }
 
 // HasCriticalFindings reports whether any finding has critical severity.
