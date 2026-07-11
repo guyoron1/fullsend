@@ -176,6 +176,7 @@ if [ "${ACTION}" = "approve" ]; then
       GOV_NOTICE+=$'> A human reviewer must approve this PR.\n'
 
       GOV_RESULT=$(mktemp)
+      trap 'rm -f "${GOV_RESULT}"' EXIT
       jq --arg notice "${GOV_NOTICE}" \
         '.action = "comment" | .body = (.body + $notice)' \
         "${RESULT_FILE}" > "${GOV_RESULT}"

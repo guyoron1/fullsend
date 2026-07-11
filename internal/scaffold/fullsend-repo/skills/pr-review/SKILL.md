@@ -689,6 +689,8 @@ and evaluate:
 - One **medium** finding (but no critical/high) → `comment-only`
   (attach findings as comments so the author sees them, but do not
   block the PR)
+- A `governance-document` finding is present → `comment` (governance-only
+  PRs require human approval, regardless of finding severities)
 - **Low** or **info** findings only (no medium+) → `approve` (attach
   findings as comments; preserve concrete follow-up work with
   `actionable: true` so the post-script can create follow-up issues)
