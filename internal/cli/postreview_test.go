@@ -1001,3 +1001,37 @@ func TestPostApprovedFollowUpIssues_DisabledIsNoop(t *testing.T) {
 	err := postApprovedFollowUpIssues(context.Background(), "acme", "repo", 9, parsed, printer)
 	require.NoError(t, err)
 }
+
+func TestResolveReviewToken_ExplicitToken(t *testing.T) {
+	tok, err := resolveReviewToken("my-explicit-token")
+	require.NoError(t, err)
+	assert.Equal(t, "my-explicit-token", tok)
+}
+
+func TestResolveReviewToken_FallsBackToREVIEW_TOKEN(t *testing.T) {
+	t.Setenv("REVIEW_TOKEN", "minted-review-token")
+	tok, err := resolveReviewToken("")
+	require.NoError(t, err)
+	assert.Equal(t, "minted-review-token", tok)
+}
+
+func TestResolveReviewToken_ExplicitTakesPrecedence(t *testing.T) {
+	t.Setenv("REVIEW_TOKEN", "env-token")
+	tok, err := resolveReviewToken("flag-token")
+	require.NoError(t, err)
+	assert.Equal(t, "flag-token", tok, "explicit --token flag should take precedence over REVIEW_TOKEN env var")
+}
+
+func TestResolveReviewToken_NoFallbackToGITHUB_TOKEN(t *testing.T) {
+	t.Setenv("GITHUB_TOKEN", "actions-default-token")
+	_, err := resolveReviewToken("")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "REVIEW_TOKEN required")
+	assert.Contains(t, err.Error(), "do not use GITHUB_TOKEN")
+}
+
+func TestResolveReviewToken_NoTokenAvailable(t *testing.T) {
+	_, err := resolveReviewToken("")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "REVIEW_TOKEN required")
+}

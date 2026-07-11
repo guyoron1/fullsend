@@ -61,12 +61,11 @@ has moved, a stale-head failure is posted instead.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			printer := ui.New(os.Stdout)
 
-			if token == "" {
-				token = os.Getenv("GITHUB_TOKEN")
+			resolved, err := resolveReviewToken(token)
+			if err != nil {
+				return err
 			}
-			if token == "" {
-				return fmt.Errorf("--token or GITHUB_TOKEN required")
-			}
+			token = resolved
 
 			if pr <= 0 {
 				return fmt.Errorf("--pr must be a positive integer, got %d", pr)
@@ -137,7 +136,7 @@ has moved, a stale-head failure is posted instead.`,
 	cmd.Flags().StringVar(&repo, "repo", "", "repository in owner/repo format (required)")
 	cmd.Flags().IntVar(&pr, "pr", 0, "pull request number (required)")
 	cmd.Flags().StringVar(&result, "result", "-", "path to review result file, or '-' for stdin")
-	cmd.Flags().StringVar(&token, "token", "", "GitHub token (default: $GITHUB_TOKEN)")
+	cmd.Flags().StringVar(&token, "token", "", "GitHub token (default: $REVIEW_TOKEN)")
 	cmd.Flags().StringVar(&headSHA, "head-sha", "", "expected PR HEAD SHA (skips review if HEAD has moved)")
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "print what would be posted without making API calls")
 	_ = cmd.MarkFlagRequired("repo")
@@ -504,6 +503,24 @@ func minimizeStaleReviews(ctx context.Context, client forge.Client, user string,
 		}
 	}
 	printer.StepDone("Stale reviews minimized")
+}
+
+// resolveReviewToken returns the token to use for review API operations.
+// Priority: explicit flag value > REVIEW_TOKEN env var.
+//
+// This function intentionally does NOT fall back to GITHUB_TOKEN.
+// In GitHub Actions, GITHUB_TOKEN is scoped to the workflow initiator.
+// When the PR author matches the workflow identity (common in per-repo
+// installs), using GITHUB_TOKEN for review submission triggers a 422
+// self-review error from the GitHub API. See #202.
+func resolveReviewToken(explicit string) (string, error) {
+	if explicit != "" {
+		return explicit, nil
+	}
+	if t := os.Getenv("REVIEW_TOKEN"); t != "" {
+		return t, nil
+	}
+	return "", fmt.Errorf("--token or REVIEW_TOKEN required (do not use GITHUB_TOKEN — it may share the PR author's identity, causing a 422 self-review error)")
 }
 
 // parseReviewResult attempts to parse the body as a JSON ReviewResult.
