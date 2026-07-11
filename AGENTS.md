@@ -50,7 +50,7 @@ If only `E2E_GITHUB_USERNAME` and a password source are available, `make e2e-tes
 
 ### `return` vs `exit` in executed scripts
 
-`return` is valid only inside functions or in scripts that are `source`d. At the top level of an executed script (one with a shebang or run via `bash script.sh`), `return` causes a hard error — and under `set -euo pipefail`, this aborts the script.
+`return` is valid only inside functions or in scripts that are `source`d. At the top level of an executed script (one with a shebang or run via `bash script.sh`), `return` produces an error (exit status 2) — and under `set -e` (commonly part of `set -euo pipefail`), this non-zero status triggers errexit and aborts the script.
 
 This commonly occurs when inlining library code that was previously `source`d. Library-style load guards like `[[ -n "${LOADED:-}" ]] && return 0` must be removed or replaced when the code is inlined into an executed script.
 
