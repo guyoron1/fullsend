@@ -90,6 +90,28 @@ func TestBuildProviderArgs_KeyRemapping(t *testing.T) {
 	assert.Equal(t, "PROVIDER_KEY=the-secret", extraEnv[0])
 }
 
+func TestEnsureProvider_RejectsReservedCredentialKey(t *testing.T) {
+	credentials := map[string]string{
+		"LD_PRELOAD": "/path/to/malicious.so",
+	}
+
+	err := EnsureProvider("test-provider", "custom", credentials, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "LD_PRELOAD")
+	assert.Contains(t, err.Error(), "reserved")
+}
+
+func TestEnsureProvider_RejectsFullsendPrefixCredentialKey(t *testing.T) {
+	credentials := map[string]string{
+		"FULLSEND_OUTPUT_DIR": "/tmp/hijack",
+	}
+
+	err := EnsureProvider("test-provider", "custom", credentials, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "FULLSEND_OUTPUT_DIR")
+	assert.Contains(t, err.Error(), "FULLSEND_")
+}
+
 func TestBuildProviderArgs_EmptyCredential(t *testing.T) {
 	t.Setenv("EMPTY_VAR", "")
 

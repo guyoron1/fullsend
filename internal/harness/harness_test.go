@@ -1418,6 +1418,62 @@ agent: agents/code.md
 	assert.Nil(t, h.MaxRuntimeFetches)
 }
 
+// --- Reserved runner_env key tests ---
+
+func TestValidate_RunnerEnvRejectsReservedKeys(t *testing.T) {
+	tests := []struct {
+		name string
+		key  string
+	}{
+		{"blocks PATH", "PATH"},
+		{"blocks LD_PRELOAD", "LD_PRELOAD"},
+		{"blocks BASH_ENV", "BASH_ENV"},
+		{"blocks http_proxy", "http_proxy"},
+		{"blocks HTTPS_PROXY", "HTTPS_PROXY"},
+		{"blocks SSL_CERT_FILE", "SSL_CERT_FILE"},
+		{"blocks GIT_CONFIG_GLOBAL", "GIT_CONFIG_GLOBAL"},
+		{"blocks GIT_SSH_COMMAND", "GIT_SSH_COMMAND"},
+		{"blocks NODE_OPTIONS", "NODE_OPTIONS"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := &Harness{
+				Agent:     "agents/test.md",
+				RunnerEnv: map[string]string{tt.key: "value"},
+			}
+			err := h.Validate()
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.key)
+			assert.Contains(t, err.Error(), "reserved")
+		})
+	}
+}
+
+func TestValidate_RunnerEnvAllowsSafeKeys(t *testing.T) {
+	h := &Harness{
+		Agent: "agents/test.md",
+		RunnerEnv: map[string]string{
+			"REPO_NAME": "my-repo",
+			"GH_TOKEN":  "ghp_xxx",
+			"API_KEY":   "secret",
+		},
+	}
+	err := h.Validate()
+	assert.NoError(t, err)
+}
+
+func TestValidate_RunnerEnvAllowsFullsendPrefix(t *testing.T) {
+	h := &Harness{
+		Agent: "agents/test.md",
+		RunnerEnv: map[string]string{
+			"FULLSEND_OUTPUT_SCHEMA": "${FULLSEND_DIR}/schemas/code-result.schema.json",
+			"FULLSEND_OUTPUT_FILE":   "code-result.json",
+		},
+	}
+	err := h.Validate()
+	assert.NoError(t, err)
+}
+
 // --- ValidForgePlatform tests ---
 
 func TestValidForgePlatform(t *testing.T) {
