@@ -59,9 +59,18 @@ if [[ -z "${GH_TOKEN:-}" ]]; then
   exit 0
 fi
 
+# Mask the token to prevent accidental log exposure.
+echo "::add-mask::${GH_TOKEN}"
+
 echo "Prefetching PR context for ${URL_REPO}#${URL_NUMBER}..."
 
-prefetch_failed=false
+# Maximum context file size in bytes (5 MB). Files exceeding this are
+# truncated to a degraded-status stub to avoid exhausting runner disk or
+# bloating the agent's context window.
+MAX_CONTEXT_BYTES=5242880
+
+# Each fetch is independent — a failure in one does not skip the others.
+# This ensures partial data is available even when some endpoints fail.
 
 # 1. PR metadata via gh pr view.
 pr_metadata=""
@@ -72,74 +81,79 @@ if pr_metadata=$(gh pr view "${URL_NUMBER}" \
   echo "Fetched PR metadata."
 else
   echo "::warning::Failed to fetch PR metadata"
-  prefetch_failed=true
+  pr_metadata=""
 fi
 
 # 2. PR comments (issue comments endpoint covers both).
+#    Cap at 500 to prevent unbounded growth on high-activity PRs.
 pr_comments=""
-if ! ${prefetch_failed}; then
-  if pr_comments=$(gh api "repos/${URL_REPO}/issues/${URL_NUMBER}/comments" \
-    --paginate --jq '.[]' 2>/dev/null | jq -s '.'); then
-    echo "Fetched PR comments."
-  else
-    echo "::warning::Failed to fetch PR comments"
-    pr_comments="[]"
-  fi
+if pr_comments=$(gh api "repos/${URL_REPO}/issues/${URL_NUMBER}/comments" \
+  --paginate --jq '.[]' 2>/dev/null | jq -s '.[0:500]'); then
+  echo "Fetched PR comments."
+else
+  echo "::warning::Failed to fetch PR comments"
+  pr_comments="[]"
 fi
 
 # 3. PR reviews.
+#    Cap at 500 to prevent unbounded growth.
 pr_reviews=""
-if ! ${prefetch_failed}; then
-  if pr_reviews=$(gh api "repos/${URL_REPO}/pulls/${URL_NUMBER}/reviews" \
-    --paginate --jq '.[]' 2>/dev/null | jq -s '.'); then
-    echo "Fetched PR reviews."
-  else
-    echo "::warning::Failed to fetch PR reviews"
-    pr_reviews="[]"
-  fi
+if pr_reviews=$(gh api "repos/${URL_REPO}/pulls/${URL_NUMBER}/reviews" \
+  --paginate --jq '.[]' 2>/dev/null | jq -s '.[0:500]'); then
+  echo "Fetched PR reviews."
+else
+  echo "::warning::Failed to fetch PR reviews"
+  pr_reviews="[]"
 fi
 
-# 4. Recent workflow runs for the default branch dispatch workflow.
-#    Fetches the 10 most recent runs to give the retro agent CI context.
+# 4. Recent workflow runs (10 most recent) for CI context.
 workflow_runs=""
-if ! ${prefetch_failed}; then
-  if workflow_runs=$(gh api "repos/${URL_REPO}/actions/runs" \
-    --method GET \
-    -f per_page=10 \
-    --jq '{workflow_runs: [.workflow_runs[] | {id, name, status, conclusion, html_url, created_at, updated_at, head_sha, head_branch, event}]}' \
-    2>/dev/null); then
-    echo "Fetched recent workflow runs."
-  else
-    echo "::warning::Failed to fetch workflow runs"
-    workflow_runs='{"workflow_runs":[]}'
-  fi
+if workflow_runs=$(gh api "repos/${URL_REPO}/actions/runs" \
+  --method GET \
+  -f per_page=10 \
+  --jq '{workflow_runs: [.workflow_runs[] | {id, name, status, conclusion, html_url, created_at, updated_at, head_sha, head_branch, event}]}' \
+  2>/dev/null); then
+  echo "Fetched recent workflow runs."
+else
+  echo "::warning::Failed to fetch workflow runs"
+  workflow_runs='{"workflow_runs":[]}'
 fi
 
 # 5. Assemble and write the context file.
-if ${prefetch_failed}; then
-  echo "::warning::PR metadata fetch failed — writing empty context file"
-  printf '{"prefetch_status":"failed","error":"PR metadata fetch failed"}\n' \
-    > "${PR_CONTEXT_FILE}"
+#    If PR metadata is missing, mark as failed but still include any
+#    comments/reviews/runs that were collected.
+prefetch_status="ok"
+if [[ -z "${pr_metadata}" ]]; then
+  prefetch_status="partial"
+  pr_metadata="null"
+fi
+
+if jq -n \
+  --arg status "${prefetch_status}" \
+  --argjson metadata "${pr_metadata}" \
+  --argjson comments "${pr_comments}" \
+  --argjson reviews "${pr_reviews}" \
+  --argjson workflow_runs "${workflow_runs}" \
+  '{
+    prefetch_status: $status,
+    pr: $metadata,
+    comments: $comments,
+    reviews: $reviews,
+    workflow_runs: $workflow_runs.workflow_runs
+  }' > "${PR_CONTEXT_FILE}"; then
+  echo "PR context written to ${PR_CONTEXT_FILE}"
 else
-  if jq -n \
-    --arg status "ok" \
-    --argjson metadata "${pr_metadata}" \
-    --argjson comments "${pr_comments}" \
-    --argjson reviews "${pr_reviews}" \
-    --argjson workflow_runs "${workflow_runs}" \
-    '{
-      prefetch_status: $status,
-      pr: $metadata,
-      comments: $comments,
-      reviews: $reviews,
-      workflow_runs: $workflow_runs.workflow_runs
-    }' > "${PR_CONTEXT_FILE}"; then
-    echo "PR context written to ${PR_CONTEXT_FILE}"
-  else
-    echo "::warning::jq assembly failed — writing degraded context file"
-    printf '{"prefetch_status":"partial","error":"jq assembly failed"}\n' \
-      > "${PR_CONTEXT_FILE}"
-  fi
+  echo "::warning::jq assembly failed — writing degraded context file"
+  printf '{"prefetch_status":"partial","error":"jq assembly failed"}\n' \
+    > "${PR_CONTEXT_FILE}"
+fi
+
+# 6. Size guard — truncate if the context file exceeds the limit.
+context_size=$(wc -c < "${PR_CONTEXT_FILE}")
+if [[ "${context_size}" -gt "${MAX_CONTEXT_BYTES}" ]]; then
+  echo "::warning::pr-context.json exceeds ${MAX_CONTEXT_BYTES} bytes (${context_size}), truncating"
+  printf '{"prefetch_status":"partial","error":"context file exceeded size limit (%s bytes)"}\n' \
+    "${context_size}" > "${PR_CONTEXT_FILE}"
 fi
 
 # Output the file path for workflow integration.

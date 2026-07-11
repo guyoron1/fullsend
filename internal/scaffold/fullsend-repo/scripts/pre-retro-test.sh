@@ -132,6 +132,7 @@ run_test() {
   local comments_json="${7-${COMMENTS_JSON}}"
   local reviews_json="${8-${REVIEWS_JSON}}"
   local runs_json="${9-${RUNS_JSON}}"
+  local retro_comment="${10-}"
 
   local mock_bin
   mock_bin="$(build_mock "${pr_json}" "${comments_json}" "${reviews_json}" "${runs_json}")"
@@ -148,7 +149,7 @@ run_test() {
     GH_TOKEN="${gh_token}" \
     RUNNER_TEMP="${runner_temp}" \
     GITHUB_OUTPUT="${github_output}" \
-    RETRO_COMMENT="" \
+    RETRO_COMMENT="${retro_comment}" \
     bash "${PRE_SCRIPT}" > "${TMPDIR}/stdout-${test_name}.log" 2>&1 || exit_code=$?
 
   if [[ ${exit_code} -ne ${expect_exit} ]]; then
@@ -262,7 +263,7 @@ check_no_context_file() {
   return 0
 }
 
-check_prefetch_failed() {
+check_prefetch_partial() {
   local test_name="$1"
   local runner_temp="$2"
 
@@ -271,8 +272,16 @@ check_prefetch_failed() {
   local context_file="${runner_temp}/pr-context.json"
   local status
   status=$(jq -r '.prefetch_status' "${context_file}")
-  if [[ "${status}" != "failed" ]]; then
-    echo "FAIL: ${test_name} — prefetch_status='${status}', expected 'failed'"
+  if [[ "${status}" != "partial" ]]; then
+    echo "FAIL: ${test_name} — prefetch_status='${status}', expected 'partial'"
+    return 1
+  fi
+
+  # Even with metadata failure, comments/reviews/runs should still be present.
+  local comment_count
+  comment_count=$(jq '.comments | length' "${context_file}")
+  if [[ "${comment_count}" -lt 1 ]]; then
+    echo "FAIL: ${test_name} — expected at least 1 comment despite metadata failure"
     return 1
   fi
 
@@ -301,11 +310,12 @@ run_test "no-token-skips-prefetch" \
   ""
 
 # 4. PR metadata fetch fails → graceful degradation, exits 0, writes
-#    a context file with prefetch_status=failed.
+#    a context file with prefetch_status=partial. Comments/reviews/runs
+#    are still fetched independently.
 run_test "pr-metadata-fails-graceful" \
   "https://github.com/test-org/test-repo/pull/42" \
   0 \
-  "check_prefetch_failed" \
+  "check_prefetch_partial" \
   "fake-token" \
   "" \
   "${COMMENTS_JSON}" \
@@ -354,7 +364,79 @@ run_test "invalid-url-rejected" \
   1 \
   ""
 
-# 7. On-demand trigger (RETRO_COMMENT set) still prefetches.
+# 7. Reviews fetch fails → prefetch still succeeds with empty reviews.
+check_reviews_fallback() {
+  local test_name="$1"
+  local runner_temp="$2"
+
+  check_context_file_exists "${test_name}" "${runner_temp}" || return 1
+
+  local context_file="${runner_temp}/pr-context.json"
+  local status
+  status=$(jq -r '.prefetch_status' "${context_file}")
+  if [[ "${status}" != "ok" ]]; then
+    echo "FAIL: ${test_name} — prefetch_status='${status}', expected 'ok'"
+    return 1
+  fi
+
+  # Reviews should fall back to empty array.
+  local review_count
+  review_count=$(jq '.reviews | length' "${context_file}")
+  if [[ "${review_count}" -ne 0 ]]; then
+    echo "FAIL: ${test_name} — expected 0 reviews (fallback), got ${review_count}"
+    return 1
+  fi
+
+  return 0
+}
+
+run_test "reviews-fail-fallback" \
+  "https://github.com/test-org/test-repo/pull/42" \
+  0 \
+  "check_reviews_fallback" \
+  "fake-token" \
+  "${PR_JSON}" \
+  "${COMMENTS_JSON}" \
+  "" \
+  "${RUNS_JSON}"
+
+# 8. Workflow runs fetch fails → prefetch still succeeds with empty runs.
+check_runs_fallback() {
+  local test_name="$1"
+  local runner_temp="$2"
+
+  check_context_file_exists "${test_name}" "${runner_temp}" || return 1
+
+  local context_file="${runner_temp}/pr-context.json"
+  local status
+  status=$(jq -r '.prefetch_status' "${context_file}")
+  if [[ "${status}" != "ok" ]]; then
+    echo "FAIL: ${test_name} — prefetch_status='${status}', expected 'ok'"
+    return 1
+  fi
+
+  # Workflow runs should fall back to empty array.
+  local run_count
+  run_count=$(jq '.workflow_runs | length' "${context_file}")
+  if [[ "${run_count}" -ne 0 ]]; then
+    echo "FAIL: ${test_name} — expected 0 workflow runs (fallback), got ${run_count}"
+    return 1
+  fi
+
+  return 0
+}
+
+run_test "runs-fail-fallback" \
+  "https://github.com/test-org/test-repo/pull/42" \
+  0 \
+  "check_runs_fallback" \
+  "fake-token" \
+  "${PR_JSON}" \
+  "${COMMENTS_JSON}" \
+  "${REVIEWS_JSON}" \
+  ""
+
+# 9. On-demand trigger (RETRO_COMMENT set) still prefetches.
 check_ondemand_prefetch() {
   local test_name="$1"
   local runner_temp="$2"
@@ -372,33 +454,16 @@ check_ondemand_prefetch() {
   return 0
 }
 
-# Run test 7 with RETRO_COMMENT manually since run_test clears it.
-test_name="ondemand-trigger-prefetches"
-mock_bin="$(build_mock "${PR_JSON}" "${COMMENTS_JSON}" "${REVIEWS_JSON}" "${RUNS_JSON}")"
-runner_temp="${TMPDIR}/runner-temp-${test_name}"
-github_output="${TMPDIR}/github-output-${test_name}"
-mkdir -p "${runner_temp}"
-: > "${github_output}"
-
-exit_code=0
-env \
-  PATH="${mock_bin}:${PATH}" \
-  ORIGINATING_URL="https://github.com/test-org/test-repo/pull/42" \
-  GH_TOKEN="fake-token" \
-  RUNNER_TEMP="${runner_temp}" \
-  GITHUB_OUTPUT="${github_output}" \
-  RETRO_COMMENT="/retro please analyze this" \
-  bash "${PRE_SCRIPT}" > "${TMPDIR}/stdout-${test_name}.log" 2>&1 || exit_code=$?
-
-if [[ ${exit_code} -ne 0 ]]; then
-  echo "FAIL: ${test_name} — expected exit 0, got ${exit_code}"
-  cat "${TMPDIR}/stdout-${test_name}.log"
-  FAILURES=$((FAILURES + 1))
-elif ! check_ondemand_prefetch "${test_name}" "${runner_temp}"; then
-  FAILURES=$((FAILURES + 1))
-else
-  echo "PASS: ${test_name}"
-fi
+run_test "ondemand-trigger-prefetches" \
+  "https://github.com/test-org/test-repo/pull/42" \
+  0 \
+  "check_ondemand_prefetch" \
+  "fake-token" \
+  "${PR_JSON}" \
+  "${COMMENTS_JSON}" \
+  "${REVIEWS_JSON}" \
+  "${RUNS_JSON}" \
+  "/retro please analyze this"
 
 # --- Summary ---
 
