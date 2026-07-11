@@ -305,7 +305,7 @@ Before writing code, form a concrete plan:
    Do not chase every import — focus on references that the issue context
    points you toward.
 5. **Check relevant Architecture Decision Records** — if the repo has a
-   `docs/ADRs/` directory (or equivalent, as noted in `AGENTS.md`),
+   `docs/ADRs/` directory (or equivalent, if noted in `AGENTS.md`),
    search it for decisions related to the area you are changing. Use
    `Grep` to search ADR files for keywords matching the component,
    pattern, or file path you plan to modify. If an ADR constrains the
