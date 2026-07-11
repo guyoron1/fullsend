@@ -23,7 +23,7 @@ Fullsend is a platform for fully autonomous agentic development for GitHub-hoste
 
 When changing `internal/mint/main.go`, always copy it to `internal/dispatch/gcf/mintsrc/main.go.embed`. If `go.mod` or `go.sum` changed, sync those to `go.mod.embed` and `go.sum.embed` too.
 
-**Build metadata stamping:** When the mint Cloud Function needs version, commit, or other build metadata, stamp it into the source at deploy time — do not pass it via runtime environment variables. Have the provisioner generate a source file (e.g., `version.go`) and include it in the function source zip at bundle time with the values baked in. This ensures metadata cannot drift from the deployed code. Apply the same pattern for any future build metadata the function needs; never use environment variables for values that must stay in lockstep with the deployed source.
+**Build metadata stamping:** When the mint Cloud Function needs version, commit, or other build metadata, the correct approach is to stamp it into the source at deploy time — do not pass it via runtime environment variables. Have the provisioner generate a source file (e.g., `version.go`) and include it in the function source zip at bundle time with the values baked in. This ensures metadata cannot drift from the deployed code. Apply the same pattern for any future build metadata the function needs; never use runtime environment variables for build metadata (version, commit, build flags) that must stay in lockstep with the deployed source.
 
 **Mint client:** `internal/mintclient/` is the Go client for calling the mint service at runtime. It exchanges a GitHub Actions OIDC JWT for a role-scoped installation token. Unlike `internal/mint/` and `internal/mintcore/`, it has no embedded copies or sync requirements.
 
