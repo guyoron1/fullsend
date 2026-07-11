@@ -12,7 +12,12 @@ agent: agents/code.md
 doc: docs/agents/code.md
 model: opus
 image: ghcr.io/fullsend-ai/fullsend-code:latest
-policy: policies/code.yaml
+policy: policies/base.yaml
+providers:
+  - vertex-ai
+  - github
+  - package-registries
+  - gitleaks
 
 role: coder
 slug: fullsend-ai-coder
@@ -24,14 +29,16 @@ host_files:
   - src: env/code-agent.env
     dest: /sandbox/workspace/.env.d/code-agent.env
     expand: true
-  - src: env/z-costwise-proxy.env
-    dest: /sandbox/workspace/.env.d/z-costwise-proxy.env
-    expand: true
   - src: ${GOOGLE_APPLICATION_CREDENTIALS}
     dest: /tmp/.gcp-credentials.json
   - src: ${GCP_OIDC_TOKEN_FILE}
     dest: /sandbox/workspace/.gcp-oidc-token
     optional: true
+  - src: dist/rtk-linux-x64
+    dest: /sandbox/workspace/.costwise/rtk
+    optional: true
+  - src: env/rtk-setup.env
+    dest: /sandbox/workspace/.env.d/rtk-setup.env
 
 pre_script: scripts/pre-code.sh
 post_script: scripts/post-code.sh
@@ -41,11 +48,14 @@ skills:
 
 plugins:
   - plugins/gopls-lsp
+  - plugins/ponytail
 
 # Environment variables available to pre/post scripts on the runner.
 # These are expanded from the runner environment and NEVER enter the sandbox.
 runner_env:
-  TARGET_BRANCH: "${TARGET_BRANCH}"
+  CODE_ALLOWED_TARGET_BRANCHES: "${CODE_ALLOWED_TARGET_BRANCHES}"
+  FULLSEND_OUTPUT_SCHEMA: ${FULLSEND_DIR}/schemas/code-result.schema.json
+  FULLSEND_OUTPUT_FILE: code-result.json
 
 timeout_minutes: 35
 
@@ -59,8 +69,3 @@ forge:
       REPO_FULL_NAME: "${REPO_FULL_NAME}"
       ISSUE_NUMBER: "${ISSUE_NUMBER}"
       REPO_DIR: "${GITHUB_WORKSPACE}/target-repo"
-    env:
-      sandbox:
-        CLAUDE_CODE_USE_VERTEX: "0"
-        ANTHROPIC_BASE_URL: "${COSTWISE_PROXY_URL}"
-        ANTHROPIC_API_KEY: "sk-ant-api03-costwise-proxy-passthrough"
