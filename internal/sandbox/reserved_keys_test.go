@@ -21,6 +21,9 @@ func TestIsReservedEnvKey_ExactMatch(t *testing.T) {
 		"GIT_SSL_CAINFO", "GIT_SSL_CAPATH", "GIT_SSL_NO_VERIFY",
 		"GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM",
 		"GIT_EXEC_PATH", "GIT_TEMPLATE_DIR",
+		"GIT_SSH_COMMAND", "GIT_ASKPASS", "GIT_EXTERNAL_DIFF",
+		"SSH_ASKPASS",
+		"NODE_OPTIONS", "JAVA_TOOL_OPTIONS",
 	}
 
 	for _, key := range reserved {
@@ -37,11 +40,14 @@ func TestIsReservedEnvKey_CaseInsensitive(t *testing.T) {
 	assert.True(t, IsReservedEnvKey("Ssl_Cert_File"))
 }
 
-func TestIsReservedEnvKey_FullsendPrefix(t *testing.T) {
-	assert.True(t, IsReservedEnvKey("FULLSEND_OUTPUT_DIR"))
-	assert.True(t, IsReservedEnvKey("FULLSEND_TRACE_ID"))
-	assert.True(t, IsReservedEnvKey("fullsend_custom"))
-	assert.True(t, IsReservedEnvKey("Fullsend_Anything"))
+func TestIsReservedEnvKey_FullsendPrefixNotBlocked(t *testing.T) {
+	// FULLSEND_* prefix is NOT blocked by IsReservedEnvKey because harness
+	// authors legitimately set these in runner_env. The prefix is only
+	// blocked in ValidateCredentialKeys.
+	assert.False(t, IsReservedEnvKey("FULLSEND_OUTPUT_DIR"))
+	assert.False(t, IsReservedEnvKey("FULLSEND_TRACE_ID"))
+	assert.False(t, IsReservedEnvKey("fullsend_custom"))
+	assert.False(t, IsReservedEnvKey("Fullsend_Anything"))
 }
 
 func TestIsReservedEnvKey_AllowedKeys(t *testing.T) {
@@ -71,8 +77,9 @@ func TestValidateCredentialKeys_RejectsReserved(t *testing.T) {
 		{"blocks PATH", "PATH"},
 		{"blocks LD_PRELOAD", "LD_PRELOAD"},
 		{"blocks http_proxy", "http_proxy"},
-		{"blocks FULLSEND_ prefix", "FULLSEND_OUTPUT_DIR"},
 		{"blocks GIT_CONFIG_GLOBAL", "GIT_CONFIG_GLOBAL"},
+		{"blocks GIT_SSH_COMMAND", "GIT_SSH_COMMAND"},
+		{"blocks NODE_OPTIONS", "NODE_OPTIONS"},
 	}
 
 	for _, tt := range tests {
@@ -106,6 +113,26 @@ func TestValidateCredentialKeys_NilMap(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestValidateCredentialKeys_RejectsFullsendPrefix(t *testing.T) {
+	tests := []struct {
+		name string
+		key  string
+	}{
+		{"blocks FULLSEND_OUTPUT_DIR", "FULLSEND_OUTPUT_DIR"},
+		{"blocks FULLSEND_TRACE_ID", "FULLSEND_TRACE_ID"},
+		{"blocks lowercase fullsend_custom", "fullsend_custom"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			creds := map[string]string{tt.key: "value"}
+			err := ValidateCredentialKeys(creds)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.key)
+		})
+	}
+}
+
 func TestValidateEnvKeys_RejectsReserved(t *testing.T) {
 	env := map[string]string{"LD_PRELOAD": "/malicious.so"}
 	err := ValidateEnvKeys(env, "runner_env")
@@ -124,24 +151,37 @@ func TestValidateEnvKeys_AllowsSafe(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestValidateEnvKeys_AllowsFullsendPrefix(t *testing.T) {
+	// FULLSEND_* keys are legitimate in runner_env — harness authors set
+	// them for platform integration (e.g., FULLSEND_OUTPUT_SCHEMA).
+	env := map[string]string{
+		"FULLSEND_OUTPUT_SCHEMA": "${FULLSEND_DIR}/schemas/code-result.schema.json",
+		"FULLSEND_OUTPUT_FILE":   "code-result.json",
+	}
+	err := ValidateEnvKeys(env, "runner_env")
+	assert.NoError(t, err)
+}
+
 // TestBlocklistParity verifies that ValidateCredentialKeys and
-// ValidateEnvKeys use the same underlying blocklist. Every key
-// blocked as a credential must also be blocked as a runner_env key,
-// and vice versa.
+// ValidateEnvKeys use the same underlying blocklist for base reserved
+// keys. Every key in reservedEnvKeys blocked as a credential must also
+// be blocked as a runner_env key, and vice versa.
+//
+// FULLSEND_* prefix keys are intentionally excluded: they are blocked
+// only in the credential path (ValidateCredentialKeys), not in the
+// runner_env path, because harness authors legitimately set them.
 func TestBlocklistParity(t *testing.T) {
-	// Collect all keys from the canonical ReservedEnvKeys map plus
-	// representative FULLSEND_* prefix keys.
-	allReserved := make([]string, 0, len(ReservedEnvKeys)+2)
-	for k := range ReservedEnvKeys {
+	// Collect all keys from the canonical reservedEnvKeys map.
+	allReserved := make([]string, 0, len(reservedEnvKeys))
+	for k := range reservedEnvKeys {
 		allReserved = append(allReserved, k)
 	}
-	allReserved = append(allReserved, "FULLSEND_OUTPUT_DIR", "FULLSEND_TRACE_ID")
 
 	for _, key := range allReserved {
 		credErr := ValidateCredentialKeys(map[string]string{key: "val"})
 		envErr := ValidateEnvKeys(map[string]string{key: "val"}, "test")
 
-		// Both must reject the same key.
+		// Both must reject the same base reserved key.
 		assert.Error(t, credErr, "credential path should block %q", key)
 		assert.Error(t, envErr, "env path should block %q", key)
 	}

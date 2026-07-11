@@ -1432,7 +1432,8 @@ func TestValidate_RunnerEnvRejectsReservedKeys(t *testing.T) {
 		{"blocks HTTPS_PROXY", "HTTPS_PROXY"},
 		{"blocks SSL_CERT_FILE", "SSL_CERT_FILE"},
 		{"blocks GIT_CONFIG_GLOBAL", "GIT_CONFIG_GLOBAL"},
-		{"blocks FULLSEND_ prefix", "FULLSEND_OUTPUT_DIR"},
+		{"blocks GIT_SSH_COMMAND", "GIT_SSH_COMMAND"},
+		{"blocks NODE_OPTIONS", "NODE_OPTIONS"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1455,6 +1456,18 @@ func TestValidate_RunnerEnvAllowsSafeKeys(t *testing.T) {
 			"REPO_NAME": "my-repo",
 			"GH_TOKEN":  "ghp_xxx",
 			"API_KEY":   "secret",
+		},
+	}
+	err := h.Validate()
+	assert.NoError(t, err)
+}
+
+func TestValidate_RunnerEnvAllowsFullsendPrefix(t *testing.T) {
+	h := &Harness{
+		Agent: "agents/test.md",
+		RunnerEnv: map[string]string{
+			"FULLSEND_OUTPUT_SCHEMA": "${FULLSEND_DIR}/schemas/code-result.schema.json",
+			"FULLSEND_OUTPUT_FILE":   "code-result.json",
 		},
 	}
 	err := h.Validate()

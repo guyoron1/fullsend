@@ -109,7 +109,7 @@ func TestEnsureProvider_RejectsFullsendPrefixCredentialKey(t *testing.T) {
 	err := EnsureProvider("test-provider", "custom", credentials, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "FULLSEND_OUTPUT_DIR")
-	assert.Contains(t, err.Error(), "reserved")
+	assert.Contains(t, err.Error(), "FULLSEND_")
 }
 
 func TestBuildProviderArgs_EmptyCredential(t *testing.T) {
