@@ -226,18 +226,25 @@ conflicts — resolve them now, before any other work:**
    git merge "origin/${BASE_BRANCH}" --no-edit
    ```
 2. If the merge produced conflicts (non-zero exit), resolve them:
-   1. Preserve the PR's intended changes while incorporating updates from
+   1. Verify the failure is a merge conflict, not an unrelated error:
+      ```bash
+      git ls-files --unmerged | head -5
+      ```
+      If no unmerged files are listed, the merge failed for a non-conflict
+      reason. Run `git merge --abort` and report the failure in structured
+      output.
+   2. Preserve the PR's intended changes while incorporating updates from
       the base branch. Use `Read` and `Write` to fix conflicted files —
       do not use `sed` or `awk`.
-   2. Scan resolved files for secrets:
+   3. Scan resolved files for secrets:
       ```bash
       scan-secrets <resolved-files>
       ```
-   3. Verify no conflict markers remain:
+   4. Verify no conflict markers remain:
       ```bash
       git diff --check  # checks for conflict markers and whitespace errors
       ```
-   4. Stage resolved files and commit the merge:
+   5. Stage resolved files and commit the merge:
       ```bash
       git add <resolved-files>
       git commit --no-edit  # uses the default merge commit message

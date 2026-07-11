@@ -14,8 +14,9 @@ Each stage is triggered by labels and can be restarted with slash commands. The 
 
 ```
 Issue filed → Triage → ready-to-code → Code Agent → PR opened → Review → ready-for-merge → Merge
-                │                          ↑                                │
-                │                          └── changes requested ───────────┘
+                │                                                  ↑  │
+                │                                       Fix Agent ─┘  │
+                │                                 (changes requested) ─┘
                 ├── blocked → waiting for dependency
                 ├── duplicate → closed
                 └── needs-info → waiting for info

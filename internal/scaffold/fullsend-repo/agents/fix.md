@@ -196,8 +196,9 @@ are never locked out of the agent after a bot loop exhausts its budget.
 When a `/fs-fix` instruction includes merge conflict resolution — whether
 explicitly (mentions "merge conflicts", "rebase" (fulfilled via merge, not
 `git rebase`), or "merge main") or
-implicitly (the branch is behind the base branch and other tasks are also
-requested) — resolve the merge before making any other code changes.
+implicitly (the branch is behind the base branch and has actual merge
+conflicts that block the requested work) — resolve the merge before
+making any other code changes.
 
 This ordering matters because code changes depend on the current state of
 the codebase. Fixing review findings or adding tests against a stale branch
