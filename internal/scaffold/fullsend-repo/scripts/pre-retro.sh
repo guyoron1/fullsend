@@ -35,9 +35,11 @@ if [[ -z "${GH_TOKEN:-}" ]]; then
   exit 1
 fi
 
+echo "::add-mask::${GH_TOKEN}"
+
 if ! auth_output=$(gh api /rate_limit --silent 2>&1); then
-  echo "::error::GH_TOKEN is invalid — retro agent requires GitHub API access"
-  echo "::error::gh api /rate_limit output: ${auth_output}"
+  echo "::error::GH_TOKEN is invalid — retro agent requires GitHub API access (see output below)"
+  printf '%s\n' "${auth_output}"
   exit 1
 fi
 echo "GH_TOKEN validated successfully."
