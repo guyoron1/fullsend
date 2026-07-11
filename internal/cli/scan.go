@@ -193,7 +193,7 @@ Usage in a workflow step:
 			if len(result.Findings) > 0 {
 				printer.StepWarn(fmt.Sprintf("Sanitized %d finding(s) in agent output", len(result.Findings)))
 				for _, f := range result.Findings {
-					printer.StepWarn("  " + security.FormatFinding(f))
+					printer.StepWarn(fmt.Sprintf("  %s: %s", f.Name, f.Detail))
 				}
 				// Sanitized may be empty when all content was invisible characters.
 				fmt.Fprint(os.Stdout, result.Sanitized)
