@@ -41,15 +41,16 @@ func IsBranchProtected(err error) bool {
 	return errors.Is(err, ErrBranchProtected)
 }
 
-// ErrClassicPATForbidden indicates that the GitHub organization blocks
-// classic personal access tokens, requiring a fine-grained PAT, GitHub
-// App, or OAuth App token instead.
-var ErrClassicPATForbidden = errors.New("organization forbids classic personal access tokens")
+// ErrRestrictedTokenForbidden indicates that the organization's token
+// policy rejected the credential used to authenticate. On GitHub this
+// happens when an org blocks classic personal access tokens; other
+// forges may enforce analogous restrictions.
+var ErrRestrictedTokenForbidden = errors.New("organization token policy rejected the credential")
 
-// IsClassicPATForbidden reports whether err indicates the org rejects
-// classic PATs.
-func IsClassicPATForbidden(err error) bool {
-	return errors.Is(err, ErrClassicPATForbidden)
+// IsRestrictedTokenForbidden reports whether err indicates the org's
+// token policy rejected the credential.
+func IsRestrictedTokenForbidden(err error) bool {
+	return errors.Is(err, ErrRestrictedTokenForbidden)
 }
 
 // Repository represents a repository on a git forge.

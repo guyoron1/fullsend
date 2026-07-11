@@ -79,7 +79,7 @@ See docs/guides/getting-started/configuring-github.md for details.`
 // wrapClassicPATError checks whether err is a classic-PAT-forbidden error
 // and, if so, wraps it with actionable guidance. Otherwise returns err as-is.
 func wrapClassicPATError(err error) error {
-	if forge.IsClassicPATForbidden(err) {
+	if forge.IsRestrictedTokenForbidden(err) {
 		return fmt.Errorf("%s\n\n%w", classicPATGuidance, err)
 	}
 	return err
@@ -1462,7 +1462,7 @@ func ensureConfigRepoExists(ctx context.Context, client forge.Client, printer *u
 	if err == nil {
 		return nil
 	}
-	if forge.IsClassicPATForbidden(err) {
+	if forge.IsRestrictedTokenForbidden(err) {
 		return wrapClassicPATError(fmt.Errorf("checking for config repo: %w", err))
 	}
 	if !forge.IsNotFound(err) {
@@ -1822,7 +1822,7 @@ func runUninstall(ctx context.Context, client forge.Client, printer *ui.Printer,
 func runAnalyze(ctx context.Context, client forge.Client, printer *ui.Printer, org string) error {
 	allRepos, err := client.ListOrgRepos(ctx, org)
 	if err != nil {
-		return fmt.Errorf("listing org repos: %w", err)
+		return wrapClassicPATError(fmt.Errorf("listing org repos: %w", err))
 	}
 
 	repoNames := repoNameList(allRepos)
@@ -2512,7 +2512,7 @@ func loadRepoConfig(ctx context.Context, client forge.Client, printer *ui.Printe
 	printer.StepStart("Checking .fullsend repository")
 	_, err := client.GetRepo(ctx, org, forge.ConfigRepoName)
 	if err != nil {
-		if forge.IsClassicPATForbidden(err) {
+		if forge.IsRestrictedTokenForbidden(err) {
 			printer.StepFail("Organization blocks classic personal access tokens")
 			return nil, wrapClassicPATError(fmt.Errorf("checking .fullsend repository: %w", err))
 		}

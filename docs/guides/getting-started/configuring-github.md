@@ -34,7 +34,7 @@ the following repository permissions:
 | Secrets | Read and write | Sets `FULLSEND_GCP_PROJECT_ID` / `FULLSEND_GCP_WIF_PROVIDER` |
 | Variables | Read and write | Sets `FULLSEND_MINT_URL` / `FULLSEND_GCP_REGION` |
 | Metadata | Read-only | GitHub-required baseline (granted automatically) |
-| Pull requests | Read and write | Only needed without `--direct` |
+| Pull requests | Read and write | Only needed when the default branch has branch protection rules |
 
 Export the token before running fullsend so it takes priority:
 

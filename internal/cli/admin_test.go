@@ -1972,22 +1972,22 @@ func TestApplyPerRepoScaffold_GetRepoError(t *testing.T) {
 func TestApplyPerRepoScaffold_ClassicPATForbidden(t *testing.T) {
 	client := forge.NewFakeClient()
 	client.Errors["GetRepo"] = fmt.Errorf("get repo acme/widget: %w",
-		forge.ErrClassicPATForbidden)
+		forge.ErrRestrictedTokenForbidden)
 	printer := ui.New(&bytes.Buffer{})
 
 	err := applyPerRepoScaffold(context.Background(), client, printer,
 		"acme", "widget", nil, nil, nil)
 	require.Error(t, err)
-	assert.ErrorIs(t, err, forge.ErrClassicPATForbidden)
+	assert.ErrorIs(t, err, forge.ErrRestrictedTokenForbidden)
 	assert.Contains(t, err.Error(), "fine-grained personal access token")
 	assert.Contains(t, err.Error(), "GH_TOKEN")
 }
 
 func TestWrapClassicPATError_WrapsMatchingError(t *testing.T) {
-	inner := fmt.Errorf("some context: %w", forge.ErrClassicPATForbidden)
+	inner := fmt.Errorf("some context: %w", forge.ErrRestrictedTokenForbidden)
 	wrapped := wrapClassicPATError(inner)
 
-	assert.ErrorIs(t, wrapped, forge.ErrClassicPATForbidden)
+	assert.ErrorIs(t, wrapped, forge.ErrRestrictedTokenForbidden)
 	assert.Contains(t, wrapped.Error(), "fine-grained personal access token")
 	assert.Contains(t, wrapped.Error(), "GH_TOKEN")
 	assert.Contains(t, wrapped.Error(), "GITHUB_TOKEN")

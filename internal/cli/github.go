@@ -845,7 +845,7 @@ func runGitHubUninstall(ctx context.Context, client forge.Client, printer *ui.Pr
 		if forge.IsNotFound(err) {
 			printer.StepInfo(forge.ConfigRepoName + " repository already deleted")
 		} else {
-			return fmt.Errorf("checking for config repo: %w", err)
+			return wrapClassicPATError(fmt.Errorf("checking for config repo: %w", err))
 		}
 	} else {
 		printer.StepStart("Deleting " + forge.ConfigRepoName + " repository")

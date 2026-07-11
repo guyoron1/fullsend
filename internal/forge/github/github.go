@@ -87,7 +87,7 @@ func (e *APIError) Unwrap() error {
 		return forge.ErrAlreadyExists
 	}
 	if e.StatusCode == http.StatusForbidden && isClassicPATForbiddenError(e) {
-		return forge.ErrClassicPATForbidden
+		return forge.ErrRestrictedTokenForbidden
 	}
 	return nil
 }

@@ -849,9 +849,9 @@ func TestAPIError_Unwrap(t *testing.T) {
 			wantNil: true,
 		},
 		{
-			name:    "403 classic PAT forbidden unwraps to ErrClassicPATForbidden",
+			name:    "403 classic PAT forbidden unwraps to ErrRestrictedTokenForbidden",
 			apiErr:  &APIError{StatusCode: 403, Message: "`acme-org` forbids access via a personal access token (classic). Please use a GitHub App, OAuth App, or a personal access token with fine-grained permissions."},
-			wantErr: forge.ErrClassicPATForbidden,
+			wantErr: forge.ErrRestrictedTokenForbidden,
 		},
 		{
 			name:    "403 generic does not unwrap",
