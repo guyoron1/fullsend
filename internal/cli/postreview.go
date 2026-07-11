@@ -520,7 +520,7 @@ func resolveReviewToken(explicit string) (string, error) {
 	if t := os.Getenv("REVIEW_TOKEN"); t != "" {
 		return t, nil
 	}
-	return "", fmt.Errorf("--token or REVIEW_TOKEN required (do not use GITHUB_TOKEN — it may share the PR author's identity, causing a 422 self-review error)")
+	return "", fmt.Errorf("--token or REVIEW_TOKEN required: do not use GITHUB_TOKEN, it may share the PR author's identity, causing a 422 self-review error")
 }
 
 // parseReviewResult attempts to parse the body as a JSON ReviewResult.

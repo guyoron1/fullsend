@@ -1023,6 +1023,7 @@ func TestResolveReviewToken_ExplicitTakesPrecedence(t *testing.T) {
 }
 
 func TestResolveReviewToken_NoFallbackToGITHUB_TOKEN(t *testing.T) {
+	t.Setenv("REVIEW_TOKEN", "")
 	t.Setenv("GITHUB_TOKEN", "actions-default-token")
 	_, err := resolveReviewToken("")
 	require.Error(t, err)
@@ -1031,6 +1032,7 @@ func TestResolveReviewToken_NoFallbackToGITHUB_TOKEN(t *testing.T) {
 }
 
 func TestResolveReviewToken_NoTokenAvailable(t *testing.T) {
+	t.Setenv("REVIEW_TOKEN", "")
 	_, err := resolveReviewToken("")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "REVIEW_TOKEN required")
