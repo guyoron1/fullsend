@@ -32,7 +32,9 @@ Use `Read`/`Write`/`Grep`/`Glob` for file operations.
 ### Secret scanning
 
 The `scan-secrets` helper is pre-installed in the sandbox image at
-`/usr/local/bin/scan-secrets`. Before starting step 7, verify it exists:
+`/usr/local/bin/scan-secrets`. Verify it exists at the start of the
+procedure (before step 1), since both the merge-conflict section and
+step 7 depend on it:
 
 ```bash
 command -v scan-secrets
@@ -48,7 +50,7 @@ At the start of each major step, emit a progress marker:
 echo "::notice::STEP <N>: <title>"
 ```
 
-**Do this at steps 1, 2, 4, 7a, 7b, 7c, and 8.**
+**Do this at steps 1, 2, 3b, 4, 7a, 7b, 7c, and 8.**
 
 ## Time budget
 
@@ -198,6 +200,97 @@ Determine:
 - Test command (e.g., `make test`, `go test ./...`)
 - Lint command (e.g., `make lint`, `pre-commit run --files`)
 - Commit conventions (message format, signing)
+
+### Resolve merge conflicts (conditional — after step 3)
+
+```bash
+echo "::notice::STEP 3b: Merge conflict resolution"
+```
+
+Before planning or implementing any fixes, check whether the branch is
+behind the base branch:
+
+```bash
+BASE_BRANCH=$(gh pr view "${PR_NUMBER}" --json baseRefName --jq '.baseRefName')
+git fetch origin "${BASE_BRANCH}"
+BEHIND=$(git rev-list --count "HEAD..origin/${BASE_BRANCH}")
+echo "Branch is ${BEHIND} commits behind origin/${BASE_BRANCH}"
+```
+
+**If the human instruction mentions merge conflicts, rebase, or merging
+the base branch — or if the branch is behind and has actual merge
+conflicts — resolve them now, before any other work.**
+
+First, detect conflicts non-destructively to avoid accidentally merging
+upstream changes when merely probing:
+
+```bash
+MERGE_BASE=$(git merge-base HEAD "origin/${BASE_BRANCH}")
+git merge-tree "${MERGE_BASE}" HEAD "origin/${BASE_BRANCH}" 2>&1 | head -20
+```
+
+If `git merge-tree` output contains conflict markers (`<<<<<<<`) or the
+human explicitly requested a merge, proceed with the actual merge.
+Otherwise, if the branch is behind but there are no conflicts and no
+merge was requested, note the divergence and skip to step 4.
+
+1. Merge the base branch:
+   ```bash
+   git merge "origin/${BASE_BRANCH}" --no-edit
+   ```
+2. If the merge produced conflicts (non-zero exit):
+   1. Verify the failure is a merge conflict, not an unrelated error:
+      ```bash
+      git ls-files --unmerged | head -5
+      ```
+      If no unmerged files are listed, the merge failed for a non-conflict
+      reason. Run `git merge --abort` and report the failure in structured
+      output.
+   2. Check whether any conflicted files are under a protected path (see
+      "Protected paths" in the agent definition). If so, run
+      `git merge --abort` and report the conflict in structured output
+      for human resolution. Do not resolve conflicts in protected-path
+      files.
+   3. Resolve conflicts in non-protected files, preserving the PR's
+      intended changes while incorporating updates from the base branch.
+      Use `Read` and `Write` to fix conflicted files — do not use `sed`
+      or `awk`.
+   4. Scan resolved files for secrets:
+      ```bash
+      scan-secrets <resolved-files>
+      ```
+   5. Verify no conflict markers remain:
+      ```bash
+      git diff --check  # checks for conflict markers and whitespace errors
+      ```
+   6. Stage resolved files and commit the merge:
+      ```bash
+      git add <resolved-files>
+      git commit --no-edit  # uses the default merge commit message
+      ```
+3. Verify the code still compiles:
+   ```bash
+   # Use the build command discovered in step 3
+   go build ./... 2>&1 | head -20  # or: npm run build, make build, etc.
+   ```
+
+**If the branch is behind but merge conflict resolution was not
+requested and there are no actual conflicts**, note the divergence but
+proceed with the requested fixes. The merge is not your responsibility
+unless explicitly requested or conflicts block your work.
+
+**If the branch is up to date**, skip to step 4.
+
+This ordering ensures all subsequent code changes are based on the
+current state of the codebase, preventing redundant fix iterations
+caused by stale-branch conflicts.
+
+If merge-conflict resolution was performed, record it as a `fix` action
+in `fix-result.json` (step 9) with finding `"merge conflict resolution"`
+and a `description` listing the resolved files. Include those files in
+the top-level `files_changed` array. For implicitly triggered merges
+(no explicit request, but conflicts were detected), also record the
+action so it is visible in the PR summary comment.
 
 ### 4. Plan fixes
 

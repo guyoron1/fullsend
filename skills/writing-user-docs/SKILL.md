@@ -37,7 +37,7 @@ docs/guides/
 5. **Mark planned features.** Use a blockquote callout referencing the issue:
 
    ```markdown
-   > **Planned:** The **fix agent** ([#197](...)) will handle ...
+   > **Planned:** The **retro insights dashboard** ([#456](...)) will surface ...
    ```
 
 6. **No jargon without definition.** Link to `docs/glossary.md` or define
