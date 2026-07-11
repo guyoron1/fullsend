@@ -39,6 +39,7 @@
 #   FIX_ITERATION     — current iteration count
 #   ITERATION_CAP     — max iterations (default: 5)
 #   PUSH_TOKEN_SOURCE — "github-app" (for logging)
+#   FULLSEND_DIR      — fullsend workspace root (fallback for companion script resolution)
 #
 # Exit codes:
 #   0  — branch pushed, PR updated
@@ -306,8 +307,9 @@ export GH_TOKEN="${PUSH_TOKEN}"
 # Fall back to ${FULLSEND_DIR}/scripts if the companion is missing.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROCESS_SCRIPT="${SCRIPT_DIR}/process-fix-result.py"
-if [ ! -f "${PROCESS_SCRIPT}" ] && [ -d "${FULLSEND_DIR:-.}/scripts" ]; then
-  SCRIPT_DIR="${FULLSEND_DIR:-.}/scripts"
+if [ ! -f "${PROCESS_SCRIPT}" ] && [ -n "${FULLSEND_DIR:-}" ] && [ -d "${FULLSEND_DIR}/scripts" ]; then
+  echo "::notice::Companion script not found at ${SCRIPT_DIR}; falling back to ${FULLSEND_DIR}/scripts"
+  SCRIPT_DIR="${FULLSEND_DIR}/scripts"
   PROCESS_SCRIPT="${SCRIPT_DIR}/process-fix-result.py"
 fi
 
