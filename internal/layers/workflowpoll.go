@@ -43,23 +43,24 @@ type ProgressFunc func(msg string)
 // The onProgress callback, if non-nil, is called with status messages during
 // polling (e.g., "waiting for workflow run" or intermediate run status).
 func AwaitWorkflowCompletion(
-	ctx context.Context,
+	parentCtx context.Context,
 	client forge.Client,
 	org, repo, workflowFile string,
 	dispatchTime time.Time,
 	cfg PollConfig,
 	onProgress ProgressFunc,
 ) (*forge.WorkflowRun, error) {
-	deadline := time.NewTimer(cfg.Timeout)
-	defer deadline.Stop()
+	ctx, cancel := context.WithTimeout(parentCtx, cfg.Timeout)
+	defer cancel()
 
 	interval := cfg.InitialInterval
 
 	for attempt := 0; ; attempt++ {
 		select {
 		case <-ctx.Done():
-			return nil, ctx.Err()
-		case <-deadline.C:
+			if parentCtx.Err() != nil {
+				return nil, parentCtx.Err()
+			}
 			return nil, fmt.Errorf("timed out waiting for %s workflow", workflowFile)
 		case <-time.After(interval):
 		}
@@ -96,11 +97,11 @@ func AwaitWorkflowCompletion(
 	}
 }
 
-// nextInterval doubles the current interval, capping at max.
-func nextInterval(current, max time.Duration) time.Duration {
+// nextInterval doubles the current interval, capping at maxInterval.
+func nextInterval(current, maxInterval time.Duration) time.Duration {
 	next := current * 2
-	if next > max {
-		return max
+	if next > maxInterval {
+		return maxInterval
 	}
 	return next
 }

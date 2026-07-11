@@ -2551,7 +2551,7 @@ func awaitRepoMaintenanceWithInterval(ctx context.Context, client forge.Client, 
 	cfg := layers.PollConfig{
 		InitialInterval: pollInterval,
 		MaxInterval:     pollInterval, // no backoff growth for legacy callers
-		Timeout:         pollInterval * time.Duration(maxAttempts*3),
+		Timeout:         pollInterval * time.Duration(maxAttempts),
 	}
 	awaitRepoMaintenanceWithConfig(ctx, client, printer, org, dispatchTime, cfg)
 }
