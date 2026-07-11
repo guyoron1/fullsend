@@ -12,6 +12,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/fullsend-ai/fullsend/internal/forge"
+	"github.com/fullsend-ai/fullsend/internal/sandbox"
 )
 
 var (
@@ -344,6 +345,9 @@ func (h *Harness) Validate() error {
 		if hf.Dest == "" {
 			return fmt.Errorf("host_files[%d]: dest is required", i)
 		}
+	}
+	if err := sandbox.ValidateEnvKeys(h.RunnerEnv, "runner_env"); err != nil {
+		return err
 	}
 	if h.ValidationLoop != nil && h.ValidationLoop.Script == "" {
 		return fmt.Errorf("validation_loop.script is required when validation_loop is set")

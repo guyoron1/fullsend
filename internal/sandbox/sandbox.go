@@ -109,6 +109,10 @@ func inGitDir(path, root string) bool {
 // into the child process environment, where openshell reads them directly.
 // See https://docs.nvidia.com/openshell/latest/sandboxes/manage-providers#bare-key-form
 func EnsureProvider(name, providerType string, credentials, config map[string]string) error {
+	if err := ValidateCredentialKeys(credentials); err != nil {
+		return err
+	}
+
 	args, extraEnv, secrets := buildProviderArgs(name, providerType, credentials, config)
 
 	cmd := exec.Command("openshell", args...)
