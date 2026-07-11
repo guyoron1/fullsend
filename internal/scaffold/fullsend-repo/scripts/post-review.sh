@@ -8,8 +8,8 @@
 # if the PR touches sensitive paths, an "approve" action is downgraded
 # to "comment" so only a human can grant approval.
 #
-# Required environment variables:
-#   REVIEW_TOKEN    — token with pull-requests:write on the target repo
+# Environment variables:
+#   REVIEW_TOKEN    — (optional) token with pull-requests:write; falls back to GITHUB_TOKEN
 #   PR_NUMBER       — GitHub PR number
 #   REPO_FULL_NAME  — owner/repo (e.g. my-org/my-repo)
 #

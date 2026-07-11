@@ -366,8 +366,8 @@ func submitFormalReview(ctx context.Context, client forge.Client, owner, repo st
 	if err := client.CreatePullRequestReview(ctx, owner, repo, pr, event, reviewBody, commitSHA, inlineComments); err != nil {
 		if isSelfReviewError(err) {
 			return fmt.Errorf("submitting review: %w — the token identity matches the PR author; "+
-				"set REVIEW_TOKEN to a minted token with pull-requests:write permission "+
-				"(see the mint-token action) so the review is submitted as a different identity", err)
+				"set REVIEW_TOKEN (in post-review.sh) or pass --token with a minted token "+
+				"that has pull-requests:write permission so the review is submitted as a different identity", err)
 		}
 		return fmt.Errorf("submitting review: %w", err)
 	}
@@ -397,10 +397,11 @@ func isSelfReviewError(err error) bool {
 		combined += " " + strings.ToLower(d.Message)
 	}
 	// ponytail: matches GitHub's "Can not approve your own pull request"
-	// and similar phrasings. Broader match catches future wording changes.
+	// and similar phrasings. Tightened to avoid false positives on
+	// unrelated 422s (e.g. "cannot request changes on a draft").
 	return strings.Contains(combined, "your own") ||
-		strings.Contains(combined, "can not") ||
-		strings.Contains(combined, "cannot")
+		strings.Contains(combined, "can not approve") ||
+		strings.Contains(combined, "cannot review")
 }
 
 // findingsToReviewComments converts review findings with file and line

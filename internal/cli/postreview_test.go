@@ -1031,6 +1031,11 @@ func TestIsSelfReviewError(t *testing.T) {
 			want: false,
 		},
 		{
+			name: "422 draft PR cannot request changes",
+			err:  &gh.APIError{StatusCode: 422, Message: "You cannot request changes on a draft pull request"},
+			want: false,
+		},
+		{
 			name: "non-API error",
 			err:  fmt.Errorf("network timeout"),
 			want: false,
