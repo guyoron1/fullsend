@@ -32,7 +32,9 @@ Use `Read`/`Write`/`Grep`/`Glob` for file operations.
 ### Secret scanning
 
 The `scan-secrets` helper is pre-installed in the sandbox image at
-`/usr/local/bin/scan-secrets`. Before starting step 7, verify it exists:
+`/usr/local/bin/scan-secrets`. Verify it exists at the start of the
+procedure (before step 1), since both the merge-conflict section and
+step 7 depend on it:
 
 ```bash
 command -v scan-secrets
@@ -48,8 +50,7 @@ At the start of each major step, emit a progress marker:
 echo "::notice::STEP <N>: <title>"
 ```
 
-**Do this at steps 1, 2, 4, 7a, 7b, 7c, and 8, and at the merge-conflict
-check after step 3.**
+**Do this at steps 1, 2, 3b, 4, 7a, 7b, 7c, and 8.**
 
 ## Time budget
 
@@ -203,7 +204,7 @@ Determine:
 ### Resolve merge conflicts (conditional — after step 3)
 
 ```bash
-echo "::notice::Merge conflict check"
+echo "::notice::STEP 3b: Merge conflict resolution"
 ```
 
 Before planning or implementing any fixes, check whether the branch is
@@ -257,6 +258,10 @@ unless explicitly requested or conflicts block your work.
 This ordering ensures all subsequent code changes are based on the
 current state of the codebase, preventing redundant fix iterations
 caused by stale-branch conflicts.
+
+If merge-conflict resolution was an explicitly requested task, record it
+as a `fix` action in `fix-result.json` (step 9) with finding
+`"merge conflict resolution"` and the list of resolved files.
 
 ### 4. Plan fixes
 

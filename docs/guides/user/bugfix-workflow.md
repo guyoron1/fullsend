@@ -15,13 +15,13 @@ Each stage is triggered by labels and can be restarted with slash commands. The 
 ```
 Issue filed → Triage → ready-to-code → Code Agent → PR opened → Review → ready-for-merge → Merge
                 │                          ↑                                │
-                │                          └── changes requested (planned) ─┘
+                │                          └── changes requested ───────────┘
                 ├── blocked → waiting for dependency
                 ├── duplicate → closed
                 └── needs-info → waiting for info
 ```
 
-> **Note:** The automated rework loop (Review → Code Agent on "changes requested") is not yet implemented. Today, a "changes requested" outcome requires human intervention. The planned [fix agent (#197)](https://github.com/fullsend-ai/fullsend/issues/197) will automate this loop.
+> **Note:** When a review agent requests changes, the [fix agent](../../agents/fix.md) automatically reads the review feedback and pushes fixes to the existing PR. You can also trigger it manually with `/fs-fix [instruction]` on a PR comment.
 
 ## What you need to know as a developer
 
@@ -86,12 +86,12 @@ Agent PRs go through the same review process as human PRs:
 The review stage runs N independent review agents in parallel. One is randomly selected as coordinator. The coordinator collects verdicts and applies one of three outcomes:
 
 - **Unanimous approve:** All reviewers agree the PR is good. Label `ready-for-merge` is applied. The PR can be merged per your org's governance policy.
-- **Unanimous rework:** All reviewers agree changes are needed. Label `ready-to-code` is re-applied. Today, a human must address the review feedback manually. When the [fix agent (#197)](https://github.com/fullsend-ai/fullsend/issues/197) is implemented, this rework loop will be automated.
+- **Unanimous rework:** All reviewers agree changes are needed. The [fix agent](../../agents/fix.md) automatically reads the review feedback and pushes fixes to the existing PR branch.
 - **Split or conflicting:** Reviewers disagree, or there are conflicting security assessments. Label `requires-manual-review` is applied. A human must decide.
 
 Every push to a PR in the review stage triggers a new review round. This means `ready-for-merge` is never stale — it always reflects the current PR head.
 
-> **Planned:** The **fix agent** ([#197](https://github.com/fullsend-ai/fullsend/issues/197)) will handle the rework loop automatically. When a review agent requests changes or a human posts `/fs-fix [instruction]`, the fix agent reads the review feedback and pushes fixes to the existing PR — no manual coding required. The fix agent is a separate workflow from the code agent, with its own prompt scoped to "read review feedback, fix existing PR."
+The [fix agent](../../agents/fix.md) handles the rework loop automatically. When a review agent requests changes or a human posts `/fs-fix [instruction]`, the fix agent reads the review feedback and pushes fixes to the existing PR. When merge conflict resolution is needed alongside other tasks, the fix agent merges the base branch first to ensure all subsequent changes are based on the current codebase.
 
 ## The stages in detail
 

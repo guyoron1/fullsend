@@ -194,7 +194,8 @@ are never locked out of the agent after a bot loop exhausts its budget.
 ## Task ordering — merge conflicts first
 
 When a `/fs-fix` instruction includes merge conflict resolution — whether
-explicitly (mentions "merge conflicts", "rebase", or "merge main") or
+explicitly (mentions "merge conflicts", "rebase" (fulfilled via merge, not
+`git rebase`), or "merge main") or
 implicitly (the branch is behind the base branch and other tasks are also
 requested) — resolve the merge before making any other code changes.
 
