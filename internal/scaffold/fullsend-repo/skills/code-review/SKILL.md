@@ -101,7 +101,8 @@ dimension carry over to another — each requires its own scrutiny.
     interpolation. Shell expansion of `$` and backticks in
     user-controlled content silently corrupts structured output —
     recommend `jq -n` for JSON or quoted heredocs (`<<'TOKEN'`). Do not
-    flag quoted heredocs or non-harness scripts.
+    flag quoted heredocs (`<<'TOKEN'` or `<<"TOKEN"`) or non-harness
+    scripts.
 
 #### Security
 
