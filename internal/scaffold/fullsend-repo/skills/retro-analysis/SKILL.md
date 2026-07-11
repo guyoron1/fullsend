@@ -125,24 +125,28 @@ When skipping, note the duplicate in your `summary` field so the human understan
 
 ### Evidence cap for tracked patterns
 
+An **evidence-type proposal** is one where the agent observes a new instance
+of a pattern already tracked by an existing open issue, and would title its
+proposal "Evidence for #N: \<description\>" rather than proposing a new
+improvement.
+
 This check applies after the duplicate check above. Only evaluate the
 evidence cap for evidence-type proposals that survive duplicate filtering.
 
 When a candidate proposal provides additional evidence for a parent issue
-that is already tracked (i.e., the proposal would be filed as
-"Evidence for #N: ..." referencing an existing open issue), check how many
-open evidence issues already exist for that parent before proposing.
+that is already tracked, check how many open evidence issues already exist
+for that parent before proposing.
 
 Dispatch a subagent to query the count:
 
-> "Count the open issues in `<target_repo>` whose title starts with
-> 'Evidence for #N:' where N is `<parent_number>`. Return the count."
+> "Count the open issues in `<target_repo>` whose title contains
+> 'Evidence for #N' where N is `<parent_number>`. Return the count."
 
 The subagent should run:
 
 ```bash
 gh api \
-  "search/issues?q=repo:<target_repo>+is:issue+is:open+in:title+\"Evidence+for+%23<parent_number>:\"" \
+  "search/issues?q=repo:<target_repo>+is:issue+is:open+in:title+\"Evidence+for+%23<parent_number>\"" \
   --jq '.total_count'
 ```
 
