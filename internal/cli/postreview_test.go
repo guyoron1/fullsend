@@ -14,6 +14,24 @@ import (
 	"github.com/fullsend-ai/fullsend/internal/ui"
 )
 
+func TestNewPostReviewCmd_RequiresExplicitToken(t *testing.T) {
+	// Verify that the command does not fall back to GITHUB_TOKEN.
+	// The GITHUB_TOKEN default Actions token may have the same identity
+	// as the PR author, causing a 422 self-review error.
+	t.Setenv("GITHUB_TOKEN", "ghs_should_not_be_used")
+
+	cmd := newPostReviewCmd()
+	cmd.SetArgs([]string{
+		"--repo", "acme/repo",
+		"--pr", "1",
+	})
+
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--token is required")
+	assert.Contains(t, err.Error(), "self-review")
+}
+
 func TestParseReviewResult_JSON(t *testing.T) {
 	input := `{"body": "Looks good!", "action": "approve"}`
 	result, err := parseReviewResult(input)

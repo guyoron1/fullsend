@@ -62,10 +62,7 @@ has moved, a stale-head failure is posted instead.`,
 			printer := ui.New(os.Stdout)
 
 			if token == "" {
-				token = os.Getenv("GITHUB_TOKEN")
-			}
-			if token == "" {
-				return fmt.Errorf("--token or GITHUB_TOKEN required")
+				return fmt.Errorf("--token is required (do not use GITHUB_TOKEN — its identity may match the PR author, causing a 422 self-review error)")
 			}
 
 			if pr <= 0 {
@@ -137,7 +134,7 @@ has moved, a stale-head failure is posted instead.`,
 	cmd.Flags().StringVar(&repo, "repo", "", "repository in owner/repo format (required)")
 	cmd.Flags().IntVar(&pr, "pr", 0, "pull request number (required)")
 	cmd.Flags().StringVar(&result, "result", "-", "path to review result file, or '-' for stdin")
-	cmd.Flags().StringVar(&token, "token", "", "GitHub token (default: $GITHUB_TOKEN)")
+	cmd.Flags().StringVar(&token, "token", "", "GitHub token with pull-requests:write (required)")
 	cmd.Flags().StringVar(&headSHA, "head-sha", "", "expected PR HEAD SHA (skips review if HEAD has moved)")
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "print what would be posted without making API calls")
 	_ = cmd.MarkFlagRequired("repo")
