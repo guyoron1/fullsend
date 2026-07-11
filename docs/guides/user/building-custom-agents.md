@@ -342,7 +342,7 @@ name: fullsend-my-agent
 permissions:
   contents: read
   id-token: write
-  issues: write
+  issues: write  # issues: read suffices if your post-script does not create/edit issues
 
 on:
   workflow_dispatch:
