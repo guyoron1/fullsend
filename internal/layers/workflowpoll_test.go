@@ -120,6 +120,34 @@ func TestAwaitWorkflowCompletion_SkipsOldRuns(t *testing.T) {
 	assert.Contains(t, err.Error(), "timed out")
 }
 
+func TestAwaitWorkflowCompletion_RejectsZeroInterval(t *testing.T) {
+	client := forge.NewFakeClient()
+	dispatchTime := time.Now().UTC()
+
+	_, err := AwaitWorkflowCompletion(
+		context.Background(), client,
+		"test-org", forge.ConfigRepoName, "repo-maintenance.yml",
+		dispatchTime, PollConfig{InitialInterval: 0, MaxInterval: time.Millisecond, Timeout: time.Millisecond}, nil,
+	)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "InitialInterval must be positive")
+}
+
+func TestAwaitWorkflowCompletion_RejectsZeroTimeout(t *testing.T) {
+	client := forge.NewFakeClient()
+	dispatchTime := time.Now().UTC()
+
+	_, err := AwaitWorkflowCompletion(
+		context.Background(), client,
+		"test-org", forge.ConfigRepoName, "repo-maintenance.yml",
+		dispatchTime, PollConfig{InitialInterval: time.Millisecond, MaxInterval: time.Millisecond, Timeout: 0}, nil,
+	)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "Timeout must be positive")
+}
+
 func TestNextInterval(t *testing.T) {
 	assert.Equal(t, 4*time.Second, nextInterval(2*time.Second, 15*time.Second))
 	assert.Equal(t, 8*time.Second, nextInterval(4*time.Second, 15*time.Second))

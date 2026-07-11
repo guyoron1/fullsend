@@ -50,6 +50,13 @@ func AwaitWorkflowCompletion(
 	cfg PollConfig,
 	onProgress ProgressFunc,
 ) (*forge.WorkflowRun, error) {
+	if cfg.InitialInterval <= 0 {
+		return nil, fmt.Errorf("PollConfig.InitialInterval must be positive, got %v", cfg.InitialInterval)
+	}
+	if cfg.Timeout <= 0 {
+		return nil, fmt.Errorf("PollConfig.Timeout must be positive, got %v", cfg.Timeout)
+	}
+
 	deadline := time.NewTimer(cfg.Timeout)
 	defer deadline.Stop()
 
