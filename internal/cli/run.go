@@ -1335,10 +1335,7 @@ func openTeeReader(r io.Reader, outputPath string, printer *ui.Printer) (io.Read
 	return io.TeeReader(r, f), func() { f.Close() }
 }
 
-// sandboxEnsureAvailable is the function used to check sandbox runtime
-// availability. Tests override this to stub out the openshell dependency
-// and keep harness-loading tests hermetic regardless of the host
-// environment. See #203.
+// sandboxEnsureAvailable checks sandbox runtime availability; overridden in tests (#203).
 var sandboxEnsureAvailable = sandbox.EnsureAvailable
 
 var heartbeatInterval = 30 * time.Second
