@@ -29,15 +29,6 @@ host_files:
   - src: ${PRIOR_REVIEW_FILE}
     dest: /sandbox/workspace/prior-review.txt
     optional: true
-  - src: dist/rtk-linux-x64
-    dest: /sandbox/workspace/.costwise/rtk
-    optional: true
-  - src: env/rtk-setup.env
-    dest: /sandbox/workspace/.env.d/rtk-setup.env
-
-plugins:
-  - plugins/ponytail
-
 pre_script: scripts/pre-review.sh
 post_script: scripts/post-review.sh
 
