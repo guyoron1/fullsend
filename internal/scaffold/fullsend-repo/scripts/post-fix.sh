@@ -300,9 +300,29 @@ fi
 # ---------------------------------------------------------------------------
 export GH_TOKEN="${PUSH_TOKEN}"
 
-# Locate process-fix-result.py relative to this script.
+# Locate process-fix-result.py relative to this script, with fallback
+# for URL-cached resolution where companions are not co-located.
+# When the harness resolves scripts from a content-addressed cache
+# (sha256/<hash>/content), companion files are not present at the
+# cache path. Fall back to the workspace scripts directory, which is
+# populated by the "Prepare workspace" step in the workflow.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROCESS_SCRIPT="${SCRIPT_DIR}/process-fix-result.py"
+if [ ! -f "${PROCESS_SCRIPT}" ]; then
+  # Fallback: workspace scripts directory (per-org install)
+  if [ -f "${GITHUB_WORKSPACE:-}/scripts/process-fix-result.py" ]; then
+    echo "::warning::Companion script not co-located at ${SCRIPT_DIR} — using workspace fallback: ${GITHUB_WORKSPACE}/scripts/"
+    SCRIPT_DIR="${GITHUB_WORKSPACE}/scripts"
+    PROCESS_SCRIPT="${SCRIPT_DIR}/process-fix-result.py"
+  # Fallback: workspace .fullsend/scripts directory (per-repo install)
+  elif [ -f "${GITHUB_WORKSPACE:-}/.fullsend/scripts/process-fix-result.py" ]; then
+    echo "::warning::Companion script not co-located at ${SCRIPT_DIR} — using workspace fallback: ${GITHUB_WORKSPACE}/.fullsend/scripts/"
+    SCRIPT_DIR="${GITHUB_WORKSPACE}/.fullsend/scripts"
+    PROCESS_SCRIPT="${SCRIPT_DIR}/process-fix-result.py"
+  else
+    echo "::warning::process-fix-result.py not found at ${SCRIPT_DIR} or workspace fallback paths"
+  fi
+fi
 
 # Find fix-result.json in the output directory.
 # RUN_DIR is the original cwd (runDir = <outputBase>/<sandboxName>), saved
