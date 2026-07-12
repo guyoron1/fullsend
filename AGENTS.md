@@ -46,6 +46,8 @@ The e2e tests require GitHub credentials. There are three ways to provide them:
 
 If only `E2E_GITHUB_USERNAME` and a password source are available, `make e2e-test` will automatically generate a session file before running tests. See `make help` for all available targets.
 
+**When reviewing PRs:** If a PR introduces or modifies a retry or backoff loop in a file that already contains one, check whether the strategies are consistent (e.g., both use exponential backoff, or both use additive backoff). Flag inconsistencies as a low-severity finding and ask the author to either justify the divergence or harmonize the approach. This applies even when the pre-existing loop was introduced in a different PR.
+
 ## Forge abstraction
 
 All git forge operations (GitHub API calls, PR comments, issue creation, workflow dispatch, etc.) **must** go through the `forge.Client` interface defined in `internal/forge/forge.go`. This is a fundamental architectural rule — the codebase supports multiple forges (GitHub, GitLab, Forgejo) and direct coupling to any single forge breaks the abstraction.
