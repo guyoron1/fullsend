@@ -81,6 +81,31 @@ func resolveToken() (string, error) {
 	return "", fmt.Errorf("no GitHub token found: set GH_TOKEN, GITHUB_TOKEN, or run 'gh auth login'")
 }
 
+// classicPATHint wraps err with remediation guidance when the
+// organization blocks classic personal access tokens. For any other
+// error it returns err unchanged.
+func classicPATHint(err error) error {
+	if !forge.IsClassicPATForbidden(err) {
+		return err
+	}
+	return fmt.Errorf("%w\n\n"+
+		"This organization requires a fine-grained personal access token.\n"+
+		"The fullsend CLI resolves credentials in this order:\n"+
+		"  1. GH_TOKEN environment variable\n"+
+		"  2. GITHUB_TOKEN environment variable\n"+
+		"  3. gh auth token (from 'gh auth login')\n\n"+
+		"To fix this:\n"+
+		"  1. Create a fine-grained PAT at https://github.com/settings/personal-access-tokens/new\n"+
+		"  2. Scope it to your organization and grant these repository permissions:\n"+
+		"       Contents:       Read and write\n"+
+		"       Workflows:      Read and write\n"+
+		"       Secrets:        Read and write\n"+
+		"       Variables:      Read and write\n"+
+		"       Metadata:       Read-only (automatically selected)\n"+
+		"       Pull requests:  Read and write (only needed without --direct)\n"+
+		"  3. Export it:  export GH_TOKEN='github_pat_...'", err)
+}
+
 // validateOrgName checks that org is a valid GitHub organization name.
 func validateOrgName(org string) error {
 	if org == "" {
@@ -433,7 +458,7 @@ Inference authentication:
 			// Discover all org repos upfront to avoid redundant API calls in runDryRun/runInstall.
 			allRepos, err := client.ListOrgRepos(ctx, org)
 			if err != nil {
-				return fmt.Errorf("listing org repos: %w", err)
+				return classicPATHint(fmt.Errorf("listing org repos: %w", err))
 			}
 
 			var repos []string
@@ -1021,7 +1046,7 @@ func applyPerRepoScaffold(ctx context.Context, client forge.Client, printer *ui.
 
 	targetRepo, err := client.GetRepo(ctx, owner, repo)
 	if err != nil {
-		return fmt.Errorf("getting repo info: %w", err)
+		return classicPATHint(fmt.Errorf("getting repo info: %w", err))
 	}
 	commitMsg := fmt.Sprintf("chore: initialize fullsend-%s per-repo installation", version)
 	printer.StepStart(fmt.Sprintf("Committing scaffold files to %s/%s (%s branch)",
@@ -1163,7 +1188,7 @@ func runDryRun(ctx context.Context, client forge.Client, printer *ui.Printer, or
 	} else {
 		allRepos, err = client.ListOrgRepos(ctx, org)
 		if err != nil {
-			return fmt.Errorf("listing org repos: %w", err)
+			return classicPATHint(fmt.Errorf("listing org repos: %w", err))
 		}
 		printer.StepDone(fmt.Sprintf("Found %d repositories", len(allRepos)))
 	}
@@ -1429,7 +1454,7 @@ func ensureConfigRepoExists(ctx context.Context, client forge.Client, printer *u
 		return nil
 	}
 	if !forge.IsNotFound(err) {
-		return fmt.Errorf("checking for config repo: %w", err)
+		return classicPATHint(fmt.Errorf("checking for config repo: %w", err))
 	}
 
 	printer.StepStart("Creating " + forge.ConfigRepoName + " repository")
@@ -1441,7 +1466,7 @@ func ensureConfigRepoExists(ctx context.Context, client forge.Client, printer *u
 			return nil
 		}
 		printer.StepFail("Failed to create " + forge.ConfigRepoName + " repository")
-		return fmt.Errorf("creating config repo: %w", err)
+		return classicPATHint(fmt.Errorf("creating config repo: %w", err))
 	}
 	printer.StepDone("Created " + forge.ConfigRepoName + " repository")
 	return nil
@@ -1492,7 +1517,7 @@ func runInstall(ctx context.Context, client forge.Client, printer *ui.Printer, o
 		printer.Header("Discovering repositories")
 		allRepos, err = client.ListOrgRepos(ctx, org)
 		if err != nil {
-			return fmt.Errorf("listing org repos: %w", err)
+			return classicPATHint(fmt.Errorf("listing org repos: %w", err))
 		}
 		printer.StepDone(fmt.Sprintf("Found %d repositories", len(allRepos)))
 	}
@@ -1785,7 +1810,7 @@ func runUninstall(ctx context.Context, client forge.Client, printer *ui.Printer,
 func runAnalyze(ctx context.Context, client forge.Client, printer *ui.Printer, org string) error {
 	allRepos, err := client.ListOrgRepos(ctx, org)
 	if err != nil {
-		return fmt.Errorf("listing org repos: %w", err)
+		return classicPATHint(fmt.Errorf("listing org repos: %w", err))
 	}
 
 	repoNames := repoNameList(allRepos)
@@ -2193,6 +2218,9 @@ func runEnableRepos(ctx context.Context, client forge.Client, printer *ui.Printe
 		allOrgRepos, err = client.ListOrgRepos(ctx, org)
 		if err != nil {
 			printer.StepFail("Failed to list organization repositories")
+			if forge.IsClassicPATForbidden(err) {
+				return classicPATHint(fmt.Errorf("listing org repos: %w", err))
+			}
 			printer.StepInfo("Hint: verify your token has 'repo' scope with: gh auth refresh -s repo")
 			return fmt.Errorf("listing org repos: %w", err)
 		}
@@ -2212,6 +2240,9 @@ func runEnableRepos(ctx context.Context, client forge.Client, printer *ui.Printe
 		allOrgRepos, err = client.ListOrgRepos(ctx, org)
 		if err != nil {
 			printer.StepFail("Failed to list organization repositories")
+			if forge.IsClassicPATForbidden(err) {
+				return classicPATHint(fmt.Errorf("listing org repos: %w", err))
+			}
 			printer.StepInfo("Hint: verify your token has 'repo' scope with: gh auth refresh -s repo")
 			return fmt.Errorf("listing org repos: %w", err)
 		}
@@ -2478,6 +2509,10 @@ func loadRepoConfig(ctx context.Context, client forge.Client, printer *ui.Printe
 		if forge.IsNotFound(err) {
 			printer.StepFail(".fullsend repository not found")
 			return nil, fmt.Errorf(".fullsend repository not found: run 'fullsend admin install %s' first", org)
+		}
+		if forge.IsClassicPATForbidden(err) {
+			printer.StepFail("Classic PAT rejected by organization policy")
+			return nil, classicPATHint(fmt.Errorf("checking .fullsend repository: %w", err))
 		}
 		printer.StepFail("Failed to check .fullsend repository")
 		printer.StepInfo("Hint: verify your token has 'repo' scope with: gh auth refresh -s repo")

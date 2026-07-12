@@ -351,7 +351,7 @@ func runGitHubSetupPerOrg(ctx context.Context, client forge.Client, printer *ui.
 
 	allRepos, err := client.ListOrgRepos(ctx, org)
 	if err != nil {
-		return fmt.Errorf("listing org repos: %w", err)
+		return classicPATHint(fmt.Errorf("listing org repos: %w", err))
 	}
 
 	repoNames := repoNameList(allRepos)
@@ -701,7 +701,7 @@ func runGitHubStatus(ctx context.Context, client forge.Client, printer *ui.Print
 			printer.StepInfo("Run 'fullsend github setup " + org + "' to configure")
 			return nil
 		}
-		return fmt.Errorf("checking config repo: %w", err)
+		return classicPATHint(fmt.Errorf("checking config repo: %w", err))
 	}
 	printer.StepDone(forge.ConfigRepoName + " repository exists")
 
@@ -845,7 +845,7 @@ func runGitHubUninstall(ctx context.Context, client forge.Client, printer *ui.Pr
 		if forge.IsNotFound(err) {
 			printer.StepInfo(forge.ConfigRepoName + " repository already deleted")
 		} else {
-			return fmt.Errorf("checking for config repo: %w", err)
+			return classicPATHint(fmt.Errorf("checking for config repo: %w", err))
 		}
 	} else {
 		printer.StepStart("Deleting " + forge.ConfigRepoName + " repository")
