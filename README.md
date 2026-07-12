@@ -70,7 +70,7 @@ If you're applying fullsend to your own organization, consider adding your speci
 | If you have... | Then... |
 |---|---|
 | A question, bug, or small suggestion | **File an issue** — lowest friction, can graduate later. |
-| A new problem area no existing doc covers | **Create a problem doc** in `docs/problems/` and link it here. |
+| A new problem area no existing doc covers | **Create a problem doc** in `docs/problems/`, link it here, and add backlinks from existing docs that reference the same topic. |
 | More to say about an existing problem area | **Expand the existing problem doc.** |
 | A specific decision that needs a yes-or-no answer | **Propose an ADR** in `docs/ADRs/` via a pull request ([see ADR 0001](docs/ADRs/0001-use-adrs-for-decision-making.md)). |
 
