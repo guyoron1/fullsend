@@ -105,39 +105,16 @@ func (l *EnrollmentLayer) Install(ctx context.Context) error {
 }
 
 // awaitWorkflowRun polls for a repo-maintenance workflow run created after
-// dispatchTime and waits for it to complete.
+// dispatchTime and waits for it to complete using exponential backoff.
 func (l *EnrollmentLayer) awaitWorkflowRun(ctx context.Context, dispatchTime time.Time) (*forge.WorkflowRun, error) {
-	for attempt := range 36 { // 3 minutes max
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case <-time.After(5 * time.Second):
-		}
-
-		runs, err := l.client.ListWorkflowRuns(ctx, l.org, forge.ConfigRepoName, repoMaintenanceWorkflow)
-		if err != nil {
-			l.ui.StepInfo(fmt.Sprintf("waiting for workflow run (attempt %d)...", attempt+1))
-			continue
-		}
-
-		for i := range runs {
-			run := &runs[i]
-			runTime, parseErr := time.Parse(time.RFC3339, run.CreatedAt)
-			if parseErr != nil {
-				continue
-			}
-			if runTime.Before(dispatchTime) {
-				continue
-			}
-
-			if run.Status == "completed" {
-				return run, nil
-			}
-			l.ui.StepInfo(fmt.Sprintf("workflow run: %s (%s)", run.HTMLURL, run.Status))
-			break // found our run, keep waiting
-		}
+	cfg := WorkflowPollConfig{
+		InitialInterval: 2 * time.Second,
+		MaxInterval:     15 * time.Second,
+		MaxAttempts:     14,
 	}
-	return nil, fmt.Errorf("timed out waiting for repo-maintenance workflow")
+	return AwaitWorkflowCompletion(ctx, l.client, l.org, forge.ConfigRepoName, repoMaintenanceWorkflow, dispatchTime, cfg, func(msg string) {
+		l.ui.StepInfo(msg)
+	})
 }
 
 // showWorkflowLogs fetches and displays workflow run logs locally so the user
