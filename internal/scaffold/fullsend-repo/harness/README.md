@@ -1,4 +1,6 @@
 # Deprecated
 
-This content has moved to [`fullsend-ai/agents`](https://github.com/fullsend-ai/agents).
-Do not modify files here — they are stale copies and will be removed.
+This content is being migrated to [`fullsend-ai/agents`](https://github.com/fullsend-ai/agents).
+These files are still embedded by Go code (`internal/scaffold/baseurl.go`), so
+changes here remain necessary until the Go references are updated. Once migrated,
+these copies will be removed.
