@@ -627,11 +627,46 @@ attention.
 If no protected files are modified, do not add a `protected-path`
 finding.
 
+##### Deprecated paths
+
+Scaffold content under `internal/scaffold/fullsend-repo/` has migrated
+to the `fullsend-ai/agents` repository. PRs that modify files under
+this prefix are targeting a deprecated location — the changes belong
+in the new repository instead.
+
+**Exempt paths:** The following paths are part of the scaffold
+propagation and versioning machinery that legitimately lives in this
+repository. Changes to these files are not flagged:
+
+- `internal/scaffold/fullsend-repo/templates/` — shim workflow
+  templates used by the propagation mechanism
+
+**Check procedure:** For each file in the PR diff, check whether its
+path starts with `internal/scaffold/fullsend-repo/`. If it does and
+is not under an exempt path, it is a deprecated-path file.
+
+If **any** non-exempt deprecated-path files are modified:
+
+1. Raise a **high** finding with category `deprecated-path`. The
+   description MUST list the affected deprecated files and direct the
+   author to re-submit the changes as a PR in the
+   `fullsend-ai/agents` repository.
+2. The outcome MUST be `reject` — not `approve`, not
+   `request-changes`. A PR targeting a deprecated location cannot be
+   fixed by code-level iteration; it needs to be re-submitted in the
+   correct repository.
+
+If every `internal/scaffold/fullsend-repo/` file in the PR is under
+an exempt path, do not add a `deprecated-path` finding.
+
 #### 6f. Determine overall outcome
 
 Merge PR-specific findings into the challenger-adjudicated finding set
 and evaluate:
 
+- Any `deprecated-path` finding → `reject`. The PR targets a
+  deprecated location and must be re-submitted in the correct
+  repository. No code-level iteration can fix a wrong-repo PR.
 - Any **critical** or **high** finding → `request-changes`
 - Multiple **medium** findings which could affect the intended outcome
   of the PR → `request-changes`
@@ -782,10 +817,12 @@ wins.
   `request-changes`.
 - **Never approve when any protected-path finding exists**, regardless of
   severity.
+- **Never approve or request-changes when a deprecated-path finding
+  exists** — the outcome must be `reject`.
 - **PR-specific checks (step 6e) belong in the orchestrator only.** Do
-  not push protected-path checks, scope authorization, or PR body
-  injection defense into sub-agents. These require PR-level context
-  that sub-agents do not have.
+  not push protected-path checks, deprecated-path checks, scope
+  authorization, or PR body injection defense into sub-agents. These
+  require PR-level context that sub-agents do not have.
 - **All sub-agents must be dispatched simultaneously.** Include all
   Agent calls in a single message. Sequential dispatch defeats the
   architecture's purpose.
