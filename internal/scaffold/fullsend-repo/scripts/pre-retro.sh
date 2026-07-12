@@ -45,6 +45,14 @@ echo "Pre-retro validation complete."
 # ponytail: prefetch_context is one function that handles both PR and issue
 # URLs. Split into per-type functions only if they diverge significantly.
 
+# NOTE: The retro agent uses a hybrid model — prefetched context here plus
+# runtime credential access (github-ro provider in retro.yaml). This is an
+# intentional deviation from ADR 0017's preferred full-isolation default.
+# The retro agent's exploratory nature (subagent dispatch, unpredictable
+# reference chains across repos) requires runtime API access beyond what can
+# be prefetched from the triggering event alone. The prefetch provides
+# baseline resilience; the runtime provider covers dynamic lookups.
+
 prefetch_context() {
   if [[ -z "${GH_TOKEN:-}" ]]; then
     echo "::warning::GH_TOKEN not set — skipping context prefetch"
@@ -62,6 +70,12 @@ prefetch_context() {
     repo="${repo%%/pull/*}"
   fi
   number="${url##*/}"
+
+  # Validate repo format (defense-in-depth, consistent with pre-fix/pre-review/pre-code).
+  if [[ ! "${repo}" =~ ^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$ ]]; then
+    echo "::warning::REPO_FULL_NAME must be owner/repo format, got: '${repo}' — skipping prefetch"
+    return 1
+  fi
 
   if [[ "${url}" == */pull/* ]]; then
     url_type="pull"
@@ -93,10 +107,15 @@ prefetch_context() {
       --paginate --jq '.[]' 2>/dev/null | jq -s '.') || pr_reviews="[]"
 
     # 4. Recent workflow runs around the PR lifecycle
-    local pr_created_at workflow_runs
+    local pr_created_at head_ref workflow_runs
     pr_created_at=$(echo "${pr_meta}" | jq -r '.createdAt // empty')
+    head_ref=$(echo "${pr_meta}" | jq -r '.headRefName // empty')
     if [[ -n "${pr_created_at}" ]]; then
-      workflow_runs=$(gh api "repos/${repo}/actions/runs?per_page=20&created=>=${pr_created_at}" \
+      local runs_query="repos/${repo}/actions/runs?per_page=20&created=>=${pr_created_at}"
+      if [[ -n "${head_ref}" ]]; then
+        runs_query="${runs_query}&branch=${head_ref}"
+      fi
+      workflow_runs=$(gh api "${runs_query}" \
         --jq '.workflow_runs | map({id, name, status, conclusion, created_at, html_url, event})' \
         2>/dev/null) || workflow_runs="[]"
     else
