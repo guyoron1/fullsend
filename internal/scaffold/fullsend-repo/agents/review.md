@@ -91,8 +91,8 @@ This agent has three skills. Select based on invocation context:
   PR URL, or GitHub PR context. This skill triages the change,
   dispatches specialized sub-agents in parallel, collects and
   synthesizes their findings, runs PR-specific checks (protected
-  paths, scope authorization, PR body injection defense), and
-  produces a structured review result. Sub-agent definitions live in
+  paths, deprecated paths, scope authorization, PR body injection
+  defense), and produces a structured review result. Sub-agent definitions live in
   `skills/pr-review/sub-agents/`. Each sub-agent is dispatched with
   `model` from its frontmatter and `subagent_type: Explore`.
 - **`code-review`** — the prompt is about a local branch diff with
