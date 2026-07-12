@@ -153,7 +153,10 @@ func buildProviderArgs(name, providerType string, credentials, config map[string
 }
 
 // EnsureAvailable checks that the openshell binary is in PATH.
-func EnsureAvailable() error {
+// Declared as a variable so integration tests in other packages can
+// stub it out when testing code paths that reach this check but do
+// not need a real openshell installation (see issue #350).
+var EnsureAvailable = func() error {
 	_, err := exec.LookPath("openshell")
 	if err != nil {
 		return fmt.Errorf("openshell not found in PATH: %w", err)

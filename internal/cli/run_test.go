@@ -24,6 +24,7 @@ import (
 	"github.com/fullsend-ai/fullsend/internal/fetchsvc"
 	"github.com/fullsend-ai/fullsend/internal/forge"
 	"github.com/fullsend-ai/fullsend/internal/harness"
+	"github.com/fullsend-ai/fullsend/internal/sandbox"
 	"github.com/fullsend-ai/fullsend/internal/ui"
 )
 
@@ -137,11 +138,26 @@ func TestRunCommand_RejectsNegativeMaxResources(t *testing.T) {
 	assert.Contains(t, err.Error(), "--max-resources must be >= 1")
 }
 
+// stubEnsureAvailable stubs sandbox.EnsureAvailable to always return
+// an error, making tests hermetic regardless of whether openshell is
+// installed on the host. Without this stub, tests that exercise the
+// harness-loading pipeline proceed into real sandbox execution on
+// machines where openshell is present, causing hangs (see #350).
+func stubEnsureAvailable(t *testing.T) {
+	t.Helper()
+	orig := sandbox.EnsureAvailable
+	sandbox.EnsureAvailable = func() error {
+		return fmt.Errorf("openshell not available (stubbed for test)")
+	}
+	t.Cleanup(func() { sandbox.EnsureAvailable = orig })
+}
+
 func TestRunAgent_HarnessLoadPipeline(t *testing.T) {
+	stubEnsureAvailable(t)
 	// Exercises the early runAgent pipeline: absFullsendDir, policy,
 	// org config loading, LoadWithBase, baseDeps, ResolveRelativeTo.
-	// The function fails later at sandbox.EnsureAvailable (no openshell
-	// in test env), but by then all harness-loading code paths are covered.
+	// The function fails at sandbox.EnsureAvailable (stubbed), but by
+	// then all harness-loading code paths are covered.
 	dir := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "harness"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "agents"), 0o755))
@@ -165,6 +181,7 @@ func TestRunAgent_HarnessLoadPipeline(t *testing.T) {
 }
 
 func TestRunAgent_YMLFallback(t *testing.T) {
+	stubEnsureAvailable(t)
 	dir := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "harness"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "agents"), 0o755))
@@ -199,6 +216,7 @@ func TestRunAgent_HarnessNotFound(t *testing.T) {
 }
 
 func TestRunAgent_HarnessLoadWithOrgConfig(t *testing.T) {
+	stubEnsureAvailable(t)
 	// Same as above but with a config.yaml present, covering the
 	// orgCfg != nil → orgAllowlist path.
 	dir := t.TempDir()
@@ -229,6 +247,7 @@ func TestRunAgent_HarnessLoadWithOrgConfig(t *testing.T) {
 }
 
 func TestRunAgent_MalformedOrgConfig(t *testing.T) {
+	stubEnsureAvailable(t)
 	// A malformed config.yaml should produce a warning but not prevent
 	// local-only harnesses from proceeding through the pipeline.
 	dir := t.TempDir()
@@ -304,6 +323,7 @@ func TestRunAgent_URLRefsNoOrgConfig(t *testing.T) {
 }
 
 func TestRunAgent_WithURLBase(t *testing.T) {
+	stubEnsureAvailable(t)
 	// Harness with a URL base — exercises the baseDeps logging loop.
 	baseContent := []byte("agent: agents/shared.md\n")
 	baseHash := fetch.ComputeSHA256(baseContent)
