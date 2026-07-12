@@ -52,9 +52,10 @@ Medium-severity finding: "stale reference to removed/renamed
 When a correctness finding involves a failure mode that produces no
 error or warning — the code appears to succeed but silently produces
 wrong results, skips data, or truncates output — escalate severity by
-one level (e.g., what would normally be [low] becomes [medium]). Silent
-failures are harder to detect in production and more likely to cause
-downstream damage than loud failures.
+one level (e.g., what would normally be [low] becomes [medium]).
+Findings already at critical remain at critical. Silent failures are
+harder to detect in production and more likely to cause downstream
+damage than loud failures.
 
 The defensive coding principle — handle all valid inputs, not just
 expected ones — should override probability-based severity discounting.

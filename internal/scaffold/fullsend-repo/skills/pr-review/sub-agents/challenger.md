@@ -32,7 +32,10 @@ For each finding:
    - "Missing test" when the test exists in a different file
 2. **Assess severity calibration.** Is the severity proportionate to
    the actual risk? Downgrade findings whose severity is inflated
-   relative to the codebase context.
+   relative to the codebase context. Note: silent-failure escalation
+   (escalating by one severity level when a failure mode produces no
+   error or warning) is an intentional correctness rule, not severity
+   inflation — do not reverse it.
 3. **Identify duplicates.** Findings from different dimensions that
    describe the same underlying issue should be merged. Keep the
    higher severity and the more specific remediation.
