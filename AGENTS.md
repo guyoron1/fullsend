@@ -46,6 +46,18 @@ The e2e tests require GitHub credentials. There are three ways to provide them:
 
 If only `E2E_GITHUB_USERNAME` and a password source are available, `make e2e-test` will automatically generate a session file before running tests. See `make help` for all available targets.
 
+### Secure HTTP clients
+
+Any Go code that constructs an `http.Client` to fetch external URLs (user-supplied, from configuration, or from remote manifests) **must** implement all five of these properties:
+
+1. **SSRF-safe dialer** — use a custom `DialContext` that resolves the host, then passes each IP through `netutil.CheckIP` (`internal/netutil/ip.go`) before connecting. Reject the request if any resolved IP is loopback, link-local, private (RFC 1918), or otherwise reserved.
+2. **HTTPS-only** — reject `http://` URLs at input validation. Set a `CheckRedirect` function on the client that rejects any redirect whose target URL scheme is not `https`.
+3. **No proxy** — set `Transport.Proxy = nil` so that `HTTP_PROXY` / `HTTPS_PROXY` environment variables cannot route traffic around the safe dialer.
+4. **Explicit timeout** — set `Client.Timeout` (default: 30 s). Never use `http.Get` or `http.DefaultClient`, which have no timeout.
+5. **Bounded reads** — wrap every `resp.Body` read with `io.LimitReader` (default limit: 1 MB) to prevent oversized responses from exhausting memory.
+
+These are non-negotiable for any HTTP client that contacts addresses derived from external input. Internal-only clients (e.g., calls to localhost services in tests) may omit the SSRF-safe dialer but must still set a timeout.
+
 ## Forge abstraction
 
 All git forge operations (GitHub API calls, PR comments, issue creation, workflow dispatch, etc.) **must** go through the `forge.Client` interface defined in `internal/forge/forge.go`. This is a fundamental architectural rule — the codebase supports multiple forges (GitHub, GitLab, Forgejo) and direct coupling to any single forge breaks the abstraction.
