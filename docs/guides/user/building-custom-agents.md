@@ -146,6 +146,7 @@ post_script: customized/scripts/post-my-agent.sh
 runner_env:
   MY_VAR: "${MY_VAR}"
   ISSUE_KEY: "${ISSUE_KEY}"
+  REPO_FULL_NAME: "${REPO_FULL_NAME}"
   GH_TOKEN: "${GH_TOKEN}"
   FULLSEND_OUTPUT_SCHEMA: ${FULLSEND_DIR}/customized/schemas/my-agent-result.schema.json
 
@@ -417,6 +418,7 @@ jobs:
       - name: Run my-agent
         env:
           ISSUE_KEY: ${{ inputs.issue_key }}
+          REPO_FULL_NAME: ${{ github.repository }}
           MY_VAR: ABCD
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ANTHROPIC_VERTEX_PROJECT_ID: ${{ secrets.FULLSEND_GCP_PROJECT_ID }}
