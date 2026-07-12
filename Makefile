@@ -106,6 +106,8 @@ lint-md-links:
 	lychee --offline --no-progress --include-fragments --exclude-path node_modules --exclude-path experiments '**/*.md'
 
 script-test:
+	bash scripts/check-deprecated-scaffold-test.sh
+	bash scripts/check-deprecated-scaffold.sh
 	bash scripts/check-e2e-authorization-test.sh
 	bash internal/scaffold/fullsend-repo/scripts/post-triage-test.sh
 	bash internal/scaffold/fullsend-repo/scripts/post-prioritize-test.sh
