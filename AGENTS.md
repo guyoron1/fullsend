@@ -62,6 +62,16 @@ All git forge operations (GitHub API calls, PR comments, issue creation, workflo
 
 **When reviewing PRs:** Flag any direct `exec.Command("gh", ...)`, raw GitHub API calls, or other forge-specific operations outside `internal/forge/github/` as a medium-severity or higher finding. This is an architectural violation, not a style preference.
 
+## Code pattern consistency
+
+When a PR introduces or modifies a retry loop, backoff strategy, or polling interval in a file that already contains such logic, compare the strategies used. Inconsistent approaches within the same file (e.g., additive backoff in one function and exponential backoff in another) create cognitive overhead for maintainers who must reason about whether the divergence is intentional.
+
+**When reviewing PRs:** If a file uses two or more different backoff strategies (additive, exponential, constant, jitter-based, etc.), flag the inconsistency as a **low-severity finding** and ask the author to either harmonize the strategies or explain why they differ. Do not flag when:
+
+- The file has only one retry/backoff pattern (nothing to compare).
+- The strategies are the same type but differ only in parameters (e.g., both exponential but with different base intervals or caps).
+- The divergence is across different files or packages (cross-file consistency is a broader design concern, not a per-file review finding).
+
 ## Architecture Decision Records (ADRs)
 
 These rules apply whenever you touch `docs/ADRs/` or review a PR that does. Full authoring guidance is in [`skills/writing-adrs/SKILL.md`](skills/writing-adrs/SKILL.md); invoke that skill when writing a new ADR.
