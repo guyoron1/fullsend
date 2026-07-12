@@ -89,6 +89,18 @@ dimension carry over to another — each requires its own scrutiny.
   (step 2), determine whether those changes weakened coverage.
 - Split-payload attacks: a production change paired with a test
   modification that masks the real behavior.
+- **Shell safety in harness scripts:** When the diff modifies shell
+  scripts under `harness/scripts/` or `scripts/` directories (e.g.,
+  `post-code.sh`, `post-fix.sh`, `post-review.sh`), check for:
+  (a) `echo "${VAR}"` where the variable may contain user- or
+  agent-controlled content — `echo` interprets leading dashes as flags,
+  causing silent data corruption; recommend `printf '%s\n' "${VAR}"`;
+  (b) unquoted heredocs (`<<TOKEN` without quoting the delimiter) that
+  generate JSON or YAML with embedded variable interpolation — shell
+  expansion of `$` and backticks risks silent data corruption; recommend
+  `jq -n` for JSON or quoted heredocs (`<<'TOKEN'`). Do not flag `echo`
+  with hardcoded strings, non-harness scripts, or heredocs that
+  intentionally use expansion with validated variables.
 
 #### Security
 

@@ -73,3 +73,27 @@ When reviewing technical documentation, verify:
 - **Edge case correctness** — Are described edge cases (depth/breadth
   limits, zero values, error conditions) handled correctly in the
   described logic?
+
+### Shell safety in harness scripts
+
+When the diff modifies shell scripts under `harness/scripts/` or
+`scripts/` directories (e.g., `post-code.sh`, `post-fix.sh`,
+`post-review.sh`), check for two data-corruption patterns:
+
+1. **`echo` with user-controlled variables:** `echo "${VAR}"` interprets
+   leading dashes as flags — content starting with `-e` or `-n` causes
+   silent data corruption (escape interpretation or suppressed newline).
+   Flag as **medium** when the variable may contain user- or
+   agent-controlled content (e.g., PR body, commit message, issue title,
+   agent output). Recommend `printf '%s\n' "${VAR}"` instead. Do not
+   flag `echo` with hardcoded strings or in non-harness scripts.
+
+2. **Unquoted heredocs writing structured data:** `<<TOKEN` (without
+   quoting the delimiter) allows shell expansion of `$` and backticks
+   in the heredoc body. When the heredoc generates JSON, YAML, or other
+   structured data with embedded variable interpolation, unexpected
+   content in those variables risks silent data corruption. Flag as
+   **medium**. Recommend `jq -n` for JSON construction or quoted
+   heredocs (`<<'TOKEN'`) when shell expansion of the body is not
+   intended. Do not flag heredocs that intentionally use expansion with
+   properly validated variables.
