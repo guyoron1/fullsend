@@ -129,6 +129,17 @@ jobs:
           repos: ${{ steps.repo-parts.outputs.name }}
           mint_url: ${{ inputs.mint_url }}
 
+      - name: Download RTK for sandbox
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          RTK_VERSION=$(curl -fsSL https://api.github.com/repos/rtk-ai/rtk/releases/latest | jq -r .tag_name)
+          curl -fsSL "https://github.com/rtk-ai/rtk/releases/download/${RTK_VERSION}/rtk-x86_64-unknown-linux-musl.tar.gz" \
+            | tar xz -C dist/
+          mv dist/rtk dist/rtk-linux-x64
+          chmod +x dist/rtk-linux-x64
+          echo "::notice::Downloaded RTK ${RTK_VERSION}"
+
       - name: Resolve bot identity
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
