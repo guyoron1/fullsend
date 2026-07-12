@@ -41,6 +41,17 @@ func IsBranchProtected(err error) bool {
 	return errors.Is(err, ErrBranchProtected)
 }
 
+// ErrClassicPATForbidden indicates that the organization blocks classic
+// personal access tokens and requires a fine-grained PAT, GitHub App,
+// or OAuth App token.
+var ErrClassicPATForbidden = errors.New("classic personal access token forbidden by organization")
+
+// IsClassicPATForbidden reports whether err indicates a classic PAT was
+// rejected by the organization's token policy.
+func IsClassicPATForbidden(err error) bool {
+	return errors.Is(err, ErrClassicPATForbidden)
+}
+
 // Repository represents a repository on a git forge.
 type Repository struct {
 	ID            int64

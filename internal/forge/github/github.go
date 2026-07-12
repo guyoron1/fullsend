@@ -86,6 +86,9 @@ func (e *APIError) Unwrap() error {
 	if e.StatusCode == http.StatusUnprocessableEntity && isAlreadyExistsError(e) {
 		return forge.ErrAlreadyExists
 	}
+	if e.StatusCode == http.StatusForbidden && isClassicPATForbiddenError(e) {
+		return forge.ErrClassicPATForbidden
+	}
 	return nil
 }
 
@@ -794,6 +797,12 @@ func isBranchProtectionError(apiErr *APIError) bool {
 		strings.Contains(msg, "required status") ||
 		strings.Contains(msg, "required review") ||
 		strings.Contains(msg, "rule violation")
+}
+
+// isClassicPATForbiddenError checks whether a 403 APIError indicates that
+// the organization blocks classic personal access tokens.
+func isClassicPATForbiddenError(apiErr *APIError) bool {
+	return strings.Contains(strings.ToLower(apiErr.Message), "forbids access via a personal access token")
 }
 
 func isAlreadyExistsError(apiErr *APIError) bool {

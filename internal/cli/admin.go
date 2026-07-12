@@ -81,6 +81,33 @@ func resolveToken() (string, error) {
 	return "", fmt.Errorf("no GitHub token found: set GH_TOKEN, GITHUB_TOKEN, or run 'gh auth login'")
 }
 
+// classicPATHint checks whether an error is a classic-PAT-forbidden error
+// and returns an enriched error with actionable guidance. If the error is
+// not a classic-PAT-forbidden error, it is returned unchanged.
+func classicPATHint(err error) error {
+	if !forge.IsClassicPATForbidden(err) {
+		return err
+	}
+	return fmt.Errorf("%w\n\n"+
+		"This organization blocks classic personal access tokens.\n"+
+		"The CLI resolves credentials in this order:\n"+
+		"  1. GH_TOKEN env var\n"+
+		"  2. GITHUB_TOKEN env var\n"+
+		"  3. gh auth token\n\n"+
+		"Create a fine-grained personal access token at\n"+
+		"https://github.com/settings/personal-access-tokens/new\n"+
+		"with these repository permissions:\n\n"+
+		"  Contents:        Read and write\n"+
+		"  Workflows:       Read and write\n"+
+		"  Secrets:         Read and write\n"+
+		"  Variables:       Read and write\n"+
+		"  Pull requests:   Read and write\n"+
+		"  Metadata:        Read-only (granted automatically)\n\n"+
+		"Then export it before running fullsend:\n\n"+
+		"  export GH_TOKEN=github_pat_...\n"+
+		"  fullsend github setup <org>/<repo>", err)
+}
+
 // validateOrgName checks that org is a valid GitHub organization name.
 func validateOrgName(org string) error {
 	if org == "" {
@@ -433,7 +460,7 @@ Inference authentication:
 			// Discover all org repos upfront to avoid redundant API calls in runDryRun/runInstall.
 			allRepos, err := client.ListOrgRepos(ctx, org)
 			if err != nil {
-				return fmt.Errorf("listing org repos: %w", err)
+				return classicPATHint(fmt.Errorf("listing org repos: %w", err))
 			}
 
 			var repos []string
@@ -1021,7 +1048,7 @@ func applyPerRepoScaffold(ctx context.Context, client forge.Client, printer *ui.
 
 	targetRepo, err := client.GetRepo(ctx, owner, repo)
 	if err != nil {
-		return fmt.Errorf("getting repo info: %w", err)
+		return classicPATHint(fmt.Errorf("getting repo info: %w", err))
 	}
 	commitMsg := fmt.Sprintf("chore: initialize fullsend-%s per-repo installation", version)
 	printer.StepStart(fmt.Sprintf("Committing scaffold files to %s/%s (%s branch)",
@@ -1429,7 +1456,7 @@ func ensureConfigRepoExists(ctx context.Context, client forge.Client, printer *u
 		return nil
 	}
 	if !forge.IsNotFound(err) {
-		return fmt.Errorf("checking for config repo: %w", err)
+		return classicPATHint(fmt.Errorf("checking for config repo: %w", err))
 	}
 
 	printer.StepStart("Creating " + forge.ConfigRepoName + " repository")
@@ -2480,8 +2507,12 @@ func loadRepoConfig(ctx context.Context, client forge.Client, printer *ui.Printe
 			return nil, fmt.Errorf(".fullsend repository not found: run 'fullsend admin install %s' first", org)
 		}
 		printer.StepFail("Failed to check .fullsend repository")
-		printer.StepInfo("Hint: verify your token has 'repo' scope with: gh auth refresh -s repo")
-		return nil, fmt.Errorf("checking .fullsend repository: %w", err)
+		if forge.IsClassicPATForbidden(err) {
+			printer.StepInfo("Hint: this org blocks classic PATs — use a fine-grained token exported as GH_TOKEN")
+		} else {
+			printer.StepInfo("Hint: verify your token has 'repo' scope with: gh auth refresh -s repo")
+		}
+		return nil, classicPATHint(fmt.Errorf("checking .fullsend repository: %w", err))
 	}
 	printer.StepDone(".fullsend repository exists")
 
