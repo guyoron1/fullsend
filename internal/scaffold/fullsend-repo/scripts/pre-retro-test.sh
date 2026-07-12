@@ -51,6 +51,25 @@ build_mock() {
 set -euo pipefail
 TMPDIR_PLACEHOLDER="__TMPDIR__"
 
+# Parse --jq argument from command line.
+jq_filter=""
+prev_arg=""
+for arg in "$@"; do
+  if [[ "${prev_arg}" == "--jq" ]]; then
+    jq_filter="${arg}"
+  fi
+  prev_arg="${arg}"
+done
+
+# Helper: output a response file, applying --jq filter if provided.
+respond() {
+  if [[ -n "${jq_filter}" ]]; then
+    jq "${jq_filter}" "$1"
+  else
+    cat "$1"
+  fi
+}
+
 if [[ "$1" == "pr" && "$2" == "view" ]]; then
   cat "${TMPDIR_PLACEHOLDER}/pr-meta.json"
   exit 0
@@ -59,31 +78,19 @@ fi
 if [[ "$1" == "api" ]]; then
   endpoint="$2"
   if [[ "${endpoint}" == *"/comments"* ]]; then
-    cat "${TMPDIR_PLACEHOLDER}/comments.json"
+    respond "${TMPDIR_PLACEHOLDER}/comments.json"
     exit 0
   fi
   if [[ "${endpoint}" == *"/reviews"* ]]; then
-    cat "${TMPDIR_PLACEHOLDER}/reviews.json"
+    respond "${TMPDIR_PLACEHOLDER}/reviews.json"
     exit 0
   fi
   if [[ "${endpoint}" == *"/actions/runs"* ]]; then
-    # If --jq is passed, apply the filter.
-    jq_filter=""
-    for arg in "$@"; do
-      if [[ "${prev_arg:-}" == "--jq" ]]; then
-        jq_filter="${arg}"
-      fi
-      prev_arg="${arg}"
-    done
-    if [[ -n "${jq_filter}" ]]; then
-      jq "${jq_filter}" "${TMPDIR_PLACEHOLDER}/runs.json"
-    else
-      cat "${TMPDIR_PLACEHOLDER}/runs.json"
-    fi
+    respond "${TMPDIR_PLACEHOLDER}/runs.json"
     exit 0
   fi
   if [[ "${endpoint}" == *"/issues/"* && "${endpoint}" != *"/comments"* ]]; then
-    cat "${TMPDIR_PLACEHOLDER}/issue-meta.json"
+    respond "${TMPDIR_PLACEHOLDER}/issue-meta.json"
     exit 0
   fi
 fi
@@ -430,6 +437,127 @@ MOCKSCRIPT
   echo "PASS: partial-failure"
 }
 run_test_partial_failure
+
+# 8. Multi-page pagination — verify --jq '.[]' | jq -s '.' pattern
+#    correctly merges all items.
+MULTI_PAGE_COMMENTS='[
+  {"id": 1, "body": "Page 1 comment 1", "user": {"login": "user1"}},
+  {"id": 2, "body": "Page 1 comment 2", "user": {"login": "user2"}},
+  {"id": 3, "body": "Page 2 comment 1", "user": {"login": "user3"}},
+  {"id": 4, "body": "Page 2 comment 2", "user": {"login": "user4"}},
+  {"id": 5, "body": "Page 3 comment 1", "user": {"login": "user5"}}
+]'
+MULTI_PAGE_REVIEWS='[
+  {"id": 100, "state": "APPROVED", "user": {"login": "reviewer1"}, "body": "LGTM"},
+  {"id": 101, "state": "CHANGES_REQUESTED", "user": {"login": "reviewer2"}, "body": "Fix this"},
+  {"id": 102, "state": "APPROVED", "user": {"login": "reviewer3"}, "body": "OK"}
+]'
+
+run_test_multi_page_pagination() {
+  local workspace="${TMPDIR}/workspace-multi-page"
+  mkdir -p "${workspace}"
+  local mock_bin
+  mock_bin=$(build_mock "${PR_META}" "${MULTI_PAGE_COMMENTS}" "${MULTI_PAGE_REVIEWS}" "${WORKFLOW_RUNS}")
+
+  local exit_code=0
+  env \
+    PATH="${mock_bin}:${PATH}" \
+    GH_TOKEN="fake-token" \
+    ORIGINATING_URL="https://github.com/test-org/test-repo/pull/42" \
+    REPO_FULL_NAME="test-org/test-repo" \
+    GITHUB_WORKSPACE="${workspace}" \
+    bash "${SCRIPT}" > /dev/null 2>&1 || exit_code=$?
+
+  if [[ ${exit_code} -ne 0 ]]; then
+    echo "FAIL: multi-page-pagination — expected exit 0, got ${exit_code}"
+    FAILURES=$((FAILURES + 1))
+    return
+  fi
+
+  local context_file="${workspace}/pr-context.json"
+  if [[ ! -f "${context_file}" ]]; then
+    echo "FAIL: multi-page-pagination — expected pr-context.json to exist"
+    FAILURES=$((FAILURES + 1))
+    return
+  fi
+
+  # Verify all 5 comments are present.
+  local comments_len
+  comments_len=$(jq '.comments | length' "${context_file}")
+  if [[ "${comments_len}" -ne 5 ]]; then
+    echo "FAIL: multi-page-pagination — expected 5 comments, got ${comments_len}"
+    FAILURES=$((FAILURES + 1))
+    return
+  fi
+
+  # Verify all 3 reviews are present.
+  local reviews_len
+  reviews_len=$(jq '.reviews | length' "${context_file}")
+  if [[ "${reviews_len}" -ne 3 ]]; then
+    echo "FAIL: multi-page-pagination — expected 3 reviews, got ${reviews_len}"
+    FAILURES=$((FAILURES + 1))
+    return
+  fi
+
+  echo "PASS: multi-page-pagination"
+}
+run_test_multi_page_pagination
+
+# 9. Issue prefetch — verify JSON structure has required fields and
+#    PR-specific fields are absent.
+run_test_issue_json_structure() {
+  local workspace="${TMPDIR}/workspace-issue-structure"
+  mkdir -p "${workspace}"
+  local mock_bin
+  mock_bin=$(build_mock "" "[]" "[]" "" "${ISSUE_META}")
+
+  local exit_code=0
+  env \
+    PATH="${mock_bin}:${PATH}" \
+    GH_TOKEN="fake-token" \
+    ORIGINATING_URL="https://github.com/test-org/test-repo/issues/10" \
+    REPO_FULL_NAME="test-org/test-repo" \
+    GITHUB_WORKSPACE="${workspace}" \
+    bash "${SCRIPT}" > /dev/null 2>&1 || exit_code=$?
+
+  if [[ ${exit_code} -ne 0 ]]; then
+    echo "FAIL: issue-json-structure — expected exit 0, got ${exit_code}"
+    FAILURES=$((FAILURES + 1))
+    return
+  fi
+
+  local context_file="${workspace}/pr-context.json"
+  if [[ ! -f "${context_file}" ]]; then
+    echo "FAIL: issue-json-structure — expected pr-context.json to exist"
+    FAILURES=$((FAILURES + 1))
+    return
+  fi
+
+  local missing_fields=""
+  for field in source_url source_repo source_number source_type issue comments; do
+    if ! jq -e ".${field}" "${context_file}" > /dev/null 2>&1; then
+      missing_fields="${missing_fields} ${field}"
+    fi
+  done
+
+  if [[ -n "${missing_fields}" ]]; then
+    echo "FAIL: issue-json-structure — missing fields:${missing_fields}"
+    FAILURES=$((FAILURES + 1))
+    return
+  fi
+
+  # Verify PR-specific fields are absent.
+  for field in pr reviews workflow_runs; do
+    if jq -e ".${field}" "${context_file}" > /dev/null 2>&1; then
+      echo "FAIL: issue-json-structure — unexpected PR field '${field}' in issue output"
+      FAILURES=$((FAILURES + 1))
+      return
+    fi
+  done
+
+  echo "PASS: issue-json-structure"
+}
+run_test_issue_json_structure
 
 # --- Summary ---
 

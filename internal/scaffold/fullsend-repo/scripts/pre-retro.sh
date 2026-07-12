@@ -52,7 +52,8 @@ prefetch_context() {
   local repo number url_type
 
   # Parse repo and number from ORIGINATING_URL.
-  repo=$(echo "${url}" | sed -E 's#https://github\.com/##; s#/(issues|pull)/.*##')
+  # Prefer REPO_FULL_NAME (set by harness) over parsing from URL.
+  repo="${REPO_FULL_NAME:-$(echo "${url}" | sed -E 's#https://github\.com/##; s#/(issues|pull)/.*##')}"
   number=$(basename "${url}")
   if echo "${url}" | grep -q '/pull/'; then
     url_type="pull"
@@ -75,12 +76,12 @@ prefetch_context() {
     # 2. PR comments (issue comments endpoint includes PR comments).
     local pr_comments
     pr_comments=$(gh api "repos/${repo}/issues/${number}/comments" \
-      --paginate 2>/dev/null) || pr_comments="[]"
+      --paginate --jq '.[]' 2>/dev/null | jq -s '.') || pr_comments="[]"
 
     # 3. PR reviews.
     local pr_reviews
     pr_reviews=$(gh api "repos/${repo}/pulls/${number}/reviews" \
-      --paginate 2>/dev/null) || pr_reviews="[]"
+      --paginate --jq '.[]' 2>/dev/null | jq -s '.') || pr_reviews="[]"
 
     # 4. Recent workflow runs for the source repo, filtered to the PR
     #    lifecycle window. Uses the PR createdAt as the lower bound.
@@ -95,7 +96,7 @@ prefetch_context() {
     fi
 
     # Assemble the context JSON.
-    jq -n \
+    if ! jq -n \
       --argjson metadata "${pr_meta}" \
       --argjson comments "${pr_comments}" \
       --argjson reviews "${pr_reviews}" \
@@ -113,7 +114,10 @@ prefetch_context() {
         comments: $comments,
         reviews: $reviews,
         workflow_runs: $workflow_runs
-      }' > "${output_file}"
+      }' > "${output_file}"; then
+      echo "::warning::Failed to assemble PR context JSON — metadata may be malformed"
+      return 1
+    fi
 
   else
     echo "Prefetching issue context for ${repo}#${number}..."
@@ -126,10 +130,10 @@ prefetch_context() {
     # Issue comments.
     local issue_comments
     issue_comments=$(gh api "repos/${repo}/issues/${number}/comments" \
-      --paginate 2>/dev/null) || issue_comments="[]"
+      --paginate --jq '.[]' 2>/dev/null | jq -s '.') || issue_comments="[]"
 
     # Assemble the context JSON.
-    jq -n \
+    if ! jq -n \
       --argjson metadata "${issue_meta}" \
       --argjson comments "${issue_comments}" \
       --arg source_url "${url}" \
@@ -143,7 +147,10 @@ prefetch_context() {
         source_type: $source_type,
         issue: $metadata,
         comments: $comments
-      }' > "${output_file}"
+      }' > "${output_file}"; then
+      echo "::warning::Failed to assemble issue context JSON — metadata may be malformed"
+      return 1
+    fi
   fi
 
   local byte_count
