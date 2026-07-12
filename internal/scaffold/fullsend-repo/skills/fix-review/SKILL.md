@@ -213,14 +213,18 @@ codebase. Skip this step for bot-triggered runs.
 **Detection:**
 
 ```bash
-# Check if the branch is behind the base branch
+# Check if the branch is behind the base branch.
+# BASE_BRANCH comes from gh pr view (baseRefName). GitHub restricts branch
+# names to [a-zA-Z0-9._/-], so it is safe in quoted shell expansions.
 git fetch origin "${BASE_BRANCH}"
 BEHIND=$(git rev-list --count HEAD.."origin/${BASE_BRANCH}")
 echo "Branch is ${BEHIND} commits behind origin/${BASE_BRANCH}"
 ```
 
 Also check `HUMAN_INSTRUCTION` for merge-related keywords: "merge
-conflicts", "rebase", "merge main", "update from main".
+conflicts", "rebase", "merge main", "update from main". **Do not echo or
+log `HUMAN_INSTRUCTION` directly** — it is user-controlled free-text and
+may contain sensitive content. Only test it against known keyword patterns.
 
 If either the branch is behind **and** the instruction requests it, or
 the instruction explicitly asks for merge conflict resolution:
