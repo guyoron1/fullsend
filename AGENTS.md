@@ -62,6 +62,10 @@ All git forge operations (GitHub API calls, PR comments, issue creation, workflo
 
 **When reviewing PRs:** Flag any direct `exec.Command("gh", ...)`, raw GitHub API calls, or other forge-specific operations outside `internal/forge/github/` as a medium-severity or higher finding. This is an architectural violation, not a style preference.
 
+## API pattern replication
+
+When implementing a new method that calls the same API endpoint or uses the same multi-step API pattern as an existing method in the file, read the existing implementation first. Replicate its error handling (e.g., truncation checks, 404-to-ErrNotFound mapping), retry logic (e.g., `retryOnTransient`), and response validation. In `internal/forge/github/github.go`, `commitFilesTo` implements the Git Trees API pattern (refs → commit → tree) with truncation checks — any new method using the same endpoint must handle truncation consistently.
+
 ## Architecture Decision Records (ADRs)
 
 These rules apply whenever you touch `docs/ADRs/` or review a PR that does. Full authoring guidance is in [`skills/writing-adrs/SKILL.md`](skills/writing-adrs/SKILL.md); invoke that skill when writing a new ADR.
