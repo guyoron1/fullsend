@@ -21,6 +21,9 @@ host_files:
   - src: ${GCP_OIDC_TOKEN_FILE}
     dest: /sandbox/workspace/.gcp-oidc-token
     optional: true
+  - src: ${GITHUB_WORKSPACE}/pr-context.json
+    dest: /sandbox/workspace/pr-context.json
+    optional: true
   - src: dist/rtk-linux-x64
     dest: /sandbox/workspace/.costwise/rtk
     optional: true
