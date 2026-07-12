@@ -49,12 +49,18 @@ var allowedTools = map[string]bool{
 }
 
 // progressParser reads NDJSON from Claude Code's stream-json output and emits
-// progress updates via the printer. It extracts tool names and safe context
-// (binary name for Bash, file path for Read/Write/Edit) without logging
-// potentially sensitive arguments.
+// progress updates via the printer. It delegates to EventParser + EventRenderer
+// for runtime-agnostic event processing.
 func progressParser(r io.Reader, printer *ui.Printer, start time.Time, metrics *RunMetrics) error {
+	parser := ClaudeEventParser{}
+	renderer := NewEventRenderer(printer, start, metrics)
+	return parseAndRender(r, parser, renderer)
+}
+
+// parseAndRender reads NDJSON lines from r, parses each through the EventParser,
+// and renders the resulting events. This is the shared pipeline used by all runtimes.
+func parseAndRender(r io.Reader, parser EventParser, renderer *EventRenderer) error {
 	br := bufio.NewReaderSize(r, 1024*1024)
-	isCI := os.Getenv("GITHUB_ACTIONS") == "true"
 
 	for {
 		line, isPrefix, err := br.ReadLine()
@@ -74,41 +80,9 @@ func progressParser(r io.Reader, printer *ui.Printer, start time.Time, metrics *
 			continue
 		}
 
-		var evt streamEvent
-		if jsonErr := json.Unmarshal(line, &evt); jsonErr != nil {
-			continue
+		for _, evt := range parser.Parse(line) {
+			renderer.Render(evt)
 		}
-
-		if evt.Type == "assistant" {
-			parseAssistantToolUse(line, printer, start, metrics, isCI)
-		}
-	}
-}
-
-func parseAssistantToolUse(line []byte, printer *ui.Printer, start time.Time, metrics *RunMetrics, isCI bool) {
-	var msg assistantMessage
-	if err := json.Unmarshal(line, &msg); err != nil {
-		return
-	}
-
-	var items []contentItem
-	if err := json.Unmarshal(msg.Content, &items); err != nil {
-		return
-	}
-
-	for _, item := range items {
-		if item.Type != "tool_use" {
-			continue
-		}
-		toolName := item.Name
-		var ctx string
-		if !allowedTools[toolName] {
-			toolName = "tool"
-		} else {
-			ctx = extractSafeContext(item.Name, item.Input)
-		}
-		count := metrics.ToolCalls.Add(1)
-		emitToolProgress(printer, toolName, ctx, start, count, isCI)
 	}
 }
 
