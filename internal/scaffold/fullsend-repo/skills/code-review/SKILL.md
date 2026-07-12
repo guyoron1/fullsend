@@ -175,7 +175,7 @@ already stripped the payload.
 - Patterns: does the change follow established API patterns and error
   handling idioms in the codebase?
 - Retry/backoff consistency: when a PR introduces or modifies a retry
-  or backoff loop in a file that already contains one, check whether
+  or backoff loop in a file or module that already contains one, check whether
   the strategies are consistent (e.g., additive vs exponential backoff,
   matching cap values). Flag inconsistencies as a low-severity finding
   and ask the author to justify the divergence or harmonize.
