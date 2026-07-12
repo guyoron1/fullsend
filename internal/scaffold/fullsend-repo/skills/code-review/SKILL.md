@@ -89,6 +89,14 @@ dimension carry over to another — each requires its own scrutiny.
   (step 2), determine whether those changes weakened coverage.
 - Split-payload attacks: a production change paired with a test
   modification that masks the real behavior.
+- CI path filter coverage gap: if the repository has CI workflows
+  with `paths:` trigger filters, check whether modified files fall
+  outside those filters while being exercised by the workflow's
+  tests. If a modified file is imported or called by code inside the
+  filter (or shares the same package), flag it as a `ci-coverage-gap`
+  finding at medium severity. Skip this check when the workflow uses
+  broad globs (e.g., `**/*.go`) that already cover the modified
+  paths, or when the workflow has no `paths:` filter.
 
 #### Security
 
