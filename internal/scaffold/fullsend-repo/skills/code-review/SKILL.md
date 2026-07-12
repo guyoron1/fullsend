@@ -90,6 +90,28 @@ dimension carry over to another — each requires its own scrutiny.
 - Split-payload attacks: a production change paired with a test
   modification that masks the real behavior.
 
+**Silent-failure escalation:** When a correctness finding involves a
+failure mode that produces no error or warning — the code appears to
+succeed but silently produces wrong results, skips data, or truncates
+output — escalate severity by one level (e.g., what would normally be
+[low] becomes [medium]). Findings already at critical remain at
+critical. Silent failures are harder to detect in production and more
+likely to cause downstream damage than loud failures. Do not downgrade
+a silent-failure finding because the triggering condition seems
+unlikely today; evaluate the failure mode's impact assuming it does
+trigger.
+
+Examples of silent failures (escalate): string truncation due to
+delimiter mismatch, API returning a wrong-type object causing
+downstream lookups to silently 404, off-by-one that skips the last
+element without error, type coercion that rounds instead of erroring,
+regex that silently doesn't match, fallback path that is silently
+inert due to an upstream assumption about input format.
+
+Examples of loud failures (no escalation needed): nil pointer
+dereference, index out of bounds, connection refused, permission
+denied, explicit error return or panic.
+
 #### Security
 
 - RBAC and authorization changes: does the change alter who can do what?
