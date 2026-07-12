@@ -51,8 +51,3 @@ forge:
       REPO_FULL_NAME: "${REPO_FULL_NAME}"
       ISSUE_NUMBER: "${ISSUE_NUMBER}"
       REPO_DIR: "${GITHUB_WORKSPACE}/target-repo"
-    env:
-      sandbox:
-        ISSUE_NUMBER: "${ISSUE_NUMBER}"
-        REPO_FULL_NAME: "${REPO_FULL_NAME}"
-        GH_TOKEN: "${GH_TOKEN}"
