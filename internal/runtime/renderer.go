@@ -40,6 +40,10 @@ func (r *EventRenderer) Render(evt AgentEvent) {
 		}
 		r.printer.Heartbeat(msg)
 	case EventError:
-		r.printer.StepWarn(sanitizeOutput(evt.Text))
+		msg := sanitizeOutput(evt.Text)
+		if r.isCI {
+			fmt.Fprintf(os.Stderr, "::warning::%s\n", msg)
+		}
+		r.printer.StepWarn(msg)
 	}
 }
