@@ -53,15 +53,21 @@ When the diff modifies or adds shell scripts (`.sh` files), check for
 these data-corruption patterns:
 
 **`echo` flag interpretation:** `echo "$var"` interprets a leading dash
-as an option flag — if `$var` starts with `-e`, `-n`, or `-E`, echo
-silently interprets escape sequences or suppresses the trailing newline,
-corrupting the output. Flag any `echo "$var"` (or `echo "${var}"`) whose
-result is piped to another command or captured in a command substitution,
-when the variable could contain arbitrary text (e.g., commit messages,
-PR bodies, user-supplied descriptions). Severity: medium when the
-variable is clearly controlled (e.g., a hardcoded format string); high
-when it carries user-generated or agent-generated content in a
-security-sensitive script (post-scripts, pre-scripts).
+as an option flag — if `$var` starts with `-e`, echo enables
+escape-sequence interpretation (corrupting literal backslash sequences);
+if `-n`, echo suppresses the trailing newline; if `-E`, the flag is
+silently consumed (data loss — the `-E` text is not printed). Flag any
+`echo "$var"` (or `echo "${var}"`) whose result is piped to another
+command or captured in a command substitution, when the variable could
+contain arbitrary text (e.g., commit messages, PR bodies,
+user-supplied descriptions). Severity: medium when the variable is
+clearly controlled (e.g., a hardcoded format string); high when the
+variable carries content whose value is not predictable at authoring
+time (commit messages, PR bodies, agent-generated text) — the
+corruption risk scales with content unpredictability, not trust level
+(trust-boundary analysis belongs to the security sub-agent; see the
+review skill's dimension-overlap policy for why both dimensions may
+flag the same code).
 Remediation: replace `echo "$var"` with `printf '%s\n' "$var"`.
 
 **Unquoted heredoc expansion:** `<<DELIM` (unquoted) allows shell
@@ -70,9 +76,10 @@ the heredoc body. When the heredoc constructs structured data (JSON,
 YAML) that embeds variables which may contain `$` or backticks, the
 output is silently corrupted. Flag unquoted heredocs whose body
 interpolates variables carrying user-generated or arbitrary text.
-Severity: medium for general scripts; high when the heredoc produces
-data consumed by downstream pipeline stages (e.g., result JSON read
-by a post-script). Remediation: use `<<'DELIM'` (quoted delimiter) to
+Severity: medium for general scripts; high when the heredoc embeds
+unpredictable content and produces data consumed by downstream
+pipeline stages (e.g., result JSON read by a post-script).
+Remediation: use `<<'DELIM'` (quoted delimiter) to
 suppress expansion, and pre-interpolate needed values with `printf` or
 variable assignment before the heredoc.
 

@@ -59,6 +59,7 @@ Evaluates whether the code does what it claims to do.
 - Logic errors, off-by-one, nil/null handling
 - Edge cases and error paths
 - Consistency with existing codebase patterns
+- Shell data-corruption patterns (`echo` flag interpretation, unquoted heredoc expansion)
 - Test adequacy — are the right things being tested?
 - Do tests actually verify the behavior they claim to?
 - If test files covering the changed code were recently modified, did those modifications weaken the test's ability to catch regressions?
