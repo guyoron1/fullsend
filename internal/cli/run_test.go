@@ -137,11 +137,24 @@ func TestRunCommand_RejectsNegativeMaxResources(t *testing.T) {
 	assert.Contains(t, err.Error(), "--max-resources must be >= 1")
 }
 
+// stubEnsureSandboxUnavailable overrides ensureSandboxAvailable so tests
+// that exercise harness loading are hermetic regardless of whether
+// openshell is installed on the host.
+func stubEnsureSandboxUnavailable(t *testing.T) {
+	t.Helper()
+	orig := ensureSandboxAvailable
+	ensureSandboxAvailable = func() error {
+		return fmt.Errorf("openshell not found in PATH: stubbed for test")
+	}
+	t.Cleanup(func() { ensureSandboxAvailable = orig })
+}
+
 func TestRunAgent_HarnessLoadPipeline(t *testing.T) {
 	// Exercises the early runAgent pipeline: absFullsendDir, policy,
 	// org config loading, LoadWithBase, baseDeps, ResolveRelativeTo.
-	// The function fails later at sandbox.EnsureAvailable (no openshell
-	// in test env), but by then all harness-loading code paths are covered.
+	// ensureSandboxAvailable is stubbed so this test works whether or not
+	// openshell is installed on the host.
+	stubEnsureSandboxUnavailable(t)
 	dir := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "harness"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "agents"), 0o755))
@@ -165,6 +178,7 @@ func TestRunAgent_HarnessLoadPipeline(t *testing.T) {
 }
 
 func TestRunAgent_YMLFallback(t *testing.T) {
+	stubEnsureSandboxUnavailable(t)
 	dir := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "harness"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "agents"), 0o755))
@@ -201,6 +215,7 @@ func TestRunAgent_HarnessNotFound(t *testing.T) {
 func TestRunAgent_HarnessLoadWithOrgConfig(t *testing.T) {
 	// Same as above but with a config.yaml present, covering the
 	// orgCfg != nil → orgAllowlist path.
+	stubEnsureSandboxUnavailable(t)
 	dir := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "harness"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "agents"), 0o755))
@@ -231,6 +246,7 @@ func TestRunAgent_HarnessLoadWithOrgConfig(t *testing.T) {
 func TestRunAgent_MalformedOrgConfig(t *testing.T) {
 	// A malformed config.yaml should produce a warning but not prevent
 	// local-only harnesses from proceeding through the pipeline.
+	stubEnsureSandboxUnavailable(t)
 	dir := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "harness"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "agents"), 0o755))
@@ -305,6 +321,7 @@ func TestRunAgent_URLRefsNoOrgConfig(t *testing.T) {
 
 func TestRunAgent_WithURLBase(t *testing.T) {
 	// Harness with a URL base — exercises the baseDeps logging loop.
+	stubEnsureSandboxUnavailable(t)
 	baseContent := []byte("agent: agents/shared.md\n")
 	baseHash := fetch.ComputeSHA256(baseContent)
 

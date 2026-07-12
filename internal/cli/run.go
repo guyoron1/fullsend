@@ -42,6 +42,10 @@ const (
 	maxContextScanDepth = 5
 )
 
+// ensureSandboxAvailable is the function used to check openshell availability.
+// Tests override this to avoid depending on a real openshell installation.
+var ensureSandboxAvailable = sandbox.EnsureAvailable
+
 // agentWorkingDirExcludes lists directory patterns that agents may create
 // during execution but must never commit. These are added to
 // .git/info/exclude before the agent runs so git ignores them entirely.
@@ -429,7 +433,7 @@ func runAgent(ctx context.Context, agentName, fullsendDir, outputBase, targetRep
 	// 2. Check openshell availability.
 	openshellStart := time.Now()
 	printer.StepStart("Checking openshell availability")
-	if err := sandbox.EnsureAvailable(); err != nil {
+	if err := ensureSandboxAvailable(); err != nil {
 		printer.StepFail("openshell not available")
 		return fmt.Errorf("openshell is required: %w", err)
 	}
