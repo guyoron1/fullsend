@@ -145,9 +145,14 @@ GOVERNANCE_PATTERNS=("MAINTAINERS.md" "GOVERNANCE.md" "CODE_OF_CONDUCT.md" "SECU
 if [ "${ACTION}" = "approve" ] && [ "${DOWNGRADED}" = "false" ]; then
   # PR_FILES already set from the protected-path check above
   ALL_GOVERNANCE=true
+  GOV_FILE_SEEN=false
   while IFS= read -r file; do
     [ -z "${file}" ] && continue
+    GOV_FILE_SEEN=true
     IS_GOVERNANCE=false
+    # ponytail: basename matching (not path-prefix) — governance docs can live
+    # at any depth (docs/MAINTAINERS.md, community/CODE_OF_CONDUCT.md), unlike
+    # protected paths which are location-specific.
     BASENAME="${file##*/}"
     for pattern in "${GOVERNANCE_PATTERNS[@]}"; do
       if [ "${BASENAME}" = "${pattern}" ]; then
@@ -160,6 +165,11 @@ if [ "${ACTION}" = "approve" ] && [ "${DOWNGRADED}" = "false" ]; then
       break
     fi
   done <<< "${PR_FILES}"
+
+  # Guard: empty input must not trigger a downgrade
+  if [ "${GOV_FILE_SEEN}" = "false" ]; then
+    ALL_GOVERNANCE=false
+  fi
 
   if [ "${ALL_GOVERNANCE}" = "true" ]; then
     echo "All changed files are governance documents — downgrading approve to comment"

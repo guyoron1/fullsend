@@ -108,8 +108,10 @@ GOVERNANCE_PATTERNS=("MAINTAINERS.md" "GOVERNANCE.md" "CODE_OF_CONDUCT.md" "SECU
 is_all_governance() {
   local files="$1"
   local all_gov=true
+  local file_seen=false
   while IFS= read -r file; do
     [ -z "${file}" ] && continue
+    file_seen=true
     local is_gov=false
     local basename="${file##*/}"
     for pattern in "${GOVERNANCE_PATTERNS[@]}"; do
@@ -123,6 +125,10 @@ is_all_governance() {
       break
     fi
   done <<< "${files}"
+  # Empty input must not count as "all governance"
+  if [ "${file_seen}" = "false" ]; then
+    all_gov=false
+  fi
   echo "${all_gov}"
 }
 
@@ -179,6 +185,10 @@ main.go" "false"
 # Non-governance only → not governance
 run_gov_test "gov-code-only" \
   "main.go" "false"
+
+# Empty input → not governance (fail-closed)
+run_gov_test "gov-empty-input" \
+  "" "false"
 
 # Approve + governance downgrade → requires-manual-review (label logic)
 run_test "approve-governance-downgrade" \
