@@ -15,6 +15,25 @@ Fullsend is a platform for fully autonomous agentic development for GitHub-hoste
 - This repository requires a [Developer Certificate of Origin (DCO)](https://developercertificate.org/). Human-proposed commits **must** be signed off: use `git commit -s` (or add `Signed-off-by: Your Name <email>` as a trailer). Human-driven agent sessions (e.g., using Claude Code locally) should also sign off — the human directing the session is the one certifying the DCO. **Autonomous agent commits are exempt** and must never supply the DCO with `-s` or with `Signed-off-by`. These agents commit using the GitHub App's bot identity, which the [Probot DCO app](https://github.com/apps/dco) auto-skips.
 - Never commit secrets (tokens, API keys, PEM keys, gcloud credentials) or sensitive data (GCP project names, service account identifiers, Model Armor template names, internal hostnames). Use environment variables with no defaults for sensitive values.
 
+## Agent definitions and skills
+
+Agent definitions, skills, and harness configs have moved to
+[`fullsend-ai/agents`](https://github.com/fullsend-ai/agents). The copies
+under `internal/scaffold/fullsend-repo/agents/` and
+`internal/scaffold/fullsend-repo/skills/` are deprecated and will be removed
+after their embed and test dependencies are migrated. Do not modify files
+under those directories — make changes in `fullsend-ai/agents` instead.
+
+The entire `internal/scaffold/fullsend-repo/` tree is embedded into the Go
+binary via `//go:embed all:fullsend-repo` in `scaffold.go`. Harness configs
+under `internal/scaffold/fullsend-repo/harness/` must remain in this
+repository because the CLI reads the embedded harness YAML to compute
+content hashes for integrity-checked base URLs (see
+`internal/scaffold/baseurl.go`). The `HarnessBaseURLWithHash` function
+constructs `raw.githubusercontent.com` URLs pointing to these same files,
+so they must exist both in the embed and at the served path. Edit harness
+configs in `fullsend-ai/agents` and keep these copies in sync.
+
 ## Go code
 
 **Mint function:** The mint Cloud Function source lives in two places that must stay in sync:
