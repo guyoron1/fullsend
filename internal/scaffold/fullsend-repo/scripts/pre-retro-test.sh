@@ -175,7 +175,7 @@ run_test_url_validation "valid-issue-url" \
 # Invalid URL → rejected.
 run_test_url_validation "invalid-url-rejected" \
   "https://example.com/not-github" \
-  "ORIGINATING_URL does not match expected pattern" \
+  "::error::ORIGINATING_URL does not match expected pattern" \
   1
 
 # Retro comment triggers on-demand message.
