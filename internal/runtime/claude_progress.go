@@ -32,6 +32,7 @@ type assistantMessage struct {
 type contentItem struct {
 	Type  string          `json:"type"`
 	Name  string          `json:"name"`
+	Text  string          `json:"text"`
 	Input json.RawMessage `json:"input"`
 }
 
@@ -48,13 +49,14 @@ var allowedTools = map[string]bool{
 	"Agent": true,
 }
 
-// progressParser reads NDJSON from Claude Code's stream-json output and emits
-// progress updates via the printer. It extracts tool names and safe context
-// (binary name for Bash, file path for Read/Write/Edit) without logging
-// potentially sensitive arguments.
+// progressParser reads NDJSON from an agent runtime's event stream and emits
+// progress updates via the printer. It uses the normalized event pipeline:
+// a claudeEventParser converts each stream-json line into AgentEvents, and
+// an EventRenderer formats them for display.
 func progressParser(r io.Reader, printer *ui.Printer, start time.Time, metrics *RunMetrics) error {
+	parser := &claudeEventParser{}
+	renderer := NewEventRenderer(printer, start, metrics)
 	br := bufio.NewReaderSize(r, 1024*1024)
-	isCI := os.Getenv("GITHUB_ACTIONS") == "true"
 
 	for {
 		line, isPrefix, err := br.ReadLine()
@@ -74,41 +76,9 @@ func progressParser(r io.Reader, printer *ui.Printer, start time.Time, metrics *
 			continue
 		}
 
-		var evt streamEvent
-		if jsonErr := json.Unmarshal(line, &evt); jsonErr != nil {
-			continue
+		for _, evt := range parser.ParseLine(line) {
+			renderer.Render(evt)
 		}
-
-		if evt.Type == "assistant" {
-			parseAssistantToolUse(line, printer, start, metrics, isCI)
-		}
-	}
-}
-
-func parseAssistantToolUse(line []byte, printer *ui.Printer, start time.Time, metrics *RunMetrics, isCI bool) {
-	var msg assistantMessage
-	if err := json.Unmarshal(line, &msg); err != nil {
-		return
-	}
-
-	var items []contentItem
-	if err := json.Unmarshal(msg.Content, &items); err != nil {
-		return
-	}
-
-	for _, item := range items {
-		if item.Type != "tool_use" {
-			continue
-		}
-		toolName := item.Name
-		var ctx string
-		if !allowedTools[toolName] {
-			toolName = "tool"
-		} else {
-			ctx = extractSafeContext(item.Name, item.Input)
-		}
-		count := metrics.ToolCalls.Add(1)
-		emitToolProgress(printer, toolName, ctx, start, count, isCI)
 	}
 }
 
