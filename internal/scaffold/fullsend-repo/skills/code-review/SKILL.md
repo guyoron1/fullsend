@@ -105,7 +105,8 @@ Examples of silent failures (escalate): string truncation due to
 delimiter mismatch, API returning a wrong-type object causing
 downstream lookups to silently 404, off-by-one that skips the last
 element without error, type coercion that rounds instead of erroring,
-regex that silently doesn't match, fallback path that is silently
+regex that silently doesn't match (causing the code to proceed with
+unprocessed input), fallback path that is silently
 inert due to an upstream assumption about input format.
 
 Examples of loud failures (no escalation needed): nil pointer

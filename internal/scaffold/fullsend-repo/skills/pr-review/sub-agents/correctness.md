@@ -72,7 +72,8 @@ Examples of silent failures (escalate):
   with no error signal
 - Off-by-one that skips the last element without error
 - Type coercion that rounds instead of erroring
-- Regex that silently doesn't match, causing a fallback to be skipped
+- Regex that silently doesn't match, causing the code to proceed with
+  unprocessed input
 - Fallback path that is silently inert (never triggers) due to an
   upstream assumption about input format
 
