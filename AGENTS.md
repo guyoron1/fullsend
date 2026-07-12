@@ -72,6 +72,10 @@ These rules apply whenever you touch `docs/ADRs/` or review a PR that does. Full
 
 **When reviewing PRs:** Flag substantial rewrites to Context, Decision, or Consequences on Accepted ADRs already on `main` as a policy violation. Allow minor annotations (cross-references, short notes, typo fixes), status updates, and supersession links. For brand-new ADR files on the PR branch, evaluate whether the recorded decision matches the diff — do not treat **Accepted** on a new file as a mistake if the ADR is ready for human review at merge.
 
+## Code review patterns
+
+**When reviewing PRs:** Flag inconsistent retry/backoff strategies within a single file or module as a low-severity finding. When a PR introduces or modifies a retry loop in a file that already contains one, note whether the strategies are consistent (e.g., additive vs exponential backoff) and ask the author to justify the divergence or harmonize.
+
 ## Key design decisions made
 
 - **Autonomy model:** Binary per-repo, with CODEOWNERS enforcing human approval on specific paths
