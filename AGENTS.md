@@ -46,6 +46,24 @@ The e2e tests require GitHub credentials. There are three ways to provide them:
 
 If only `E2E_GITHUB_USERNAME` and a password source are available, `make e2e-test` will automatically generate a session file before running tests. See `make help` for all available targets.
 
+### Secure HTTP clients
+
+**Use the `fetch` package.** `internal/fetch/` provides an SSRF-hardened HTTP client (`FetchURL`). New code that fetches external URLs should use it rather than building a custom `http.Client`.
+
+**If you must build a custom client**, these properties are required:
+
+- **HTTPS-only** — reject `http://` URLs.
+- **DNS pre-resolution with IP validation** — resolve the hostname and validate the IP using `netutil.IsInternal()` / `netutil.CheckIP()` from `internal/netutil/` to reject loopback, link-local, private, and other reserved addresses.
+- **IP-pinned `DialContext`** — use a custom `DialContext` that dials the pre-validated IP to prevent DNS rebinding between resolution and connection.
+- **Redirect blocking** — set `CheckRedirect` to block redirects entirely or validate that redirects stay HTTPS-only and pass IP validation.
+- **Explicit timeout** — 30 s default; never leave the zero value.
+- **Response body limit** — wrap response bodies with `io.LimitReader` (10 MB default).
+- **Domain allowlisting** — when the set of valid hosts is known, restrict to that set.
+
+**Canonical implementation:** `internal/fetch/fetch.go` (`FetchURL`) and `internal/netutil/ip.go` (`CheckIP`, `IsInternal`).
+
+**Prohibited patterns:** Do not use `http.Get`, `http.DefaultClient`, or `&http.Client{}` with no timeout or SSRF protections for any code that contacts URLs from configuration or user input.
+
 ## Forge abstraction
 
 All git forge operations (GitHub API calls, PR comments, issue creation, workflow dispatch, etc.) **must** go through the `forge.Client` interface defined in `internal/forge/forge.go`. This is a fundamental architectural rule — the codebase supports multiple forges (GitHub, GitLab, Forgejo) and direct coupling to any single forge breaks the abstraction.
