@@ -449,6 +449,50 @@ func TestSSRFValidator_DNSResolution(t *testing.T) {
 	})
 }
 
+func TestFormatFinding(t *testing.T) {
+	t.Run("standard finding", func(t *testing.T) {
+		f := Finding{
+			Scanner:  "secret_redactor",
+			Name:     "aws_key",
+			Severity: "critical",
+			Detail:   "AWS access key detected",
+		}
+		got := FormatFinding(f)
+		want := "[critical] aws_key: AWS access key detected"
+		assert.Equal(t, want, got)
+		// Name is used, not Scanner
+		assert.NotContains(t, got, "secret_redactor")
+	})
+
+	t.Run("empty fields", func(t *testing.T) {
+		f := Finding{}
+		got := FormatFinding(f)
+		assert.NotEmpty(t, got)
+		assert.Equal(t, "[] : ", got)
+	})
+}
+
+func TestLogFindings(t *testing.T) {
+	t.Run("multiple findings", func(t *testing.T) {
+		var buf strings.Builder
+		findings := []Finding{
+			{Severity: "high", Name: "ssrf", Detail: "potential SSRF"},
+			{Severity: "medium", Name: "injection", Detail: "possible injection"},
+		}
+		LogFindings(&buf, findings)
+		lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
+		assert.Equal(t, 2, len(lines))
+		assert.Equal(t, "[high] ssrf: potential SSRF", lines[0])
+		assert.Equal(t, "[medium] injection: possible injection", lines[1])
+	})
+
+	t.Run("empty findings", func(t *testing.T) {
+		var buf strings.Builder
+		LogFindings(&buf, nil)
+		assert.Empty(t, buf.String())
+	})
+}
+
 func hasFinding(r ScanResult, name string) bool {
 	for _, f := range r.Findings {
 		if f.Name == name {
