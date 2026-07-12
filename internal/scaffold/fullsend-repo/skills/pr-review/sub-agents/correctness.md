@@ -73,3 +73,39 @@ When reviewing technical documentation, verify:
 - **Edge case correctness** — Are described edge cases (depth/breadth
   limits, zero values, error conditions) handled correctly in the
   described logic?
+
+### CI path filter coverage gap
+
+When a PR modifies files under paths that are exercised by CI workflows
+using `paths:` or `paths-ignore:` trigger filters, check whether the
+modified paths are included in the relevant workflow's filter. A coverage
+gap means the CI workflow will not run on the PR even though the PR
+changes code that the workflow tests.
+
+**Procedure:**
+
+1. List modified files from the PR diff.
+2. Find all `.github/workflows/*.yml` files in the repository that use
+   `paths:` filters on `push` or `pull_request` (or `pull_request_target`)
+   triggers.
+3. For each path-filtered workflow, check whether any of the PR's modified
+   files fall outside the workflow's `paths:` filter but are plausibly
+   exercised by the workflow's test suite. Indicators that a modified file
+   is exercised by the workflow include:
+   - The file is imported or called by code that IS in the filter
+   - The file is in the same package as code in the filter
+   - The workflow runs tests (e.g., `go test`, `pytest`, `npm test`) that
+     cover the modified file's package
+4. If a gap is found, raise a **medium**-severity finding with category
+   `ci-coverage-gap`:
+   - List the modified file(s) not in the filter
+   - Name the workflow file and its `paths:` filter
+   - Recommend adding the missing path to the filter
+
+**When NOT to flag:**
+
+- The workflow uses broad globs that already cover the modified files
+  (e.g., `**/*.go` covers all Go files)
+- The workflow has no `paths:` filter (runs on all changes)
+- The modified file is clearly unrelated to what the workflow tests
+  (e.g., a docs change does not need to be in an e2e test filter)
