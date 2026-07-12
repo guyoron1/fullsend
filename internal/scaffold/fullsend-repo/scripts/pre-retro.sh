@@ -58,6 +58,7 @@ prefetch_context() {
     echo "::warning::GH_TOKEN not set — skipping context prefetch"
     return 1
   fi
+  echo "::add-mask::${GH_TOKEN}"
 
   local url="${ORIGINATING_URL}"
   local repo number url_type

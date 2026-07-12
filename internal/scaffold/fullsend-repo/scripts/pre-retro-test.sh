@@ -112,6 +112,33 @@ FAILSCRIPT
   echo "${mock_bin}"
 }
 
+# build_partial_failing_mock creates a gh binary where `gh pr view` succeeds
+# but all `gh api` calls fail — exercises the per-endpoint fallback paths.
+build_partial_failing_mock() {
+  local pr_meta="${1}"
+  local mock_bin="${TMPDIR}/bin-partial"
+  rm -rf "${mock_bin}"
+  mkdir -p "${mock_bin}"
+
+  printf '%s' "${pr_meta}" > "${TMPDIR}/pr-meta-partial.json"
+
+  cat > "${mock_bin}/gh" <<MOCKSCRIPT
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "\$1" == "pr" && "\$2" == "view" ]]; then
+  cat "${TMPDIR}/pr-meta-partial.json"
+  exit 0
+fi
+
+echo "gh api: server error" >&2
+exit 1
+MOCKSCRIPT
+
+  chmod +x "${mock_bin}/gh"
+  echo "${mock_bin}"
+}
+
 run_test() {
   local test_name="$1"
   shift
@@ -288,6 +315,61 @@ test_repo_parsed_from_url() {
   [[ "${source_repo}" == "org/repo" ]] || { echo "    source_repo=${source_repo}, expected org/repo"; return 1; }
 }
 
+test_partial_api_failure_writes_output() {
+  local mock_bin workspace
+  mock_bin="$(build_partial_failing_mock "${PR_META}")"
+  workspace="${TMPDIR}/ws-partial"
+  mkdir -p "${workspace}"
+
+  ORIGINATING_URL="https://github.com/org/repo/pull/42" \
+  REPO_FULL_NAME="org/repo" \
+  GH_TOKEN="test-token" \
+  GITHUB_WORKSPACE="${workspace}" \
+  PATH="${mock_bin}:${PATH}" \
+    bash "${SCRIPT}" > /dev/null 2>&1
+
+  # Output file should exist — PR metadata succeeded, API failures fell back to []
+  [[ -f "${workspace}/pr-context.json" ]] || { echo "    pr-context.json not created"; return 1; }
+  jq empty "${workspace}/pr-context.json" || { echo "    Invalid JSON"; return 1; }
+
+  # PR metadata present
+  local pr_title
+  pr_title=$(jq -r '.pr.title' "${workspace}/pr-context.json")
+  [[ "${pr_title}" == "Fix widget" ]] || { echo "    pr.title=${pr_title}, expected Fix widget"; return 1; }
+
+  # Comments and reviews fell back to empty arrays
+  local comment_count review_count
+  comment_count=$(jq '.comments | length' "${workspace}/pr-context.json")
+  review_count=$(jq '.reviews | length' "${workspace}/pr-context.json")
+  [[ "${comment_count}" == "0" ]] || { echo "    comments count=${comment_count}, expected 0"; return 1; }
+  [[ "${review_count}" == "0" ]] || { echo "    reviews count=${review_count}, expected 0"; return 1; }
+}
+
+test_size_limit_enforcement() {
+  local mock_bin workspace
+  mock_bin="$(build_mock "${PR_META}" "${COMMENTS}" "${REVIEWS}" "${WORKFLOW_RUNS}")"
+  workspace="${TMPDIR}/ws-size"
+  mkdir -p "${workspace}"
+
+  # ponytail: mock wc to report >5MB instead of generating a truly huge payload
+  # (jq --argjson hits ARG_MAX before we can reach the size check with real data)
+  cat > "${mock_bin}/wc" <<'WCMOCK'
+#!/usr/bin/env bash
+echo "6000000"
+WCMOCK
+  chmod +x "${mock_bin}/wc"
+
+  ORIGINATING_URL="https://github.com/org/repo/pull/42" \
+  REPO_FULL_NAME="org/repo" \
+  GH_TOKEN="test-token" \
+  GITHUB_WORKSPACE="${workspace}" \
+  PATH="${mock_bin}:${PATH}" \
+    bash "${SCRIPT}" > /dev/null 2>&1 || true
+
+  # File should have been removed — mock wc reports >5MB
+  [[ ! -f "${workspace}/pr-context.json" ]] || { echo "    pr-context.json should be removed (over 5MB limit)"; return 1; }
+}
+
 # --- Run ---
 
 run_test "PR prefetch produces valid context JSON" test_pr_prefetch
@@ -297,6 +379,8 @@ run_test "API failure is non-blocking" test_api_failure_non_blocking
 run_test "URL validation still rejects bad URLs" test_url_validation_still_works
 run_test "Missing ORIGINATING_URL fails" test_missing_originating_url_fails
 run_test "Repo parsed from URL when REPO_FULL_NAME empty" test_repo_parsed_from_url
+run_test "Partial API failure still writes output with fallbacks" test_partial_api_failure_writes_output
+run_test "Size limit enforcement removes oversized file" test_size_limit_enforcement
 
 echo ""
 if [[ "${FAILURES}" -gt 0 ]]; then
