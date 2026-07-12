@@ -39,6 +39,7 @@
 #   FIX_ITERATION     — current iteration count
 #   ITERATION_CAP     — max iterations (default: 5)
 #   PUSH_TOKEN_SOURCE — "github-app" (for logging)
+#   GITHUB_WORKSPACE  — workspace root (used for companion script fallback)
 #
 # Exit codes:
 #   0  — branch pushed, PR updated
@@ -309,18 +310,13 @@ export GH_TOKEN="${PUSH_TOKEN}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROCESS_SCRIPT="${SCRIPT_DIR}/process-fix-result.py"
 if [ ! -f "${PROCESS_SCRIPT}" ]; then
-  # Fallback: workspace scripts directory (per-org install)
+  # Fallback: workspace scripts directory. The "Prepare workspace" step in
+  # the workflow merges upstream defaults and customizations into scripts/,
+  # so this single path covers both per-org and per-repo install modes.
   if [ -f "${GITHUB_WORKSPACE:-}/scripts/process-fix-result.py" ]; then
-    echo "::warning::Companion script not co-located at ${SCRIPT_DIR} — using workspace fallback: ${GITHUB_WORKSPACE}/scripts/"
-    SCRIPT_DIR="${GITHUB_WORKSPACE}/scripts"
+    echo "::warning::Companion script not co-located at ${SCRIPT_DIR} — using workspace fallback: ${GITHUB_WORKSPACE:-}/scripts/"
+    SCRIPT_DIR="${GITHUB_WORKSPACE:-}/scripts"
     PROCESS_SCRIPT="${SCRIPT_DIR}/process-fix-result.py"
-  # Fallback: workspace .fullsend/scripts directory (per-repo install)
-  elif [ -f "${GITHUB_WORKSPACE:-}/.fullsend/scripts/process-fix-result.py" ]; then
-    echo "::warning::Companion script not co-located at ${SCRIPT_DIR} — using workspace fallback: ${GITHUB_WORKSPACE}/.fullsend/scripts/"
-    SCRIPT_DIR="${GITHUB_WORKSPACE}/.fullsend/scripts"
-    PROCESS_SCRIPT="${SCRIPT_DIR}/process-fix-result.py"
-  else
-    echo "::warning::process-fix-result.py not found at ${SCRIPT_DIR} or workspace fallback paths"
   fi
 fi
 
