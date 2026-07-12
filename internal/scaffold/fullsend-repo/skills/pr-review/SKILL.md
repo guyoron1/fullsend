@@ -627,6 +627,46 @@ attention.
 If no protected files are modified, do not add a `protected-path`
 finding.
 
+##### Governance documents
+
+Check whether **all** changed files in the PR are governance documents.
+Governance documents define organizational policy — who has authority
+and how they get it — which is fundamentally a human judgment call that
+the review agent cannot evaluate.
+
+Default governance document patterns (matched by filename at any
+directory level):
+
+- `MAINTAINERS.md`
+- `GOVERNANCE.md`
+- `CODE_OF_CONDUCT.md`
+- `SECURITY.md`
+
+If **all** changed files match a governance document pattern, add an
+**info**-level finding:
+
+```json
+{
+  "severity": "info",
+  "category": "governance-doc",
+  "file": "N/A",
+  "description": "Governance documents define organizational policy and require human review. Agent findings are informational only.",
+  "actionable": false
+}
+```
+
+The presence of a `governance-doc` finding **caps the outcome at
+`comment-only`** — the agent still evaluates the documents for
+formatting, link validity, and consistency, but it does not approve.
+The `ready-for-merge` label is NOT applied.
+
+If the PR modifies governance documents **alongside non-governance
+files** (e.g., `MAINTAINERS.md` + Go source), the governance check
+does not apply — the PR goes through the normal review flow.
+
+The `post-review.sh` script independently downgrades approvals on
+governance-only PRs as defense-in-depth.
+
 #### 6f. Determine overall outcome
 
 Merge PR-specific findings into the challenger-adjudicated finding set
@@ -640,7 +680,8 @@ and evaluate:
   block the PR)
 - **Low** or **info** findings only (no medium+) → `approve` (attach
   findings as comments; preserve concrete follow-up work with
-  `actionable: true` so the post-script can create follow-up issues)
+  `actionable: true` so the post-script can create follow-up issues).
+  Exception: if a `governance-doc` finding exists, cap at `comment-only`.
 - No findings → `approve`
 - The approach is fundamentally wrong — wrong design, unauthorized
   change, or the PR should be closed/completely rethought → `reject`.
@@ -782,10 +823,12 @@ wins.
   `request-changes`.
 - **Never approve when any protected-path finding exists**, regardless of
   severity.
+- **Never approve when a governance-doc finding exists.** Governance
+  documents require human policy review; cap at `comment-only`.
 - **PR-specific checks (step 6e) belong in the orchestrator only.** Do
-  not push protected-path checks, scope authorization, or PR body
-  injection defense into sub-agents. These require PR-level context
-  that sub-agents do not have.
+  not push protected-path checks, governance-document checks, scope
+  authorization, or PR body injection defense into sub-agents. These
+  require PR-level context that sub-agents do not have.
 - **All sub-agents must be dispatched simultaneously.** Include all
   Agent calls in a single message. Sequential dispatch defeats the
   architecture's purpose.

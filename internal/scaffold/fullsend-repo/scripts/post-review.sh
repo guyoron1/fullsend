@@ -136,6 +136,50 @@ if [ "${ACTION}" = "approve" ]; then
 fi
 
 # ---------------------------------------------------------------------------
+# Governance-document check: if ALL changed files are governance documents,
+# downgrade "approve" to "comment" — organizational policy requires human
+# review. Defense-in-depth for the review skill's governance-doc check.
+# ---------------------------------------------------------------------------
+GOVERNANCE_PATTERNS=("MAINTAINERS.md" "GOVERNANCE.md" "CODE_OF_CONDUCT.md" "SECURITY.md")
+
+if [ "${ACTION}" = "approve" ] && [ "${DOWNGRADED}" = "false" ]; then
+  # PR_FILES already set from the protected-path check above
+  ALL_GOVERNANCE=true
+  while IFS= read -r file; do
+    [ -z "${file}" ] && continue
+    IS_GOVERNANCE=false
+    BASENAME="${file##*/}"
+    for pattern in "${GOVERNANCE_PATTERNS[@]}"; do
+      if [ "${BASENAME}" = "${pattern}" ]; then
+        IS_GOVERNANCE=true
+        break
+      fi
+    done
+    if [ "${IS_GOVERNANCE}" = "false" ]; then
+      ALL_GOVERNANCE=false
+      break
+    fi
+  done <<< "${PR_FILES}"
+
+  if [ "${ALL_GOVERNANCE}" = "true" ]; then
+    echo "All changed files are governance documents — downgrading approve to comment"
+
+    GOV_NOTICE=$'\n\n---\n\n'
+    GOV_NOTICE+=$'> **Governance documents detected** — this PR modifies only governance\n'
+    GOV_NOTICE+=$'> documents that define organizational policy. The review agent cannot\n'
+    GOV_NOTICE+=$'> approve governance-only PRs. A human reviewer must approve this PR.\n'
+
+    MODIFIED_RESULT=$(mktemp)
+    trap 'rm -f "${MODIFIED_RESULT}"' EXIT
+    jq --arg notice "${GOV_NOTICE}" \
+      '.action = "comment" | .body = (.body + $notice)' \
+      "${RESULT_FILE}" > "${MODIFIED_RESULT}"
+    RESULT_FILE="${MODIFIED_RESULT}"
+    DOWNGRADED=true
+  fi
+fi
+
+# ---------------------------------------------------------------------------
 # Post the review. Exit code 10 = stale-head: the PR HEAD moved after the
 # agent reviewed it. When this happens, post a /fs-review comment to
 # re-dispatch a fresh review for the current HEAD.

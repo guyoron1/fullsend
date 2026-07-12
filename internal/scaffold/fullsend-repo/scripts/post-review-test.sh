@@ -99,6 +99,91 @@ run_test "failure-action-no-label" \
 run_test "unknown-action-no-label" \
   "banana" "false" "none"
 
+# ---------------------------------------------------------------------------
+# Governance-document file matching — mirrors the logic in post-review.sh
+# that checks whether ALL changed files are governance documents.
+# ---------------------------------------------------------------------------
+GOVERNANCE_PATTERNS=("MAINTAINERS.md" "GOVERNANCE.md" "CODE_OF_CONDUCT.md" "SECURITY.md")
+
+is_all_governance() {
+  local files="$1"
+  local all_gov=true
+  while IFS= read -r file; do
+    [ -z "${file}" ] && continue
+    local is_gov=false
+    local basename="${file##*/}"
+    for pattern in "${GOVERNANCE_PATTERNS[@]}"; do
+      if [ "${basename}" = "${pattern}" ]; then
+        is_gov=true
+        break
+      fi
+    done
+    if [ "${is_gov}" = "false" ]; then
+      all_gov=false
+      break
+    fi
+  done <<< "${files}"
+  echo "${all_gov}"
+}
+
+run_gov_test() {
+  local test_name="$1"
+  local files="$2"
+  local expected="$3"
+
+  local actual
+  actual="$(is_all_governance "${files}")"
+
+  if [ "${actual}" != "${expected}" ]; then
+    echo "FAIL: ${test_name}"
+    echo "  files:    '${files}'"
+    echo "  expected: '${expected}'"
+    echo "  actual:   '${actual}'"
+    FAILURES=$((FAILURES + 1))
+    return
+  fi
+
+  echo "PASS: ${test_name}"
+}
+
+# Only MAINTAINERS.md → governance
+run_gov_test "gov-maintainers-only" \
+  "MAINTAINERS.md" "true"
+
+# Only GOVERNANCE.md → governance
+run_gov_test "gov-governance-only" \
+  "GOVERNANCE.md" "true"
+
+# Only CODE_OF_CONDUCT.md → governance
+run_gov_test "gov-coc-only" \
+  "CODE_OF_CONDUCT.md" "true"
+
+# Only SECURITY.md → governance
+run_gov_test "gov-security-only" \
+  "SECURITY.md" "true"
+
+# Multiple governance files → governance
+run_gov_test "gov-multiple-governance" \
+  "MAINTAINERS.md
+GOVERNANCE.md" "true"
+
+# Governance file at nested path → governance
+run_gov_test "gov-nested-path" \
+  "docs/MAINTAINERS.md" "true"
+
+# Governance + non-governance → not governance-only
+run_gov_test "gov-mixed-with-code" \
+  "MAINTAINERS.md
+main.go" "false"
+
+# Non-governance only → not governance
+run_gov_test "gov-code-only" \
+  "main.go" "false"
+
+# Approve + governance downgrade → requires-manual-review (label logic)
+run_test "approve-governance-downgrade" \
+  "approve" "true" "requires-manual-review"
+
 # --- Summary ---
 
 echo ""
