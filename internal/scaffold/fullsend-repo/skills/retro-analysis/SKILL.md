@@ -139,6 +139,11 @@ gh api "search/issues?q=repo:<target_repo>+is:issue+is:open+in:title+%22Evidence
 Replace `<target_repo>` with the proposal's target repository and `N`
 with the parent issue number.
 
+If the count query fails, returns a non-numeric result, or the
+subagent errors out, treat the count as >= 5 (fail closed) and skip
+the evidence proposal. Do not file evidence when the cap cannot be
+verified.
+
 **If the count is >= 5:**
 
 1. **Skip the evidence proposal entirely.** Do not include it in the
@@ -159,6 +164,12 @@ Example summary note:
 normally.
 
 Only open evidence issues count toward the cap — closed issues do not.
+
+**Concurrency note:** Two retro runs triggered by different PRs can
+both query the count before either files, causing both to see the same
+value and potentially exceeding the cap by one. This is an accepted
+limitation — the concurrency group in `retro.yml` limits the window,
+and a brief overshoot does not meaningfully harm the issue tracker.
 
 ## Localization guidance
 
