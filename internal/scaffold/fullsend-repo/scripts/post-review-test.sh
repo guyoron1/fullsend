@@ -99,6 +99,108 @@ run_test "failure-action-no-label" \
 run_test "unknown-action-no-label" \
   "banana" "false" "none"
 
+# ---------------------------------------------------------------------------
+# Governance file-matching logic — reimplements the governance-document check
+# from post-review.sh so we can test it without network access.
+#
+# Arguments:
+#   $1 — PR_FILES (newline-separated list of changed file paths)
+#
+# Prints "true" if ALL files are governance documents, "false" otherwise.
+# ---------------------------------------------------------------------------
+is_all_governance() {
+  local pr_files="$1"
+
+  local GOVERNANCE_DOC_PATTERNS=(
+    "MAINTAINERS.md"
+    "GOVERNANCE.md"
+    "CODE_OF_CONDUCT.md"
+    "SECURITY.md"
+  )
+
+  local ALL_GOVERNANCE=true
+  while IFS= read -r file; do
+    [ -z "${file}" ] && continue
+    local BASENAME
+    BASENAME=$(basename "${file}")
+    local IS_GOV=false
+    for pattern in "${GOVERNANCE_DOC_PATTERNS[@]}"; do
+      if [ "${BASENAME}" = "${pattern}" ]; then
+        IS_GOV=true
+        break
+      fi
+    done
+    if [ "${IS_GOV}" = "false" ]; then
+      ALL_GOVERNANCE=false
+      break
+    fi
+  done <<< "${pr_files}"
+
+  echo "${ALL_GOVERNANCE}"
+}
+
+run_gov_test() {
+  local test_name="$1"
+  local pr_files="$2"
+  local expected="$3"
+
+  local actual
+  actual="$(is_all_governance "${pr_files}")"
+
+  if [ "${actual}" != "${expected}" ]; then
+    echo "FAIL: ${test_name}"
+    echo "  files:    '${pr_files}'"
+    echo "  expected: '${expected}'"
+    echo "  actual:   '${actual}'"
+    FAILURES=$((FAILURES + 1))
+    return
+  fi
+
+  echo "PASS: ${test_name}"
+}
+
+# --- Governance file-matching test cases ---
+
+# Single governance file → all governance
+run_gov_test "single-governance-file" \
+  "GOVERNANCE.md" "true"
+
+# All four governance files → all governance
+run_gov_test "all-four-governance-files" \
+  "MAINTAINERS.md
+GOVERNANCE.md
+CODE_OF_CONDUCT.md
+SECURITY.md" "true"
+
+# Governance file in subdirectory → matches via basename
+run_gov_test "governance-in-subdirectory" \
+  "docs/GOVERNANCE.md" "true"
+
+run_gov_test "security-in-subdirectory" \
+  "subdir/SECURITY.md" "true"
+
+# Non-governance file → not all governance
+run_gov_test "non-governance-file" \
+  "README.md" "false"
+
+# Mixed governance and non-governance → not all governance
+run_gov_test "mixed-governance-and-code" \
+  "GOVERNANCE.md
+src/main.go" "false"
+
+# Substring match should NOT trigger (MY_GOVERNANCE.md ≠ GOVERNANCE.md)
+run_gov_test "substring-no-match" \
+  "MY_GOVERNANCE.md" "false"
+
+# Case-sensitive: lowercase should not match
+run_gov_test "case-sensitive-no-match" \
+  "governance.md" "false"
+
+# Multiple governance files in subdirectories → all governance
+run_gov_test "multiple-governance-in-subdirs" \
+  "docs/GOVERNANCE.md
+.github/SECURITY.md" "true"
+
 # --- Summary ---
 
 echo ""
