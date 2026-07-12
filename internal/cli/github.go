@@ -917,7 +917,7 @@ func runGitHubUninstall(ctx context.Context, client forge.Client, printer *ui.Pr
 	} else {
 		// Can't check — fall back to showing all of them.
 		if forge.IsClassicPATForbidden(listErr) {
-			printer.StepWarn(classicPATHint(fmt.Errorf("listing installations: %w", listErr)).Error())
+			printer.StepWarn("Classic PAT rejected by organization policy; showing all apps")
 		} else {
 			printer.StepWarn("Could not verify which apps exist; showing all")
 		}

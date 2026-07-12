@@ -2218,6 +2218,7 @@ func runEnableRepos(ctx context.Context, client forge.Client, printer *ui.Printe
 		allOrgRepos, err = client.ListOrgRepos(ctx, org)
 		if err != nil {
 			if forge.IsClassicPATForbidden(err) {
+				printer.StepFail("Classic PAT rejected by organization policy")
 				return classicPATHint(fmt.Errorf("listing org repos: %w", err))
 			}
 			printer.StepFail("Failed to list organization repositories")
@@ -2240,6 +2241,7 @@ func runEnableRepos(ctx context.Context, client forge.Client, printer *ui.Printe
 		allOrgRepos, err = client.ListOrgRepos(ctx, org)
 		if err != nil {
 			if forge.IsClassicPATForbidden(err) {
+				printer.StepFail("Classic PAT rejected by organization policy")
 				return classicPATHint(fmt.Errorf("listing org repos: %w", err))
 			}
 			printer.StepFail("Failed to list organization repositories")
@@ -2474,7 +2476,11 @@ func runDisableRepos(ctx context.Context, client forge.Client, printer *ui.Print
 	if cfg.Dispatch.Mode == "oidc-mint" {
 		allOrgRepos, listErr := client.ListOrgRepos(ctx, org)
 		if listErr != nil {
-			printer.StepWarn(fmt.Sprintf("could not list org repos for variable sync: %v", listErr))
+			if forge.IsClassicPATForbidden(listErr) {
+				printer.StepWarn("Classic PAT rejected; skipping variable visibility sync")
+			} else {
+				printer.StepWarn(fmt.Sprintf("could not list org repos for variable sync: %v", listErr))
+			}
 		} else {
 			syncOrgVariableVisibility(ctx, client, printer, org, cfg, allOrgRepos)
 		}

@@ -810,7 +810,7 @@ func isAlreadyExistsError(apiErr *APIError) bool {
 // isClassicPATForbiddenError returns true when the API error indicates
 // that the organization blocks classic personal access tokens. GitHub
 // returns a 403 with a message containing "forbids access via a
-// personal access token (classic)" in this case.
+// personal access token" in this case.
 func isClassicPATForbiddenError(apiErr *APIError) bool {
 	if apiErr.StatusCode != http.StatusForbidden {
 		return false

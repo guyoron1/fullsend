@@ -2235,3 +2235,19 @@ func TestApplyPerRepoScaffold_ProtectedBranch_BranchUpToDate(t *testing.T) {
 
 	assert.Contains(t, buf.String(), "up to date")
 }
+
+func TestClassicPATHint(t *testing.T) {
+	t.Run("wraps classic PAT error with remediation", func(t *testing.T) {
+		inner := fmt.Errorf("listing org repos: %w", forge.ErrClassicPATForbidden)
+		got := classicPATHint(inner)
+		assert.ErrorIs(t, got, forge.ErrClassicPATForbidden)
+		assert.Contains(t, got.Error(), "fine-grained personal access token")
+		assert.Contains(t, got.Error(), "GH_TOKEN")
+	})
+
+	t.Run("passes through non-PAT error unchanged", func(t *testing.T) {
+		inner := fmt.Errorf("listing org repos: connection refused")
+		got := classicPATHint(inner)
+		assert.Equal(t, inner, got)
+	})
+}
