@@ -123,6 +123,43 @@ Use multiple searches with different keyword combinations if the first returns n
 
 When skipping, note the duplicate in your `summary` field so the human understands what was filtered and why.
 
+### Evidence issue cap
+
+When a proposal adds evidence to an existing parent issue (i.e., the
+proposal title follows the pattern `Evidence for #N`), check how many
+open evidence issues already exist for that parent before filing.
+
+Dispatch a subagent to count existing evidence issues:
+
+```bash
+gh api "search/issues?q=repo:<target_repo>+is:issue+is:open+in:title+%22Evidence+for+%23N%22&per_page=1" \
+  --jq '.total_count'
+```
+
+Replace `<target_repo>` with the proposal's target repository and `N`
+with the parent issue number.
+
+**If the count is >= 5:**
+
+1. **Skip the evidence proposal entirely.** Do not include it in the
+   `proposals` array.
+2. **Note the cap in your summary.** Mention that the pattern is
+   already well-documented with sufficient data points. Include the
+   parent issue number and the current PR/issue as an additional data
+   point so the information is not lost — it just does not warrant a
+   new issue.
+
+Example summary note:
+
+> Pattern for #N is well-documented (≥5 evidence issues). This
+> PR adds another data point but does not warrant a new evidence
+> issue.
+
+**If the count is < 5:** proceed with filing the evidence proposal
+normally.
+
+Only open evidence issues count toward the cap — closed issues do not.
+
 ## Localization guidance
 
 When deciding where a proposed change belongs:
