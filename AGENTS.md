@@ -46,6 +46,20 @@ The e2e tests require GitHub credentials. There are three ways to provide them:
 
 If only `E2E_GITHUB_USERNAME` and a password source are available, `make e2e-test` will automatically generate a session file before running tests. See `make help` for all available targets.
 
+### Secure HTTP clients
+
+Any new `http.Client` that fetches external or user-supplied URLs **must** include all of the following protections:
+
+1. **SSRF-safe dialer.** Use a custom `DialContext` that resolves the hostname and checks every returned IP with `netutil.CheckIP` (`internal/netutil/ip.go`) before connecting. Reject loopback, private (RFC 1918), link-local, and other reserved addresses. Fail closed — if DNS resolution fails, do not connect.
+2. **HTTPS only.** Reject `http://` URLs. If the client follows redirects, validate that every redirect target also uses HTTPS.
+3. **No proxy.** Set `Transport.Proxy = nil` to prevent the client from honoring `HTTP_PROXY`/`HTTPS_PROXY` environment variables, which an attacker could use to redirect traffic.
+4. **Explicit timeout.** Set `http.Client.Timeout` (30 s default). Never use `http.DefaultClient` or `http.Get` — both have no timeout.
+5. **Response size limit.** Wrap the response body with `io.LimitReader` (10 MB default) to prevent memory exhaustion from malicious or unexpectedly large responses.
+
+See `internal/fetch/fetch.go` for the canonical SSRF-hardened HTTP client (`FetchURL` / `FetchPolicy`) that implements all five properties. See `internal/netutil/ip.go` for the `CheckIP` implementation and `internal/security/ssrf.go` for the URL-level SSRF validator.
+
+**When reviewing PRs:** Flag any new `http.Get`, `http.DefaultClient`, or `http.Client{}` without a custom transport and timeout as a medium-severity finding when the client fetches external URLs.
+
 ## Forge abstraction
 
 All git forge operations (GitHub API calls, PR comments, issue creation, workflow dispatch, etc.) **must** go through the `forge.Client` interface defined in `internal/forge/forge.go`. This is a fundamental architectural rule — the codebase supports multiple forges (GitHub, GitLab, Forgejo) and direct coupling to any single forge breaks the abstraction.
