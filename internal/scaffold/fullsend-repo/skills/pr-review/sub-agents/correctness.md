@@ -77,10 +77,10 @@ When reviewing technical documentation, verify:
 ### CI path filter coverage gap
 
 When a PR modifies files under paths that are exercised by CI workflows
-using `paths:` or `paths-ignore:` trigger filters, check whether the
-modified paths are included in the relevant workflow's filter. A coverage
-gap means the CI workflow will not run on the PR even though the PR
-changes code that the workflow tests.
+using `paths:` trigger filters, check whether the modified paths are
+included in the relevant workflow's filter. A coverage gap means the CI
+workflow will not run on the PR even though the PR changes code that the
+workflow tests.
 
 **Procedure:**
 
