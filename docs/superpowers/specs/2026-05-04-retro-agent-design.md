@@ -37,8 +37,9 @@ The retro agent follows the standard harness structure (ADR 0024).
 | `model` | Configurable (same options as other agents) |
 | `policy` | Read-only sandbox with network access for GitHub API |
 | `skills` | `finding-agent-runs`, future improvement pattern library |
-| `pre_script` | Assembles trigger context into `agent_input` |
+| `pre_script` | Validates inputs, prefetches PR context to `pr-context.json` |
 | `post_script` | Files issues and posts summary comment |
+| `host_files` | `pr-context.json` (optional, mounted from `$RUNNER_TEMP`) |
 | `agent_input` | Directory with trigger context files |
 | `timeout_minutes` | Generous (retro explores deeply with subagents) |
 
@@ -54,15 +55,17 @@ The sandbox and post-script share a single minted token with `issues:write` and 
 
 ## Input Assembly
 
-### Pre-script (deterministic, minimal)
+### Pre-script (deterministic, prefetch for resilience)
 
-The pre-script collects only the trigger context and writes it to the `agent_input` directory:
+The pre-script validates inputs and writes trigger context to the `agent_input` directory:
 
 - **Originating URL:** The PR or issue that triggered the retro
 - **Comment text:** The `/fs-retro` comment, if on-demand (empty for automatic triggers)
 - **Repo metadata:** Org name, repo name, `.fullsend` repo location
 
-The pre-script does not attempt to gather logs, traces, or workflow history. That is the agent's job.
+For PR triggers, the pre-script also prefetches core PR data from the GitHub API and writes it to `pr-context.json`. This runs on the host where `GH_TOKEN` and network access are reliable, providing a fallback if the sandbox token is invalid or network-restricted. The prefetch covers PR metadata, comments, reviews, and recent workflow run status. Each fetch degrades gracefully on failure — partial data is still written.
+
+Full exploration (workflow traces, artifacts, cross-PR pattern analysis) remains the agent's responsibility at runtime.
 
 ### Agent runtime (LLM-driven exploration)
 
