@@ -122,7 +122,7 @@ Critical findings exit non-zero. Non-critical findings are sanitized.`,
 
 			// Print findings
 			for _, f := range allFindings {
-				printer.StepWarn(fmt.Sprintf("[%s] %s: %s", f.Severity, f.Scanner, f.Detail))
+				printer.StepWarn(security.FormatFinding(f))
 			}
 
 			// Generate trace ID for finding correlation.
@@ -255,7 +255,7 @@ Only scans known context filenames (AGENTS.md, CLAUDE.md, .cursorrules, etc.).`,
 				if len(normResult.Findings)+len(injResult.Findings) > 0 {
 					printer.StepWarn(fmt.Sprintf("%s: %d finding(s)", path, len(normResult.Findings)+len(injResult.Findings)))
 					for _, f := range append(normResult.Findings, injResult.Findings...) {
-						printer.StepWarn(fmt.Sprintf("  [%s] %s: %s", f.Severity, f.Name, f.Detail))
+						printer.StepWarn(fmt.Sprintf("  %s", security.FormatFinding(f)))
 					}
 				} else {
 					printer.StepDone(fmt.Sprintf("%s: clean", path))

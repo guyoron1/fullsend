@@ -449,6 +449,24 @@ func TestSSRFValidator_DNSResolution(t *testing.T) {
 	})
 }
 
+func TestFormatFinding(t *testing.T) {
+	t.Run("standard finding", func(t *testing.T) {
+		f := Finding{Severity: "high", Name: "secret-leak", Detail: "API key found in source"}
+		got := FormatFinding(f)
+		assert.Equal(t, "[high] secret-leak: API key found in source", got)
+	})
+	t.Run("critical severity", func(t *testing.T) {
+		f := Finding{Severity: "critical", Name: "prompt_injection", Detail: "ignore instructions pattern"}
+		got := FormatFinding(f)
+		assert.Equal(t, "[critical] prompt_injection: ignore instructions pattern", got)
+	})
+	t.Run("empty fields", func(t *testing.T) {
+		f := Finding{}
+		got := FormatFinding(f)
+		assert.Equal(t, "[] : ", got)
+	})
+}
+
 func hasFinding(r ScanResult, name string) bool {
 	for _, f := range r.Findings {
 		if f.Name == name {
