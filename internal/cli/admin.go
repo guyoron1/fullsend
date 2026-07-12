@@ -2543,51 +2543,27 @@ func saveRepoConfig(ctx context.Context, client forge.Client, printer *ui.Printe
 // config.yaml push, waits for it to complete, and prints any PR URLs from its
 // annotations.
 func awaitRepoMaintenance(ctx context.Context, client forge.Client, printer *ui.Printer, org string, dispatchTime time.Time) {
-	awaitRepoMaintenanceWithInterval(ctx, client, printer, org, dispatchTime, 5*time.Second, 36)
+	awaitRepoMaintenanceWithInterval(ctx, client, printer, org, dispatchTime, 2*time.Second, 14)
 }
 
 func awaitRepoMaintenanceWithInterval(ctx context.Context, client forge.Client, printer *ui.Printer, org string, dispatchTime time.Time, pollInterval time.Duration, maxAttempts int) {
 	printer.Blank()
 	printer.StepStart("Watching repo-maintenance workflow")
 
-	// Poll for a workflow run created after dispatchTime.
-	var run *forge.WorkflowRun
-	for attempt := range maxAttempts {
-		select {
-		case <-ctx.Done():
+	cfg := layers.WorkflowPollConfig{
+		InitialInterval: pollInterval,
+		MaxInterval:     15 * time.Second,
+		MaxAttempts:     maxAttempts,
+	}
+	run, err := layers.AwaitWorkflowCompletion(ctx, client, org, forge.ConfigRepoName, "repo-maintenance.yml", dispatchTime, cfg, func(msg string) {
+		printer.StepInfo(msg)
+	})
+
+	if err != nil {
+		if ctx.Err() != nil {
 			printer.StepWarn("context cancelled while waiting for workflow")
 			return
-		case <-time.After(pollInterval):
 		}
-
-		runs, err := client.ListWorkflowRuns(ctx, org, forge.ConfigRepoName, "repo-maintenance.yml")
-		if err != nil {
-			printer.StepInfo(fmt.Sprintf("waiting for workflow run (attempt %d)...", attempt+1))
-			continue
-		}
-
-		for i := range runs {
-			r := &runs[i]
-			runTime, parseErr := time.Parse(time.RFC3339, r.CreatedAt)
-			if parseErr != nil {
-				continue
-			}
-			if runTime.Before(dispatchTime) {
-				continue
-			}
-			if r.Status == "completed" {
-				run = r
-				break
-			}
-			printer.StepInfo(fmt.Sprintf("workflow run: %s (%s)", r.HTMLURL, r.Status))
-			break // found our run, keep waiting
-		}
-		if run != nil {
-			break
-		}
-	}
-
-	if run == nil {
 		printer.StepWarn("timed out waiting for repo-maintenance workflow")
 		printer.StepInfo("check the repo-maintenance workflow in .fullsend for results")
 		return
