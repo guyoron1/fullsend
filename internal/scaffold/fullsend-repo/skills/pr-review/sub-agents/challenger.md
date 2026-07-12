@@ -32,7 +32,13 @@ For each finding:
    - "Missing test" when the test exists in a different file
 2. **Assess severity calibration.** Is the severity proportionate to
    the actual risk? Downgrade findings whose severity is inflated
-   relative to the codebase context.
+   relative to the codebase context. **Exception — silent-failure
+   findings:** Do not downgrade findings where the failure mode is
+   silent (code appears to succeed but produces wrong results with no
+   error signal). The severity of silent failures reflects the failure
+   mode, not the probability of triggering. Probability-based reasoning
+   ("X is likely Y, so low impact") is not grounds for downgrading a
+   silent-failure finding.
 3. **Identify duplicates.** Findings from different dimensions that
    describe the same underlying issue should be merged. Keep the
    higher severity and the more specific remediation.

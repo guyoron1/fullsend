@@ -33,6 +33,24 @@ or inter-component contract in the diff:
   unavailable, does the caller handle it or silently proceed as if it
   succeeded?
 
+### Silent-failure severity escalation
+
+When a code path silently produces wrong results, returns stale or
+incorrect data, or skips critical work **without any error signal** to
+the caller, rate the finding **medium or higher** — regardless of how
+unlikely the triggering condition appears under current usage.
+
+Severity reflects the **failure mode** (silent, total, no error signal),
+not the **probability of triggering**. A bug that silently corrupts data
+for all affected users is more severe than a bug that crashes loudly for
+some, regardless of which is more likely today.
+
+Anti-pattern — probability-based severity discounting: "Low impact since
+X is likely Y" is not a valid severity justification when the failure
+mode is silent and total. The defensive-coding principle applies: code
+must handle all valid inputs correctly, not just the currently expected
+ones.
+
 **Consumer completeness:** If the diff adds new values to an enum,
 dispatch table, JSON schema enum, or case/switch structure, identify all
 code paths that consume or branch on that type (including scripts,
