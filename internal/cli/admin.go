@@ -2560,7 +2560,7 @@ func awaitRepoMaintenanceWithInterval(ctx context.Context, client forge.Client, 
 	})
 
 	if err != nil {
-		if ctx.Err() != nil {
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 			printer.StepWarn("context cancelled while waiting for workflow")
 			return
 		}

@@ -72,7 +72,7 @@ func AwaitWorkflowCompletion(
 		}
 		interval = nextBackoff(interval, cfg.MaxInterval)
 	}
-	return nil, fmt.Errorf("timed out waiting for workflow")
+	return nil, fmt.Errorf("timed out waiting for %s workflow", workflowFile)
 }
 
 // nextBackoff doubles the interval, capped at max.
