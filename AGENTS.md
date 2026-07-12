@@ -27,6 +27,8 @@ When changing `internal/mint/main.go`, always copy it to `internal/dispatch/gcf/
 
 The `internal/mintcore/` module is shared between the mint and devmint. Its files are also embedded for Cloud Function deployment at `internal/dispatch/gcf/mintsrc/mintcore/*.embed`. When changing any file in `internal/mintcore/`, sync it to the corresponding `.embed` file under `mintsrc/mintcore/`. Note: the mint's `go.mod.embed` uses `replace mintcore => ./mintcore` (not `../mintcore`), because `provisioner.go` rewrites the replace directive at bundle time to match the deployed directory layout.
 
+**Build metadata stamping:** The mint Cloud Function receives version and commit metadata via deploy-time source stamping, not runtime environment variables. The provisioner writes `mintcore/version.go` into the function source zip at bundle time with version and commit values baked in. This ensures version metadata cannot drift from the deployed code. Follow this same pattern for any future build metadata the function needs — never use environment variables for values that must stay in lockstep with the deployed source.
+
 **Dispatch workflows:** The scaffold `dispatch.yml` (at `internal/scaffold/fullsend-repo/.github/workflows/dispatch.yml`) and the repo's `reusable-dispatch.yml` (at `.github/workflows/reusable-dispatch.yml`) share identical routing logic for different installation modes (per-org vs per-repo). When changing the jq payload construction, stage routing, or input/secret threading in one, apply the same change to the other.
 
 When making changes to Go code under `cmd/` or `internal/`:
