@@ -48,7 +48,7 @@ At the start of each major step, emit a progress marker:
 echo "::notice::STEP <N>: <title>"
 ```
 
-**Do this at steps 1, 2, 4, 7a, 7b, 7c, and 8.**
+**Do this at steps 1, 2, 3a, 4, 7a, 7b, 7c, and 8.**
 
 ## Time budget
 
@@ -198,6 +198,64 @@ Determine:
 - Test command (e.g., `make test`, `go test ./...`)
 - Lint command (e.g., `make lint`, `pre-commit run --files`)
 - Commit conventions (message format, signing)
+
+### 3a. Resolve merge conflicts (prerequisite)
+
+```bash
+echo "::notice::STEP 3a: Resolve merge conflicts"
+```
+
+When a human `/fs-fix` instruction mentions merge conflict resolution, or
+when the PR branch is behind the base branch, resolve the merge before
+planning any code changes. This ensures fixes are based on the current
+codebase. Skip this step for bot-triggered runs.
+
+**Detection:**
+
+```bash
+# Check if the branch is behind the base branch
+git fetch origin "${BASE_BRANCH}"
+BEHIND=$(git rev-list --count HEAD.."origin/${BASE_BRANCH}")
+echo "Branch is ${BEHIND} commits behind origin/${BASE_BRANCH}"
+```
+
+Also check `HUMAN_INSTRUCTION` for merge-related keywords: "merge
+conflicts", "rebase", "merge main", "update from main".
+
+If either the branch is behind **and** the instruction requests it, or
+the instruction explicitly asks for merge conflict resolution:
+
+1. **Merge the base branch:**
+
+   ```bash
+   git merge "origin/${BASE_BRANCH}" --no-edit
+   ```
+
+2. **If conflicts arise**, resolve them by reading each conflicted file,
+   understanding both sides, and preserving the PR's intended changes
+   while incorporating the base branch updates. After resolving:
+
+   ```bash
+   git add <resolved-files>
+   git merge --continue
+   ```
+
+3. **Verify the merge is clean:**
+
+   ```bash
+   # No conflict markers remain
+   grep -rn '<<<<<<< ' . --include='*.go' --include='*.ts' \
+     --include='*.py' --include='*.js' --include='*.yaml' \
+     && echo "CONFLICT MARKERS FOUND" || echo "Clean"
+   # Code compiles
+   go build ./... 2>&1 || npm run build 2>&1 || true
+   ```
+
+4. **Only then** proceed to step 4 (Plan fixes). All subsequent code
+   changes will be based on the merged codebase.
+
+If the branch is up to date and the instruction does not mention merge
+conflicts, skip this step.
 
 ### 4. Plan fixes
 
