@@ -109,3 +109,6 @@ workflow tests.
 - The workflow has no `paths:` filter (runs on all changes)
 - The modified file is clearly unrelated to what the workflow tests
   (e.g., a docs change does not need to be in an e2e test filter)
+- The workflow uses `paths-ignore:` instead of `paths:` — these have
+  inverse semantics (the workflow runs for all paths *not* in the list)
+  and require different analysis
