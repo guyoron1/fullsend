@@ -104,6 +104,46 @@ Policy thresholds:
 broader access than when the value is correctly set, the code is
 fail-open.
 
+## Caller-callee contract consistency for security defaults
+
+**Category:** Use `fail-open` for findings in this section.
+
+When a function receives a security-relevant field via a struct parameter
+(allowlist, ACL, permission set, role list) and applies a permissive local
+default without writing it back to the struct, trace the caller to verify
+that downstream consumers of the same struct are not left with the
+original nil/absent value.
+
+1. **Detect the pattern.** A callee reads a security-relevant field from
+   a struct parameter into a local variable and applies a fallback when
+   the field is nil or empty:
+
+   ```
+   local := param.Allowlist
+   if local == nil { local = defaultAllowlist() }
+   // uses local internally — param.Allowlist remains nil
+   ```
+
+2. **Trace the caller.** Identify the call site that passes the struct to
+   this function. Check whether the same struct (with the field still
+   nil) is subsequently passed to other functions.
+
+3. **Check downstream interpretation.** For each downstream function that
+   receives the same struct, determine how it interprets a nil/absent
+   value for that field. If any downstream function treats nil as
+   deny-all while the callee treated nil as use-defaults, flag the
+   inconsistency.
+
+**Severity:** At least **medium** when the field controls a security
+boundary (allowlist, permission set, access control list). Escalate to
+**high** if the inconsistency creates a fail-open path where removing
+or omitting configuration silently grants broader access than intended.
+
+This pattern is dangerous because each function appears correct in
+isolation — the callee's fallback is reasonable, and the downstream
+function's deny-all for nil is conservative. The bug only manifests
+when tracing data flow across the caller's full operation sequence.
+
 ## Permission and role changes
 
 **Categories:** `permission-expansion`, `permission-reduction`,

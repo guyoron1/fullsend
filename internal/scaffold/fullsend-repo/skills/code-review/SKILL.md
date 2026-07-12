@@ -123,6 +123,20 @@ dimension carry over to another — each requires its own scrutiny.
   control, raise a finding even if the unprotected input appears
   low-risk — the risk assessment belongs in the finding's severity, not
   in a decision to omit the finding.
+- **Caller-callee contract consistency for security defaults:** When a
+  function receives a security-relevant field via a struct parameter
+  (allowlist, ACL, permission set) and applies a permissive local
+  default (e.g., fallback allowlist) without writing it back to the
+  struct, trace the caller to verify consistency. Check whether the
+  same struct is subsequently passed to downstream functions that
+  interpret nil/absent as deny-all. If the callee treats nil as
+  use-defaults internally but the caller's next operation treats nil
+  as deny-all, flag the inconsistency as `fail-open` at severity
+  **medium** or higher. Escalate to **high** when the inconsistency
+  creates a path where omitting configuration silently grants broader
+  access. This pattern is dangerous because each function appears
+  correct in isolation — the bug manifests only when tracing data flow
+  across the caller's full operation sequence.
 - Content security: does the change affect how user-supplied content is
   handled or rendered? Are there sandboxing gaps?
 - **Permission manifest changes:** If the diff modifies any file that
