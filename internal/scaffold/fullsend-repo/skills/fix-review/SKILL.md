@@ -247,10 +247,8 @@ the instruction explicitly asks for merge conflict resolution:
 3. **Verify the merge is clean:**
 
    ```bash
-   # No conflict markers remain
-   grep -rn '<<<<<<< ' . --include='*.go' --include='*.ts' \
-     --include='*.py' --include='*.js' --include='*.yaml' \
-     && echo "CONFLICT MARKERS FOUND" || echo "Clean"
+   # No conflict markers remain (checks all tracked files)
+   git diff --check
    # Code compiles
    go build ./... 2>&1 || npm run build 2>&1 || true
    ```

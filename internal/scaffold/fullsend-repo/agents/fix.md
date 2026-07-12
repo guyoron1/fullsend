@@ -106,7 +106,8 @@ Detection signals:
 - The PR branch is behind the base branch (`git rev-list --count` against the
   base shows a non-zero value).
 
-If either signal is present, follow this ordering:
+If the instruction requests merge conflict resolution — or if the branch
+is behind and the instruction mentions merging — follow this ordering:
 
 1. Fetch and merge the base branch into the feature branch.
 2. Resolve any conflicts, preserving the PR's intended changes.
