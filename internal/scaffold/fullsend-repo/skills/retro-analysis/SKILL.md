@@ -125,14 +125,19 @@ When skipping, note the duplicate in your `summary` field so the human understan
 
 ### Evidence issue cap
 
-When a proposal adds evidence to an existing parent issue (i.e., the
-proposal title follows the pattern `Evidence for #N`), check how many
-open evidence issues already exist for that parent before filing.
+Evidence proposals use the title format `Evidence for #N` (where `N` is
+the parent issue number). This convention is how the retro agent links
+data points back to a systemic issue — always use this exact format
+when filing evidence.
+
+Before filing an evidence proposal, check how many open evidence issues
+already exist for that parent.
 
 Dispatch a subagent to count existing evidence issues:
 
 ```bash
-gh api "search/issues?q=repo:<target_repo>+is:issue+is:open+in:title+%22Evidence+for+%23N%22&per_page=1" \
+gh api \
+  "search/issues?q=repo:<target_repo>+is:issue+is:open+in:title+%22Evidence+for+%23N%22&per_page=1" \
   --jq '.total_count'
 ```
 
@@ -168,8 +173,8 @@ Only open evidence issues count toward the cap — closed issues do not.
 **Concurrency note:** Two retro runs triggered by different PRs can
 both query the count before either files, causing both to see the same
 value and potentially exceeding the cap by one. This is an accepted
-limitation — the concurrency group in `retro.yml` limits the window,
-and a brief overshoot does not meaningfully harm the issue tracker.
+limitation — the cap is advisory and a brief overshoot does not
+meaningfully harm the issue tracker.
 
 ## Localization guidance
 
