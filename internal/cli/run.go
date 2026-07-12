@@ -1141,6 +1141,10 @@ func setupFetchService(ctx context.Context, forgeClient forge.Client, h *harness
 }
 
 func bootstrapEnv(sandboxName, remoteRepositoryDir string, h *harness.Harness, runtimeEnvExports []string, fetchEnv ...fetchServiceEnv) error {
+	if err := sandbox.ValidateEnvKeys(h.RunnerEnv); err != nil {
+		return fmt.Errorf("validating runner_env: %w", err)
+	}
+
 	remoteEnvFile := sandbox.SandboxWorkspace + "/.env"
 	outputDir := sandbox.SandboxWorkspace + "/output"
 

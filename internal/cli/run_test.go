@@ -1243,6 +1243,52 @@ func TestBootstrapEnv_SkipsFetchVarsWhenEmpty(t *testing.T) {
 	assert.Contains(t, err.Error(), "copying .env file to sandbox")
 }
 
+func TestBootstrapEnv_RejectsReservedEnvKey(t *testing.T) {
+	h := &harness.Harness{
+		Agent:     "agents/test.md",
+		RunnerEnv: map[string]string{"LD_PRELOAD": "/malicious.so"},
+	}
+
+	err := bootstrapEnv("nonexistent-sandbox", "/workspace/repo", h, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "reserved")
+	assert.Contains(t, err.Error(), "LD_PRELOAD")
+}
+
+func TestBootstrapEnv_RejectsProxyEnvKey(t *testing.T) {
+	h := &harness.Harness{
+		Agent:     "agents/test.md",
+		RunnerEnv: map[string]string{"HTTP_PROXY": "http://evil.proxy"},
+	}
+
+	err := bootstrapEnv("nonexistent-sandbox", "/workspace/repo", h, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "reserved")
+}
+
+func TestBootstrapEnv_RejectsFullsendPrefixEnvKey(t *testing.T) {
+	h := &harness.Harness{
+		Agent:     "agents/test.md",
+		RunnerEnv: map[string]string{"FULLSEND_TOKEN": "secret"},
+	}
+
+	err := bootstrapEnv("nonexistent-sandbox", "/workspace/repo", h, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "reserved")
+}
+
+func TestBootstrapEnv_AcceptsSafeEnvKey(t *testing.T) {
+	h := &harness.Harness{
+		Agent:     "agents/test.md",
+		RunnerEnv: map[string]string{"GH_TOKEN": "${GH_TOKEN}"},
+	}
+
+	err := bootstrapEnv("nonexistent-sandbox", "/workspace/repo", h, nil)
+	require.Error(t, err)
+	// Should fail at sandbox upload, not at validation
+	assert.NotContains(t, err.Error(), "reserved")
+}
+
 func TestShouldStartFetchService_AllowRuntimeFetch(t *testing.T) {
 	h := &harness.Harness{
 		Agent:                  "agents/test.md",

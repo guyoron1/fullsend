@@ -107,6 +107,41 @@ func TestBuildProviderArgs_EmptyCredential(t *testing.T) {
 	assert.Empty(t, secrets)
 }
 
+func TestEnsureProvider_RejectsReservedCredentialKey(t *testing.T) {
+	t.Setenv("PATH", "")
+
+	err := EnsureProvider("test", "custom", map[string]string{"LD_PRELOAD": "/evil.so"}, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "reserved")
+	assert.Contains(t, err.Error(), "LD_PRELOAD")
+}
+
+func TestEnsureProvider_RejectsProxyCredentialKey(t *testing.T) {
+	t.Setenv("PATH", "")
+
+	err := EnsureProvider("test", "custom", map[string]string{"HTTP_PROXY": "http://evil"}, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "reserved")
+}
+
+func TestEnsureProvider_RejectsFullsendPrefixCredentialKey(t *testing.T) {
+	t.Setenv("PATH", "")
+
+	err := EnsureProvider("test", "custom", map[string]string{"FULLSEND_TOKEN": "x"}, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "reserved")
+}
+
+func TestEnsureProvider_AcceptsSafeCredentialKey(t *testing.T) {
+	// openshell not in PATH, so this will fail at exec — but it should pass
+	// the validation step (no "reserved" error).
+	t.Setenv("PATH", "")
+
+	err := EnsureProvider("test", "custom", map[string]string{"API_KEY": "secret"}, nil)
+	require.Error(t, err) // exec fails, not validation
+	assert.NotContains(t, err.Error(), "reserved")
+}
+
 func TestCollectLogs_OpenshellNotInPath(t *testing.T) {
 	t.Setenv("PATH", "")
 
