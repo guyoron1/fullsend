@@ -134,10 +134,10 @@ original nil/absent value.
    deny-all while the callee treated nil as use-defaults, flag the
    inconsistency.
 
-**Severity:** At least **medium** when the field controls a security
-boundary (allowlist, permission set, access control list). Escalate to
-**high** if the inconsistency creates a fail-open path where removing
-or omitting configuration silently grants broader access than intended.
+Caller-callee nil inconsistency on a security boundary (allowlist,
+permission set, access control list) = **medium**. Inconsistency
+creates a fail-open path (omitting configuration silently grants
+broader access) = **high**.
 
 This pattern is dangerous because each function appears correct in
 isolation — the callee's fallback is reasonable, and the downstream
