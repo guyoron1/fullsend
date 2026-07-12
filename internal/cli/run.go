@@ -429,7 +429,7 @@ func runAgent(ctx context.Context, agentName, fullsendDir, outputBase, targetRep
 	// 2. Check openshell availability.
 	openshellStart := time.Now()
 	printer.StepStart("Checking openshell availability")
-	if err := sandbox.EnsureAvailable(); err != nil {
+	if err := sandboxEnsureAvailable(); err != nil {
 		printer.StepFail("openshell not available")
 		return fmt.Errorf("openshell is required: %w", err)
 	}
@@ -1334,6 +1334,12 @@ func openTeeReader(r io.Reader, outputPath string, printer *ui.Printer) (io.Read
 	}
 	return io.TeeReader(r, f), func() { f.Close() }
 }
+
+// sandboxEnsureAvailable is the function used to check openshell availability.
+// It defaults to sandbox.EnsureAvailable and can be overridden in tests to
+// make harness-loading tests hermetic regardless of whether openshell is
+// installed on the host.
+var sandboxEnsureAvailable = sandbox.EnsureAvailable
 
 var heartbeatInterval = 30 * time.Second
 
