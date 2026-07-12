@@ -104,6 +104,49 @@ Policy thresholds:
 broader access than when the value is correctly set, the code is
 fail-open.
 
+## Caller-callee contract consistency for security defaults
+
+**Category:** `fail-open`
+
+When the diff contains a function that reads a security-relevant field
+(allowlist, ACL, permission set, deny list) from a struct parameter,
+apply this three-step check:
+
+1. **Detect the local-default pattern.** The function checks whether
+   the field is nil/absent and, if so, substitutes a local default
+   (e.g., `if cfg.Allowed == nil { allowed = allEntries }`). Note the
+   polarity of that default: permissive (allow-all, empty-means-permit)
+   or restrictive (deny-all, empty-means-deny).
+
+2. **Trace the caller.** Find the call site that constructs or passes
+   the struct. Determine whether the caller populates the field before
+   passing it. If the caller leaves the field nil, the local default
+   from step 1 takes effect — but only inside this function.
+
+3. **Check downstream callees.** If the same struct is passed to other
+   functions after this one, check what default each downstream
+   function applies when the field is nil. A mismatch in polarity
+   (one function defaults to allow-all, another to deny-all for the
+   same nil field) means the caller's security intent is silently
+   inverted between call sites.
+
+**Severity guidance:**
+
+- **Medium:** nil-polarity mismatch exists but the permissive path is
+  gated by another control (e.g., a separate auth check upstream).
+- **High:** the mismatch creates a fail-open path where an
+  unauthenticated or under-privileged request reaches a permissive
+  default with no compensating control.
+
+**Why this matters:** The pattern is dangerous because each function in
+isolation looks correct — it has a reasonable default for the missing
+field. The bug is invisible in single-function review; it only appears
+when you trace the struct through the full caller-callee chain and
+notice that "nil" means opposite things at different stops. The
+function that applies the permissive default does not write it back to
+the struct, so downstream functions still see nil and apply their own
+(potentially opposite) default.
+
 ## Permission and role changes
 
 **Categories:** `permission-expansion`, `permission-reduction`,

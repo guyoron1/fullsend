@@ -123,6 +123,19 @@ dimension carry over to another — each requires its own scrutiny.
   control, raise a finding even if the unprotected input appears
   low-risk — the risk assessment belongs in the finding's severity, not
   in a decision to omit the finding.
+- **Caller-callee contract consistency for security defaults:** When a
+  function reads a security-relevant field (allowlist, ACL, permission
+  set, deny list) from a struct parameter and the field is nil or
+  absent, check what local default the function applies. If it applies
+  a permissive default (e.g., allow-all, empty-means-permit) but does
+  NOT write that default back to the struct, trace every downstream
+  function that receives the same struct. If any downstream function
+  interprets nil/absent as deny-all (the opposite polarity), flag the
+  inconsistency — the caller's intent is silently inverted between
+  call sites. Severity: medium for nil-polarity mismatch, high if the
+  mismatch creates a fail-open path. This is a cross-function data
+  flow check, not a single-function lint; the bug only appears when
+  you trace the struct through caller and callees together.
 - Content security: does the change affect how user-supplied content is
   handled or rendered? Are there sandboxing gaps?
 - **Permission manifest changes:** If the diff modifies any file that
