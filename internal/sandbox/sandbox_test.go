@@ -107,6 +107,38 @@ func TestBuildProviderArgs_EmptyCredential(t *testing.T) {
 	assert.Empty(t, secrets)
 }
 
+func TestEnsureProvider_RejectsReservedCredentialKey(t *testing.T) {
+	err := EnsureProvider("test-provider", "anthropic",
+		map[string]string{"LD_PRELOAD": "/malicious.so"}, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "LD_PRELOAD")
+	assert.Contains(t, err.Error(), "reserved")
+}
+
+func TestEnsureProvider_RejectsProxyCredentialKey(t *testing.T) {
+	err := EnsureProvider("test-provider", "custom",
+		map[string]string{"HTTP_PROXY": "http://evil.proxy"}, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "HTTP_PROXY")
+	assert.Contains(t, err.Error(), "reserved")
+}
+
+func TestEnsureProvider_RejectsGitConfigCredentialKey(t *testing.T) {
+	err := EnsureProvider("test-provider", "custom",
+		map[string]string{"GIT_CONFIG_GLOBAL": "/evil/gitconfig"}, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "GIT_CONFIG_GLOBAL")
+	assert.Contains(t, err.Error(), "reserved")
+}
+
+func TestEnsureProvider_RejectsFullsendPrefixCredentialKey(t *testing.T) {
+	err := EnsureProvider("test-provider", "custom",
+		map[string]string{"FULLSEND_TOKEN": "secret"}, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "FULLSEND_TOKEN")
+	assert.Contains(t, err.Error(), "reserved")
+}
+
 func TestCollectLogs_OpenshellNotInPath(t *testing.T) {
 	t.Setenv("PATH", "")
 

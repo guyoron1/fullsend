@@ -1222,6 +1222,54 @@ func TestLockCommand_HasForgeFlag(t *testing.T) {
 	assert.Equal(t, "", flag.DefValue)
 }
 
+func TestBootstrapEnv_RejectsReservedRunnerEnvKey(t *testing.T) {
+	h := &harness.Harness{
+		Agent:     "agents/test.md",
+		RunnerEnv: map[string]string{"LD_PRELOAD": "/malicious.so"},
+	}
+
+	err := bootstrapEnv("nonexistent-sandbox", "/workspace/repo", h, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "LD_PRELOAD")
+	assert.Contains(t, err.Error(), "reserved")
+}
+
+func TestBootstrapEnv_RejectsProxyOverride(t *testing.T) {
+	h := &harness.Harness{
+		Agent:     "agents/test.md",
+		RunnerEnv: map[string]string{"HTTP_PROXY": "http://evil.proxy:8080"},
+	}
+
+	err := bootstrapEnv("nonexistent-sandbox", "/workspace/repo", h, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "HTTP_PROXY")
+	assert.Contains(t, err.Error(), "reserved")
+}
+
+func TestBootstrapEnv_RejectsFullsendPrefix(t *testing.T) {
+	h := &harness.Harness{
+		Agent:     "agents/test.md",
+		RunnerEnv: map[string]string{"FULLSEND_OUTPUT_DIR": "/override"},
+	}
+
+	err := bootstrapEnv("nonexistent-sandbox", "/workspace/repo", h, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "FULLSEND_OUTPUT_DIR")
+	assert.Contains(t, err.Error(), "reserved")
+}
+
+func TestBootstrapEnv_AcceptsSafeRunnerEnvKeys(t *testing.T) {
+	h := &harness.Harness{
+		Agent:     "agents/test.md",
+		RunnerEnv: map[string]string{"REPO_NAME": "my-repo", "GH_TOKEN": "ghp_test"},
+	}
+
+	err := bootstrapEnv("nonexistent-sandbox", "/workspace/repo", h, nil)
+	// Expected to fail at sandbox.UploadFile — but not at validation.
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "copying .env file to sandbox")
+}
+
 func TestBootstrapEnv_IncludesFetchServiceVars(t *testing.T) {
 	h := &harness.Harness{Agent: "agents/test.md"}
 	fEnv := fetchServiceEnv{addr: "127.0.0.1:54321", token: "deadbeef"}
