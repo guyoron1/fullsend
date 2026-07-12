@@ -56,7 +56,7 @@ Six specialized sub-agents (implemented from a conceptual decomposition of nine 
 
 Evaluates whether the code does what it claims to do.
 
-- Logic errors, off-by-one, nil/null handling
+- Logic errors, off-by-one, nil/null handling, shell return/exit misuse
 - Edge cases and error paths
 - Consistency with existing codebase patterns
 - Test adequacy — are the right things being tested?
