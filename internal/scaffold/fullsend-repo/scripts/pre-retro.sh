@@ -22,6 +22,19 @@ fi
 
 echo "::notice::Retro target: ${ORIGINATING_URL}"
 
+# ---------------------------------------------------------------------------
+# Validate GH_TOKEN before starting the sandbox
+# ---------------------------------------------------------------------------
+if [[ -n "${GH_TOKEN:-}" ]]; then
+  if ! gh auth status 2>/dev/null; then
+    echo "::error::GH_TOKEN is invalid — retro agent requires GitHub API access"
+    exit 1
+  fi
+  echo "GH_TOKEN validated successfully."
+else
+  echo "::warning::GH_TOKEN is not set — retro agent will have limited functionality"
+fi
+
 if [[ -n "${RETRO_COMMENT:-}" ]]; then
   echo "Retro triggered on-demand with comment."
 else
