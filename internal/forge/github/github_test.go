@@ -803,6 +803,17 @@ func TestIsClassicPATForbiddenError(t *testing.T) {
 			want:   false,
 		},
 		{
+			name: "classic PAT forbidden in Errors array only",
+			apiErr: &APIError{
+				StatusCode: 403,
+				Message:    "Forbidden",
+				Errors: []APIErrorDetail{
+					{Message: "acme-corp forbids access via a personal access token (classic)"},
+				},
+			},
+			want: true,
+		},
+		{
 			name:   "404 not found is not a PAT error",
 			apiErr: &APIError{StatusCode: 404, Message: "Not Found"},
 			want:   false,

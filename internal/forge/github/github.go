@@ -812,8 +812,14 @@ func isAlreadyExistsError(apiErr *APIError) bool {
 // returns a 403 with a message containing "forbids access via a
 // personal access token (classic)" in this case.
 func isClassicPATForbiddenError(apiErr *APIError) bool {
-	return apiErr.StatusCode == http.StatusForbidden &&
-		strings.Contains(strings.ToLower(apiErr.Message), "forbids access via a personal access token")
+	if apiErr.StatusCode != http.StatusForbidden {
+		return false
+	}
+	msg := strings.ToLower(apiErr.Message)
+	for _, d := range apiErr.Errors {
+		msg += " " + strings.ToLower(d.Message)
+	}
+	return strings.Contains(msg, "forbids access via a personal access token")
 }
 
 // blobSHA computes the Git blob object SHA-1 for the given content.

@@ -916,7 +916,11 @@ func runGitHubUninstall(ctx context.Context, client forge.Client, printer *ui.Pr
 		}
 	} else {
 		// Can't check — fall back to showing all of them.
-		printer.StepWarn("Could not verify which apps exist; showing all")
+		if forge.IsClassicPATForbidden(listErr) {
+			printer.StepWarn(classicPATHint(fmt.Errorf("listing installations: %w", listErr)).Error())
+		} else {
+			printer.StepWarn("Could not verify which apps exist; showing all")
+		}
 		existingSlugs = agentSlugs
 	}
 	if len(existingSlugs) > 0 {
