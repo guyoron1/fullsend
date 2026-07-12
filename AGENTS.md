@@ -48,9 +48,9 @@ If only `E2E_GITHUB_USERNAME` and a password source are available, `make e2e-tes
 
 ### Secure HTTP clients
 
-**Use the `fetch` package.** `internal/fetch/` provides an SSRF-hardened HTTP client (`FetchURL`). New code that fetches external URLs should use it rather than building a custom `http.Client`.
+**Use the `fetch` package:** `internal/fetch/` provides an SSRF-hardened HTTP client (`FetchURL`). New code that fetches external URLs should use it rather than building a custom `http.Client`.
 
-**If you must build a custom client**, these properties are required:
+**If you must build a custom client:** these properties are required:
 
 - **HTTPS-only** — reject `http://` URLs.
 - **DNS pre-resolution with IP validation** — resolve the hostname and validate the IP using `netutil.IsInternal()` / `netutil.CheckIP()` from `internal/netutil/` to reject loopback, link-local, private, and other reserved addresses.
@@ -59,6 +59,7 @@ If only `E2E_GITHUB_USERNAME` and a password source are available, `make e2e-tes
 - **Explicit timeout** — 30 s default; never leave the zero value.
 - **Response body limit** — wrap response bodies with `io.LimitReader` (10 MB default).
 - **Domain allowlisting** — when the set of valid hosts is known, restrict to that set.
+- **Disable proxy** — set `Transport.Proxy` to `nil` to prevent requests from being routed through `HTTP_PROXY`/`HTTPS_PROXY` environment variables.
 
 **Canonical implementation:** `internal/fetch/fetch.go` (`FetchURL`) and `internal/netutil/ip.go` (`CheckIP`, `IsInternal`).
 
