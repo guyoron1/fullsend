@@ -46,6 +46,16 @@ The e2e tests require GitHub credentials. There are three ways to provide them:
 
 If only `E2E_GITHUB_USERNAME` and a password source are available, `make e2e-test` will automatically generate a session file before running tests. See `make help` for all available targets.
 
+## Agent definitions and skills
+
+Agent definitions, skills, harness configs, and related content have moved to
+[`fullsend-ai/agents`](https://github.com/fullsend-ai/agents). The copies under
+`internal/scaffold/fullsend-repo/` are stale and will be removed. Do not modify
+files under `internal/scaffold/fullsend-repo/agents/`,
+`internal/scaffold/fullsend-repo/skills/`, or
+`internal/scaffold/fullsend-repo/harness/` — make changes in
+`fullsend-ai/agents` instead.
+
 ## Forge abstraction
 
 All git forge operations (GitHub API calls, PR comments, issue creation, workflow dispatch, etc.) **must** go through the `forge.Client` interface defined in `internal/forge/forge.go`. This is a fundamental architectural rule — the codebase supports multiple forges (GitHub, GitLab, Forgejo) and direct coupling to any single forge breaks the abstraction.
