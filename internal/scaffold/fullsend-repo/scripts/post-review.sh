@@ -92,6 +92,10 @@ REVIEW_PROTECTED_PATHS=(
 )
 
 DOWNGRADED=false
+CLEANUP_FILES=()
+cleanup_tempfiles() { rm -f "${CLEANUP_FILES[@]}"; }
+trap cleanup_tempfiles EXIT
+
 if [ "${ACTION}" = "approve" ]; then
   PR_FILES=$(gh pr view "${PR_NUMBER}" --repo "${REPO_FULL_NAME}" --json files --jq '.files[].path')
   if [ -z "${PR_FILES}" ]; then
@@ -127,7 +131,7 @@ if [ "${ACTION}" = "approve" ]; then
 
     # Rewrite the result file with downgraded action and appended notice.
     MODIFIED_RESULT=$(mktemp)
-    trap 'rm -f "${MODIFIED_RESULT}"' EXIT
+    CLEANUP_FILES+=("${MODIFIED_RESULT}")
     jq --arg notice "${PROTECTED_NOTICE}" \
       '.action = "comment" | .body = (.body + $notice)' \
       "${RESULT_FILE}" > "${MODIFIED_RESULT}"
@@ -149,18 +153,21 @@ if [ "${ACTION}" = "approve" ]; then
       "SECURITY.md"
     )
 
+    # Defense-in-depth: empty PR_FILES should not reach here (upstream
+    # guard exits on empty), but avoid spurious downgrade.
     ALL_GOVERNANCE=true
+    [ -z "${PR_FILES}" ] && ALL_GOVERNANCE=false
     while IFS= read -r file; do
       [ -z "${file}" ] && continue
-      BASENAME=$(basename "${file}")
-      IS_GOV=false
+      basename_val=$(basename "${file}")
+      is_gov=false
       for pattern in "${GOVERNANCE_DOC_PATTERNS[@]}"; do
-        if [ "${BASENAME}" = "${pattern}" ]; then
-          IS_GOV=true
+        if [ "${basename_val}" = "${pattern}" ]; then
+          is_gov=true
           break
         fi
       done
-      if [ "${IS_GOV}" = "false" ]; then
+      if [ "${is_gov}" = "false" ]; then
         ALL_GOVERNANCE=false
         break
       fi
@@ -176,7 +183,7 @@ if [ "${ACTION}" = "approve" ]; then
       GOV_NOTICE+=$'> A human reviewer must approve this PR.\n'
 
       GOV_RESULT=$(mktemp)
-      trap 'rm -f "${GOV_RESULT}"' EXIT
+      CLEANUP_FILES+=("${GOV_RESULT}")
       jq --arg notice "${GOV_NOTICE}" \
         '.action = "comment" | .body = (.body + $notice)' \
         "${RESULT_FILE}" > "${GOV_RESULT}"

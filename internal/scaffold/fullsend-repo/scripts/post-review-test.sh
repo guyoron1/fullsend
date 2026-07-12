@@ -119,18 +119,19 @@ is_all_governance() {
   )
 
   local ALL_GOVERNANCE=true
+  [ -z "${pr_files}" ] && ALL_GOVERNANCE=false
   while IFS= read -r file; do
     [ -z "${file}" ] && continue
-    local BASENAME
-    BASENAME=$(basename "${file}")
-    local IS_GOV=false
+    local basename_val
+    basename_val=$(basename "${file}")
+    local is_gov=false
     for pattern in "${GOVERNANCE_DOC_PATTERNS[@]}"; do
-      if [ "${BASENAME}" = "${pattern}" ]; then
-        IS_GOV=true
+      if [ "${basename_val}" = "${pattern}" ]; then
+        is_gov=true
         break
       fi
     done
-    if [ "${IS_GOV}" = "false" ]; then
+    if [ "${is_gov}" = "false" ]; then
       ALL_GOVERNANCE=false
       break
     fi
@@ -200,6 +201,11 @@ run_gov_test "case-sensitive-no-match" \
 run_gov_test "multiple-governance-in-subdirs" \
   "docs/GOVERNANCE.md
 .github/SECURITY.md" "true"
+
+# Empty input → not all governance (defense-in-depth; upstream guard
+# exits on empty PR_FILES before this check runs in production)
+run_gov_test "empty-input-not-governance" \
+  "" "false"
 
 # --- Summary ---
 
