@@ -47,6 +47,42 @@ Exclude the files already in the diff. Any hit outside the diff is a
 Medium-severity finding: "stale reference to removed/renamed
 `<identifier>` in `<file>:<line>`."
 
+### Silent-failure escalation
+
+When a correctness finding involves a failure mode that produces no
+error or warning — the code appears to succeed but silently produces
+wrong results, skips data, or truncates output — escalate severity by
+one level (e.g., what would normally be [low] becomes [medium]). Silent
+failures are harder to detect in production and more likely to cause
+downstream damage than loud failures.
+
+The defensive coding principle — handle all valid inputs, not just
+expected ones — should override probability-based severity discounting.
+Do not downgrade a silent-failure finding because the triggering
+condition seems unlikely today; evaluate the failure mode's impact
+assuming it does trigger.
+
+Examples of silent failures (escalate):
+
+- String truncation due to delimiter mismatch (e.g., `awk` field
+  splitting silently drops path components containing spaces)
+- API call that returns a wrong-type object (e.g., a tag-object SHA
+  instead of a commit SHA) causing downstream lookups to silently 404
+  with no error signal
+- Off-by-one that skips the last element without error
+- Type coercion that rounds instead of erroring
+- Regex that silently doesn't match, causing a fallback to be skipped
+- Fallback path that is silently inert (never triggers) due to an
+  upstream assumption about input format
+
+Examples of loud failures (no escalation needed):
+
+- Nil pointer dereference
+- Index out of bounds
+- Connection refused
+- Permission denied
+- Explicit error return or panic
+
 ### Technical documentation with correctness surface area
 
 Not all documentation is prose. Any
