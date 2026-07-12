@@ -39,6 +39,7 @@
 #   FIX_ITERATION     — current iteration count
 #   ITERATION_CAP     — max iterations (default: 5)
 #   PUSH_TOKEN_SOURCE — "github-app" (for logging)
+#   GITHUB_WORKSPACE  — workspace root (fallback for companion script resolution)
 #
 # Exit codes:
 #   0  — branch pushed, PR updated
@@ -300,9 +301,26 @@ fi
 # ---------------------------------------------------------------------------
 export GH_TOKEN="${PUSH_TOKEN}"
 
-# Locate process-fix-result.py relative to this script.
+# Locate process-fix-result.py relative to this script, with fallback
+# for URL-cached resolution where companions are not co-located.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROCESS_SCRIPT="${SCRIPT_DIR}/process-fix-result.py"
+if [ ! -f "${PROCESS_SCRIPT}" ]; then
+  # When the harness resolves scripts from a content-addressed cache
+  # (sha256/<hash>/content), companion files are not present at the
+  # cache path. Fall back to the workspace scripts directory, which is
+  # populated by the "Prepare workspace" step in the workflow.
+  for _fallback_dir in \
+    "${GITHUB_WORKSPACE:-}/scripts" \
+    "${GITHUB_WORKSPACE:-}/.fullsend/scripts"; do
+    if [ -f "${_fallback_dir}/process-fix-result.py" ]; then
+      echo "::warning::Companion script not co-located at ${SCRIPT_DIR} — using workspace fallback: ${_fallback_dir}/"
+      PROCESS_SCRIPT="${_fallback_dir}/process-fix-result.py"
+      break
+    fi
+  done
+  unset _fallback_dir
+fi
 
 # Find fix-result.json in the output directory.
 # RUN_DIR is the original cwd (runDir = <outputBase>/<sandboxName>), saved
