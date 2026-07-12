@@ -38,7 +38,7 @@ These labels are applied by the review post-script based on the review outcome.
 | Label | Meaning |
 |-------|---------|
 | `ready-for-review` | Signals the review agent to evaluate the PR. Applied by the [code agent](code.md) post-script. |
-| `ready-for-merge` | The review agent approved the PR. No blocking findings. |
+| `ready-for-merge` | The review agent approved the PR with no blocking findings. Not applied to governance-only PRs, which always require human review. |
 | `requires-manual-review` | The review agent found issues that require human judgment — it could not confidently approve or reject. |
 | `rejected` | The review agent rejected the PR and the post-script closed it. |
 

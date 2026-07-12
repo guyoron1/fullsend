@@ -4,9 +4,10 @@
 # Runs on the GitHub Actions runner AFTER the sandbox is destroyed.
 # CWD is runDir.
 #
-# This script is the sole enforcement point for protected-path checks:
-# if the PR touches sensitive paths, an "approve" action is downgraded
-# to "comment" so only a human can grant approval.
+# This script is the sole enforcement point for protected-path and
+# governance-document checks: if the PR touches sensitive paths or
+# consists solely of governance documents, an "approve" action is
+# downgraded to "comment" so only a human can grant approval.
 #
 # Required environment variables:
 #   REVIEW_TOKEN    — token with pull-requests:write on the target repo
@@ -132,6 +133,56 @@ if [ "${ACTION}" = "approve" ]; then
       "${RESULT_FILE}" > "${MODIFIED_RESULT}"
     RESULT_FILE="${MODIFIED_RESULT}"
     DOWNGRADED=true
+  fi
+
+  # -------------------------------------------------------------------------
+  # Governance-document check: if ALL changed files are governance docs,
+  # downgrade "approve" to "comment" (defense-in-depth, mirrors the
+  # protected-path downgrade above).
+  # Governance document patterns (kept in sync with pr-review SKILL.md):
+  # -------------------------------------------------------------------------
+  if [ "${DOWNGRADED}" = "false" ]; then
+    GOVERNANCE_DOC_PATTERNS=(
+      "MAINTAINERS.md"
+      "GOVERNANCE.md"
+      "CODE_OF_CONDUCT.md"
+      "SECURITY.md"
+    )
+
+    ALL_GOVERNANCE=true
+    while IFS= read -r file; do
+      [ -z "${file}" ] && continue
+      BASENAME=$(basename "${file}")
+      IS_GOV=false
+      for pattern in "${GOVERNANCE_DOC_PATTERNS[@]}"; do
+        if [ "${BASENAME}" = "${pattern}" ]; then
+          IS_GOV=true
+          break
+        fi
+      done
+      if [ "${IS_GOV}" = "false" ]; then
+        ALL_GOVERNANCE=false
+        break
+      fi
+    done <<< "${PR_FILES}"
+
+    if [ "${ALL_GOVERNANCE}" = "true" ]; then
+      echo "All changed files are governance documents — downgrading approve to comment"
+
+      GOV_NOTICE=$'\n\n---\n\n'
+      GOV_NOTICE+=$'> **Governance documents detected** — all changed files in this PR are\n'
+      GOV_NOTICE+=$'> governance or process documents. The review agent cannot approve PRs that\n'
+      GOV_NOTICE+=$'> consist solely of governance documents.\n'
+      GOV_NOTICE+=$'> A human reviewer must approve this PR.\n'
+
+      GOV_RESULT=$(mktemp)
+      trap 'rm -f "${GOV_RESULT}"' EXIT
+      jq --arg notice "${GOV_NOTICE}" \
+        '.action = "comment" | .body = (.body + $notice)' \
+        "${RESULT_FILE}" > "${GOV_RESULT}"
+      RESULT_FILE="${GOV_RESULT}"
+      DOWNGRADED=true
+    fi
   fi
 fi
 
