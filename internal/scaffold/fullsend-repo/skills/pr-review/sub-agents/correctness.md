@@ -47,6 +47,25 @@ Exclude the files already in the diff. Any hit outside the diff is a
 Medium-severity finding: "stale reference to removed/renamed
 `<identifier>` in `<file>:<line>`."
 
+### Shell script `return`/`exit` correctness
+
+When the diff modifies or adds shell scripts (`.sh` files, or files with
+a `#!/bin/bash` / `#!/usr/bin/env bash` shebang):
+
+- **`return` at top level of a directly-executed script** is a runtime
+  error. `return` is only valid inside a function body or in a script
+  invoked via `source`/`.`. If the file has a shebang line, it is
+  intended for direct execution — top-level `return` statements (outside
+  any function) are a **medium**-severity logic error. Use `exit` instead.
+- **`exit` inside a function in a sourced library** kills the entire
+  shell session instead of returning control to the caller. Library files
+  (no shebang, or guarded with a load-once pattern like
+  `[[ -n "${_LOADED:-}" ]] && return 0`) should use `return` inside
+  functions, not `exit`. Flag `exit` inside a function in a sourced
+  library as a **medium**-severity logic error.
+
+**Category:** `shell-return-exit`
+
 ### Technical documentation with correctness surface area
 
 Not all documentation is prose. Any

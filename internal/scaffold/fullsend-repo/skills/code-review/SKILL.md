@@ -89,6 +89,11 @@ dimension carry over to another — each requires its own scrutiny.
   (step 2), determine whether those changes weakened coverage.
 - Split-payload attacks: a production change paired with a test
   modification that masks the real behavior.
+- Shell script `return`/`exit` correctness: in directly-executed scripts
+  (identified by a shebang line), `return` at the top level (outside any
+  function) is a runtime error — use `exit`. In sourced library files
+  (no shebang, or load-once guard pattern), `exit` inside a function
+  kills the parent shell — use `return`.
 
 #### Security
 
