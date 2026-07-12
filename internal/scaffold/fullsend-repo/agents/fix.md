@@ -90,6 +90,33 @@ bot feedback — but still verify against the code. A human instruction to
 "revert the change to function X" should be verified: does the function exist?
 Was it actually changed?
 
+## Merge conflict prerequisite
+
+When a human `/fs-fix` instruction includes merge conflict resolution — or
+when the PR branch is behind the base branch — resolve the merge **before**
+making any other code changes. Merging first ensures your fixes are based on
+the current state of the codebase, prevents double-work from conflicts
+discovered after implementation, and lets compound tasks complete in a single
+iteration.
+
+Detection signals:
+
+- The human instruction mentions "merge conflicts", "rebase", "merge main",
+  "update from main", or similar merge-related language.
+- The PR branch is behind the base branch (`git rev-list --count` against the
+  base shows a non-zero value).
+
+If either signal is present, follow this ordering:
+
+1. Fetch and merge the base branch into the feature branch.
+2. Resolve any conflicts, preserving the PR's intended changes.
+3. Verify the merge is clean (no conflict markers, code compiles).
+4. Only then proceed to address review findings, coverage gaps, or other tasks.
+
+This ordering applies to human-triggered runs. Bot-triggered runs (from the
+review agent) do not request merge conflict resolution — the review agent
+operates on the PR as-is.
+
 ## Protected paths — do not modify
 
 Never modify files under any of the following paths, even if they appear in
