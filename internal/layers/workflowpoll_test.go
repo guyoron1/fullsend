@@ -2,6 +2,7 @@ package layers
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -145,6 +146,33 @@ func TestAwaitWorkflowCompletion_LogsProgress(t *testing.T) {
 	)
 	assert.NotEmpty(t, msgs)
 	assert.Contains(t, msgs[0], "in_progress")
+}
+
+func TestAwaitWorkflowCompletion_RetriesOnListError(t *testing.T) {
+	client := &forge.FakeClient{
+		Errors: map[string]error{
+			"ListWorkflowRuns": fmt.Errorf("API error"),
+		},
+	}
+
+	cfg := WorkflowPollConfig{
+		InitialInterval: 1 * time.Millisecond,
+		MaxInterval:     10 * time.Millisecond,
+		MaxAttempts:     3,
+	}
+
+	var msgs []string
+	run, err := AwaitWorkflowCompletion(
+		context.Background(), client, "org", "repo", "workflow.yml",
+		time.Now().UTC(), cfg, func(msg string) { msgs = append(msgs, msg) },
+	)
+	assert.Nil(t, run)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "timed out")
+	require.Len(t, msgs, 3)
+	assert.Contains(t, msgs[0], "attempt 1")
+	assert.Contains(t, msgs[1], "attempt 2")
+	assert.Contains(t, msgs[2], "attempt 3")
 }
 
 func TestAwaitWorkflowCompletion_IgnoresOlderRuns(t *testing.T) {
