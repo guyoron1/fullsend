@@ -637,9 +637,11 @@ repository.
 
 Deprecated paths:
 
-- `internal/scaffold/fullsend-repo/` → active development moved to
+- `internal/scaffold/fullsend-repo/` → active development of this
+  content has moved to
   [fullsend-ai/agents](https://github.com/fullsend-ai/agents);
-  this copy is maintained as the scaffold source for template sync
+  this copy is the scaffold template source and changes here should
+  be limited to template sync and propagation tooling
 
 For each file in the PR diff, check whether its path starts with any
 deprecated path prefix listed above. Paths that share a parent but do
