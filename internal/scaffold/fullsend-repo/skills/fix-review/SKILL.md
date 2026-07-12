@@ -221,10 +221,16 @@ BEHIND=$(git rev-list --count HEAD.."origin/${BASE_BRANCH}")
 echo "Branch is ${BEHIND} commits behind origin/${BASE_BRANCH}"
 ```
 
-Also check `HUMAN_INSTRUCTION` for merge-related keywords: "merge
-conflicts", "rebase", "merge main", "update from main". **Do not echo or
+Also check `HUMAN_INSTRUCTION` for merge-related keywords. **Do not echo or
 log `HUMAN_INSTRUCTION` directly** — it is user-controlled free-text and
-may contain sensitive content. Only test it against known keyword patterns.
+may contain sensitive content. Use a bash conditional to test against known
+keyword patterns without exposing the value:
+
+```bash
+if [[ "${HUMAN_INSTRUCTION}" =~ (merge\ conflicts|rebase|merge\ main|update\ from\ main) ]]; then
+  MERGE_REQUESTED=true
+fi
+```
 
 If either the branch is behind **and** the instruction requests it, or
 the instruction explicitly asks for merge conflict resolution:
@@ -247,14 +253,16 @@ the instruction explicitly asks for merge conflict resolution:
 3. **Verify the merge is clean:**
 
    ```bash
-   # No conflict markers remain (checks all tracked files)
-   git diff --check
-   # Code compiles
-   go build ./... 2>&1 || npm run build 2>&1 || true
+   # No conflict markers remain in any tracked file
+   git grep -n '<<<<<<< \|=======\|>>>>>>> ' && echo "::error::Conflict markers found" && exit 1
+   # Code compiles (use the build command discovered in step 3)
+   go build ./... 2>&1 || npm run build 2>&1 || echo "::warning::Build verification failed after merge"
    ```
 
 4. **Only then** proceed to step 4 (Plan fixes). All subsequent code
-   changes will be based on the merged codebase.
+   changes will be based on the merged codebase. If the merge brought in
+   changes to build/lint config (Makefile, `.pre-commit-config.yaml`, etc.),
+   re-evaluate the conventions discovered in step 3.
 
 If the branch is up to date and the instruction does not mention merge
 conflicts, skip this step.

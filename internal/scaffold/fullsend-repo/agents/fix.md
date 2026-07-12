@@ -92,22 +92,22 @@ Was it actually changed?
 
 ## Merge conflict prerequisite
 
-When a human `/fs-fix` instruction includes merge conflict resolution — or
-when the PR branch is behind the base branch — resolve the merge **before**
-making any other code changes. Merging first ensures your fixes are based on
-the current state of the codebase, prevents double-work from conflicts
-discovered after implementation, and lets compound tasks complete in a single
-iteration.
+When a human `/fs-fix` instruction explicitly asks for merge conflict
+resolution — or when the PR branch is behind the base branch **and** the
+instruction mentions merging — resolve the merge **before** making any other
+code changes. Merging first ensures your fixes are based on the current state
+of the codebase, prevents double-work from conflicts discovered after
+implementation, and lets compound tasks complete in a single iteration.
 
-Detection signals:
+Detection signals (both may apply, but branch-behind alone is not sufficient):
 
 - The human instruction mentions "merge conflicts", "rebase", "merge main",
   "update from main", or similar merge-related language.
 - The PR branch is behind the base branch (`git rev-list --count` against the
   base shows a non-zero value).
 
-If the instruction requests merge conflict resolution — or if the branch
-is behind and the instruction mentions merging — follow this ordering:
+If the instruction explicitly asks for merge conflict resolution, or if the
+branch is behind and the instruction mentions merging, follow this ordering:
 
 1. Fetch and merge the base branch into the feature branch.
 2. Resolve any conflicts, preserving the PR's intended changes.
