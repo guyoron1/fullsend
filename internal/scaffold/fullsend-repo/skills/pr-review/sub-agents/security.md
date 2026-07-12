@@ -123,8 +123,8 @@ apply this three-step check:
    passing it. If the caller leaves the field nil, the local default
    from step 1 takes effect — but only inside this function.
 
-3. **Check downstream callees.** If the same struct is passed to other
-   functions after this one, check what default each downstream
+3. **Check sibling callees.** If the same struct is passed to other
+   functions by the same caller, check what default each of those
    function applies when the field is nil. A mismatch in polarity
    (one function defaults to allow-all, another to deny-all for the
    same nil field) means the caller's security intent is silently
