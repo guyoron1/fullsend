@@ -86,6 +86,9 @@ func (e *APIError) Unwrap() error {
 	if e.StatusCode == http.StatusUnprocessableEntity && isAlreadyExistsError(e) {
 		return forge.ErrAlreadyExists
 	}
+	if isClassicPATForbiddenError(e) {
+		return forge.ErrClassicPATForbidden
+	}
 	return nil
 }
 
@@ -802,6 +805,21 @@ func isAlreadyExistsError(apiErr *APIError) bool {
 		msg += " " + strings.ToLower(d.Message)
 	}
 	return strings.Contains(msg, "already exists")
+}
+
+// isClassicPATForbiddenError returns true when the API error indicates
+// that the organization blocks classic personal access tokens. GitHub
+// returns a 403 with a message containing "forbids access via a
+// personal access token (classic)" in this case.
+func isClassicPATForbiddenError(apiErr *APIError) bool {
+	if apiErr.StatusCode != http.StatusForbidden {
+		return false
+	}
+	msg := strings.ToLower(apiErr.Message)
+	for _, d := range apiErr.Errors {
+		msg += " " + strings.ToLower(d.Message)
+	}
+	return strings.Contains(msg, "forbids access via a personal access token")
 }
 
 // blobSHA computes the Git blob object SHA-1 for the given content.

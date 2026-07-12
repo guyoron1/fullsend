@@ -776,6 +776,56 @@ func TestIsAlreadyExistsError(t *testing.T) {
 	}
 }
 
+func TestIsClassicPATForbiddenError(t *testing.T) {
+	tests := []struct {
+		name   string
+		apiErr *APIError
+		want   bool
+	}{
+		{
+			name:   "classic PAT forbidden by org policy",
+			apiErr: &APIError{StatusCode: 403, Message: "acme-corp forbids access via a personal access token (classic). Please use a GitHub App, OAuth App, or a personal access token with fine-grained permissions."},
+			want:   true,
+		},
+		{
+			name:   "classic PAT forbidden lowercase org name",
+			apiErr: &APIError{StatusCode: 403, Message: "my-org forbids access via a personal access token (classic)"},
+			want:   true,
+		},
+		{
+			name:   "generic 403 resource not accessible",
+			apiErr: &APIError{StatusCode: 403, Message: "Resource not accessible by integration"},
+			want:   false,
+		},
+		{
+			name:   "secondary rate limit 403",
+			apiErr: &APIError{StatusCode: 403, Message: "You have exceeded a secondary rate limit"},
+			want:   false,
+		},
+		{
+			name: "classic PAT forbidden in Errors array only",
+			apiErr: &APIError{
+				StatusCode: 403,
+				Message:    "Forbidden",
+				Errors: []APIErrorDetail{
+					{Message: "acme-corp forbids access via a personal access token (classic)"},
+				},
+			},
+			want: true,
+		},
+		{
+			name:   "404 not found is not a PAT error",
+			apiErr: &APIError{StatusCode: 404, Message: "Not Found"},
+			want:   false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, isClassicPATForbiddenError(tt.apiErr))
+		})
+	}
+}
+
 func TestAPIError_Unwrap(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -813,6 +863,11 @@ func TestAPIError_Unwrap(t *testing.T) {
 			name:    "403 does not unwrap",
 			apiErr:  &APIError{StatusCode: 403, Message: "Resource not accessible by integration"},
 			wantNil: true,
+		},
+		{
+			name:    "403 classic PAT forbidden unwraps to ErrClassicPATForbidden",
+			apiErr:  &APIError{StatusCode: 403, Message: "acme-corp forbids access via a personal access token (classic)"},
+			wantErr: forge.ErrClassicPATForbidden,
 		},
 	}
 	for _, tt := range tests {
