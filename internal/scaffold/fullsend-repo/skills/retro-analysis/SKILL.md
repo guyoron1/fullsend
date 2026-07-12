@@ -8,6 +8,34 @@ description: >
 
 # Retro Analysis
 
+## Prefetched context
+
+The pre-script prefetches PR/issue data on the host before sandbox launch and writes it to `/sandbox/workspace/pr-context.json`. **Always check for this file first** — it provides PR metadata, comments, reviews, and workflow run data without requiring live API calls.
+
+```bash
+if [[ -f /sandbox/workspace/pr-context.json ]]; then
+  echo "Prefetched context available"
+  # Read the full context
+  cat /sandbox/workspace/pr-context.json | jq .
+else
+  echo "No prefetched context — using live API calls"
+fi
+```
+
+The file contains these fields:
+
+- `source_url` — the originating PR or issue URL
+- `source_repo` — owner/repo
+- `source_number` — PR or issue number
+- `source_type` — `"pull"` or `"issue"`
+- `pr` (for PRs) — full PR metadata (title, body, state, author, labels, refs, stats, timestamps)
+- `issue` (for issues) — full issue metadata
+- `comments` — all issue/PR comments
+- `reviews` (for PRs) — all PR reviews
+- `workflow_runs` (for PRs) — recent workflow runs from the source repo
+
+Use this data to avoid redundant `gh` API calls. Fall back to live API calls only for data not included in the prefetch (e.g., dispatch repo workflow runs, JSONL traces, additional cross-repo context).
+
 ## Tracing the workflow graph
 
 Given the originating PR or issue, reconstruct what agents ran and in what order.
