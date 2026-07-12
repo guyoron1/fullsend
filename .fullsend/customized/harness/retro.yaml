@@ -42,11 +42,8 @@ validation_loop:
   script: scripts/validate-output-schema.sh
   max_iterations: 2
 
-env:
-  runner:
-    FULLSEND_OUTPUT_SCHEMA: ${FULLSEND_DIR}/schemas/retro-result.schema.json
-  sandbox:
-    RETRO_COMMENT: "${RETRO_COMMENT}"
+runner_env:
+  FULLSEND_OUTPUT_SCHEMA: ${FULLSEND_DIR}/schemas/retro-result.schema.json
 
 timeout_minutes: 30
 
@@ -54,12 +51,7 @@ forge:
   github:
     pre_script: scripts/pre-retro.sh
     post_script: scripts/post-retro.sh
-    env:
-      runner:
-        ORIGINATING_URL: "${ORIGINATING_URL}"
-        REPO_FULL_NAME: "${REPO_FULL_NAME}"
-        GH_TOKEN: "${GH_TOKEN}"
-      sandbox:
-        ORIGINATING_URL: "${ORIGINATING_URL}"
-        REPO_FULL_NAME: "${REPO_FULL_NAME}"
-        GH_TOKEN: "${GH_TOKEN}"
+    runner_env:
+      ORIGINATING_URL: "${ORIGINATING_URL}"
+      REPO_FULL_NAME: "${REPO_FULL_NAME}"
+      GH_TOKEN: "${GH_TOKEN}"

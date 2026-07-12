@@ -36,9 +36,8 @@ validation_loop:
   script: scripts/validate-output-schema.sh
   max_iterations: 2
 
-env:
-  runner:
-    FULLSEND_OUTPUT_SCHEMA: ${FULLSEND_DIR}/schemas/prioritize-result.schema.json
+runner_env:
+  FULLSEND_OUTPUT_SCHEMA: ${FULLSEND_DIR}/schemas/prioritize-result.schema.json
 
 timeout_minutes: 10
 
@@ -46,12 +45,8 @@ forge:
   github:
     pre_script: scripts/pre-prioritize.sh
     post_script: scripts/post-prioritize.sh
-    env:
-      runner:
-        GITHUB_ISSUE_URL: ${GITHUB_ISSUE_URL}
-        GH_TOKEN: ${GH_TOKEN}
-        ORG: ${ORG}
-        PROJECT_NUMBER: ${PROJECT_NUMBER}
-      sandbox:
-        GITHUB_ISSUE_URL: "${GITHUB_ISSUE_URL}"
-        GH_TOKEN: "${GH_TOKEN}"
+    runner_env:
+      GITHUB_ISSUE_URL: ${GITHUB_ISSUE_URL}
+      GH_TOKEN: ${GH_TOKEN}
+      ORG: ${ORG}
+      PROJECT_NUMBER: ${PROJECT_NUMBER}
