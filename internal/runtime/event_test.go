@@ -42,6 +42,9 @@ func TestClaudeEventParser_TextEvent(t *testing.T) {
 	if events[0].Kind != EventText {
 		t.Errorf("expected EventText, got %d", events[0].Kind)
 	}
+	if events[0].Text != "I will analyze the code now." {
+		t.Errorf("expected text content, got %q", events[0].Text)
+	}
 }
 
 func TestClaudeEventParser_ResultEvent(t *testing.T) {
@@ -412,6 +415,45 @@ func TestAgentEvent_ZeroValue(t *testing.T) {
 	}
 	if evt.Text != "" {
 		t.Errorf("expected empty text, got %q", evt.Text)
+	}
+}
+
+func TestEventRenderer_ZeroValueKind(t *testing.T) {
+	var buf bytes.Buffer
+	printer := ui.New(&buf)
+	metrics := &RunMetrics{}
+	renderer := &EventRenderer{printer: printer, start: time.Now(), metrics: metrics}
+
+	// Render a zero-value AgentEvent (Kind == 0, not a valid EventKind).
+	renderer.Render(AgentEvent{})
+
+	output := buf.String()
+	if output != "" {
+		t.Errorf("expected no output for zero-value kind, got: %s", output)
+	}
+	if metrics.ToolCalls.Load() != 0 {
+		t.Errorf("expected 0 tool calls, got %d", metrics.ToolCalls.Load())
+	}
+}
+
+func TestEventRenderer_ErrorEventTruncated(t *testing.T) {
+	var buf bytes.Buffer
+	printer := ui.New(&buf)
+	metrics := &RunMetrics{}
+	renderer := &EventRenderer{printer: printer, start: time.Now(), metrics: metrics}
+
+	longError := strings.Repeat("x", maxErrorDisplay+500)
+	renderer.Render(AgentEvent{Kind: EventError, Text: longError})
+
+	output := buf.String()
+	if !strings.Contains(output, "error") {
+		t.Errorf("expected 'error' in output, got: %s", output)
+	}
+	if strings.Contains(output, longError) {
+		t.Errorf("expected error text to be truncated")
+	}
+	if !strings.Contains(output, "… (truncated)") {
+		t.Errorf("expected truncation indicator in output, got: %s", output)
 	}
 }
 

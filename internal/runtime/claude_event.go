@@ -78,6 +78,7 @@ func (p *claudeEventParser) parseAssistant(line []byte) []AgentEvent {
 		case "text":
 			events = append(events, AgentEvent{
 				Kind: EventText,
+				Text: item.Text,
 			})
 		}
 	}

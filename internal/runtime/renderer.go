@@ -4,8 +4,16 @@ import (
 	"fmt"
 	"os"
 	"time"
+	"unicode/utf8"
 
 	"github.com/fullsend-ai/fullsend/internal/ui"
+)
+
+const (
+	// maxErrorDisplay is the maximum length of error text emitted in
+	// progress output and GHA annotations. Matches the
+	// maxTranscriptErrorLength limit used for transcript error handling.
+	maxErrorDisplay = 2000
 )
 
 // EventRenderer formats normalized AgentEvents for display via a Printer.
@@ -41,13 +49,29 @@ func (r *EventRenderer) Render(evt AgentEvent) {
 	case EventResult:
 		r.emitEvent("result")
 	case EventError:
-		text := sanitizeOutput(evt.Text)
+		text := truncateErrorDisplay(sanitizeOutput(evt.Text))
 		if text != "" {
 			r.emitEvent("error: " + text)
 		} else {
 			r.emitEvent("error")
 		}
+	default:
+		// Unknown or zero-value EventKind — silently drop. New event
+		// kinds can be added to the switch as the model evolves.
 	}
+}
+
+// truncateErrorDisplay trims error text to maxErrorDisplay. If truncated,
+// walks back to a valid UTF-8 rune boundary before appending an indicator.
+func truncateErrorDisplay(msg string) string {
+	if len(msg) <= maxErrorDisplay {
+		return msg
+	}
+	truncated := msg[:maxErrorDisplay]
+	for len(truncated) > 0 && !utf8.Valid([]byte(truncated)) {
+		truncated = truncated[:len(truncated)-1]
+	}
+	return truncated + "… (truncated)"
 }
 
 // emitEvent formats and prints a non-tool event line with elapsed time.
