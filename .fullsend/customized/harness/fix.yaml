@@ -41,6 +41,7 @@ skills:
   - skills/fix-review
 
 plugins:
+  - plugins/gopls-lsp
   - plugins/ponytail
 
 env:
