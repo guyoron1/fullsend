@@ -36,6 +36,7 @@ host_files:
     optional: true
 
 plugins:
+  - plugins/gopls-lsp
   - plugins/ponytail
 
 pre_script: scripts/pre-review.sh
