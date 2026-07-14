@@ -62,6 +62,16 @@ All git forge operations (GitHub API calls, PR comments, issue creation, workflo
 
 **When reviewing PRs:** Flag any direct `exec.Command("gh", ...)`, raw GitHub API calls, or other forge-specific operations outside `internal/forge/github/` as a medium-severity or higher finding. This is an architectural violation, not a style preference.
 
+## Shell scripting
+
+### `return` vs `exit` in executed scripts
+
+`return` is valid only inside functions or in scripts that are `source`d. At the top level of an executed script (one with a shebang or run via `bash script.sh`), `return` causes a hard error — and under `set -euo pipefail`, this aborts the script.
+
+This commonly occurs when inlining library code that was previously `source`d. Library-style load guards like `[[ -n "${LOADED:-}" ]] && return 0` must be removed or replaced when the code is inlined into an executed script.
+
+**When reviewing shell scripts:** Flag any top-level `return` (outside a function body) in a script that is executed rather than sourced as a medium-severity correctness finding. Check for this especially when a PR inlines or moves code from a library/sourced file into an executable script.
+
 ## Architecture Decision Records (ADRs)
 
 These rules apply whenever you touch `docs/ADRs/` or review a PR that does. Full authoring guidance is in [`skills/writing-adrs/SKILL.md`](skills/writing-adrs/SKILL.md); invoke that skill when writing a new ADR.
