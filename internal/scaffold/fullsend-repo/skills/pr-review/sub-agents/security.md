@@ -126,3 +126,20 @@ without justification = **high**.
 For workflow files specifically, also check `secrets:` blocks — verify
 secrets are not exposed to untrusted contexts (e.g.,
 `pull_request_target` running fork code with repo secret access).
+
+## Insecure HTTP clients (SSRF)
+
+**Category:** `ssrf`.
+
+When the diff introduces outbound HTTP requests, check whether the
+destination is an external URL (user-supplied or configurable). If so,
+the code must use the SSRF-hardened `internal/fetch/` package — not
+bare `http.DefaultClient`, `http.Get()`, or `&http.Client{}`.
+
+Acceptable uses of bare `http.Client`: localhost/internal-service calls,
+test code with `httptest`, and packages calling known first-party APIs
+via injected clients (e.g., `internal/gcp/`, `internal/forge/github/`).
+
+New bare `http.Client` usage targeting external URLs = **medium** or
+higher, depending on whether the URL is user-controlled (**high**) or
+hardcoded (**medium**).

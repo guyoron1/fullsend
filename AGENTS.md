@@ -62,6 +62,26 @@ All git forge operations (GitHub API calls, PR comments, issue creation, workflo
 
 **When reviewing PRs:** Flag any direct `exec.Command("gh", ...)`, raw GitHub API calls, or other forge-specific operations outside `internal/forge/github/` as a medium-severity or higher finding. This is an architectural violation, not a style preference.
 
+## Secure HTTP clients
+
+Any code that makes outbound HTTP requests to external URLs **must** use the SSRF-hardened client in `internal/fetch/`. That package enforces HTTPS-only access, domain allowlists, DNS pre-resolution with IP validation, and DNS-rebinding protection via transport-level IP pinning (see `docs/plans/universal-harness-access.md` for the full security design).
+
+**Prohibited for external URLs:**
+
+- `http.DefaultClient` or bare `&http.Client{}` — no SSRF protection
+- `http.Get()`, `http.Post()`, `http.Head()` — convenience wrappers on `http.DefaultClient`
+- Custom `http.Transport` without IP validation — vulnerable to DNS rebinding
+
+**Where bare `http.Client` is acceptable:**
+
+- **Localhost / internal service calls** (e.g., the sandbox fetch-service at `FULLSEND_FETCH_URL`, health-check probes) where the destination is a trusted local endpoint, not an external URL.
+- **Test code** using `httptest.NewTLSServer` — the `fetch.NewTestPolicy` helper exists for this.
+- **Packages that already inject `http.Client` via dependency** (e.g., `internal/gcp/`, `internal/forge/github/`) where the client is constructed at the call site with appropriate timeouts. These are calling known first-party APIs, not arbitrary user-supplied URLs.
+
+**When writing code:** If you need to fetch content from an external URL, use `fetch.FetchURL` with an appropriate `FetchPolicy`. Do not construct a bare `http.Client` — the fetch package handles SSRF protection, timeouts, size limits, and redirect blocking.
+
+**When reviewing PRs:** Flag any new `http.DefaultClient`, `http.Get()`, or bare `&http.Client{}` usage that targets external URLs as a medium-severity or higher finding. Verify the destination: localhost/internal-service calls and test code are acceptable, but requests to user-supplied or configurable external URLs must go through `internal/fetch/`.
+
 ## Architecture Decision Records (ADRs)
 
 These rules apply whenever you touch `docs/ADRs/` or review a PR that does. Full authoring guidance is in [`skills/writing-adrs/SKILL.md`](skills/writing-adrs/SKILL.md); invoke that skill when writing a new ADR.
