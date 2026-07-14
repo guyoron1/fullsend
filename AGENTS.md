@@ -29,6 +29,14 @@ The `internal/mintcore/` module is shared between the mint and devmint. Its file
 
 **Dispatch workflows:** The scaffold `dispatch.yml` (at `internal/scaffold/fullsend-repo/.github/workflows/dispatch.yml`) and the repo's `reusable-dispatch.yml` (at `.github/workflows/reusable-dispatch.yml`) share identical routing logic for different installation modes (per-org vs per-repo). When changing the jq payload construction, stage routing, or input/secret threading in one, apply the same change to the other.
 
+## Agent definitions and skills
+
+Agent definitions, skills, harness configs, and related content have moved to
+[`fullsend-ai/agents`](https://github.com/fullsend-ai/agents). The copies under
+`internal/scaffold/fullsend-repo/` are stale and will be removed. Do not modify
+files under `internal/scaffold/fullsend-repo/agents/`, `internal/scaffold/fullsend-repo/skills/`,
+or `internal/scaffold/fullsend-repo/harness/` — make changes in `fullsend-ai/agents` instead.
+
 When making changes to Go code under `cmd/` or `internal/`:
 
 1. **Unit tests:** Run `make go-test` (or `go test ./...`) and fix any failures before committing.
