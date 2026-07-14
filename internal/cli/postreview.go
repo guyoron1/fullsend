@@ -61,12 +61,11 @@ has moved, a stale-head failure is posted instead.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			printer := ui.New(os.Stdout)
 
-			if token == "" {
-				token = os.Getenv("GITHUB_TOKEN")
+			resolved, err := resolveReviewToken(token)
+			if err != nil {
+				return err
 			}
-			if token == "" {
-				return fmt.Errorf("--token or GITHUB_TOKEN required")
-			}
+			token = resolved
 
 			if pr <= 0 {
 				return fmt.Errorf("--pr must be a positive integer, got %d", pr)
@@ -137,13 +136,28 @@ has moved, a stale-head failure is posted instead.`,
 	cmd.Flags().StringVar(&repo, "repo", "", "repository in owner/repo format (required)")
 	cmd.Flags().IntVar(&pr, "pr", 0, "pull request number (required)")
 	cmd.Flags().StringVar(&result, "result", "-", "path to review result file, or '-' for stdin")
-	cmd.Flags().StringVar(&token, "token", "", "GitHub token (default: $GITHUB_TOKEN)")
+	cmd.Flags().StringVar(&token, "token", "", "GitHub token (default: $REVIEW_TOKEN)")
 	cmd.Flags().StringVar(&headSHA, "head-sha", "", "expected PR HEAD SHA (skips review if HEAD has moved)")
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "print what would be posted without making API calls")
 	_ = cmd.MarkFlagRequired("repo")
 	_ = cmd.MarkFlagRequired("pr")
 
 	return cmd
+}
+
+// resolveReviewToken returns the token to use for review submission.
+// Priority: explicit flag value > REVIEW_TOKEN env var > error.
+// GITHUB_TOKEN is deliberately not used as a fallback because it
+// inherits the workflow initiator's identity, causing 422 self-review
+// errors when the PR author matches the workflow identity.
+func resolveReviewToken(flagValue string) (string, error) {
+	if flagValue != "" {
+		return flagValue, nil
+	}
+	if t := os.Getenv("REVIEW_TOKEN"); t != "" {
+		return t, nil
+	}
+	return "", fmt.Errorf("--token or $REVIEW_TOKEN required; GITHUB_TOKEN is not used as a fallback because it causes 422 self-review errors when the workflow identity matches the PR author")
 }
 
 // ReviewResult represents a parsed review result file.

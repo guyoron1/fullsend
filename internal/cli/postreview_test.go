@@ -1001,3 +1001,51 @@ func TestPostApprovedFollowUpIssues_DisabledIsNoop(t *testing.T) {
 	err := postApprovedFollowUpIssues(context.Background(), "acme", "repo", 9, parsed, printer)
 	require.NoError(t, err)
 }
+
+func TestResolveReviewToken(t *testing.T) {
+	tests := []struct {
+		name      string
+		flagValue string
+		envToken  string
+		envGH     string
+		want      string
+		wantErr   bool
+	}{
+		{
+			name:      "flag value takes priority",
+			flagValue: "flag-token",
+			envToken:  "env-token",
+			want:      "flag-token",
+		},
+		{
+			name:     "falls back to REVIEW_TOKEN",
+			envToken: "env-token",
+			want:     "env-token",
+		},
+		{
+			name:    "does not fall back to GITHUB_TOKEN",
+			envGH:   "gh-token",
+			wantErr: true,
+		},
+		{
+			name:    "errors when no token available",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("REVIEW_TOKEN", tt.envToken)
+			t.Setenv("GITHUB_TOKEN", tt.envGH)
+
+			got, err := resolveReviewToken(tt.flagValue)
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), "REVIEW_TOKEN")
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
