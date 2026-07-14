@@ -25,7 +25,7 @@ help:
 	@echo "  go-vet               - Run go vet"
 	@echo "  go-tidy              - Run go mod tidy"
 	@echo "  lint-md-links        - Check markdown files for broken in-repo links and anchors"
-	@echo "  script-test          - Run shell script tests (post-triage, post-code, post-review, pre-fetch-prior-review, reconcile-repos, validate-output-schema)"
+	@echo "  script-test          - Run shell script tests (post-triage, post-code, post-fix, post-review, pre-fetch-prior-review, reconcile-repos, validate-output-schema)"
 	@echo "  test                 - Run all checks: lint-all, go-test, script-test"
 	@echo "  e2e-test             - Run admin e2e tests (requires E2E_GITHUB_SESSION_FILE or E2E_GITHUB_USERNAME + E2E_GITHUB_PASSWORD)"
 	@echo "  e2e-export-session   - Login to GitHub and export a Playwright session file"
@@ -110,6 +110,7 @@ script-test:
 	bash internal/scaffold/fullsend-repo/scripts/post-triage-test.sh
 	bash internal/scaffold/fullsend-repo/scripts/post-prioritize-test.sh
 	bash internal/scaffold/fullsend-repo/scripts/post-code-test.sh
+	bash internal/scaffold/fullsend-repo/scripts/post-fix-test.sh
 	bash internal/scaffold/fullsend-repo/scripts/post-review-test.sh
 	bash internal/scaffold/fullsend-repo/scripts/reconcile-repos-test.sh
 	bash internal/scaffold/fullsend-repo/scripts/validate-output-schema-test.sh

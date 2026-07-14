@@ -301,8 +301,14 @@ fi
 export GH_TOKEN="${PUSH_TOKEN}"
 
 # Locate process-fix-result.py relative to this script.
+# When running from the content-addressed cache, companion files are not
+# co-located — fall back to the workspace scripts directory (FULLSEND_DIR).
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROCESS_SCRIPT="${SCRIPT_DIR}/process-fix-result.py"
+if [ ! -f "${PROCESS_SCRIPT}" ]; then
+  SCRIPT_DIR="${FULLSEND_DIR:-.}/scripts"
+  PROCESS_SCRIPT="${SCRIPT_DIR}/process-fix-result.py"
+fi
 
 # Find fix-result.json in the output directory.
 # RUN_DIR is the original cwd (runDir = <outputBase>/<sandboxName>), saved
