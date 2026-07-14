@@ -263,17 +263,9 @@ set -euo pipefail
 WORKSPACE="/tmp/workspace"
 mkdir -p "$WORKSPACE"
 
-if [[ "${ISSUE_SOURCE}" == "jira" ]]; then
-  AUTH=$(printf '%s:%s' "$JIRA_EMAIL" "$JIRA_API_TOKEN" | base64 -w0)
-  curl -sSf -H "Authorization: Basic $AUTH" \
-    "https://${JIRA_HOST}/rest/api/3/issue/${ISSUE_KEY}" \
-    > "$WORKSPACE/my-input.json"
-
-elif [[ "${ISSUE_SOURCE}" == "github" ]]; then
-  gh issue view "$ISSUE_KEY" --repo "$REPO_FULL_NAME" \
-    --json number,title,body,labels,comments \
-    > "$WORKSPACE/my-input.json"
-fi
+gh issue view "$ISSUE_KEY" --repo "$REPO_FULL_NAME" \
+  --json number,title,body,labels,comments \
+  > "$WORKSPACE/my-input.json"
 
 echo "Pre-script complete."
 ```
@@ -350,6 +342,7 @@ name: fullsend-my-agent
 permissions:
   contents: read
   id-token: write
+  issues: write
 
 on:
   workflow_dispatch:
@@ -358,11 +351,6 @@ on:
         description: 'Issue key'
         required: true
         type: string
-      issue_source:
-        description: 'Issue source: jira or github'
-        required: true
-        type: string
-        default: 'github'
 
 concurrency:
   group: my-agent-${{ inputs.issue_key || 'unknown' }}
@@ -429,7 +417,6 @@ jobs:
       - name: Run my-agent
         env:
           ISSUE_KEY: ${{ inputs.issue_key }}
-          ISSUE_SOURCE: ${{ inputs.issue_source || 'github' }}
           MY_VAR: ABCD
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ANTHROPIC_VERTEX_PROJECT_ID: ${{ secrets.FULLSEND_GCP_PROJECT_ID }}
