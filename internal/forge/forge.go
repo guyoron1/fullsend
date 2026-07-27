@@ -50,6 +50,11 @@ type Repository struct {
 	Private       bool
 	Archived      bool
 	Fork          bool
+
+	// ParentDefaultBranch is the default branch of the parent (upstream)
+	// repository. Non-empty only when Fork is true and the forge provides
+	// parent metadata (e.g. GitHub's "parent" object on forked repos).
+	ParentDefaultBranch string
 }
 
 // ChangeProposal represents a pull request or merge request.

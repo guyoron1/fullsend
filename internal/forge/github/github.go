@@ -412,12 +412,15 @@ func (c *LiveClient) GetRepo(ctx context.Context, owner, repo string) (*forge.Re
 		Private       bool   `json:"private"`
 		Archived      bool   `json:"archived"`
 		Fork          bool   `json:"fork"`
+		Parent        *struct {
+			DefaultBranch string `json:"default_branch"`
+		} `json:"parent"`
 	}
 	if err := decodeJSON(resp, &r); err != nil {
 		return nil, fmt.Errorf("decode repo: %w", err)
 	}
 
-	return &forge.Repository{
+	result := &forge.Repository{
 		ID:            r.ID,
 		Name:          r.Name,
 		FullName:      r.FullName,
@@ -425,7 +428,11 @@ func (c *LiveClient) GetRepo(ctx context.Context, owner, repo string) (*forge.Re
 		Private:       r.Private,
 		Archived:      r.Archived,
 		Fork:          r.Fork,
-	}, nil
+	}
+	if r.Fork && r.Parent != nil {
+		result.ParentDefaultBranch = r.Parent.DefaultBranch
+	}
+	return result, nil
 }
 
 // DeleteRepo deletes a repository.

@@ -1023,15 +1023,24 @@ func applyPerRepoScaffold(ctx context.Context, client forge.Client, printer *ui.
 	if err != nil {
 		return fmt.Errorf("getting repo info: %w", err)
 	}
+
+	// For forks, use the parent (upstream) repo's default branch so that
+	// scaffold commits and PRs target the branch the user actually develops
+	// against, not the fork's potentially stale default branch.
+	targetBranch := targetRepo.DefaultBranch
+	if targetRepo.Fork && targetRepo.ParentDefaultBranch != "" {
+		targetBranch = targetRepo.ParentDefaultBranch
+	}
+
 	commitMsg := fmt.Sprintf("chore: initialize fullsend-%s per-repo installation", version)
 	printer.StepStart(fmt.Sprintf("Committing scaffold files to %s/%s (%s branch)",
-		owner, repo, targetRepo.DefaultBranch))
+		owner, repo, targetBranch))
 	prBody := fmt.Sprintf("This PR adds the fullsend scaffold files for per-repo installation.\n\n"+
 		"The default branch (%s) has branch protection rules that prevent direct pushes, "+
 		"so these files are delivered via PR instead.\n\n"+
-		"Merge this PR to activate fullsend workflows.", targetRepo.DefaultBranch)
+		"Merge this PR to activate fullsend workflows.", targetBranch)
 	if err := layers.CommitScaffoldFiles(ctx, client, printer,
-		owner, repo, targetRepo.DefaultBranch,
+		owner, repo, targetBranch,
 		commitMsg, "chore: initialize fullsend per-repo installation", prBody, files); err != nil {
 		return err
 	}

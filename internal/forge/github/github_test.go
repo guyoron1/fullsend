@@ -85,6 +85,55 @@ func TestCreateRepo(t *testing.T) {
 	assert.True(t, repo.Private)
 }
 
+func TestGetRepo_ForkIncludesParentDefaultBranch(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, "/repos/user/forked-repo", r.URL.Path)
+		json.NewEncoder(w).Encode(map[string]any{
+			"id":             42,
+			"name":           "forked-repo",
+			"full_name":      "user/forked-repo",
+			"default_branch": "main",
+			"private":        false,
+			"archived":       false,
+			"fork":           true,
+			"parent": map[string]any{
+				"default_branch": "develop",
+			},
+		})
+	}))
+	defer srv.Close()
+
+	client := newTestClient(t, srv)
+	repo, err := client.GetRepo(context.Background(), "user", "forked-repo")
+	require.NoError(t, err)
+	assert.True(t, repo.Fork)
+	assert.Equal(t, "main", repo.DefaultBranch)
+	assert.Equal(t, "develop", repo.ParentDefaultBranch)
+}
+
+func TestGetRepo_NonForkHasEmptyParentDefaultBranch(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(map[string]any{
+			"id":             1,
+			"name":           "repo",
+			"full_name":      "org/repo",
+			"default_branch": "main",
+			"private":        false,
+			"archived":       false,
+			"fork":           false,
+		})
+	}))
+	defer srv.Close()
+
+	client := newTestClient(t, srv)
+	repo, err := client.GetRepo(context.Background(), "org", "repo")
+	require.NoError(t, err)
+	assert.False(t, repo.Fork)
+	assert.Equal(t, "main", repo.DefaultBranch)
+	assert.Empty(t, repo.ParentDefaultBranch)
+}
+
 func TestDeleteRepo(t *testing.T) {
 	called := false
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

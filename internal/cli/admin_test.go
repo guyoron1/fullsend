@@ -2235,3 +2235,71 @@ func TestApplyPerRepoScaffold_ProtectedBranch_BranchUpToDate(t *testing.T) {
 
 	assert.Contains(t, buf.String(), "up to date")
 }
+
+func TestApplyPerRepoScaffold_ForkUsesParentDefaultBranch(t *testing.T) {
+	client := forge.NewFakeClient()
+	client.Repos = []forge.Repository{{
+		FullName:            "user/widget",
+		DefaultBranch:       "main",
+		Fork:                true,
+		ParentDefaultBranch: "develop",
+	}}
+	var buf bytes.Buffer
+	printer := ui.New(&buf)
+
+	files := []forge.TreeFile{
+		{Path: ".fullsend/config.yaml", Content: []byte("cfg"), Mode: "100644"},
+	}
+
+	err := applyPerRepoScaffold(context.Background(), client, printer,
+		"user", "widget", files, nil, nil)
+	require.NoError(t, err)
+	assert.Contains(t, buf.String(), "(develop branch)")
+	assert.Contains(t, buf.String(), "Pushed 1 file to develop")
+}
+
+func TestApplyPerRepoScaffold_ForkProtectedBranchUsesParentDefault(t *testing.T) {
+	client := forge.NewFakeClient()
+	client.Repos = []forge.Repository{{
+		FullName:            "user/widget",
+		DefaultBranch:       "main",
+		Fork:                true,
+		ParentDefaultBranch: "develop",
+	}}
+	client.Errors["CommitFiles"] = fmt.Errorf("%w: github api: 422", forge.ErrBranchProtected)
+	var buf bytes.Buffer
+	printer := ui.New(&buf)
+
+	files := []forge.TreeFile{
+		{Path: ".fullsend/config.yaml", Content: []byte("cfg"), Mode: "100644"},
+	}
+
+	err := applyPerRepoScaffold(context.Background(), client, printer,
+		"user", "widget", files, nil, nil)
+	require.NoError(t, err)
+
+	output := buf.String()
+	assert.Contains(t, output, "(develop branch)")
+	assert.Contains(t, output, "PR #1")
+}
+
+func TestApplyPerRepoScaffold_NonForkIgnoresParentDefaultBranch(t *testing.T) {
+	client := forge.NewFakeClient()
+	client.Repos = []forge.Repository{{
+		FullName:      "acme/widget",
+		DefaultBranch: "develop",
+		Fork:          false,
+	}}
+	var buf bytes.Buffer
+	printer := ui.New(&buf)
+
+	files := []forge.TreeFile{
+		{Path: ".fullsend/config.yaml", Content: []byte("cfg"), Mode: "100644"},
+	}
+
+	err := applyPerRepoScaffold(context.Background(), client, printer,
+		"acme", "widget", files, nil, nil)
+	require.NoError(t, err)
+	assert.Contains(t, buf.String(), "(develop branch)")
+	assert.Contains(t, buf.String(), "Pushed 1 file to develop")
+}
