@@ -67,18 +67,16 @@ if [[ "${CODE_FORCE:-}" == "true" ]] || [[ "${COMMENT_BODY:-}" == *--force* ]]; 
   exit 0
 fi
 
-BOT_LOGIN="fullsend-ai[bot]"
-CODER_BOT_LOGIN="fullsend-ai-coder[bot]"
-
 echo "Checking for existing open PRs linked to issue #${ISSUE_NUMBER}..."
 
-# Search for open PRs in the repo that mention the issue number.
-# This catches PRs with "Closes #N", "Fixes #N", or "#N" in the body/title.
-# Use gh's built-in --jq to filter out bot-authored PRs in one call.
+# Search for open PRs that explicitly close this issue (Closes/Fixes/Resolves).
+# Exclude bot-authored PRs by filtering logins that start with "app/" (the
+# format gh pr list uses for GitHub App authors) or end with "[bot]".
+SEARCH_QUERY="\"Closes #${ISSUE_NUMBER}\" OR \"Fixes #${ISSUE_NUMBER}\" OR \"Resolves #${ISSUE_NUMBER}\""
 HUMAN_PR_LINES="$(gh pr list --repo "${REPO_FULL_NAME}" --state open \
-  --search "${ISSUE_NUMBER} in:body,title" \
+  --search "${SEARCH_QUERY}" \
   --json number,url,author \
-  --jq "[.[] | select(.author.login != \"${BOT_LOGIN}\" and .author.login != \"${CODER_BOT_LOGIN}\")] | .[] | \"\(.number)\t\(.author.login)\t\(.url)\"" \
+  --jq '[.[] | select(.author.login | (startswith("app/") or endswith("[bot]")) | not)] | .[] | "\(.number)\t\(.author.login)\t\(.url)"' \
   2>/dev/null || true)"
 
 if [[ -n "${HUMAN_PR_LINES}" ]]; then

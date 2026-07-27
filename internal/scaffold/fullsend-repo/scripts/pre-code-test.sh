@@ -251,6 +251,15 @@ BOT_PR_JSON='[{"number":10,"author":{"login":"fullsend-ai[bot]"},"url":"https://
 # Single fullsend-ai-coder[bot] PR.
 CODER_BOT_PR_JSON='[{"number":11,"author":{"login":"fullsend-ai-coder[bot]"},"url":"https://github.com/test-org/test-repo/pull/11"}]'
 
+# Bot PR using the app/ prefix login format (what gh pr list actually returns).
+APP_BOT_PR_JSON='[{"number":12,"author":{"login":"app/fullsend-ai"},"url":"https://github.com/test-org/test-repo/pull/12"}]'
+
+# Bot PR using the app/ prefix for the coder bot.
+APP_CODER_BOT_PR_JSON='[{"number":13,"author":{"login":"app/fullsend-ai-coder"},"url":"https://github.com/test-org/test-repo/pull/13"}]'
+
+# Mix of app/-prefix bot and human PR.
+MIXED_APP_BOT_PR_JSON='[{"number":13,"author":{"login":"app/fullsend-ai-coder"},"url":"https://github.com/test-org/test-repo/pull/13"},{"number":99,"author":{"login":"human-dev"},"url":"https://github.com/test-org/test-repo/pull/99"}]'
+
 # Both bot PRs plus a human PR.
 MIXED_PR_JSON='[{"number":10,"author":{"login":"fullsend-ai[bot]"},"url":"https://github.com/test-org/test-repo/pull/10"},{"number":11,"author":{"login":"fullsend-ai-coder[bot]"},"url":"https://github.com/test-org/test-repo/pull/11"},{"number":99,"author":{"login":"human-dev"},"url":"https://github.com/test-org/test-repo/pull/99"}]'
 
@@ -373,6 +382,34 @@ run_test_stdout "no-force-reaches-pr-search" \
   "Checking for existing open PRs" \
   0 \
   "COMMENT_BODY=/fs-code"
+
+# --- Bug #545: app/-prefix bot login format ---
+
+# Bot PR with app/ prefix (actual gh pr list format) should not block.
+run_test_stdout "app-prefix-bot-pr-does-not-block" \
+  "${APP_BOT_PR_JSON}" \
+  "No existing human PRs found" \
+  0
+
+# Coder bot PR with app/ prefix should not block.
+run_test_stdout "app-prefix-coder-bot-pr-does-not-block" \
+  "${APP_CODER_BOT_PR_JSON}" \
+  "No existing human PRs found" \
+  0
+
+# App/-prefix bot + human PR: bot filtered, human blocks.
+run_test_stdout "app-prefix-bot-plus-human-blocks" \
+  "${MIXED_APP_BOT_PR_JSON}" \
+  "Skipping code agent" \
+  0
+
+# --- Bug #545: search query uses closing keywords ---
+
+# Verify the search query contains closing keywords, not bare issue number.
+run_test "search-query-uses-closing-keywords" \
+  "" \
+  "Closes #42" \
+  0
 
 # --- Summary ---
 
