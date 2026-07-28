@@ -637,36 +637,32 @@ func TestHarnessForgeRunnerEnvMerge(t *testing.T) {
 		file            string
 		topLevelKeys    []string
 		forgeGithubKeys []string
+		envRunnerKeys   []string
 	}{
 		{
-			file:            "triage.yaml",
-			topLevelKeys:    []string{"FULLSEND_OUTPUT_SCHEMA"},
-			forgeGithubKeys: []string{"GITHUB_ISSUE_URL", "GH_TOKEN"},
+			file:          "triage.yaml",
+			envRunnerKeys: []string{"FULLSEND_OUTPUT_SCHEMA", "GITHUB_ISSUE_URL", "GH_TOKEN"},
 		},
 		{
 			file:            "code.yaml",
-			topLevelKeys:    []string{"TARGET_BRANCH"},
+			topLevelKeys:    []string{"CODE_ALLOWED_TARGET_BRANCHES", "FULLSEND_OUTPUT_SCHEMA", "FULLSEND_OUTPUT_FILE"},
 			forgeGithubKeys: []string{"PUSH_TOKEN", "PUSH_TOKEN_SOURCE", "REPO_FULL_NAME", "ISSUE_NUMBER", "REPO_DIR"},
 		},
 		{
-			file:            "review.yaml",
-			topLevelKeys:    []string{"FULLSEND_OUTPUT_SCHEMA"},
-			forgeGithubKeys: []string{"REVIEW_TOKEN", "REPO_FULL_NAME", "PR_NUMBER", "GITHUB_PR_URL"},
+			file:          "review.yaml",
+			envRunnerKeys: []string{"FULLSEND_OUTPUT_SCHEMA", "REVIEW_TOKEN", "REPO_FULL_NAME", "PR_NUMBER", "GITHUB_PR_URL"},
 		},
 		{
-			file:            "fix.yaml",
-			topLevelKeys:    []string{"TARGET_BRANCH", "TRIGGER_SOURCE", "HUMAN_INSTRUCTION", "FIX_ITERATION", "REVIEW_BODY_FILE", "PRE_AGENT_HEAD", "FULLSEND_OUTPUT_SCHEMA", "FULLSEND_OUTPUT_FILE"},
-			forgeGithubKeys: []string{"PUSH_TOKEN", "PUSH_TOKEN_SOURCE", "REPO_FULL_NAME", "PR_NUMBER", "REPO_DIR"},
+			file:          "fix.yaml",
+			envRunnerKeys: []string{"TARGET_BRANCH", "TRIGGER_SOURCE", "HUMAN_INSTRUCTION", "FIX_ITERATION", "REVIEW_BODY_FILE", "PRE_AGENT_HEAD", "FULLSEND_OUTPUT_SCHEMA", "FULLSEND_OUTPUT_FILE", "PUSH_TOKEN", "PUSH_TOKEN_SOURCE", "REPO_FULL_NAME", "PR_NUMBER", "REPO_DIR"},
 		},
 		{
-			file:            "retro.yaml",
-			topLevelKeys:    []string{"FULLSEND_OUTPUT_SCHEMA"},
-			forgeGithubKeys: []string{"ORIGINATING_URL", "REPO_FULL_NAME", "GH_TOKEN"},
+			file:          "retro.yaml",
+			envRunnerKeys: []string{"FULLSEND_OUTPUT_SCHEMA", "ORIGINATING_URL", "REPO_FULL_NAME", "GH_TOKEN"},
 		},
 		{
-			file:            "prioritize.yaml",
-			topLevelKeys:    []string{"FULLSEND_OUTPUT_SCHEMA"},
-			forgeGithubKeys: []string{"GITHUB_ISSUE_URL", "GH_TOKEN", "ORG", "PROJECT_NUMBER"},
+			file:          "prioritize.yaml",
+			envRunnerKeys: []string{"FULLSEND_OUTPUT_SCHEMA", "GITHUB_ISSUE_URL", "GH_TOKEN", "ORG", "PROJECT_NUMBER"},
 		},
 	}
 
@@ -681,6 +677,41 @@ func TestHarnessForgeRunnerEnvMerge(t *testing.T) {
 			}
 			for _, key := range tt.forgeGithubKeys {
 				assert.Contains(t, h.RunnerEnv, key, "merged RunnerEnv should contain forge.github key %s", key)
+			}
+
+			// For files using the new env.runner format, check raw YAML
+			if len(tt.envRunnerKeys) > 0 {
+				type rawEnvSection struct {
+					Runner map[string]string `yaml:"runner"`
+				}
+				type rawHarnessEnv struct {
+					Env   *rawEnvSection `yaml:"env,omitempty"`
+					Forge map[string]*struct {
+						Env *rawEnvSection `yaml:"env,omitempty"`
+					} `yaml:"forge,omitempty"`
+				}
+
+				data, readErr := os.ReadFile(harnessPath)
+				require.NoError(t, readErr)
+
+				var raw rawHarnessEnv
+				require.NoError(t, yaml.Unmarshal(data, &raw))
+
+				combined := make(map[string]string)
+				if raw.Env != nil {
+					for k, v := range raw.Env.Runner {
+						combined[k] = v
+					}
+				}
+				if fc, ok := raw.Forge["github"]; ok && fc != nil && fc.Env != nil {
+					for k, v := range fc.Env.Runner {
+						combined[k] = v
+					}
+				}
+
+				for _, key := range tt.envRunnerKeys {
+					assert.Contains(t, combined, key, "env.runner should contain key %s", key)
+				}
 			}
 		})
 	}
