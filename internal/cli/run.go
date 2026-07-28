@@ -887,8 +887,8 @@ func runAgent(ctx context.Context, agentName, fullsendDir, outputBase, targetRep
 
 		// 9d. Extract target repo back to host. SafeDownload removes dangerous
 		// symlinks (absolute or repo-escaping) and .git/hooks/ to prevent sandbox escape.
-		if clearErr := os.RemoveAll(hostRepositoryDir); clearErr != nil {
-			return fmt.Errorf("clearing local repo %s before extraction: %w", hostRepositoryDir, clearErr)
+		if clearErr := forceRemoveAll(hostRepositoryDir); clearErr != nil {
+			printer.StepWarn(fmt.Sprintf("Could not fully clear %s before extraction (will attempt anyway): %v", hostRepositoryDir, clearErr))
 		}
 		repoExtractStart := time.Now()
 		printer.StepStart("Extracting target repo")
@@ -1304,6 +1304,27 @@ func validationFailMessage(output []byte, execErr error) string {
 		return msg
 	}
 	return execErr.Error()
+}
+
+// forceRemoveAll removes dir, retrying after making directories writable
+// if the first attempt fails. This handles files created by sandbox
+// processes running as a different UID — the initial os.RemoveAll fails
+// because restrictive directory permissions prevent unlinking entries.
+// Relaxing permissions on directories we own lets the retry succeed.
+// See #566.
+func forceRemoveAll(dir string) error {
+	err := os.RemoveAll(dir)
+	if err == nil {
+		return nil
+	}
+	// Relax directory permissions so entries can be unlinked, then retry.
+	_ = filepath.WalkDir(dir, func(path string, d os.DirEntry, _ error) error {
+		if d != nil && d.IsDir() {
+			os.Chmod(path, 0o755) //nolint:errcheck // best-effort
+		}
+		return nil
+	})
+	return os.RemoveAll(dir)
 }
 
 // envToList converts a map of env vars to a sorted list of KEY=VALUE strings.

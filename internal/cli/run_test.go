@@ -799,6 +799,39 @@ func TestAgentWorkingDirExcludes_NotEmpty(t *testing.T) {
 		"agentWorkingDirExcludes must not be empty — agents create working dirs that need exclusion")
 }
 
+func TestForceRemoveAll_Normal(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "file.txt"), []byte("hello"), 0o644))
+	require.NoError(t, forceRemoveAll(dir))
+	_, err := os.Stat(dir)
+	assert.True(t, os.IsNotExist(err))
+}
+
+func TestForceRemoveAll_RestrictiveDirPermissions(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("test requires non-root to exercise permission retry path")
+	}
+	dir := t.TempDir()
+	sub := filepath.Join(dir, "subdir")
+	require.NoError(t, os.Mkdir(sub, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(sub, "file.txt"), []byte("data"), 0o644))
+	// Remove write permission — os.RemoveAll fails because it cannot
+	// unlink entries from a non-writable directory.
+	require.NoError(t, os.Chmod(sub, 0o555))
+
+	// Plain os.RemoveAll should fail.
+	require.Error(t, os.RemoveAll(dir))
+
+	// forceRemoveAll retries after relaxing permissions.
+	require.NoError(t, forceRemoveAll(dir))
+	_, err := os.Stat(dir)
+	assert.True(t, os.IsNotExist(err))
+}
+
+func TestForceRemoveAll_Nonexistent(t *testing.T) {
+	assert.NoError(t, forceRemoveAll(filepath.Join(t.TempDir(), "does-not-exist")))
+}
+
 func TestReadOIDCAuthFile_Success(t *testing.T) {
 	f := filepath.Join(t.TempDir(), "auth")
 	require.NoError(t, os.WriteFile(f, []byte("bearer test-token"), 0o600))
