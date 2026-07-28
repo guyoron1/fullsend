@@ -416,3 +416,21 @@ PR_URL="$(gh pr create \
 
 echo "PR created: ${PR_URL}"
 echo "pr_url=${PR_URL}" >> "${GITHUB_OUTPUT:-/dev/null}"
+
+# ---------------------------------------------------------------------------
+# 9. Apply ready-for-review label to trigger review dispatch
+#
+# The ready-for-review label is the dispatch trigger for the review stage
+# (dispatch.yml routes issues.labeled → review). If the label is missing
+# from the repo, create it first — matching the pattern in post-review.sh.
+# Label logic is mirrored in post-code-test.sh — update both.
+# ---------------------------------------------------------------------------
+echo "Applying ready-for-review label to issue #${ISSUE_NUMBER}..."
+# Create label if missing (idempotent — matches post-review.sh pattern)
+gh label create "ready-for-review" --repo "${REPO_FULL_NAME}" \
+  --description "Fullsend: triggers review agent dispatch" --color "0E8A16" \
+  2>/dev/null || true
+if ! gh issue edit "${ISSUE_NUMBER}" --repo "${REPO_FULL_NAME}" \
+    --add-label "ready-for-review" 2>/dev/null; then
+  echo "::error::Failed to apply ready-for-review label to issue #${ISSUE_NUMBER} — review agent will NOT be dispatched for this PR"
+fi

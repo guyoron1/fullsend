@@ -694,6 +694,51 @@ run_signoff_test "signoff-variant-casing-passes" \
 signed-off-by: bot <bot@noreply.github.com>" \
   "pass"
 
+# ---------------------------------------------------------------------------
+# Test helper — reimplements the label application logic from post-code.sh
+# section 9. Given whether label creation succeeded and label application
+# succeeded, returns the expected outcome.
+# ---------------------------------------------------------------------------
+decide_label_outcome() {
+  local label_apply_rc="$1"
+
+  if [ "${label_apply_rc}" -eq 0 ]; then
+    echo "success"
+  else
+    echo "error:review-not-dispatched"
+  fi
+}
+
+run_label_test() {
+  local test_name="$1"
+  local label_apply_rc="$2"
+  local expected_prefix="$3"
+
+  local actual
+  actual="$(decide_label_outcome "${label_apply_rc}")"
+
+  if [[ "${actual}" != ${expected_prefix}* ]]; then
+    echo "FAIL: ${test_name}"
+    echo "  label_apply_rc:  '${label_apply_rc}'"
+    echo "  expected prefix: '${expected_prefix}'"
+    echo "  actual:          '${actual}'"
+    FAILURES=$((FAILURES + 1))
+    return
+  fi
+
+  echo "PASS: ${test_name}"
+}
+
+# --- Label application test cases ---
+
+# Successful label application → success
+run_label_test "label-apply-success" \
+  "0" "success"
+
+# Failed label application → error (not warning)
+run_label_test "label-apply-failure-emits-error" \
+  "1" "error:review-not-dispatched"
+
 # --- Summary ---
 
 echo ""
