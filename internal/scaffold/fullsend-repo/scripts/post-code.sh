@@ -340,6 +340,25 @@ if [ "${PUSH_RC}" -ne 0 ]; then
 fi
 
 # ---------------------------------------------------------------------------
+# Helper: apply ready-for-review label to the issue.
+#
+# Creates the label if it does not exist, then adds it to the issue.
+# Uses the labels API (not gh issue edit) to avoid firing issues.edited.
+# Best-effort — failure is logged but does not block the push/PR.
+# ---------------------------------------------------------------------------
+apply_ready_for_review_label() {
+  gh label create "ready-for-review" --repo "${REPO_FULL_NAME}" \
+    --description "PR ready for automated review" --color "0075ca" \
+    2>/dev/null || true
+  if gh api "repos/${REPO_FULL_NAME}/issues/${ISSUE_NUMBER}/labels" \
+    -f "labels[]=ready-for-review" --silent 2>/dev/null; then
+    echo "Applied ready-for-review label to issue #${ISSUE_NUMBER}"
+  else
+    echo "::warning::Failed to apply ready-for-review label to issue #${ISSUE_NUMBER}"
+  fi
+}
+
+# ---------------------------------------------------------------------------
 # 8. Create PR
 # ---------------------------------------------------------------------------
 
@@ -352,6 +371,7 @@ if [ -n "${EXISTING_PR_NUM}" ]; then
   echo "PR #${EXISTING_PR_NUM} already exists — branch updated with new commits"
   echo "PR: ${EXISTING_PR_URL}"
   echo "pr_url=${EXISTING_PR_URL}" >> "${GITHUB_OUTPUT:-/dev/null}"
+  apply_ready_for_review_label
   exit 0
 fi
 
@@ -416,3 +436,4 @@ PR_URL="$(gh pr create \
 
 echo "PR created: ${PR_URL}"
 echo "pr_url=${PR_URL}" >> "${GITHUB_OUTPUT:-/dev/null}"
+apply_ready_for_review_label
