@@ -1,7 +1,7 @@
 ---
 agent: agents/code.md
 doc: docs/agents/code.md
-model: sonnet
+model: opus
 image: ghcr.io/fullsend-ai/fullsend-code:latest
 policy: policies/code.yaml
 providers:
