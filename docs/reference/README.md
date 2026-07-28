@@ -5,3 +5,4 @@ the software itself: commands, APIs, schemas, etc.
 
 - [Installation](installation.md)
 - [GitHub Setup](github-setup.md)
+- [Config Merge Semantics](config-merge-semantics.md)
