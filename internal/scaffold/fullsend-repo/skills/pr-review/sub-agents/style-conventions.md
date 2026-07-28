@@ -50,3 +50,21 @@ Do not read additional files beyond the diff context.
 This rule takes precedence over the size-based categories above: a
 25-line value-only change exits here rather than triggering non-trivial
 exploration.
+
+## Auto-formatter detection
+
+When a file's diff is predominantly formatting or style changes (>80%
+of changed lines are whitespace, indentation, punctuation, or import
+reordering), emit an explicit **info**-level finding with category
+`pattern-inconsistency`:
+
+- **description:** Identify the file as auto-formatter output, state
+  the approximate ratio of formatting-to-functional changes, and name
+  which functional change likely triggered the formatter run (if
+  discernible from the diff).
+- **actionable:** `false`
+
+This ensures human reviewers see an explicit callout rather than having
+to discover the explanation buried in review prose. If the file has
+roughly equal formatting and functional changes (~50/50), do **not**
+label it as auto-formatter output — evaluate normally.

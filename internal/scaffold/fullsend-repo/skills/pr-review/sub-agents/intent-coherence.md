@@ -42,6 +42,25 @@ Calibrate investigation to the diff size and nature.
   scope. If there is no linked issue, flag a `missing-authorization`
   finding — non-trivial changes require explicit authorization.
 
+## Prior-finding remediation
+
+On re-reviews, the orchestrator provides cross-dimension prior findings
+(from docs-currency, correctness, etc.) in addition to this dimension's
+own prior findings. Before flagging a new file or change as scope-creep,
+cross-reference it against these prior findings:
+
+- If a new file or change **directly remediates** a prior finding (e.g.,
+  adding a doc that was flagged as `missing-doc`, adding a test that was
+  flagged as `missing-test`), do **not** flag it as `scope-creep` or
+  `scope-exceeded`. The change is authorized by the prior review's own
+  findings.
+- If a commit contains **both** remediation files and genuinely
+  out-of-scope additions, flag only the out-of-scope additions. Do not
+  penalize the remediation portion.
+- If no cross-dimension prior findings are provided (first review or
+  no prior findings exist), this section does not apply — evaluate
+  scope normally.
+
 ## Revert PR authorization
 
 A PR is a candidate revert if **at least two** of the following signals

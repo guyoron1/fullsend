@@ -204,7 +204,11 @@ review dimension using category as the key:
 Findings with unrecognized categories go to the nearest matching
 dimension by keyword, or to `correctness` as a fallback.
 
-Each sub-agent receives ONLY the prior findings for its own dimension.
+Each sub-agent receives ONLY the prior findings for its own dimension,
+with one exception: the `intent-coherence` sub-agent also receives
+actionable prior findings from ALL other dimensions (see step 3d).
+This allows it to suppress scope-creep flags on changes that
+remediate prior review findings.
 
 #### 3a-1. Budget allocation priority
 
@@ -298,6 +302,10 @@ For each selected sub-agent, assemble a context package containing:
   excluded from the concatenation.
 - `changed_files`: list of relative file paths modified
 - `prior_findings`: prior findings for this dimension only (from 3a)
+- `cross_dimension_prior_findings`: *intent-coherence only* —
+  actionable prior findings from all OTHER dimensions (categories
+  like `missing-doc`, `missing-test`, `stale-doc`, `incorrect-doc`,
+  `test-inadequate`, etc.). Omit for all other sub-agents.
 - `prior_review_sha`: the SHA of the prior review (from 2a)
 - `changed_since_prior`: file set that changed since prior review
 - `pr_metadata`: title, body, author, labels
@@ -337,6 +345,9 @@ For each selected sub-agent:
 
    ### Prior findings (this dimension only)
    <prior findings JSON or "none — first review">
+
+   ### Cross-dimension prior findings (intent-coherence only)
+   <actionable prior findings from other dimensions, or omit section>
 
    ### Prior review SHA
    <sha or "none">
