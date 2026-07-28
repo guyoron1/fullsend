@@ -416,3 +416,33 @@ PR_URL="$(gh pr create \
 
 echo "PR created: ${PR_URL}"
 echo "pr_url=${PR_URL}" >> "${GITHUB_OUTPUT:-/dev/null}"
+
+# ---------------------------------------------------------------------------
+# 9. Apply ready-for-review label to trigger review dispatch
+#
+# The dispatch workflow routes to the review stage when the
+# ready-for-review label is applied to an issue.  If the label does not
+# exist in the target repo (e.g. deleted by an admin, or enrolled before
+# label provisioning was implemented), create it on-the-fly and retry.
+# Failure is non-fatal to the push (the PR is already created), but
+# escalated to ::error:: so the broken review chain is visible.
+# ---------------------------------------------------------------------------
+echo "Applying ready-for-review label to issue #${ISSUE_NUMBER}..."
+if gh issue edit "${ISSUE_NUMBER}" --repo "${REPO_FULL_NAME}" \
+  --add-label "ready-for-review" 2>/dev/null; then
+  echo "ready-for-review label applied to issue #${ISSUE_NUMBER}"
+else
+  echo "Label application failed — attempting to create ready-for-review label..."
+  if gh label create "ready-for-review" --repo "${REPO_FULL_NAME}" \
+    --description "Fullsend: triggers review agent dispatch" --color "0E8A16" 2>/dev/null; then
+    echo "Label created — retrying application..."
+    if gh issue edit "${ISSUE_NUMBER}" --repo "${REPO_FULL_NAME}" \
+      --add-label "ready-for-review" 2>/dev/null; then
+      echo "ready-for-review label applied to issue #${ISSUE_NUMBER}"
+    else
+      echo "::error::Failed to apply ready-for-review label after creating it — review dispatch will not trigger for issue #${ISSUE_NUMBER}"
+    fi
+  else
+    echo "::error::Failed to create ready-for-review label in ${REPO_FULL_NAME} — review dispatch will not trigger for issue #${ISSUE_NUMBER}"
+  fi
+fi

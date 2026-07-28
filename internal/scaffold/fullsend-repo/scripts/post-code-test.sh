@@ -694,6 +694,77 @@ run_signoff_test "signoff-variant-casing-passes" \
 signed-off-by: bot <bot@noreply.github.com>" \
   "pass"
 
+# ---------------------------------------------------------------------------
+# Test helper — reimplements the ready-for-review label application logic
+# from post-code.sh section 9. Given the exit codes of apply, create, and
+# retry, returns the outcome the script would produce.
+# ---------------------------------------------------------------------------
+decide_label_action() {
+  local apply_rc="$1"    # 0=success, 1=fail
+  local create_rc="$2"   # 0=success, 1=fail  (only checked if apply fails)
+  local retry_rc="$3"    # 0=success, 1=fail  (only checked if create succeeds)
+
+  if [ "${apply_rc}" -eq 0 ]; then
+    echo "applied"
+    return 0
+  fi
+
+  if [ "${create_rc}" -ne 0 ]; then
+    echo "error:create-failed"
+    return 0
+  fi
+
+  if [ "${retry_rc}" -eq 0 ]; then
+    echo "applied:after-create"
+    return 0
+  fi
+
+  echo "error:retry-failed"
+  return 0
+}
+
+run_label_test() {
+  local test_name="$1"
+  local apply_rc="$2"
+  local create_rc="$3"
+  local retry_rc="$4"
+  local expected="$5"
+
+  local actual
+  actual="$(decide_label_action "${apply_rc}" "${create_rc}" "${retry_rc}")"
+
+  if [ "${actual}" != "${expected}" ]; then
+    echo "FAIL: ${test_name}"
+    echo "  apply_rc:  ${apply_rc}"
+    echo "  create_rc: ${create_rc}"
+    echo "  retry_rc:  ${retry_rc}"
+    echo "  expected:  '${expected}'"
+    echo "  actual:    '${actual}'"
+    FAILURES=$((FAILURES + 1))
+    return
+  fi
+
+  echo "PASS: ${test_name}"
+}
+
+# --- Ready-for-review label test cases ---
+
+# Label exists, apply succeeds on first try
+run_label_test "label-exists-apply-succeeds" \
+  0 0 0 "applied"
+
+# Label missing, creation succeeds, retry succeeds
+run_label_test "label-missing-create-retry-succeeds" \
+  1 0 0 "applied:after-create"
+
+# Label missing, creation fails (e.g. permissions) → error
+run_label_test "label-missing-create-fails" \
+  1 1 0 "error:create-failed"
+
+# Label missing, creation succeeds, retry still fails → error
+run_label_test "label-missing-create-ok-retry-fails" \
+  1 0 1 "error:retry-failed"
+
 # --- Summary ---
 
 echo ""
