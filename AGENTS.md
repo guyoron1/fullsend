@@ -46,6 +46,22 @@ The e2e tests require GitHub credentials. There are three ways to provide them:
 
 If only `E2E_GITHUB_USERNAME` and a password source are available, `make e2e-test` will automatically generate a session file before running tests. See `make help` for all available targets.
 
+## CLI documentation cross-reference
+
+When changing CLI command behavior, grep `docs/` for the command name and update all references. Always check `docs/guides/dev/cli-internals.md` (the CLI command tree).
+
+| Command group | Source | Documentation touchpoints |
+|--------------|--------|---------------------------|
+| **admin** | `internal/cli/admin.go` | `docs/guides/dev/cli-internals.md`, `docs/reference/installation.md`, `docs/reference/github-setup.md`, `docs/guides/dev/e2e-testing.md` |
+| **mint** | `internal/cli/mint.go` | `docs/guides/dev/cli-internals.md`, `docs/guides/infrastructure/mint-administration.md`, `docs/architecture.md`, `docs/reference/installation.md` |
+| **inference** | `internal/cli/inference.go` | `docs/guides/dev/cli-internals.md`, `docs/guides/getting-started/getting-inference.md`, `docs/guides/infrastructure/infrastructure-reference.md`, `docs/reference/installation.md` |
+| **github** | `internal/cli/github.go` | `docs/guides/dev/cli-internals.md`, `docs/guides/getting-started/configuring-github.md`, `docs/reference/github-setup.md`, `docs/reference/installation.md` |
+| **lock** | `internal/cli/lock.go` | `docs/guides/dev/cli-internals.md`, `docs/guides/user/running-agents-locally.md` |
+| **run** | `internal/cli/run.go` | `docs/guides/dev/cli-internals.md`, `docs/guides/user/running-agents-locally.md`, `docs/guides/user/building-custom-agents.md`, `docs/architecture.md` |
+| **scan** | `internal/cli/scan.go` | `docs/guides/dev/cli-internals.md`, `docs/architecture.md` |
+
+ADRs and implementation plans (`docs/ADRs/`, `docs/plans/`) may also reference CLI commands — the grep rule catches these.
+
 ## Forge abstraction
 
 All git forge operations (GitHub API calls, PR comments, issue creation, workflow dispatch, etc.) **must** go through the `forge.Client` interface defined in `internal/forge/forge.go`. This is a fundamental architectural rule — the codebase supports multiple forges (GitHub, GitLab, Forgejo) and direct coupling to any single forge breaks the abstraction.
