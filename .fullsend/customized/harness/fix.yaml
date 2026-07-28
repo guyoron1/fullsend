@@ -1,7 +1,7 @@
 ---
 agent: agents/fix.md
 doc: docs/agents/fix.md
-model: opus
+model: sonnet
 image: ghcr.io/fullsend-ai/fullsend-code:latest
 policy: policies/fix.yaml
 providers:
