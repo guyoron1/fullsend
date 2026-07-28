@@ -137,7 +137,17 @@ func TestRunCommand_RejectsNegativeMaxResources(t *testing.T) {
 	assert.Contains(t, err.Error(), "--max-resources must be >= 1")
 }
 
+// blankTokenEnv prevents runAgent from discovering ambient GitHub
+// credentials (env vars or gh CLI auth) so fixture-based tests always
+// use the local harness and never reach the network. See #558.
+func blankTokenEnv(t *testing.T) {
+	t.Helper()
+	t.Setenv("GH_TOKEN", "")
+	t.Setenv("GITHUB_TOKEN", "")
+}
+
 func TestRunAgent_HarnessLoadPipeline(t *testing.T) {
+	blankTokenEnv(t)
 	// Exercises the early runAgent pipeline: absFullsendDir, policy,
 	// org config loading, LoadWithBase, baseDeps, ResolveRelativeTo.
 	// The function fails later at sandbox.EnsureAvailable (no openshell
@@ -165,6 +175,7 @@ func TestRunAgent_HarnessLoadPipeline(t *testing.T) {
 }
 
 func TestRunAgent_YMLFallback(t *testing.T) {
+	blankTokenEnv(t)
 	dir := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "harness"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "agents"), 0o755))
@@ -188,6 +199,7 @@ func TestRunAgent_YMLFallback(t *testing.T) {
 }
 
 func TestRunAgent_HarnessNotFound(t *testing.T) {
+	blankTokenEnv(t)
 	dir := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "harness"), 0o755))
 
@@ -199,6 +211,7 @@ func TestRunAgent_HarnessNotFound(t *testing.T) {
 }
 
 func TestRunAgent_HarnessLoadWithOrgConfig(t *testing.T) {
+	blankTokenEnv(t)
 	// Same as above but with a config.yaml present, covering the
 	// orgCfg != nil → orgAllowlist path.
 	dir := t.TempDir()
@@ -229,6 +242,7 @@ func TestRunAgent_HarnessLoadWithOrgConfig(t *testing.T) {
 }
 
 func TestRunAgent_MalformedOrgConfig(t *testing.T) {
+	blankTokenEnv(t)
 	// A malformed config.yaml should produce a warning but not prevent
 	// local-only harnesses from proceeding through the pipeline.
 	dir := t.TempDir()
@@ -259,6 +273,7 @@ func TestRunAgent_MalformedOrgConfig(t *testing.T) {
 }
 
 func TestRunAgent_MalformedOrgConfigWithURLRefs(t *testing.T) {
+	blankTokenEnv(t)
 	// A malformed config.yaml with URL-referenced resources should fail
 	// with a parse error on the re-attempt inside HasURLReferences.
 	agentHash := fetch.ComputeSHA256([]byte("agent content"))
@@ -284,6 +299,7 @@ func TestRunAgent_MalformedOrgConfigWithURLRefs(t *testing.T) {
 }
 
 func TestRunAgent_URLRefsNoOrgConfig(t *testing.T) {
+	blankTokenEnv(t)
 	// Harness with URL agent but no config.yaml → exercises the
 	// orgCfg == nil path inside HasURLReferences.
 	dir := t.TempDir()
@@ -304,6 +320,7 @@ func TestRunAgent_URLRefsNoOrgConfig(t *testing.T) {
 }
 
 func TestRunAgent_WithURLBase(t *testing.T) {
+	blankTokenEnv(t)
 	// Harness with a URL base — exercises the baseDeps logging loop.
 	baseContent := []byte("agent: agents/shared.md\n")
 	baseHash := fetch.ComputeSHA256(baseContent)
@@ -343,6 +360,7 @@ func TestRunAgent_WithURLBase(t *testing.T) {
 }
 
 func TestRunAgent_URLBaseNoOrgConfig(t *testing.T) {
+	blankTokenEnv(t)
 	// Harness with a URL base but no config.yaml — exercises the
 	// pre-check that loads config strictly when a URL base is detected.
 	baseContent := []byte("agent: agents/shared.md\n")
@@ -367,6 +385,7 @@ func TestRunAgent_URLBaseNoOrgConfig(t *testing.T) {
 }
 
 func TestRunAgent_URLBaseMalformedOrgConfig(t *testing.T) {
+	blankTokenEnv(t)
 	// Harness with a URL base and malformed config.yaml — exercises the
 	// pre-check parse error path.
 	baseContent := []byte("agent: agents/shared.md\n")
