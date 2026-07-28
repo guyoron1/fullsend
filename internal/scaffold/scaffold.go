@@ -88,6 +88,11 @@ func isSkippedDir(path string) bool {
 			return true
 		}
 	}
+	// .fullsend-cache/ is a runtime cache that must never be scaffolded,
+	// even if it contaminates the embed FS at build time (#576).
+	if strings.HasPrefix(path, ".fullsend-cache/") {
+		return true
+	}
 	return false
 }
 

@@ -279,6 +279,7 @@ func TestLayeredDirsNotInstalled(t *testing.T) {
 		"env/",
 		".github/actions/",
 		".github/scripts/",
+		".fullsend-cache/",
 	}
 	err := WalkFullsendRepo(func(path string, _ []byte) error {
 		for _, prefix := range skippedPrefixes {
