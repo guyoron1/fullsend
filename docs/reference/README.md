@@ -5,3 +5,4 @@ the software itself: commands, APIs, schemas, etc.
 
 - [Installation](installation.md)
 - [GitHub Setup](github-setup.md)
+- [Per-repo Configuration](per-repo-config.md)

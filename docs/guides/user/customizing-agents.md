@@ -147,6 +147,8 @@ For per-repo mode, the same structure lives at `.fullsend/customized/` within th
 
 **File-level replacement, not field-level merging.** When you place a file in `customized/harness/code.yaml`, it completely replaces the upstream `harness/code.yaml`. There is no YAML field merging.
 
+> **Note:** This section covers *content* layering (agents, skills, harness files). For *config field* resolution (roles, kill switch, and other `.fullsend/config.yaml` fields), see the [Per-repo configuration reference](../../reference/per-repo-config.md).
+
 **Example: Adding a skill to the code agent**
 
 To add a custom skill to the code agent's harness:
