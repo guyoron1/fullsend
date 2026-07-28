@@ -82,3 +82,23 @@ These rules apply whenever you touch `docs/ADRs/` or review a PR that does. Full
 - **CODEOWNERS files are always human-owned.** Agents cannot modify their own guardrails.
 - **The repo is the coordinator.** No coordinator agent — branch protection, CODEOWNERS, and status checks are the coordination layer.
 - **Organization-specific content is cordoned.** Core problem docs are general; applied considerations live in `docs/problems/applied/`.
+
+## CLI documentation cross-reference
+
+When changing CLI command behavior (flags, subcommands, output, error handling), update **all** files that document the affected command group. The general rule: `grep -rl '<command-name>' docs/ internal/cli/` and update every hit that describes user-facing behavior. The table below lists the primary touchpoints per command group.
+
+| Command group | Source (cobra help) | CLI reference | Guides & references |
+|---|---|---|---|
+| `admin` | `internal/cli/admin.go` | `docs/guides/dev/cli-internals.md` | `docs/reference/installation.md`, `docs/guides/dev/e2e-testing.md` |
+| `mint` | `internal/cli/mint.go`, `internal/cli/minttoken.go` | `docs/guides/dev/cli-internals.md` | `docs/reference/installation.md`, `docs/reference/github-setup.md`, `docs/guides/infrastructure/mint-administration.md`, `docs/guides/infrastructure/infrastructure-reference.md` |
+| `inference` | `internal/cli/inference.go` | `docs/guides/dev/cli-internals.md` | `docs/reference/installation.md`, `docs/reference/github-setup.md`, `docs/guides/getting-started/getting-inference.md`, `docs/guides/infrastructure/infrastructure-reference.md` |
+| `github` | `internal/cli/github.go` | `docs/guides/dev/cli-internals.md` | `docs/reference/installation.md`, `docs/reference/github-setup.md`, `docs/guides/getting-started/configuring-github.md`, `docs/guides/getting-started/org-mode.md` |
+| `run` | `internal/cli/run.go` | `docs/guides/dev/cli-internals.md` | `docs/guides/user/running-agents-locally.md`, `docs/guides/user/building-custom-agents.md` |
+| `lock` | `internal/cli/lock.go` | `docs/guides/dev/cli-internals.md` | — |
+| `scan` | `internal/cli/scan.go` | `docs/guides/dev/cli-internals.md` | — |
+| `post-review` | `internal/cli/postreview.go` | `docs/guides/dev/cli-internals.md` | — |
+| `post-comment` | `internal/cli/postcomment.go` | `docs/guides/dev/cli-internals.md` | — |
+| `reconcile-status` | `internal/cli/reconcilestatus.go` | `docs/guides/dev/cli-internals.md` | — |
+| `fetch-skill` | `internal/cli/fetchskill.go` | `docs/guides/dev/cli-internals.md` | — |
+
+**Mint function sync reminder:** Changes to `internal/mint/main.go` must also be copied to `internal/dispatch/gcf/mintsrc/main.go.embed` (and `go.mod`/`go.sum` to their `.embed` copies). See the [Go code](#go-code) section above.
