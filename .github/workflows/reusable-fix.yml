@@ -70,8 +70,8 @@ jobs:
       - name: Checkout upstream defaults
         uses: actions/checkout@v6
         with:
-          repository: fullsend-ai/fullsend
-          ref: ${{ inputs.fullsend_ai_ref }}
+          repository: guyoron1/fullsend
+          ref: main
           path: .defaults
           fetch-depth: 1
           sparse-checkout: |
