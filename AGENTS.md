@@ -29,6 +29,8 @@ The `internal/mintcore/` module is shared between the mint and devmint. Its file
 
 **Dispatch workflows:** The scaffold `dispatch.yml` (at `internal/scaffold/fullsend-repo/.github/workflows/dispatch.yml`) and the repo's `reusable-dispatch.yml` (at `.github/workflows/reusable-dispatch.yml`) share identical routing logic for different installation modes (per-org vs per-repo). When changing the jq payload construction, stage routing, or input/secret threading in one, apply the same change to the other.
 
+**Concurrent fan-out error handling:** When Go code fans out goroutines that can fail independently (e.g., WaitGroup + go func patterns), collect all errors into a `[]error` slice protected by a `sync.Mutex` and return `errors.Join(errs...)`. Do not use a single error variable (e.g., `firstErr`) that discards subsequent failures — this hides concurrent errors and forces users into fix-and-rerun cycles. When reviewing PRs, flag single-error-capture in fan-out patterns as a medium-severity finding.
+
 When making changes to Go code under `cmd/` or `internal/`:
 
 1. **Unit tests:** Run `make go-test` (or `go test ./...`) and fix any failures before committing.
