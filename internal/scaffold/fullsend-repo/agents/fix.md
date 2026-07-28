@@ -18,7 +18,7 @@ disallowedTools: >-
   Bash(gh pr create *), Bash(gh pr edit *), Bash(gh pr merge *),
   Bash(gh issue edit *), Bash(gh issue comment *),
   Bash(gh api *)
-model: opus
+model: sonnet
 skills:
   - fix-review
 ---
