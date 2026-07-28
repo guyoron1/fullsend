@@ -1423,6 +1423,43 @@ func TestEffectiveMaxRuntimeFetches_MatchesFetchsvcDefault(t *testing.T) {
 	}
 }
 
+func TestForceRemoveAll(t *testing.T) {
+	t.Run("removes normal directory", func(t *testing.T) {
+		dir := t.TempDir()
+		target := filepath.Join(dir, "target")
+		require.NoError(t, os.MkdirAll(filepath.Join(target, "sub"), 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(target, "sub", "file"), []byte("x"), 0o644))
+
+		require.NoError(t, forceRemoveAll(target))
+		_, err := os.Stat(target)
+		assert.True(t, os.IsNotExist(err))
+	})
+
+	t.Run("handles restrictive directory permissions", func(t *testing.T) {
+		if os.Getuid() == 0 {
+			t.Skip("test requires non-root to simulate permission errors")
+		}
+		dir := t.TempDir()
+		target := filepath.Join(dir, "target")
+		sub := filepath.Join(target, "sub")
+		require.NoError(t, os.MkdirAll(sub, 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(sub, "file"), []byte("x"), 0o644))
+		// Remove write from the subdirectory so os.RemoveAll fails.
+		require.NoError(t, os.Chmod(sub, 0o500))
+
+		// Confirm plain RemoveAll fails.
+		require.Error(t, os.RemoveAll(target))
+
+		require.NoError(t, forceRemoveAll(target))
+		_, err := os.Stat(target)
+		assert.True(t, os.IsNotExist(err))
+	})
+
+	t.Run("nonexistent path is no-op", func(t *testing.T) {
+		require.NoError(t, forceRemoveAll(filepath.Join(t.TempDir(), "nope")))
+	})
+}
+
 type mockForgeClient struct {
 	forge.Client
 }

@@ -3,8 +3,10 @@ package cli
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"os"
 	"os/exec"
@@ -887,8 +889,12 @@ func runAgent(ctx context.Context, agentName, fullsendDir, outputBase, targetRep
 
 		// 9d. Extract target repo back to host. SafeDownload removes dangerous
 		// symlinks (absolute or repo-escaping) and .git/hooks/ to prevent sandbox escape.
-		if clearErr := os.RemoveAll(hostRepositoryDir); clearErr != nil {
-			return fmt.Errorf("clearing local repo %s before extraction: %w", hostRepositoryDir, clearErr)
+		// Use forceRemoveAll to handle files created by sandboxed processes with
+		// restrictive permissions (#605). Warn on failure instead of aborting so
+		// the post-script still runs (review results are more valuable than a
+		// clean temp directory).
+		if clearErr := forceRemoveAll(hostRepositoryDir); clearErr != nil {
+			printer.StepWarn(fmt.Sprintf("Could not fully clear %s before extraction (continuing): %v", hostRepositoryDir, clearErr))
 		}
 		repoExtractStart := time.Now()
 		printer.StepStart("Extracting target repo")
@@ -1294,6 +1300,25 @@ func escapeForDoubleQuotes(s string) string {
 	s = strings.ReplaceAll(s, `$`, `\$`)
 	s = strings.ReplaceAll(s, "`", "\\`")
 	return s
+}
+
+// forceRemoveAll removes a directory tree. If the initial removal fails with a
+// permission error (e.g. files created by a sandboxed process with a different
+// UID), it makes all entries owner-writable and retries. See #605.
+func forceRemoveAll(path string) error {
+	err := os.RemoveAll(path)
+	if err == nil || !errors.Is(err, fs.ErrPermission) {
+		return err
+	}
+	// Best-effort chmod: make every entry owner-rwx so the retry can unlink.
+	_ = filepath.WalkDir(path, func(p string, _ fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return nil // keep walking
+		}
+		_ = os.Chmod(p, 0o700)
+		return nil
+	})
+	return os.RemoveAll(path)
 }
 
 // validationFailMessage returns a human-readable message for a validation
