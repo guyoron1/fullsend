@@ -35,6 +35,8 @@ When making changes to Go code under `cmd/` or `internal/`:
 2. **Vet:** Run `make go-vet` to catch common issues.
 3. **E2E tests:** Run `make e2e-test` if your changes touch `internal/appsetup/`, `internal/forge/`, `internal/cli/`, or `internal/layers/`. These tests exercise the full admin install/uninstall flow against a live GitHub org using Playwright browser automation.
 
+**Concurrent error handling:** When Go code fans out goroutines that can fail independently (e.g., WaitGroup + go func patterns), collect all errors into a `[]error` slice protected by a `sync.Mutex` and return `errors.Join(errs...)`. Do not use a single error variable (e.g., `firstErr`) that discards subsequent failures — this hides concurrent errors and forces users into fix-and-rerun cycles. When reviewing PRs, flag single-error-capture in fan-out patterns as a medium-severity finding.
+
 ### Running e2e tests
 
 The e2e tests require GitHub credentials. There are three ways to provide them:
