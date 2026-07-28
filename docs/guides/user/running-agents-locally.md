@@ -11,7 +11,7 @@ Linux are supported with Podman as the container runtime.
 | Requirement | macOS | Linux |
 |-------------|-------|-------|
 | Container runtime | Podman Desktop with a running machine | Podman |
-| [OpenShell](https://github.com/NVIDIA/OpenShell) | 0.0.54 | 0.0.54 |
+| [OpenShell](https://github.com/NVIDIA/OpenShell) | [CI-pinned version](../../../action.yml) | Same |
 | GCP project | [Agent Platform API](https://console.cloud.google.com/apis/library/aiplatform.googleapis.com) enabled with [Claude models](https://console.cloud.google.com/vertex-ai/model-garden) enabled | Same |
 | GCP credentials | Service account key (see section below) | Same |
 | GitHub PAT | Classic PAT with `repo` scope (see section below) | Same |
@@ -47,11 +47,13 @@ fullsend --version
 ## Install OpenShell
 
 [OpenShell](https://github.com/NVIDIA/OpenShell) provides the sandbox runtime. There are multiple ways
-to install it, here we use one similar to how we download it on Fullsend. Use the same version
-printed on your Fullsend workflow for better reproducibility.
+to install it, here we use one similar to how we download it on Fullsend.
+
+Check the version currently pinned in CI by looking at the `Set OpenShell version`
+step in [`action.yml`](../../../action.yml), then install that version:
 
 ```bash
-export OPENSHELL_VERSION=0.0.54
+export OPENSHELL_VERSION=<version>  # from action.yml
 curl -LsSf https://raw.githubusercontent.com/NVIDIA/OpenShell/v${OPENSHELL_VERSION}/install.sh | OPENSHELL_VERSION=v${OPENSHELL_VERSION} sh
 openshell --version
 ```
