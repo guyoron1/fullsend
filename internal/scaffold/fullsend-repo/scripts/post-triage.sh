@@ -57,6 +57,16 @@ echo "Action: ${ACTION}"
 echo "Repo: ${REPO}"
 echo "Issue: #${ISSUE_NUMBER}"
 
+# Detect e2e triage test issues by title pattern. These are synthetic issues
+# created during onboarding validation; they should be closed after triage
+# completes to prevent code agent dispatch and reduce duplicate noise (#691).
+ISSUE_TITLE=$(gh api "repos/${REPO}/issues/${ISSUE_NUMBER}" --jq '.title' 2>/dev/null || true)
+IS_E2E_TEST=false
+if [[ "${ISSUE_TITLE}" == e2e-triage-test-* ]]; then
+  IS_E2E_TEST=true
+  echo "Detected e2e triage test issue — will clean up after processing"
+fi
+
 # add_label uses the labels API to avoid firing issues.edited.
 add_label() {
   if ! gh api "repos/${REPO}/issues/${ISSUE_NUMBER}/labels" -f "labels[]=$1" --silent; then
@@ -264,6 +274,13 @@ fi
 
 # --- Apply deferred label (must be last label mutation) ---
 
+# For e2e triage test issues, skip dispatch-triggering labels to prevent
+# the code agent from attempting to fix a synthetic test issue (#691).
+if [[ "${IS_E2E_TEST}" == "true" ]] && [[ -n "${DEFERRED_LABEL}" ]]; then
+  echo "Skipping deferred label '${DEFERRED_LABEL}' for e2e test issue"
+  DEFERRED_LABEL=""
+fi
+
 if [[ -n "${DEFERRED_LABEL}" ]]; then
   echo "Applying deferred label '${DEFERRED_LABEL}'..."
   add_label "${DEFERRED_LABEL}"
@@ -286,6 +303,15 @@ fi
 
 if [[ "${ACTION}" == "duplicate" ]]; then
   gh issue close "${ISSUE_NUMBER}" --repo "${REPO}" --reason "duplicate"
+fi
+
+# --- Post-action: close e2e triage test issues (#691) ---
+
+if [[ "${IS_E2E_TEST}" == "true" ]]; then
+  echo "Closing e2e triage test issue..."
+  remove_label "ready-to-code"
+  gh issue close "${ISSUE_NUMBER}" --repo "${REPO}" \
+    --comment "Automated e2e triage validation completed successfully. This test issue was created during onboarding to verify the dispatch pipeline. Closing automatically to prevent code agent dispatch."
 fi
 
 echo "Post-triage complete."
