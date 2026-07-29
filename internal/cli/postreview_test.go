@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"strings"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"io"
-	"testing"
 
 	"github.com/fullsend-ai/fullsend/internal/forge"
 	"github.com/fullsend-ai/fullsend/internal/sticky"
@@ -1000,4 +1002,282 @@ func TestPostApprovedFollowUpIssues_DisabledIsNoop(t *testing.T) {
 
 	err := postApprovedFollowUpIssues(context.Background(), "acme", "repo", 9, parsed, printer)
 	require.NoError(t, err)
+}
+
+// ---------------------------------------------------------------------------
+// High-severity guardrail tests
+// ---------------------------------------------------------------------------
+
+func TestHasHighSeverityFinding(t *testing.T) {
+	tests := []struct {
+		name     string
+		findings []ReviewFinding
+		want     bool
+	}{
+		{
+			name:     "no findings",
+			findings: nil,
+			want:     false,
+		},
+		{
+			name: "only low findings",
+			findings: []ReviewFinding{
+				{Severity: "low", Description: "style nit"},
+				{Severity: "medium", Description: "could be better"},
+			},
+			want: false,
+		},
+		{
+			name: "high finding present",
+			findings: []ReviewFinding{
+				{Severity: "low", Description: "style nit"},
+				{Severity: "high", Description: "missing test"},
+			},
+			want: true,
+		},
+		{
+			name: "critical finding present",
+			findings: []ReviewFinding{
+				{Severity: "critical", Description: "SQL injection"},
+			},
+			want: true,
+		},
+		{
+			name: "case insensitive HIGH",
+			findings: []ReviewFinding{
+				{Severity: "HIGH", Description: "uppercase"},
+			},
+			want: true,
+		},
+		{
+			name: "case insensitive Critical",
+			findings: []ReviewFinding{
+				{Severity: "Critical", Description: "mixed case"},
+			},
+			want: true,
+		},
+		{
+			name: "info and medium only",
+			findings: []ReviewFinding{
+				{Severity: "info", Description: "informational"},
+				{Severity: "medium", Description: "moderate issue"},
+			},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, hasHighSeverityFinding(tt.findings))
+		})
+	}
+}
+
+func TestBodyContainsHighSeveritySection(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+		want bool
+	}{
+		{
+			name: "no severity headers",
+			body: "## Review\n\nLooks good to me.",
+			want: false,
+		},
+		{
+			name: "high section with content",
+			body: "## Review\n\n### Findings\n\n#### High\n\n- Missing error handling\n\n#### Low\n\n- Style nit",
+			want: true,
+		},
+		{
+			name: "critical section with content",
+			body: "## Review\n\n### Findings\n\n#### Critical\n\n- SQL injection vulnerability",
+			want: true,
+		},
+		{
+			name: "only medium and low sections",
+			body: "## Review\n\n### Findings\n\n#### Medium\n\n- Logic issue\n\n#### Low\n\n- Typo",
+			want: false,
+		},
+		{
+			name: "empty high section no content",
+			body: "## Review\n\n### Findings\n\n#### High\n\n#### Medium\n\n- Real finding here",
+			want: false,
+		},
+		{
+			name: "empty critical section no content",
+			body: "## Review\n\n### Findings\n\n#### Critical\n\n#### High\n\n- Finding here",
+			want: true,
+		},
+		{
+			name: "empty high section at end of body",
+			body: "## Review\n\n### Findings\n\n#### High\n",
+			want: false,
+		},
+		{
+			name: "high section with blank lines then content",
+			body: "## Review\n\n#### High\n\n\n- Finding after blank lines",
+			want: true,
+		},
+		{
+			name: "three hash marks high section",
+			body: "## Review\n\n### High\n\n- Finding with three hashes",
+			want: true,
+		},
+		{
+			name: "three hash marks critical section",
+			body: "## Review\n\n### Critical\n\n- Finding with three hashes",
+			want: true,
+		},
+		{
+			name: "case insensitive header",
+			body: "## Review\n\n#### HIGH\n\n- Finding uppercase",
+			want: true,
+		},
+		{
+			name: "high in non-header context ignored",
+			body: "## Review\n\nThis is a high quality PR. No findings.",
+			want: false,
+		},
+		{
+			name: "empty body",
+			body: "",
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, bodyContainsHighSeveritySection(tt.body))
+		})
+	}
+}
+
+func TestContainsHighSeverityFindings(t *testing.T) {
+	tests := []struct {
+		name   string
+		result ReviewResult
+		want   bool
+	}{
+		{
+			name: "structured high finding",
+			result: ReviewResult{
+				Body:   "## Review\n\nSome text",
+				Action: "approve",
+				Findings: []ReviewFinding{
+					{Severity: "high", Description: "bug"},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "structured low findings only",
+			result: ReviewResult{
+				Body:   "## Review\n\n#### High\n\n- Body says high",
+				Action: "approve",
+				Findings: []ReviewFinding{
+					{Severity: "low", Description: "nit"},
+				},
+			},
+			want: false,
+		},
+		{
+			name: "no structured findings falls back to body",
+			result: ReviewResult{
+				Body:     "## Review\n\n#### High\n\n- Missing test",
+				Action:   "approve",
+				Findings: nil,
+			},
+			want: true,
+		},
+		{
+			name: "no structured findings and no high in body",
+			result: ReviewResult{
+				Body:     "## Review\n\nLooks good",
+				Action:   "approve",
+				Findings: nil,
+			},
+			want: false,
+		},
+		{
+			name: "empty findings slice falls back to body",
+			result: ReviewResult{
+				Body:     "## Review\n\n#### Critical\n\n- Vulnerability",
+				Action:   "approve",
+				Findings: []ReviewFinding{},
+			},
+			want: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, containsHighSeverityFindings(tt.result))
+		})
+	}
+}
+
+func TestSubmitFormalReview_HighSeverityGuardrail(t *testing.T) {
+	// This test verifies the integration point: the RunE handler
+	// downgrades approve to comment before submitting. We test the
+	// behavior through the exported helper since RunE is not directly
+	// callable in unit tests, but we verify the individual components
+	// that RunE orchestrates.
+
+	t.Run("approve with high findings downgrades action", func(t *testing.T) {
+		parsed := ReviewResult{
+			Body:   "## Review\n\n#### High\n\n- Security issue found",
+			Action: "approve",
+			Findings: []ReviewFinding{
+				{Severity: "high", Category: "security", Description: "Issue"},
+			},
+		}
+
+		assert.True(t, containsHighSeverityFindings(parsed))
+		// After the guardrail fires, the action would become "comment"
+		// and the notice would be appended to the body.
+	})
+
+	t.Run("approve with only low findings not downgraded", func(t *testing.T) {
+		parsed := ReviewResult{
+			Body:   "## Review\n\nLooks good",
+			Action: "approve",
+			Findings: []ReviewFinding{
+				{Severity: "low", Category: "style", Description: "Nit"},
+				{Severity: "medium", Category: "docs", Description: "Improve docs"},
+			},
+		}
+
+		assert.False(t, containsHighSeverityFindings(parsed))
+	})
+
+	t.Run("comment verdict not affected by high findings", func(t *testing.T) {
+		// The guardrail only fires for approve; comment/request-changes
+		// are left alone.
+		parsed := ReviewResult{
+			Body:   "## Review\n\n#### High\n\n- Issue",
+			Action: "comment",
+			Findings: []ReviewFinding{
+				{Severity: "high", Description: "Issue"},
+			},
+		}
+
+		// containsHighSeverityFindings returns true but the guardrail
+		// would not fire because action is not "approve".
+		assert.True(t, containsHighSeverityFindings(parsed))
+		assert.NotEqual(t, "approve", strings.ToLower(parsed.Action))
+	})
+
+	t.Run("request-changes not affected by high findings", func(t *testing.T) {
+		parsed := ReviewResult{
+			Body:   "## Review\n\n#### Critical\n\n- Major issue",
+			Action: "request-changes",
+			Findings: []ReviewFinding{
+				{Severity: "critical", Description: "Major issue"},
+			},
+		}
+
+		assert.True(t, containsHighSeverityFindings(parsed))
+		assert.NotEqual(t, "approve", strings.ToLower(parsed.Action))
+	})
 }

@@ -136,6 +136,42 @@ if [ "${ACTION}" = "approve" ]; then
 fi
 
 # ---------------------------------------------------------------------------
+# High-severity guardrail: the review agent must not approve PRs when the
+# review contains HIGH or CRITICAL severity findings. If the agent chose
+# APPROVE despite high-severity findings, downgrade to COMMENT so only a
+# human can grant approval. This is a defense-in-depth check that
+# complements agent-level severity thresholds and catches verdict-severity
+# mismatches before the review is posted to GitHub.
+# ---------------------------------------------------------------------------
+if [ "${ACTION}" = "approve" ] && [ "${DOWNGRADED}" = "false" ]; then
+  # Primary: check structured findings for high/critical severity.
+  HAS_HIGH_FINDINGS=$(jq '[.findings // [] | .[] | select(.severity | ascii_downcase | test("^(high|critical)$"))] | length' "${RESULT_FILE}" 2>/dev/null || echo "0")
+
+  # Fallback: check body for severity section headers (#### High or
+  # #### Critical). This catches cases where findings are present in
+  # the body text but not in the structured findings array.
+  HAS_HIGH_BODY=$(jq -r '.body // ""' "${RESULT_FILE}" | \
+    grep -ciE '^#{3,4}\s+(High|Critical)\s*$' 2>/dev/null || echo "0")
+
+  if [ "${HAS_HIGH_FINDINGS}" -gt 0 ] || [ "${HAS_HIGH_BODY}" -gt 0 ]; then
+    echo "Review contains HIGH/CRITICAL severity findings — downgrading approve to comment"
+
+    SEVERITY_NOTICE=$'\n\n---\n\n'
+    SEVERITY_NOTICE+='> **Verdict downgraded from APPROVE to COMMENT:** this review contains '$'\n'
+    SEVERITY_NOTICE+='> HIGH-severity findings that require human assessment. The review agent '$'\n'
+    SEVERITY_NOTICE+='> cannot approve PRs with unresolved high-severity findings.'$'\n'
+
+    MODIFIED_RESULT=$(mktemp)
+    trap 'rm -f "${MODIFIED_RESULT}"' EXIT
+    jq --arg notice "${SEVERITY_NOTICE}" \
+      '.action = "comment" | .body = (.body + $notice)' \
+      "${RESULT_FILE}" > "${MODIFIED_RESULT}"
+    RESULT_FILE="${MODIFIED_RESULT}"
+    DOWNGRADED=true
+  fi
+fi
+
+# ---------------------------------------------------------------------------
 # Post the review. Exit code 10 = stale-head: the PR HEAD moved after the
 # agent reviewed it. When this happens, post a /fs-review comment to
 # re-dispatch a fresh review for the current HEAD.

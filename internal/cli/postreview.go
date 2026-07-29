@@ -121,6 +121,17 @@ has moved, a stale-head failure is posted instead.`,
 				return postFailureNotice(cmd.Context(), client, owner, repoName, pr, parsed, cfg, printer)
 			}
 
+			// High-severity guardrail: refuse to APPROVE reviews that
+			// contain HIGH or CRITICAL severity findings. Downgrade
+			// to COMMENT so a human must assess the findings before
+			// the PR can merge. This is a defense-in-depth check
+			// that complements agent-level severity thresholds.
+			if strings.ToLower(parsed.Action) == "approve" && containsHighSeverityFindings(parsed) {
+				printer.StepWarn("Review contains HIGH/CRITICAL findings — downgrading APPROVE to COMMENT")
+				parsed.Action = "comment"
+				parsed.Body += highSeverityDowngradeNotice
+			}
+
 			commentURL, err := sticky.Post(cmd.Context(), client, owner, repoName, pr, parsed.Body, cfg, printer)
 			if err != nil {
 				return err
@@ -180,6 +191,68 @@ func reviewActionToEvent(action string) (string, bool) {
 	default:
 		return "", false
 	}
+}
+
+// highSeverityDowngradeNotice is appended to the review body when the
+// guardrail downgrades an APPROVE verdict to COMMENT.
+const highSeverityDowngradeNotice = "\n\n---\n\n" +
+	"> **Verdict downgraded from APPROVE to COMMENT:** this review contains " +
+	"HIGH-severity findings that require human assessment. The review agent " +
+	"cannot approve PRs with unresolved high-severity findings."
+
+// highSeveritySectionRe matches Markdown severity section headers (3 or 4
+// hash marks) for High or Critical. Review comments use #### but we also
+// match ### for resilience against format drift.
+var highSeveritySectionRe = regexp.MustCompile(`(?i)^#{3,4}\s+(High|Critical)\s*$`)
+
+// containsHighSeverityFindings returns true if the review result contains
+// HIGH or CRITICAL severity findings, either as structured data in the
+// Findings slice or as section headers in the Body text. When structured
+// findings are present (len > 0), only they are consulted — the body
+// check is a fallback for results that lack structured findings.
+func containsHighSeverityFindings(r ReviewResult) bool {
+	if len(r.Findings) > 0 {
+		return hasHighSeverityFinding(r.Findings)
+	}
+	return bodyContainsHighSeveritySection(r.Body)
+}
+
+// hasHighSeverityFinding returns true if any finding has severity
+// "high" or "critical" (case-insensitive).
+func hasHighSeverityFinding(findings []ReviewFinding) bool {
+	for _, f := range findings {
+		switch strings.ToLower(f.Severity) {
+		case "high", "critical":
+			return true
+		}
+	}
+	return false
+}
+
+// bodyContainsHighSeveritySection scans the review body for Markdown
+// severity section headers (#### High, #### Critical, etc.) that have
+// at least one non-empty content line before the next section header.
+// An empty section (header followed immediately by another header or
+// end-of-body) does not trigger the guardrail.
+func bodyContainsHighSeveritySection(body string) bool {
+	lines := strings.Split(body, "\n")
+	for i, line := range lines {
+		if !highSeveritySectionRe.MatchString(strings.TrimSpace(line)) {
+			continue
+		}
+		// Look for non-empty, non-header content under this section.
+		for j := i + 1; j < len(lines); j++ {
+			trimmed := strings.TrimSpace(lines[j])
+			if trimmed == "" {
+				continue
+			}
+			if strings.HasPrefix(trimmed, "#") {
+				break // next section — this one was empty
+			}
+			return true
+		}
+	}
+	return false
 }
 
 // checkStaleHead compares the reviewed SHA against the current PR HEAD.
