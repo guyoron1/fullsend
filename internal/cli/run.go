@@ -1703,17 +1703,30 @@ func scanOutputFiles(outputDir, traceID string, printer *ui.Printer) error {
 			return nil
 		}
 		content, readErr := os.ReadFile(path)
+		relPath, _ := filepath.Rel(outputDir, path)
 		if readErr != nil {
-			relPath, _ := filepath.Rel(outputDir, path)
 			printer.StepWarn(fmt.Sprintf("Could not read %s: %v", relPath, readErr))
 			return nil
 		}
 
-		text := string(content)
-		result := pipeline.Scan(text)
+		var result security.ScanResult
+		var out []byte
+
+		// Use JSON-structure-aware scanning for .json files to
+		// prevent redactions from corrupting JSON syntax (issue #710).
+		if strings.HasSuffix(path, ".json") {
+			result, out = pipeline.ScanJSON(content)
+		} else {
+			result = pipeline.Scan(string(content))
+			if result.Sanitized != "" {
+				out = []byte(result.Sanitized)
+			} else {
+				out = content
+			}
+		}
+
 		if len(result.Findings) > 0 {
 			findingCount += len(result.Findings)
-			relPath, _ := filepath.Rel(outputDir, path)
 			for _, f := range result.Findings {
 				printer.StepWarn(fmt.Sprintf("Sanitized [%s] in %s: %s", f.Name, relPath, f.Detail))
 				security.AppendFinding(findingsPath,
@@ -1724,9 +1737,7 @@ func scanOutputFiles(outputDir, traceID string, printer *ui.Printer) error {
 						Finding:   f,
 					})
 			}
-			// Sanitized may be empty when all content was invisible characters.
-			out := result.Sanitized
-			if writeErr := os.WriteFile(path, []byte(out), 0o644); writeErr != nil {
+			if writeErr := os.WriteFile(path, out, 0o644); writeErr != nil {
 				printer.StepWarn(fmt.Sprintf("Could not write sanitized %s: %v", relPath, writeErr))
 			}
 		}

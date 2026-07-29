@@ -13,6 +13,11 @@
 // and evaluation results.
 package security
 
+import (
+	"encoding/json"
+	"fmt"
+)
+
 // Finding represents a single security issue detected by a scanner.
 type Finding struct {
 	Scanner  string // "secret_redactor", "ssrf_validator", "context_injection", "unicode_normalizer"
@@ -99,6 +104,103 @@ func OutputPipeline() *Pipeline {
 		NewUnicodeNormalizer(),
 		NewSecretRedactor(),
 	)
+}
+
+// ScanJSON performs JSON-structure-aware scanning. It parses the input as
+// JSON, recursively walks the tree, and applies scanners only to string
+// leaf values. This preserves JSON structural integrity — redactions
+// inside string values cannot break the enclosing JSON syntax.
+//
+// If the input is not valid JSON, ScanJSON falls back to text-based
+// Scan(). If the input is valid JSON but the sanitized output would
+// somehow be invalid (should not happen with the tree-walk approach,
+// but checked defensively), it falls back to the original content and
+// reports a warning finding.
+func (p *Pipeline) ScanJSON(data []byte) (ScanResult, []byte) {
+	// Try to parse as JSON. If it fails, fall back to text-based scan.
+	var parsed any
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		result := p.Scan(string(data))
+		out := string(data)
+		if result.Sanitized != "" {
+			out = result.Sanitized
+		}
+		return result, []byte(out)
+	}
+
+	aggregate := ScanResult{Safe: true}
+
+	// Walk the parsed JSON tree and apply scanners to string leaves.
+	sanitized := p.walkJSON(parsed, &aggregate)
+
+	if aggregate.Safe {
+		// No findings — return original data unchanged.
+		return aggregate, data
+	}
+
+	// Marshal the sanitized tree back to JSON, preserving structure.
+	out, err := json.Marshal(sanitized)
+	if err != nil {
+		// Defensive fallback: marshalling failed (should not happen).
+		aggregate.Findings = append(aggregate.Findings, Finding{
+			Scanner:  "json_integrity",
+			Name:     "marshal_error",
+			Severity: "high",
+			Detail:   fmt.Sprintf("JSON re-marshal failed after redaction: %v; falling back to original", err),
+		})
+		return aggregate, data
+	}
+
+	// Defensive: validate the output is still valid JSON.
+	var check any
+	if err := json.Unmarshal(out, &check); err != nil {
+		// Should never happen, but if it does, fall back to original.
+		aggregate.Findings = append(aggregate.Findings, Finding{
+			Scanner:  "json_integrity",
+			Name:     "validation_error",
+			Severity: "high",
+			Detail:   fmt.Sprintf("Sanitized JSON failed re-parse: %v; falling back to original", err),
+		})
+		return aggregate, data
+	}
+
+	aggregate.Sanitized = string(out)
+	return aggregate, out
+}
+
+// walkJSON recursively walks a parsed JSON value and applies the pipeline's
+// scanners to every string leaf. Non-string leaves are returned unchanged.
+func (p *Pipeline) walkJSON(v any, aggregate *ScanResult) any {
+	switch val := v.(type) {
+	case string:
+		result := p.Scan(val)
+		aggregate.Findings = append(aggregate.Findings, result.Findings...)
+		if !result.Safe {
+			aggregate.Safe = false
+		}
+		if result.Sanitized != "" {
+			return result.Sanitized
+		}
+		return val
+
+	case map[string]any:
+		out := make(map[string]any, len(val))
+		for k, child := range val {
+			out[k] = p.walkJSON(child, aggregate)
+		}
+		return out
+
+	case []any:
+		out := make([]any, len(val))
+		for i, child := range val {
+			out[i] = p.walkJSON(child, aggregate)
+		}
+		return out
+
+	default:
+		// Numbers, booleans, nil — return unchanged.
+		return val
+	}
 }
 
 // HasCriticalFindings reports whether any finding has critical severity.

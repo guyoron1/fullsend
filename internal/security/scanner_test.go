@@ -1,6 +1,7 @@
 package security
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -393,6 +394,112 @@ func TestShouldScan(t *testing.T) {
 	assert.True(t, ShouldScan(".lsp.json"))
 	assert.False(t, ShouldScan("README.md"))
 	assert.False(t, ShouldScan("main.go"))
+}
+
+func TestPipeline_ScanJSON(t *testing.T) {
+	p := OutputPipeline()
+
+	t.Run("env_assignment inside JSON string preserves structure", func(t *testing.T) {
+		// Scenario from issue #710: env var name discussed in a review body
+		// triggers env_assignment redaction inside a JSON string value.
+		// Text-level replacement corrupts JSON; ScanJSON must preserve it.
+		input := []byte(`{"body": "Changed SCRIBE_SECRET_BACKEND=production_val to fix config"}`)
+		result, out := p.ScanJSON(input)
+
+		// Output must be valid JSON.
+		assert.True(t, json.Valid(out), "output must be valid JSON, got: %s", string(out))
+		// Redaction should have fired.
+		assert.False(t, result.Safe)
+		assert.True(t, hasFinding(result, "env_assignment"))
+		// The env var value should be redacted inside the string.
+		assert.NotContains(t, string(out), "production_val")
+	})
+
+	t.Run("genuine secret in JSON value is redacted", func(t *testing.T) {
+		input := []byte(`{"api_key": "ghp_FAKEtesttoken000000000000000000000000"}`)
+		result, out := p.ScanJSON(input)
+
+		assert.True(t, json.Valid(out), "output must be valid JSON")
+		assert.False(t, result.Safe)
+		assert.True(t, hasFinding(result, "github_pat"))
+		assert.NotContains(t, string(out), "ghp_FAKEtest")
+	})
+
+	t.Run("multiple patterns in same string value", func(t *testing.T) {
+		input := []byte(`{"review": "Set MY_SECRET_KEY=aaaabbbbcccc and DB_PASSWORD=ddddeeeefffff in config"}`)
+		result, out := p.ScanJSON(input)
+
+		assert.True(t, json.Valid(out), "output must be valid JSON")
+		assert.False(t, result.Safe)
+	})
+
+	t.Run("nested JSON with patterns in inner values", func(t *testing.T) {
+		input := []byte(`{
+			"result": {
+				"review": {
+					"body": "The code sets AUTH_TOKEN=my_secret_token_value"
+				},
+				"status": "approved",
+				"cost": 2.73
+			}
+		}`)
+		result, out := p.ScanJSON(input)
+
+		assert.True(t, json.Valid(out), "output must be valid JSON")
+		assert.False(t, result.Safe)
+		assert.True(t, hasFinding(result, "env_assignment"))
+
+		// Non-string values must be preserved.
+		var parsed map[string]any
+		require.NoError(t, json.Unmarshal(out, &parsed))
+		inner := parsed["result"].(map[string]any)
+		assert.Equal(t, "approved", inner["status"])
+		assert.Equal(t, 2.73, inner["cost"])
+	})
+
+	t.Run("JSON array with mixed values", func(t *testing.T) {
+		input := []byte(`{"items": ["safe text", "export API_KEY=leaked_key_value_here", 42, true, null]}`)
+		result, out := p.ScanJSON(input)
+
+		assert.True(t, json.Valid(out), "output must be valid JSON")
+		assert.False(t, result.Safe)
+
+		var parsed map[string]any
+		require.NoError(t, json.Unmarshal(out, &parsed))
+		items := parsed["items"].([]any)
+		assert.Equal(t, "safe text", items[0])
+		assert.Equal(t, float64(42), items[2])
+		assert.Equal(t, true, items[3])
+		assert.Nil(t, items[4])
+	})
+
+	t.Run("clean JSON unchanged", func(t *testing.T) {
+		input := []byte(`{"status": "ok", "count": 5, "items": ["a", "b"]}`)
+		result, out := p.ScanJSON(input)
+
+		assert.True(t, result.Safe)
+		assert.Empty(t, result.Findings)
+		assert.Equal(t, input, out, "clean JSON should return original bytes")
+	})
+
+	t.Run("non-JSON input falls back to text scan", func(t *testing.T) {
+		input := []byte("not JSON: ghp_FAKEtesttoken000000000000000000000000")
+		result, out := p.ScanJSON(input)
+
+		assert.False(t, result.Safe)
+		assert.True(t, hasFinding(result, "github_pat"))
+		assert.NotContains(t, string(out), "ghp_FAKEtest")
+	})
+
+	t.Run("pattern adjacent to JSON structural characters", func(t *testing.T) {
+		// Pattern value ends right at a closing quote — text-level
+		// replacement could eat the quote and break JSON.
+		input := []byte(`{"config":"SECRET_TOKEN=abcdefghij"}`)
+		result, out := p.ScanJSON(input)
+
+		assert.True(t, json.Valid(out), "output must be valid JSON, got: %s", string(out))
+		assert.False(t, result.Safe)
+	})
 }
 
 func TestHasCriticalFindings(t *testing.T) {
