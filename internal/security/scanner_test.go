@@ -234,6 +234,33 @@ func TestSecretRedactor(t *testing.T) {
 		assert.True(t, hasFinding(result, "json_field"))
 		assert.NotContains(t, result.Sanitized, "my-super-secret-pass-1234")
 	})
+
+	t.Run("json field project_key not redacted", func(t *testing.T) {
+		result := r.Scan(`{"project_key": "KFLUXSE-TEAM"}`)
+		assert.True(t, result.Safe || !hasFinding(result, "json_field"))
+	})
+
+	t.Run("json field existing_issue_key not redacted", func(t *testing.T) {
+		result := r.Scan(`{"existing_issue_key": "PROJ-12345"}`)
+		assert.True(t, result.Safe || !hasFinding(result, "json_field"))
+	})
+
+	t.Run("json field keyboard not redacted", func(t *testing.T) {
+		result := r.Scan(`{"keyboard_layout": "us-international"}`)
+		assert.True(t, result.Safe || !hasFinding(result, "json_field"))
+	})
+
+	t.Run("json field monkey not redacted", func(t *testing.T) {
+		result := r.Scan(`{"monkey_name": "curious-george"}`)
+		assert.True(t, result.Safe || !hasFinding(result, "json_field"))
+	})
+
+	t.Run("json field access_key redacted", func(t *testing.T) {
+		result := r.Scan(`{"access_key": "AKIAIOSFODNN7EXAMPLE1"}`)
+		assert.False(t, result.Safe)
+		assert.True(t, hasFinding(result, "json_field"))
+		assert.NotContains(t, result.Sanitized, "AKIAIOSFODNN7EXAMPLE1")
+	})
 }
 
 func TestSSRFValidator(t *testing.T) {
