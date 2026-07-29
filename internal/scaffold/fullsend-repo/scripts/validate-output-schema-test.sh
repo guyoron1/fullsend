@@ -366,6 +366,76 @@ run_test_custom_filename "review-approve-valid" \
   "${REVIEW_SCHEMA}" \
   "true"
 
+# --- retro-result.schema.json tests ---
+
+RETRO_SCHEMA="${SCRIPT_DIR}/../schemas/retro-result.schema.json"
+
+run_test_custom_filename "retro-valid-no-retractions" \
+  '{"summary":"Summary.","proposals":[{"target_repo":"org/repo","title":"Fix thing","what_happened":"T.","what_could_go_better":"I.","proposed_change":"C.","validation_criteria":"V."}]}' \
+  "agent-result.json" \
+  "${RETRO_SCHEMA}" \
+  "true"
+
+run_test_custom_filename "retro-valid-with-retractions" \
+  '{"summary":"Summary.","proposals":[],"retractions":[{"issue_number":295,"target_repo":"org/repo","reason":"Original analysis was incorrect."}]}' \
+  "agent-result.json" \
+  "${RETRO_SCHEMA}" \
+  "true"
+
+run_test_custom_filename "retro-valid-empty-retractions" \
+  '{"summary":"Summary.","proposals":[],"retractions":[]}' \
+  "agent-result.json" \
+  "${RETRO_SCHEMA}" \
+  "true"
+
+run_test_custom_filename "retro-retraction-missing-issue-number" \
+  '{"summary":"Summary.","proposals":[],"retractions":[{"target_repo":"org/repo","reason":"wrong"}]}' \
+  "agent-result.json" \
+  "${RETRO_SCHEMA}" \
+  "false"
+
+run_test_custom_filename "retro-retraction-missing-target-repo" \
+  '{"summary":"Summary.","proposals":[],"retractions":[{"issue_number":1,"reason":"wrong"}]}' \
+  "agent-result.json" \
+  "${RETRO_SCHEMA}" \
+  "false"
+
+run_test_custom_filename "retro-retraction-missing-reason" \
+  '{"summary":"Summary.","proposals":[],"retractions":[{"issue_number":1,"target_repo":"org/repo"}]}' \
+  "agent-result.json" \
+  "${RETRO_SCHEMA}" \
+  "false"
+
+run_test_custom_filename "retro-retraction-invalid-repo-format" \
+  '{"summary":"Summary.","proposals":[],"retractions":[{"issue_number":1,"target_repo":"not-a-repo","reason":"wrong"}]}' \
+  "agent-result.json" \
+  "${RETRO_SCHEMA}" \
+  "false"
+
+run_test_custom_filename "retro-retraction-additional-property-rejected" \
+  '{"summary":"Summary.","proposals":[],"retractions":[{"issue_number":1,"target_repo":"org/repo","reason":"wrong","extra":"bad"}]}' \
+  "agent-result.json" \
+  "${RETRO_SCHEMA}" \
+  "false"
+
+run_test_custom_filename "retro-additional-property-rejected" \
+  '{"summary":"Summary.","proposals":[],"injected":"bad"}' \
+  "agent-result.json" \
+  "${RETRO_SCHEMA}" \
+  "false"
+
+run_test_custom_filename "retro-missing-summary" \
+  '{"proposals":[]}' \
+  "agent-result.json" \
+  "${RETRO_SCHEMA}" \
+  "false"
+
+run_test_custom_filename "retro-missing-proposals" \
+  '{"summary":"Summary."}' \
+  "agent-result.json" \
+  "${RETRO_SCHEMA}" \
+  "false"
+
 # --- Summary ---
 
 echo ""

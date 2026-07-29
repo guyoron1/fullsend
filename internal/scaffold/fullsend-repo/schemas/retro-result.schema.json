@@ -18,9 +18,38 @@
       "maxItems": 3,
       "items": { "$ref": "#/$defs/proposal" },
       "description": "List of improvement proposals. Each becomes a GitHub issue."
+    },
+    "retractions": {
+      "type": "array",
+      "maxItems": 5,
+      "items": { "$ref": "#/$defs/retraction" },
+      "description": "List of prior retro-filed issues to retract. Each is verified, commented, and closed."
     }
   },
   "$defs": {
+    "retraction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["issue_number", "target_repo", "reason"],
+      "properties": {
+        "issue_number": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of the incorrectly filed issue to retract."
+        },
+        "target_repo": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$",
+          "description": "Full owner/repo where the issue was filed."
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096,
+          "description": "Why the issue is being retracted (e.g., based on wrong analysis)."
+        }
+      }
+    },
     "proposal": {
       "type": "object",
       "additionalProperties": false,
