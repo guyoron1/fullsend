@@ -22,9 +22,6 @@ func init() {
 	}); err != nil {
 		panic(fmt.Sprintf("walking scaffold: %v", err))
 	}
-	for _, dir := range scaffold.CustomizedDirs() {
-		managedFiles = append(managedFiles, dir+"/.gitkeep")
-	}
 	managedFiles = append(managedFiles, codeownersPath)
 }
 
@@ -91,14 +88,6 @@ func (l *WorkflowsLayer) Install(ctx context.Context) error {
 	})
 	if err != nil {
 		return fmt.Errorf("collecting scaffold files: %w", err)
-	}
-
-	for _, dir := range scaffold.CustomizedDirs() {
-		files = append(files, forge.TreeFile{
-			Path:    dir + "/.gitkeep",
-			Content: []byte(""),
-			Mode:    "100644",
-		})
 	}
 
 	files = append(files, forge.TreeFile{

@@ -671,14 +671,6 @@ func runPerRepoInstall(ctx context.Context, c perRepoInstallConfig) error {
 		Mode:    "100644",
 	})
 
-	for _, dir := range scaffold.PerRepoCustomizedDirs() {
-		files = append(files, forge.TreeFile{
-			Path:    dir + "/.gitkeep",
-			Content: []byte(""),
-			Mode:    "100644",
-		})
-	}
-
 	needsWIFProvision := inferenceWIFProvider == ""
 
 	guardVal, guardExists, guardErr := client.GetRepoVariable(ctx, owner, repo, forge.PerRepoGuardVar)

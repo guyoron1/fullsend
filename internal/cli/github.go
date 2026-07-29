@@ -233,13 +233,6 @@ func runGitHubSetupPerRepo(ctx context.Context, client forge.Client, printer *ui
 		Content: cfgYAML,
 		Mode:    "100644",
 	})
-	for _, dir := range scaffold.PerRepoCustomizedDirs() {
-		files = append(files, forge.TreeFile{
-			Path:    dir + "/.gitkeep",
-			Content: []byte(""),
-			Mode:    "100644",
-		})
-	}
 
 	repoVars := map[string]string{
 		"FULLSEND_MINT_URL":   cfg.mintURL,

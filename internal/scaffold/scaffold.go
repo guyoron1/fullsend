@@ -112,26 +112,6 @@ func PerRepoShimTemplate() ([]byte, error) {
 	return content.ReadFile("fullsend-repo/templates/shim-per-repo.yaml")
 }
 
-// CustomizedDirs returns the set of customized/ subdirectories
-// that should be scaffolded in a per-org .fullsend config repo.
-func CustomizedDirs() []string {
-	dirs := make([]string, 0, len(layeredDirs))
-	for _, d := range layeredDirs {
-		dirs = append(dirs, "customized/"+strings.TrimSuffix(d, "/"))
-	}
-	return dirs
-}
-
-// PerRepoCustomizedDirs returns the set of customized/ subdirectories
-// that should be scaffolded in a per-repo .fullsend/ setup.
-func PerRepoCustomizedDirs() []string {
-	dirs := make([]string, 0, len(layeredDirs))
-	for _, d := range layeredDirs {
-		dirs = append(dirs, ".fullsend/customized/"+strings.TrimSuffix(d, "/"))
-	}
-	return dirs
-}
-
 const upstreamBase = "https://github.com/fullsend-ai/fullsend/blob/main/internal/scaffold/fullsend-repo/"
 
 // ManagedHeader returns the managed-by header to prepend to a scaffold file
