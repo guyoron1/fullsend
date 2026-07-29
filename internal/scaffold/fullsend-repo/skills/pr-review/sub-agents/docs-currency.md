@@ -36,3 +36,38 @@ Documentation files (`.md`, `.adoc`, `.rst`) frequently reference field
 names in prose without syntax-specific suffixes (e.g., "set the
 `repository` field"). Always include the bare-word pattern when scanning
 these file types — a syntax-specific pattern alone will miss them.
+
+## Missing documentation check
+
+Before checking individual identifiers for staleness, determine whether
+the PR changes user-facing behavior without including any documentation
+updates. This catches the case where documentation was simply not
+updated at all, rather than individual docs becoming stale.
+
+1. **Classify user-facing changes.** Scan the changed file list and
+   diff for additions or modifications to:
+   - CLI commands, subcommands, or flags (e.g., cobra command
+     definitions, flag registration, usage strings)
+   - Configuration keys or options (e.g., new struct fields read from
+     config files, environment variable handling)
+   - Public API endpoints, request/response schemas, or behavioral
+     changes to existing APIs
+   - User-visible output format changes (e.g., new columns in table
+     output, changed status messages)
+
+2. **Check for documentation changes.** Look at the changed file list
+   for any files under `docs/`, `README.md` at any level, or other
+   documentation directories (man pages, API docs).
+
+3. **Evaluate.**
+   - If the PR contains user-facing changes AND no documentation files
+     are modified, produce a `missing-doc` finding at **medium**
+     severity. The remediation should identify which documentation
+     areas likely need updating based on the user-facing changes
+     detected.
+   - If the PR only touches internal code, tests, CI, or refactoring
+     with no user-facing behavioral change, do not flag.
+   - If the PR carries a `docs-not-required` label, skip this check.
+     This label is the explicit opt-out for PRs that intentionally
+     omit documentation (e.g., changes behind a feature flag, or
+     docs planned for a follow-up PR).

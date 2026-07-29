@@ -15,6 +15,19 @@ Fullsend is a platform for fully autonomous agentic development for GitHub-hoste
 - This repository requires a [Developer Certificate of Origin (DCO)](https://developercertificate.org/). Human-proposed commits **must** be signed off: use `git commit -s` (or add `Signed-off-by: Your Name <email>` as a trailer). Human-driven agent sessions (e.g., using Claude Code locally) should also sign off — the human directing the session is the one certifying the DCO. **Autonomous agent commits are exempt** and must never supply the DCO with `-s` or with `Signed-off-by`. These agents commit using the GitHub App's bot identity, which the [Probot DCO app](https://github.com/apps/dco) auto-skips.
 - Never commit secrets (tokens, API keys, PEM keys, gcloud credentials) or sensitive data (GCP project names, service account identifiers, Model Armor template names, internal hostnames). Use environment variables with no defaults for sensitive values.
 
+## Documentation consistency
+
+PRs that change user-facing behavior should include corresponding documentation updates. User-facing changes include:
+
+- New or modified CLI commands, subcommands, or flags
+- New or changed configuration options
+- Public API endpoint changes (request/response schemas, behavioral changes)
+- User-visible output format changes (new columns, changed status messages)
+
+The review agent flags PRs that change user-facing behavior without documentation updates (`missing-doc` category, medium severity). If a PR intentionally omits documentation — for example, the change is behind a feature flag, or docs will follow in a separate PR — apply the `docs-not-required` label to skip the check.
+
+Internal refactoring, test-only changes, and CI/CD pipeline changes do not require documentation updates unless they change user-visible behavior.
+
 ## Go code
 
 **Mint function:** The mint Cloud Function source lives in two places that must stay in sync:

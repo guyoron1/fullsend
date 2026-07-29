@@ -57,6 +57,40 @@ git diff --name-only $(git merge-base HEAD "$DEFAULT_BRANCH")..HEAD
 
 If no change can be identified, stop and report — do not guess.
 
+### 1a. Check for missing documentation changes
+
+Before building the identifier checklist, check whether the PR changes
+user-facing behavior without including any documentation updates. This
+is a coarse-grained check that catches PRs where docs were simply not
+updated at all.
+
+1. **Classify user-facing changes.** Scan the changed file list and
+   diff for additions or modifications to:
+   - CLI commands, subcommands, or flags
+   - Configuration keys or options
+   - Public API endpoints or schemas
+   - User-visible output formats or behavioral changes
+
+2. **Check for documentation file changes.** From the changed file
+   list, check whether any documentation files (`.md`, `.rst`, `.adoc`
+   under `docs/`, or `README.md` at any level) are also modified.
+
+3. **Evaluate:**
+   - If user-facing changes exist and no documentation files are
+     modified, record a `missing-doc` finding at **medium** severity.
+     The description should note which user-facing changes were
+     detected and suggest which documentation areas likely need
+     updating.
+   - If the PR only touches internal code, tests, CI, or refactoring
+     with no user-facing behavioral change, skip this check.
+   - If the PR metadata includes a `docs-not-required` label, skip
+     this check.
+
+This check runs before the identifier-level checks in steps 2–6. A PR
+that fails this check may still pass the identifier checks (if the
+changed feature has no existing doc references to go stale), but the
+absence of doc updates for user-facing changes is itself a finding.
+
 ### 2. Build the identifier checklist
 
 Go through **every** changed file in the PR. For each file, extract
