@@ -175,6 +175,91 @@ func TestMintDeployCmd_DryRunWithInvalidPEM(t *testing.T) {
 	assert.Contains(t, err.Error(), "invalid PEM for role")
 }
 
+func TestMintDeployCmd_PlatformFlag(t *testing.T) {
+	cmd := newMintDeployCmd()
+	platformFlag := cmd.Flags().Lookup("platform")
+	require.NotNil(t, platformFlag)
+	assert.Equal(t, "gcf", platformFlag.DefValue)
+}
+
+func TestMintDeployCmd_CloudflareFlags(t *testing.T) {
+	cmd := newMintDeployCmd()
+	for _, name := range []string{"preview", "worker-name", "subdomain"} {
+		flag := cmd.Flags().Lookup(name)
+		require.NotNil(t, flag, "expected --%s flag", name)
+		assert.Equal(t, "", flag.DefValue)
+	}
+}
+
+func TestMintDeployCmd_CloudflareRequiresWorkerName(t *testing.T) {
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"mint", "deploy", "--platform=cloudflare"})
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--worker-name is required")
+}
+
+func TestMintDeployCmd_CloudflareRequiresSourceDir(t *testing.T) {
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"mint", "deploy", "--platform=cloudflare", "--worker-name=mint-test"})
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--source-dir is required")
+}
+
+func TestMintDeployCmd_CloudflareDryRun(t *testing.T) {
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"mint", "deploy", "--platform=cloudflare", "--worker-name=mint-test", "--source-dir=/tmp/src", "--dry-run"})
+	err := cmd.Execute()
+	require.NoError(t, err)
+}
+
+func TestMintDeployCmd_CloudflareDryRunPreview(t *testing.T) {
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"mint", "deploy", "--platform=cloudflare", "--worker-name=mint-test", "--source-dir=/tmp/src", "--preview=pr-42", "--dry-run"})
+	err := cmd.Execute()
+	require.NoError(t, err)
+}
+
+func TestMintDeployCmd_CloudflareDryRunPreviewWithSubdomain(t *testing.T) {
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"mint", "deploy", "--platform=cloudflare", "--worker-name=mint-test", "--source-dir=/tmp/src", "--preview=pr-42", "--subdomain=myaccount", "--dry-run"})
+	err := cmd.Execute()
+	require.NoError(t, err)
+}
+
+func TestMintDeployCmd_CloudflareInvalidPreviewAlias(t *testing.T) {
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"mint", "deploy", "--platform=cloudflare", "--worker-name=mint-test", "--source-dir=/tmp/src", "--preview=INVALID"})
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid preview alias")
+}
+
+func TestMintDeployCmd_CloudflareInvalidWorkerName(t *testing.T) {
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"mint", "deploy", "--platform=cloudflare", "--worker-name=INVALID"})
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid worker name")
+}
+
+func TestMintDeployCmd_InvalidPlatform(t *testing.T) {
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"mint", "deploy", "--platform=aws"})
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unsupported --platform")
+}
+
+func TestMintDeployCmd_GCFStillRequiresProject(t *testing.T) {
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"mint", "deploy", "--platform=gcf"})
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--project is required")
+}
+
 // --- lookupAppID tests ---
 
 func TestLookupAppID_Success(t *testing.T) {

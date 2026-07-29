@@ -27,6 +27,7 @@ import (
 
 	"github.com/fullsend-ai/fullsend/internal/appsetup"
 	"github.com/fullsend-ai/fullsend/internal/config"
+	"github.com/fullsend-ai/fullsend/internal/dispatch/cf"
 	"github.com/fullsend-ai/fullsend/internal/dispatch/gcf"
 	"github.com/fullsend-ai/fullsend/internal/mintcore"
 	"github.com/fullsend-ai/fullsend/internal/ui"
@@ -326,6 +327,10 @@ func newMintDeployCmd() *cobra.Command {
 	var skipDeploy bool
 	var dryRun bool
 	var pemDir string
+	var platform string
+	var preview string
+	var workerName string
+	var subdomain string
 
 	cmd := &cobra.Command{
 		Use:   "deploy",
@@ -337,6 +342,12 @@ func newMintDeployCmd() *cobra.Command {
 Most runs need only --project and --region. The optional --pem-dir flag is
 for first-time bootstrap only: it seeds the default app set's PEM secrets so
 that 'mint enroll' can work without running 'admin install' first.
+
+Cloudflare Workers deployment (--platform=cloudflare):
+  Deploy to Cloudflare Workers using Wrangler. Requires --worker-name and
+  --source-dir. Use --preview=<alias> for ephemeral preview deploys via
+  'wrangler versions upload --preview-alias'. Callers can derive the
+  preview URL: https://<alias>-<worker-name>.<subdomain>.workers.dev
 
 Required GCP APIs (gcloud services enable):
   - iam.googleapis.com
@@ -357,6 +368,15 @@ When using --pem-dir, additionally requires:
   - roles/resourcemanager.projectIamAdmin      (grant roles/aiplatform.user to WIF principals)`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			switch platform {
+			case "cloudflare":
+				return runMintDeployCloudflare(cmd, workerName, sourceDir, preview, subdomain, dryRun)
+			case "gcf":
+				// GCF path continues below
+			default:
+				return fmt.Errorf("unsupported --platform: %q (expected gcf or cloudflare)", platform)
+			}
+
 			if project == "" {
 				return fmt.Errorf("--project is required")
 			}
@@ -467,8 +487,100 @@ When using --pem-dir, additionally requires:
 	cmd.Flags().BoolVar(&skipDeploy, "skip-deploy", false, "skip code upload, reuse existing function")
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "preview changes without making them")
 	cmd.Flags().StringVar(&pemDir, "pem-dir", "", "optional: directory containing {role}.pem files to bootstrap the default app set")
+	cmd.Flags().StringVar(&platform, "platform", "gcf", "deployment platform: gcf or cloudflare")
+	cmd.Flags().StringVar(&preview, "preview", "", "preview alias for Cloudflare preview deploy (implies --platform=cloudflare)")
+	cmd.Flags().StringVar(&workerName, "worker-name", "", "Cloudflare Worker script name (required for --platform=cloudflare)")
+	cmd.Flags().StringVar(&subdomain, "subdomain", "", "Cloudflare Workers subdomain for URL computation")
 
 	return cmd
+}
+
+func runMintDeployCloudflare(cmd *cobra.Command, workerName, sourceDir, preview, subdomain string, dryRun bool) error {
+	if workerName == "" {
+		return fmt.Errorf("--worker-name is required for --platform=cloudflare")
+	}
+	if err := cf.ValidateWorkerName(workerName); err != nil {
+		return err
+	}
+	if sourceDir == "" {
+		return fmt.Errorf("--source-dir is required for --platform=cloudflare")
+	}
+
+	isPreview := preview != ""
+	if isPreview {
+		if err := cf.ValidatePreviewAlias(preview); err != nil {
+			return err
+		}
+	}
+
+	printer := ui.New(os.Stdout)
+	printer.Banner(Version())
+	printer.Blank()
+
+	if isPreview {
+		printer.Header("Deploying mint preview to Cloudflare Workers")
+	} else {
+		printer.Header("Deploying mint to Cloudflare Workers")
+	}
+	printer.Blank()
+
+	if dryRun {
+		printer.StepInfo("Dry run — no changes will be made")
+		printer.Blank()
+		if isPreview {
+			printer.StepInfo(fmt.Sprintf("Would upload preview version of worker %s with alias %s", workerName, preview))
+			printer.StepInfo(fmt.Sprintf("Command: wrangler versions upload --name=%s --preview-alias=%s", workerName, preview))
+			if subdomain != "" {
+				printer.StepInfo(fmt.Sprintf("Preview URL: %s", cf.PreviewURL(preview, workerName, subdomain)))
+			}
+			printer.StepInfo("Preview teardown: no-op (preview aliases are ephemeral)")
+		} else {
+			printer.StepInfo(fmt.Sprintf("Would deploy worker %s", workerName))
+			printer.StepInfo(fmt.Sprintf("Command: wrangler deploy --name=%s", workerName))
+			if subdomain != "" {
+				printer.StepInfo(fmt.Sprintf("Production URL: %s", cf.ProductionURL(workerName, subdomain)))
+			}
+		}
+		printer.StepInfo(fmt.Sprintf("Source directory: %s", sourceDir))
+		return nil
+	}
+
+	runner := &cf.LiveRunner{}
+
+	if isPreview {
+		printer.StepStart(fmt.Sprintf("Uploading preview version (alias: %s)", preview))
+		if err := runner.PreviewUpload(cmd.Context(), workerName, sourceDir, preview); err != nil {
+			printer.StepFail("Preview upload failed")
+			return fmt.Errorf("preview upload: %w", err)
+		}
+		printer.StepDone("Preview version uploaded")
+	} else {
+		printer.StepStart("Deploying to Cloudflare Workers")
+		if err := runner.Deploy(cmd.Context(), workerName, sourceDir); err != nil {
+			printer.StepFail("Deployment failed")
+			return fmt.Errorf("cloudflare deploy: %w", err)
+		}
+		printer.StepDone("Worker deployed")
+	}
+
+	printer.Blank()
+	summaryLines := []string{
+		fmt.Sprintf("Worker: %s", workerName),
+	}
+	if isPreview {
+		summaryLines = append(summaryLines, fmt.Sprintf("Preview alias: %s", preview))
+		if subdomain != "" {
+			summaryLines = append(summaryLines, fmt.Sprintf("Preview URL: %s", cf.PreviewURL(preview, workerName, subdomain)))
+		}
+		summaryLines = append(summaryLines,
+			"Callers can derive the preview URL: https://<alias>-<worker-name>.<subdomain>.workers.dev",
+		)
+	} else if subdomain != "" {
+		summaryLines = append(summaryLines, fmt.Sprintf("URL: %s", cf.ProductionURL(workerName, subdomain)))
+	}
+	printer.Summary("Deployment complete", summaryLines)
+
+	return nil
 }
 
 func newMintEnrollCmd() *cobra.Command {
