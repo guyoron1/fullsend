@@ -1,5 +1,33 @@
 import type { ManifestNode } from "virtual:fullsend-docs";
 
+/**
+ * Return the names of every top-level directory in the manifest.
+ * These are the folder pills shown in the search filter bar.
+ */
+export function collectTopLevelDirs(nodes: ManifestNode[]): string[] {
+  return nodes
+    .filter((n): n is Extract<ManifestNode, { type: "dir" }> => n.type === "dir")
+    .map((n) => n.name);
+}
+
+/**
+ * Filter `nodes` so only top-level directories whose name is in
+ * `folders` (plus top-level files, which have no folder) are kept.
+ * An empty set means "all" — no filtering.
+ */
+export function filterByFolders(
+  nodes: ManifestNode[],
+  folders: ReadonlySet<string>,
+): ManifestNode[] {
+  if (folders.size === 0) return nodes;
+  return nodes.filter((n) => {
+    if (n.type === "dir") return folders.has(n.name);
+    // Top-level files are only shown when no folder filter is active
+    // (already handled by the size === 0 early return above).
+    return false;
+  });
+}
+
 export function filterTree(
   nodes: ManifestNode[],
   query: string,

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { filterTree, highlightSegments } from "./filterTree";
+import {
+  filterTree,
+  highlightSegments,
+  collectTopLevelDirs,
+  filterByFolders,
+} from "./filterTree";
 import type { ManifestNode } from "virtual:fullsend-docs";
 
 const tree: ManifestNode[] = [
@@ -227,5 +232,81 @@ describe("highlightSegments", () => {
       { text: "READ", highlight: true },
       { text: "ME", highlight: false },
     ]);
+  });
+});
+
+describe("collectTopLevelDirs", () => {
+  it("returns names of top-level dir nodes only", () => {
+    expect(collectTopLevelDirs(tree)).toEqual(["guides"]);
+  });
+
+  it("returns empty array when no dirs exist", () => {
+    const flat: ManifestNode[] = [
+      { type: "file", name: "readme", routeKey: "readme", title: "README" },
+    ];
+    expect(collectTopLevelDirs(flat)).toEqual([]);
+  });
+
+  it("returns multiple dirs in order", () => {
+    const multi: ManifestNode[] = [
+      { type: "dir", name: "ADRs", children: [] },
+      { type: "dir", name: "guides", children: [] },
+      { type: "file", name: "vision", routeKey: "vision", title: "Vision" },
+      { type: "dir", name: "plans", children: [] },
+    ];
+    expect(collectTopLevelDirs(multi)).toEqual(["ADRs", "guides", "plans"]);
+  });
+});
+
+describe("filterByFolders", () => {
+  it("returns full tree when folder set is empty", () => {
+    expect(filterByFolders(tree, new Set())).toBe(tree);
+  });
+
+  it("keeps only selected top-level dirs", () => {
+    const multi: ManifestNode[] = [
+      {
+        type: "dir",
+        name: "ADRs",
+        children: [
+          { type: "file", name: "001", routeKey: "ADRs/001", title: "ADR 1" },
+        ],
+      },
+      {
+        type: "dir",
+        name: "guides",
+        children: [
+          { type: "file", name: "quickstart", routeKey: "guides/quickstart", title: "Quickstart" },
+        ],
+      },
+      { type: "file", name: "readme", routeKey: "readme", title: "README" },
+    ];
+    const result = filterByFolders(multi, new Set(["guides"]));
+    expect(result).toEqual([
+      {
+        type: "dir",
+        name: "guides",
+        children: [
+          { type: "file", name: "quickstart", routeKey: "guides/quickstart", title: "Quickstart" },
+        ],
+      },
+    ]);
+  });
+
+  it("excludes top-level files when a folder is selected", () => {
+    const result = filterByFolders(tree, new Set(["guides"]));
+    // The top-level "readme" file should not be in results
+    const fileNames = result.map((n) => n.name);
+    expect(fileNames).not.toContain("readme");
+  });
+
+  it("supports multiple selected folders", () => {
+    const multi: ManifestNode[] = [
+      { type: "dir", name: "ADRs", children: [] },
+      { type: "dir", name: "guides", children: [] },
+      { type: "dir", name: "plans", children: [] },
+    ];
+    const result = filterByFolders(multi, new Set(["ADRs", "plans"]));
+    expect(result.map((n) => n.name)).toEqual(["ADRs", "plans"]);
   });
 });
