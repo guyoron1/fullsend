@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -709,7 +710,7 @@ func (c *LiveGCFClient) SetSecretIAMBinding(ctx context.Context, resource, membe
 	if !secretResourcePattern.MatchString(resource) {
 		return fmt.Errorf("invalid secret resource path %q", resource)
 	}
-	const maxRetries = 3
+	const maxRetries = 5
 	getURL := fmt.Sprintf("https://secretmanager.googleapis.com/v1/%s:getIamPolicy", resource)
 	setURL := fmt.Sprintf("https://secretmanager.googleapis.com/v1/%s:setIamPolicy", resource)
 
@@ -724,7 +725,7 @@ func (c *LiveGCFClient) SetSecretIAMBinding(ctx context.Context, resource, membe
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-time.After(time.Duration(200*(attempt+1)) * time.Millisecond):
+		case <-time.After(iamRetryBackoff(attempt)):
 		}
 	}
 	return fmt.Errorf("IAM policy update failed after %d retries", maxRetries)
@@ -741,10 +742,27 @@ func isConflict(err error) bool {
 	return errors.As(err, &ce)
 }
 
+// iamRetryBackoff returns the delay before the next IAM retry attempt.
+// Uses exponential backoff (200ms base, doubling each attempt) with
+// ±25% jitter to reduce thundering-herd effects when multiple
+// concurrent callers contend on the same IAM policy etag.
+func iamRetryBackoff(attempt int) time.Duration {
+	base := 200 * time.Millisecond
+	for range attempt {
+		base *= 2
+	}
+	// Jitter: return between 75% and 125% of base.
+	quarter := int64(base / 4)
+	if quarter <= 0 {
+		return base
+	}
+	return base - base/4 + time.Duration(rand.Int63n(2*quarter+1))
+}
+
 // SetProjectIAMBinding sets an IAM binding on a GCP project.
 // Uses read-modify-write with retry on 409 Conflict (etag mismatch).
 func (c *LiveGCFClient) SetProjectIAMBinding(ctx context.Context, projectID, member, role string) error {
-	const maxRetries = 3
+	const maxRetries = 5
 	getURL := fmt.Sprintf("https://cloudresourcemanager.googleapis.com/v1/projects/%s:getIamPolicy",
 		url.PathEscape(projectID))
 	setURL := fmt.Sprintf("https://cloudresourcemanager.googleapis.com/v1/projects/%s:setIamPolicy",
@@ -761,7 +779,7 @@ func (c *LiveGCFClient) SetProjectIAMBinding(ctx context.Context, projectID, mem
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-time.After(time.Duration(200*(attempt+1)) * time.Millisecond):
+		case <-time.After(iamRetryBackoff(attempt)):
 		}
 	}
 	return fmt.Errorf("project IAM policy update failed after %d retries", maxRetries)

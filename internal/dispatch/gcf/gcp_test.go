@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/fullsend-ai/fullsend/internal/gcp"
 	"github.com/stretchr/testify/assert"
@@ -462,6 +463,81 @@ func TestLiveGCFClient_SetProjectIAMBinding(t *testing.T) {
 		assert.Equal(t, 4, callCount)
 	})
 
+	t.Run("retries multiple 409 conflicts with backoff", func(t *testing.T) {
+		// Simulate 3 consecutive 409 conflicts before succeeding on the 4th attempt.
+		// This verifies the increased retry count (5 max) handles sustained contention.
+		callCount := 0
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			callCount++
+			// Odd calls are getIamPolicy, even calls are setIamPolicy.
+			if callCount%2 == 1 {
+				w.WriteHeader(http.StatusOK)
+				fmt.Fprintf(w, `{"bindings":[],"etag":"v%d"}`, callCount)
+				return
+			}
+			// Return 409 on first 3 set attempts (calls 2, 4, 6), succeed on 4th (call 8).
+			if callCount <= 6 {
+				w.WriteHeader(http.StatusConflict)
+				fmt.Fprintln(w, `{"error":{"message":"conflict"}}`)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer srv.Close()
+
+		err := newTestClient(srv).SetProjectIAMBinding(context.Background(),
+			"proj", "member", "role")
+		require.NoError(t, err)
+		// 4 get + 4 set = 8 calls (3 conflicts + 1 success).
+		assert.Equal(t, 8, callCount)
+	})
+
+	t.Run("non-409 error is not retried", func(t *testing.T) {
+		callCount := 0
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			callCount++
+			if callCount == 1 {
+				// getIamPolicy succeeds
+				w.WriteHeader(http.StatusOK)
+				fmt.Fprintln(w, `{"bindings":[],"etag":"v1"}`)
+				return
+			}
+			// setIamPolicy returns 500 — should NOT retry.
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintln(w, `{"error":{"message":"internal error"}}`)
+		}))
+		defer srv.Close()
+
+		err := newTestClient(srv).SetProjectIAMBinding(context.Background(),
+			"proj", "member", "role")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "unexpected status 500")
+		// Only 1 get + 1 set = 2 calls (no retries).
+		assert.Equal(t, 2, callCount)
+	})
+
+	t.Run("exhausts all retries on persistent 409", func(t *testing.T) {
+		callCount := 0
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			callCount++
+			if callCount%2 == 1 {
+				w.WriteHeader(http.StatusOK)
+				fmt.Fprintf(w, `{"bindings":[],"etag":"v%d"}`, callCount)
+				return
+			}
+			w.WriteHeader(http.StatusConflict)
+			fmt.Fprintln(w, `{"error":{"message":"conflict"}}`)
+		}))
+		defer srv.Close()
+
+		err := newTestClient(srv).SetProjectIAMBinding(context.Background(),
+			"proj", "member", "role")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "IAM policy conflict")
+		// 5 attempts × 2 calls each = 10 total calls.
+		assert.Equal(t, 10, callCount)
+	})
+
 	t.Run("getIamPolicy error", func(t *testing.T) {
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusForbidden)
@@ -472,6 +548,41 @@ func TestLiveGCFClient_SetProjectIAMBinding(t *testing.T) {
 		err := newTestClient(srv).SetProjectIAMBinding(context.Background(), "proj", "m", "role")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "getting IAM policy returned 403")
+	})
+}
+
+// --- iamRetryBackoff ---
+
+func TestIAMRetryBackoff(t *testing.T) {
+	t.Run("increases with attempt", func(t *testing.T) {
+		// Collect multiple samples to account for jitter and verify
+		// the general trend: later attempts have longer delays.
+		const samples = 50
+		var sum0, sum2 time.Duration
+		for range samples {
+			sum0 += iamRetryBackoff(0)
+			sum2 += iamRetryBackoff(2)
+		}
+		avg0 := sum0 / samples
+		avg2 := sum2 / samples
+		// Attempt 2 (base 800ms) should average much higher than attempt 0 (base 200ms).
+		assert.Greater(t, avg2, avg0, "later attempts should have longer backoff")
+	})
+
+	t.Run("stays within jitter bounds", func(t *testing.T) {
+		for attempt := range 5 {
+			base := 200 * time.Millisecond
+			for range attempt {
+				base *= 2
+			}
+			lo := base * 3 / 4 // 75% of base
+			hi := base * 5 / 4 // 125% of base
+			for range 100 {
+				d := iamRetryBackoff(attempt)
+				assert.GreaterOrEqual(t, d, lo, "attempt %d backoff too low", attempt)
+				assert.LessOrEqual(t, d, hi, "attempt %d backoff too high", attempt)
+			}
+		}
 	})
 }
 
