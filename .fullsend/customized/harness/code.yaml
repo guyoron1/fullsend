@@ -23,6 +23,11 @@ host_files:
   - src: ${GCP_OIDC_TOKEN_FILE}
     dest: /sandbox/workspace/.gcp-oidc-token
     optional: true
+  - src: dist/rtk-linux-x64
+    dest: /sandbox/workspace/.costwise/rtk
+    optional: true
+  - src: env/rtk-setup.env
+    dest: /sandbox/workspace/.env.d/rtk-setup.env
 
 pre_script: scripts/pre-code.sh
 post_script: scripts/post-code.sh
@@ -32,6 +37,7 @@ skills:
 
 plugins:
   - plugins/gopls-lsp
+  - plugins/ponytail
 
 
 runner_env:
