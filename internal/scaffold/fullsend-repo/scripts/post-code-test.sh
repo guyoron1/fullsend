@@ -653,6 +653,57 @@ run_signoff_test() {
   echo "PASS: ${test_name}"
 }
 
+# ---------------------------------------------------------------------------
+# Test helper — reimplements the label application logic from post-code.sh
+# section 9. Given a repo name and issue number, returns the API path and
+# label that would be applied.
+# ---------------------------------------------------------------------------
+build_label_api_call() {
+  local repo_full_name="$1"
+  local issue_number="$2"
+
+  echo "repos/${repo_full_name}/issues/${issue_number}/labels:ready-for-review"
+}
+
+run_label_test() {
+  local test_name="$1"
+  local repo_full_name="$2"
+  local issue_number="$3"
+  local expected="$4"
+
+  local actual
+  actual="$(build_label_api_call "${repo_full_name}" "${issue_number}")"
+
+  if [ "${actual}" != "${expected}" ]; then
+    echo "FAIL: ${test_name}"
+    echo "  repo:     '${repo_full_name}'"
+    echo "  issue:    '${issue_number}'"
+    echo "  expected: '${expected}'"
+    echo "  actual:   '${actual}'"
+    FAILURES=$((FAILURES + 1))
+    return
+  fi
+
+  echo "PASS: ${test_name}"
+}
+
+# --- Label application test cases ---
+
+# Standard repo and issue
+run_label_test "label-api-path-standard" \
+  "my-org/my-repo" "42" \
+  "repos/my-org/my-repo/issues/42/labels:ready-for-review"
+
+# Different repo format
+run_label_test "label-api-path-dotrepo" \
+  "my-org/.fullsend" "100" \
+  "repos/my-org/.fullsend/issues/100/labels:ready-for-review"
+
+# Large issue number
+run_label_test "label-api-path-large-issue" \
+  "company/product" "99999" \
+  "repos/company/product/issues/99999/labels:ready-for-review"
+
 # --- Signed-off-by detection test cases ---
 
 # Commit with Signed-off-by trailer should be blocked
