@@ -19,11 +19,7 @@
 # changes to enrolled repos.
 name: fullsend
 
-permissions:
-  actions: write
-  id-token: write
-  contents: read
-  pull-requests: read
+permissions: {}
 
 on:
   issues:
@@ -37,6 +33,11 @@ on:
 
 jobs:
   dispatch:
+    permissions:
+      actions: write
+      id-token: write
+      contents: read
+      pull-requests: read
     concurrency:
       group: fullsend-dispatch-${{ github.event.issue.number || github.event.pull_request.number }}
       cancel-in-progress: false
