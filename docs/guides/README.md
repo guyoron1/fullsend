@@ -17,6 +17,7 @@ Advanced guides for platform operators who deploy and manage the GCP-side infras
 - [Mint service administration](infrastructure/mint-administration.md) — Deploying and managing the token mint Cloud Function
 - [Infrastructure reference](infrastructure/infrastructure-reference.md) — Token mint, WIF, and secrets deployment details
 - [Enabling fullsend on private repositories](infrastructure/private-repositories.md) — Additional guardrails and configuration for private repos
+- [Distributed tracing reference](infrastructure/distributed-tracing.md) — Span structure, environment variables, and attribute reference for OpenTelemetry tracing
 
 ## User guides
 
@@ -28,6 +29,7 @@ Guides for developers working in repositories where fullsend is active.
 - [Customizing with AGENTS.md](user/customizing-with-agents-md.md) — Guide agents using your repo's AGENTS.md file
 - [Customizing with skills](user/customizing-with-skills.md) — Extend or replace built-in agent skills with custom skill documents
 - [Building custom agents](user/building-custom-agents.md) — Create a new agent from scratch on a per-repo fullsend installation
+- [Telemetry](user/telemetry.md) — Enable telemetry, choose a backend, and read agent traces
 
 ## Development
 
@@ -36,3 +38,4 @@ Guides for contributors developing and testing fullsend itself.
 - [E2E testing](dev/e2e-testing.md) — Local and CI e2e runs, including PR authorization and `ok-to-test`
 - [CLI internals](dev/cli-internals.md) — Command structure, installation pipeline, and sandbox runtime
 - [Testing workflow changes](dev/testing-workflows.md) — Point a live GitHub org at a branch to test workflow, action, and agent changes before release
+- [Telemetry internals](dev/telemetry-internals.md) — How the tracing code works, local development backends, and adding new spans
