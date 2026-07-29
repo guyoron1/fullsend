@@ -234,6 +234,75 @@ func TestSecretRedactor(t *testing.T) {
 		assert.True(t, hasFinding(result, "json_field"))
 		assert.NotContains(t, result.Sanitized, "my-super-secret-pass-1234")
 	})
+
+	// Issue #709: json_field false positives on non-secret "key" fields
+
+	t.Run("project_key not redacted", func(t *testing.T) {
+		result := r.Scan(`{"project_key": "PROJ-42"}`)
+		assert.True(t, result.Safe || !hasFinding(result, "json_field"))
+	})
+
+	t.Run("existing_issue_key not redacted", func(t *testing.T) {
+		result := r.Scan(`{"existing_issue_key": "PROJ-12345"}`)
+		assert.True(t, result.Safe || !hasFinding(result, "json_field"))
+	})
+
+	t.Run("primary_key not redacted", func(t *testing.T) {
+		result := r.Scan(`{"primary_key": "some-long-identifier"}`)
+		assert.True(t, result.Safe || !hasFinding(result, "json_field"))
+	})
+
+	t.Run("keyboard field not redacted", func(t *testing.T) {
+		result := r.Scan(`{"keyboard_layout": "us-international"}`)
+		assert.True(t, result.Safe || !hasFinding(result, "json_field"))
+	})
+
+	t.Run("foreign_key not redacted", func(t *testing.T) {
+		result := r.Scan(`{"foreign_key": "ref-table-column"}`)
+		assert.True(t, result.Safe || !hasFinding(result, "json_field"))
+	})
+
+	t.Run("api_key still redacted after fix", func(t *testing.T) {
+		result := r.Scan(`{"api_key": "sk-abc123-secret-value"}`)
+		assert.False(t, result.Safe)
+		assert.True(t, hasFinding(result, "json_field"))
+		assert.NotContains(t, result.Sanitized, "sk-abc123-secret-value")
+	})
+
+	t.Run("access_key still redacted", func(t *testing.T) {
+		result := r.Scan(`{"access_key": "my-access-key-value-1234"}`)
+		assert.False(t, result.Safe)
+		assert.True(t, hasFinding(result, "json_field"))
+		assert.NotContains(t, result.Sanitized, "my-access-key-value-1234")
+	})
+
+	t.Run("encryption_key still redacted", func(t *testing.T) {
+		result := r.Scan(`{"encryption_key": "base64encodedkeyvalue"}`)
+		assert.False(t, result.Safe)
+		assert.True(t, hasFinding(result, "json_field"))
+		assert.NotContains(t, result.Sanitized, "base64encodedkeyvalue")
+	})
+
+	t.Run("master_key still redacted", func(t *testing.T) {
+		result := r.Scan(`{"master_key": "super-secret-master-12345"}`)
+		assert.False(t, result.Safe)
+		assert.True(t, hasFinding(result, "json_field"))
+		assert.NotContains(t, result.Sanitized, "super-secret-master-12345")
+	})
+
+	t.Run("private_key json field still redacted", func(t *testing.T) {
+		result := r.Scan(`{"private_key": "long-private-key-content"}`)
+		assert.False(t, result.Safe)
+		assert.True(t, hasFinding(result, "json_field"))
+		assert.NotContains(t, result.Sanitized, "long-private-key-content")
+	})
+
+	t.Run("camelCase apiKey still redacted", func(t *testing.T) {
+		result := r.Scan(`{"apiKey": "my-secret-api-key-value"}`)
+		assert.False(t, result.Safe)
+		assert.True(t, hasFinding(result, "json_field"))
+		assert.NotContains(t, result.Sanitized, "my-secret-api-key-value")
+	})
 }
 
 func TestSSRFValidator(t *testing.T) {
