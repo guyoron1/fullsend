@@ -27,6 +27,7 @@ import (
 
 	"github.com/fullsend-ai/fullsend/internal/appsetup"
 	"github.com/fullsend-ai/fullsend/internal/config"
+	"github.com/fullsend-ai/fullsend/internal/dispatch/cf"
 	"github.com/fullsend-ai/fullsend/internal/dispatch/gcf"
 	"github.com/fullsend-ai/fullsend/internal/mintcore"
 	"github.com/fullsend-ai/fullsend/internal/ui"
@@ -320,155 +321,284 @@ project access. The 'token' subcommand requires only GitHub Actions OIDC.`,
 }
 
 func newMintDeployCmd() *cobra.Command {
+	var platform string
 	var project string
 	var region string
 	var sourceDir string
 	var skipDeploy bool
 	var dryRun bool
 	var pemDir string
+	// Cloudflare-specific flags.
+	var preview string
+	var workerName string
+	var cfSubdomain string
 
 	cmd := &cobra.Command{
 		Use:   "deploy",
-		Short: "Deploy or update the token mint Cloud Function",
-		Long: `Deploys the fullsend-mint Cloud Function and supporting GCP infrastructure
-(service account, WIF pool/provider). Does NOT enroll any org — use
-'fullsend mint enroll' after deployment.
+		Short: "Deploy or update the token mint",
+		Long: `Deploys the token mint infrastructure.
 
-Most runs need only --project and --region. The optional --pem-dir flag is
-for first-time bootstrap only: it seeds the default app set's PEM secrets so
-that 'mint enroll' can work without running 'admin install' first.
+Platform: gcf (default)
+  Deploys a GCP Cloud Function and supporting infrastructure (service account,
+  WIF pool/provider). Does NOT enroll any org — use 'fullsend mint enroll'
+  after deployment.
 
-Required GCP APIs (gcloud services enable):
-  - iam.googleapis.com
-  - cloudresourcemanager.googleapis.com
-  - cloudfunctions.googleapis.com
-  - run.googleapis.com
-  - secretmanager.googleapis.com
-  - iamcredentials.googleapis.com              (runtime: used by deployed function, not CLI)
+  Most runs need only --project and --region. The optional --pem-dir flag is
+  for first-time bootstrap only.
 
-Required IAM roles on the target project:
-  - roles/iam.serviceAccountAdmin             (create mint service account)
-  - roles/iam.workloadIdentityPoolAdmin        (create WIF pool and provider)
-  - roles/cloudfunctions.developer             (deploy Cloud Function)
-  - roles/run.admin                            (set Cloud Run invoker policy)
+Platform: cloudflare
+  Deploys the mint as a Cloudflare Worker using Wrangler.
 
-When using --pem-dir, additionally requires:
-  - roles/secretmanager.admin                  (create and manage PEM secrets)
-  - roles/resourcemanager.projectIamAdmin      (grant roles/aiplatform.user to WIF principals)`,
+  Production deploy (no --preview):
+    Uses 'wrangler deploy' to publish the Worker to the production route.
+    Teardown via 'wrangler delete' removes the entire Worker script.
+
+  Preview deploy (--preview=<alias>):
+    Uses 'wrangler versions upload --preview-alias=<alias>' to publish an
+    ephemeral preview version. The preview URL is deterministic:
+
+      https://<alias>-<worker-name>.<subdomain>.workers.dev
+
+    For example, --preview=bt-run-42 --worker-name=mint-test produces:
+      https://bt-run-42-mint-test.<subdomain>.workers.dev
+
+    Callers (BT, operators) can compute this URL from known inputs and
+    pass it to 'fullsend github setup --mint-url' or 'fullsend mint enroll'
+    without scraping Wrangler output. Preview teardown is a no-op — it
+    does NOT delete the durable Worker script.
+
+  Required: --worker-name, --source-dir
+  Optional: --subdomain (for URL computation only)`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if project == "" {
-				return fmt.Errorf("--project is required")
+			switch platform {
+			case "gcf":
+				return runMintDeployGCF(cmd, project, region, sourceDir, skipDeploy, dryRun, pemDir)
+			case "cloudflare":
+				return runMintDeployCloudflare(cmd, workerName, sourceDir, preview, cfSubdomain, dryRun)
+			default:
+				return fmt.Errorf("unsupported --platform %q: must be 'gcf' or 'cloudflare'", platform)
 			}
-			if !gcf.ValidateProjectID(project) {
-				return fmt.Errorf("invalid GCP project ID: %q", project)
-			}
-			if !gcf.ValidateRegion(region) {
-				return fmt.Errorf("invalid GCP region: %q", region)
-			}
-
-			printer := ui.New(os.Stdout)
-			ctx := cmd.Context()
-
-			printer.Banner(Version())
-			printer.Blank()
-			printer.Header("Deploying token mint")
-			printer.Blank()
-
-			if dryRun {
-				printer.StepInfo("Dry run — no changes will be made")
-				printer.Blank()
-				printer.StepInfo(fmt.Sprintf("Would deploy mint to project %s, region %s", project, region))
-				if sourceDir != "" {
-					printer.StepInfo(fmt.Sprintf("Source directory: %s", sourceDir))
-				} else {
-					printer.StepInfo("Source: embedded mint function")
-				}
-				if skipDeploy {
-					printer.StepInfo("Would skip code deployment (--skip-deploy)")
-				}
-				if pemDir != "" {
-					if _, err := validatePEMDir(pemDir); err != nil {
-						return err
-					}
-					printer.StepInfo(fmt.Sprintf("Would bootstrap app set %q with PEMs from %s (app ID lookup and PEM verification skipped in dry-run)", appsetup.DefaultAppSet, pemDir))
-				}
-				return nil
-			}
-
-			gcpClient := gcf.NewLiveGCFClient(project)
-
-			if sourceDir == "" {
-				sourceDir = gcf.DefaultFunctionSourceDir()
-			}
-
-			deployMode := gcf.DeployAuto
-			if skipDeploy {
-				deployMode = gcf.DeploySkip
-			}
-
-			cfg := gcf.Config{
-				ProjectID:         project,
-				Region:            region,
-				FunctionSourceDir: sourceDir,
-				DeployMode:        deployMode,
-			}
-
-			if pemDir != "" {
-				printer.StepStart(fmt.Sprintf("Loading PEMs and discovering app IDs for app set %q", appsetup.DefaultAppSet))
-				agentPEMs, agentAppIDs, err := loadAppSetPEMs(ctx, pemDir, appsetup.DefaultAppSet)
-				if err != nil {
-					printer.StepFail("Failed to load app set PEMs")
-					return fmt.Errorf("loading app set PEMs: %w", err)
-				}
-				printer.StepDone(fmt.Sprintf("Loaded %d role PEMs for app set %q", len(agentPEMs), appsetup.DefaultAppSet))
-
-				// The default app set name ("fullsend-ai") doubles as the PEM storage
-				// key prefix. Custom app sets must use admin install instead.
-				cfg.GitHubOrgs = []string{appsetup.DefaultAppSet}
-				cfg.AgentPEMs = agentPEMs
-				cfg.AgentAppIDs = agentAppIDs
-			} else {
-				cfg.GitHubOrgs = []string{gcf.PlaceholderOrg}
-				cfg.AgentAppIDs = map[string]string{gcf.PlaceholderOrg: "0"}
-			}
-
-			provisioner := gcf.NewProvisioner(cfg, gcpClient)
-
-			printer.StepStart("Provisioning mint infrastructure")
-			result, err := provisioner.Provision(ctx)
-			if err != nil {
-				printer.StepFail("Mint deployment failed")
-				return fmt.Errorf("deploying mint: %w", err)
-			}
-
-			mintURL := result["FULLSEND_MINT_URL"]
-			printer.StepDone(fmt.Sprintf("Mint deployed at %s", mintURL))
-			printer.Blank()
-
-			summaryLines := []string{
-				fmt.Sprintf("Project: %s", project),
-				fmt.Sprintf("Region: %s", region),
-				fmt.Sprintf("URL: %s", mintURL),
-			}
-			if pemDir != "" {
-				summaryLines = append(summaryLines, fmt.Sprintf("App set: %s (PEMs bootstrapped)", appsetup.DefaultAppSet))
-			}
-			summaryLines = append(summaryLines, "Next: fullsend mint enroll <org> --project="+project)
-			printer.Summary("Deployment complete", summaryLines)
-
-			return nil
 		},
 	}
 
-	cmd.Flags().StringVar(&project, "project", "", "GCP project ID (required)")
-	cmd.Flags().StringVar(&region, "region", "us-central1", "GCP region for the Cloud Function")
-	cmd.Flags().StringVar(&sourceDir, "source-dir", "", "path to local mint source (default: embedded)")
-	cmd.Flags().BoolVar(&skipDeploy, "skip-deploy", false, "skip code upload, reuse existing function")
+	// Common flags.
+	cmd.Flags().StringVar(&platform, "platform", "gcf", "deployment platform: gcf (GCP Cloud Function) or cloudflare (Cloudflare Worker)")
+	cmd.Flags().StringVar(&sourceDir, "source-dir", "", "path to local mint source (default: embedded for gcf)")
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "preview changes without making them")
-	cmd.Flags().StringVar(&pemDir, "pem-dir", "", "optional: directory containing {role}.pem files to bootstrap the default app set")
+
+	// GCF-specific flags.
+	cmd.Flags().StringVar(&project, "project", "", "GCP project ID (required for gcf)")
+	cmd.Flags().StringVar(&region, "region", "us-central1", "GCP region for the Cloud Function")
+	cmd.Flags().BoolVar(&skipDeploy, "skip-deploy", false, "skip code upload, reuse existing function (gcf only)")
+	cmd.Flags().StringVar(&pemDir, "pem-dir", "", "optional: directory containing {role}.pem files to bootstrap the default app set (gcf only)")
+
+	// Cloudflare-specific flags.
+	cmd.Flags().StringVar(&preview, "preview", "", "preview alias for Wrangler --preview-alias (cloudflare only); when set, uses 'wrangler versions upload' instead of 'wrangler deploy'")
+	cmd.Flags().StringVar(&workerName, "worker-name", "", "Cloudflare Worker script name (required for cloudflare)")
+	cmd.Flags().StringVar(&cfSubdomain, "subdomain", "", "Cloudflare workers.dev subdomain for URL computation (cloudflare only)")
 
 	return cmd
+}
+
+// runMintDeployGCF handles the --platform=gcf deploy path.
+func runMintDeployGCF(cmd *cobra.Command, project, region, sourceDir string, skipDeploy, dryRun bool, pemDir string) error {
+	if project == "" {
+		return fmt.Errorf("--project is required for --platform=gcf")
+	}
+	if !gcf.ValidateProjectID(project) {
+		return fmt.Errorf("invalid GCP project ID: %q", project)
+	}
+	if !gcf.ValidateRegion(region) {
+		return fmt.Errorf("invalid GCP region: %q", region)
+	}
+
+	printer := ui.New(os.Stdout)
+	ctx := cmd.Context()
+
+	printer.Banner(Version())
+	printer.Blank()
+	printer.Header("Deploying token mint")
+	printer.Blank()
+
+	if dryRun {
+		printer.StepInfo("Dry run — no changes will be made")
+		printer.Blank()
+		printer.StepInfo(fmt.Sprintf("Would deploy mint to project %s, region %s", project, region))
+		if sourceDir != "" {
+			printer.StepInfo(fmt.Sprintf("Source directory: %s", sourceDir))
+		} else {
+			printer.StepInfo("Source: embedded mint function")
+		}
+		if skipDeploy {
+			printer.StepInfo("Would skip code deployment (--skip-deploy)")
+		}
+		if pemDir != "" {
+			if _, err := validatePEMDir(pemDir); err != nil {
+				return err
+			}
+			printer.StepInfo(fmt.Sprintf("Would bootstrap app set %q with PEMs from %s (app ID lookup and PEM verification skipped in dry-run)", appsetup.DefaultAppSet, pemDir))
+		}
+		return nil
+	}
+
+	gcpClient := gcf.NewLiveGCFClient(project)
+
+	if sourceDir == "" {
+		sourceDir = gcf.DefaultFunctionSourceDir()
+	}
+
+	deployMode := gcf.DeployAuto
+	if skipDeploy {
+		deployMode = gcf.DeploySkip
+	}
+
+	cfg := gcf.Config{
+		ProjectID:         project,
+		Region:            region,
+		FunctionSourceDir: sourceDir,
+		DeployMode:        deployMode,
+	}
+
+	if pemDir != "" {
+		printer.StepStart(fmt.Sprintf("Loading PEMs and discovering app IDs for app set %q", appsetup.DefaultAppSet))
+		agentPEMs, agentAppIDs, err := loadAppSetPEMs(ctx, pemDir, appsetup.DefaultAppSet)
+		if err != nil {
+			printer.StepFail("Failed to load app set PEMs")
+			return fmt.Errorf("loading app set PEMs: %w", err)
+		}
+		printer.StepDone(fmt.Sprintf("Loaded %d role PEMs for app set %q", len(agentPEMs), appsetup.DefaultAppSet))
+
+		// The default app set name ("fullsend-ai") doubles as the PEM storage
+		// key prefix. Custom app sets must use admin install instead.
+		cfg.GitHubOrgs = []string{appsetup.DefaultAppSet}
+		cfg.AgentPEMs = agentPEMs
+		cfg.AgentAppIDs = agentAppIDs
+	} else {
+		cfg.GitHubOrgs = []string{gcf.PlaceholderOrg}
+		cfg.AgentAppIDs = map[string]string{gcf.PlaceholderOrg: "0"}
+	}
+
+	provisioner := gcf.NewProvisioner(cfg, gcpClient)
+
+	printer.StepStart("Provisioning mint infrastructure")
+	result, err := provisioner.Provision(ctx)
+	if err != nil {
+		printer.StepFail("Mint deployment failed")
+		return fmt.Errorf("deploying mint: %w", err)
+	}
+
+	mintURL := result["FULLSEND_MINT_URL"]
+	printer.StepDone(fmt.Sprintf("Mint deployed at %s", mintURL))
+	printer.Blank()
+
+	summaryLines := []string{
+		fmt.Sprintf("Project: %s", project),
+		fmt.Sprintf("Region: %s", region),
+		fmt.Sprintf("URL: %s", mintURL),
+	}
+	if pemDir != "" {
+		summaryLines = append(summaryLines, fmt.Sprintf("App set: %s (PEMs bootstrapped)", appsetup.DefaultAppSet))
+	}
+	summaryLines = append(summaryLines, "Next: fullsend mint enroll <org> --project="+project)
+	printer.Summary("Deployment complete", summaryLines)
+
+	return nil
+}
+
+// runMintDeployCloudflare handles the --platform=cloudflare deploy path.
+func runMintDeployCloudflare(cmd *cobra.Command, workerName, sourceDir, preview, subdomain string, dryRun bool) error {
+	if workerName == "" {
+		return fmt.Errorf("--worker-name is required for --platform=cloudflare")
+	}
+	if err := cf.ValidateWorkerName(workerName); err != nil {
+		return err
+	}
+	if sourceDir == "" {
+		return fmt.Errorf("--source-dir is required for --platform=cloudflare")
+	}
+
+	isPreview := preview != ""
+	if isPreview {
+		if err := cf.ValidatePreviewAlias(preview); err != nil {
+			return err
+		}
+	}
+
+	printer := ui.New(os.Stdout)
+
+	printer.Banner(Version())
+	printer.Blank()
+	if isPreview {
+		printer.Header("Deploying token mint (Cloudflare preview)")
+	} else {
+		printer.Header("Deploying token mint (Cloudflare)")
+	}
+	printer.Blank()
+
+	if dryRun {
+		printer.StepInfo("Dry run — no changes will be made")
+		printer.Blank()
+		if isPreview {
+			printer.StepInfo(fmt.Sprintf("Would run: wrangler versions upload --name=%s --preview-alias=%s", workerName, preview))
+			if subdomain != "" {
+				printer.StepInfo(fmt.Sprintf("Preview URL: %s", cf.PreviewURL(preview, workerName, subdomain)))
+			} else {
+				printer.StepInfo(fmt.Sprintf("Preview URL: https://%s-%s.<subdomain>.workers.dev", preview, workerName))
+			}
+			printer.StepInfo("Teardown: no-op (preview alias is ephemeral; durable Worker script is not deleted)")
+		} else {
+			printer.StepInfo(fmt.Sprintf("Would run: wrangler deploy --name=%s", workerName))
+			if subdomain != "" {
+				printer.StepInfo(fmt.Sprintf("Production URL: %s", cf.ProductionURL(workerName, subdomain)))
+			}
+			printer.StepInfo("Teardown: wrangler delete (removes the entire Worker script)")
+		}
+		printer.StepInfo(fmt.Sprintf("Source directory: %s", sourceDir))
+		return nil
+	}
+
+	ctx := cmd.Context()
+	runner := cf.NewLiveRunner()
+
+	if isPreview {
+		printer.StepStart(fmt.Sprintf("Uploading preview version (alias: %s)", preview))
+		if err := runner.PreviewUpload(ctx, workerName, sourceDir, preview); err != nil {
+			printer.StepFail("Preview upload failed")
+			return fmt.Errorf("preview upload: %w", err)
+		}
+		printer.StepDone("Preview version uploaded")
+	} else {
+		printer.StepStart("Deploying Worker")
+		if err := runner.Deploy(ctx, workerName, sourceDir); err != nil {
+			printer.StepFail("Worker deploy failed")
+			return fmt.Errorf("deploying worker: %w", err)
+		}
+		printer.StepDone("Worker deployed")
+	}
+
+	printer.Blank()
+
+	summaryLines := []string{
+		fmt.Sprintf("Worker: %s", workerName),
+	}
+	if isPreview {
+		summaryLines = append(summaryLines, fmt.Sprintf("Preview alias: %s", preview))
+		if subdomain != "" {
+			summaryLines = append(summaryLines, fmt.Sprintf("Preview URL: %s", cf.PreviewURL(preview, workerName, subdomain)))
+		} else {
+			summaryLines = append(summaryLines, fmt.Sprintf("Preview URL: https://%s-%s.<subdomain>.workers.dev", preview, workerName))
+		}
+		summaryLines = append(summaryLines, "Teardown: preview alias is ephemeral — durable Worker script is preserved")
+	} else {
+		if subdomain != "" {
+			summaryLines = append(summaryLines, fmt.Sprintf("URL: %s", cf.ProductionURL(workerName, subdomain)))
+		}
+		summaryLines = append(summaryLines, "Teardown: wrangler delete --name="+workerName)
+	}
+	printer.Summary("Deployment complete", summaryLines)
+
+	return nil
 }
 
 func newMintEnrollCmd() *cobra.Command {

@@ -64,6 +64,10 @@ func TestMintCommand_RegisteredInRoot(t *testing.T) {
 func TestMintDeployCmd_Flags(t *testing.T) {
 	cmd := newMintDeployCmd()
 
+	platformFlag := cmd.Flags().Lookup("platform")
+	require.NotNil(t, platformFlag, "expected --platform flag")
+	assert.Equal(t, "gcf", platformFlag.DefValue)
+
 	projectFlag := cmd.Flags().Lookup("project")
 	require.NotNil(t, projectFlag, "expected --project flag")
 	assert.Equal(t, "", projectFlag.DefValue)
@@ -80,11 +84,31 @@ func TestMintDeployCmd_Flags(t *testing.T) {
 
 	dryRunFlag := cmd.Flags().Lookup("dry-run")
 	require.NotNil(t, dryRunFlag, "expected --dry-run flag")
+
+	previewFlag := cmd.Flags().Lookup("preview")
+	require.NotNil(t, previewFlag, "expected --preview flag")
+	assert.Equal(t, "", previewFlag.DefValue)
+
+	workerNameFlag := cmd.Flags().Lookup("worker-name")
+	require.NotNil(t, workerNameFlag, "expected --worker-name flag")
+	assert.Equal(t, "", workerNameFlag.DefValue)
+
+	subdomainFlag := cmd.Flags().Lookup("subdomain")
+	require.NotNil(t, subdomainFlag, "expected --subdomain flag")
+	assert.Equal(t, "", subdomainFlag.DefValue)
 }
 
 func TestMintDeployCmd_RequiresProject(t *testing.T) {
 	cmd := newRootCmd()
 	cmd.SetArgs([]string{"mint", "deploy"})
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--project is required")
+}
+
+func TestMintDeployCmd_RequiresProjectForGCF(t *testing.T) {
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"mint", "deploy", "--platform=gcf"})
 	err := cmd.Execute()
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "--project is required")
@@ -583,6 +607,76 @@ func TestMintStatusCmd_TooManyArgs(t *testing.T) {
 	cmd.SetArgs([]string{"mint", "status", "org1", "org2", "--project=my-project-id"})
 	err := cmd.Execute()
 	require.Error(t, err)
+}
+
+// --- cloudflare deploy command tests ---
+
+func TestMintDeployCmd_CloudflareRequiresWorkerName(t *testing.T) {
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"mint", "deploy", "--platform=cloudflare", "--source-dir=/tmp/src"})
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--worker-name is required")
+}
+
+func TestMintDeployCmd_CloudflareRequiresSourceDir(t *testing.T) {
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"mint", "deploy", "--platform=cloudflare", "--worker-name=mint-test"})
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--source-dir is required")
+}
+
+func TestMintDeployCmd_CloudflareInvalidWorkerName(t *testing.T) {
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"mint", "deploy", "--platform=cloudflare", "--worker-name=INVALID", "--source-dir=/tmp/src"})
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid worker name")
+}
+
+func TestMintDeployCmd_CloudflareInvalidPreviewAlias(t *testing.T) {
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"mint", "deploy", "--platform=cloudflare", "--worker-name=mint-test", "--source-dir=/tmp/src", "--preview=INVALID"})
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid preview alias")
+}
+
+func TestMintDeployCmd_CloudflareDryRunProduction(t *testing.T) {
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"mint", "deploy", "--platform=cloudflare", "--worker-name=mint-test", "--source-dir=/tmp/src", "--dry-run"})
+	err := cmd.Execute()
+	require.NoError(t, err)
+}
+
+func TestMintDeployCmd_CloudflareDryRunPreview(t *testing.T) {
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"mint", "deploy", "--platform=cloudflare", "--worker-name=mint-test", "--source-dir=/tmp/src", "--preview=pr-42", "--dry-run"})
+	err := cmd.Execute()
+	require.NoError(t, err)
+}
+
+func TestMintDeployCmd_CloudflareDryRunPreviewWithSubdomain(t *testing.T) {
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"mint", "deploy", "--platform=cloudflare", "--worker-name=mint-test", "--source-dir=/tmp/src", "--preview=pr-42", "--subdomain=my-account", "--dry-run"})
+	err := cmd.Execute()
+	require.NoError(t, err)
+}
+
+func TestMintDeployCmd_CloudflareDryRunProductionWithSubdomain(t *testing.T) {
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"mint", "deploy", "--platform=cloudflare", "--worker-name=mint-test", "--source-dir=/tmp/src", "--subdomain=my-account", "--dry-run"})
+	err := cmd.Execute()
+	require.NoError(t, err)
+}
+
+func TestMintDeployCmd_UnsupportedPlatform(t *testing.T) {
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"mint", "deploy", "--platform=lambda"})
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unsupported --platform")
 }
 
 // --- role aliasing tests ---
