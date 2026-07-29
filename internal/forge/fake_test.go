@@ -475,6 +475,14 @@ func TestFakeClient_ErrorInjection(t *testing.T) {
 			_, err := fc.GetFileContentAtRef(ctx, "o", "r", "p", "main")
 			return err
 		}},
+		{"CreateForkInOrg", func(fc *FakeClient) error {
+			_, err := fc.CreateForkInOrg(ctx, "o", "r", "org")
+			return err
+		}},
+		{"GetDefaultBranch", func(fc *FakeClient) error {
+			_, err := fc.GetDefaultBranch(ctx, "o", "r")
+			return err
+		}},
 	}
 
 	for _, m := range methods {
@@ -545,6 +553,8 @@ func TestFakeClient_ThreadSafety(t *testing.T) {
 			_ = fc.DeleteIssueComment(ctx, "o", "r", 1)
 			_, _ = fc.ListDirectoryContents(ctx, "o", "r", "p", "main", false)
 			_, _ = fc.GetFileContentAtRef(ctx, "o", "r", "p", "main")
+			_, _ = fc.CreateForkInOrg(ctx, "org", "repo1", "fork-org")
+			_, _ = fc.GetDefaultBranch(ctx, "o", "r")
 		}(i)
 	}
 

@@ -208,6 +208,22 @@ type Client interface {
 	// have the expected content, no commit is created.
 	CommitFilesToBranch(ctx context.Context, owner, repo, branch, message string, files []TreeFile) (committed bool, err error)
 
+	// Fork operations
+	//
+	// CreateForkInOrg creates a fork of sourceOwner/sourceRepo in the given
+	// org. On GitHub, fork creation is asynchronous — the API responds before
+	// git data replication completes. Callers that need the fork's default
+	// branch ref (e.g. to create a branch) must poll with GetDefaultBranch
+	// or use AwaitForkReady before proceeding.
+	CreateForkInOrg(ctx context.Context, sourceOwner, sourceRepo, org string) (*Repository, error)
+
+	// GetDefaultBranch returns the default branch name for a repository by
+	// verifying the branch ref exists in git. Unlike GetRepo (which returns
+	// metadata even for empty repos), this confirms the default branch has
+	// been replicated and is readable. Returns forge.ErrNotFound if the ref
+	// does not exist (e.g. the repository is empty or still replicating).
+	GetDefaultBranch(ctx context.Context, owner, repo string) (string, error)
+
 	// Branch operations
 	CreateBranch(ctx context.Context, owner, repo, branchName string) error
 	CreateFileOnBranch(ctx context.Context, owner, repo, branch, path, message string, content []byte) error

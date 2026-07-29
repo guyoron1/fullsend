@@ -2295,6 +2295,80 @@ func (c *LiveClient) GetOrgVariableRepos(ctx context.Context, org, name string) 
 	return ids, nil
 }
 
+// CreateForkInOrg creates a fork of sourceOwner/sourceRepo in the given org.
+// GitHub responds with 202 Accepted — the fork metadata is returned immediately
+// but git data replication may still be in progress. Callers should use
+// GetDefaultBranch or AwaitForkReady before operating on the fork's refs.
+func (c *LiveClient) CreateForkInOrg(ctx context.Context, sourceOwner, sourceRepo, org string) (*forge.Repository, error) {
+	payload := map[string]string{
+		"organization": org,
+	}
+
+	resp, err := c.do(ctx, http.MethodPost, fmt.Sprintf("/repos/%s/%s/forks", sourceOwner, sourceRepo), payload)
+	if err != nil {
+		return nil, fmt.Errorf("create fork: %w", err)
+	}
+	if err := checkStatus(resp, http.StatusAccepted, http.StatusOK, http.StatusCreated); err != nil {
+		return nil, fmt.Errorf("create fork %s/%s in %s: %w", sourceOwner, sourceRepo, org, err)
+	}
+
+	var r struct {
+		ID            int64  `json:"id"`
+		Name          string `json:"name"`
+		FullName      string `json:"full_name"`
+		DefaultBranch string `json:"default_branch"`
+		Private       bool   `json:"private"`
+		Fork          bool   `json:"fork"`
+	}
+	if err := decodeJSON(resp, &r); err != nil {
+		return nil, fmt.Errorf("decode fork response: %w", err)
+	}
+
+	return &forge.Repository{
+		ID:            r.ID,
+		Name:          r.Name,
+		FullName:      r.FullName,
+		DefaultBranch: r.DefaultBranch,
+		Private:       r.Private,
+		Fork:          r.Fork,
+	}, nil
+}
+
+// GetDefaultBranch returns the default branch name after verifying the branch
+// ref exists in git. This confirms the repository has been initialised and
+// its default branch is readable. Returns forge.ErrNotFound (wrapped) if the
+// ref does not exist — e.g. the repo is empty or git data is still
+// replicating after a fork.
+func (c *LiveClient) GetDefaultBranch(ctx context.Context, owner, repo string) (string, error) {
+	// Step 1: Get the default branch name from repo metadata.
+	repoResp, err := c.do(ctx, http.MethodGet, fmt.Sprintf("/repos/%s/%s", owner, repo), nil)
+	if err != nil {
+		return "", fmt.Errorf("get repo for default branch: %w", err)
+	}
+	if err := checkStatus(repoResp, http.StatusOK); err != nil {
+		return "", fmt.Errorf("get repo %s/%s: %w", owner, repo, err)
+	}
+	var repoInfo struct {
+		DefaultBranch string `json:"default_branch"`
+	}
+	if err := decodeJSON(repoResp, &repoInfo); err != nil {
+		return "", fmt.Errorf("decode repo info: %w", err)
+	}
+
+	// Step 2: Verify the branch ref exists in git.
+	refResp, err := c.do(ctx, http.MethodGet,
+		fmt.Sprintf("/repos/%s/%s/git/ref/heads/%s", owner, repo, repoInfo.DefaultBranch), nil)
+	if err != nil {
+		return "", fmt.Errorf("get ref for default branch: %w", err)
+	}
+	if err := checkStatus(refResp, http.StatusOK); err != nil {
+		return "", fmt.Errorf("get default branch ref %s/%s: %w", owner, repo, err)
+	}
+	refResp.Body.Close()
+
+	return repoInfo.DefaultBranch, nil
+}
+
 // isNotFound checks whether an error is a 404 API error.
 func isNotFound(err error) bool {
 	var apiErr *APIError

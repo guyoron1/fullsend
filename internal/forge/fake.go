@@ -166,6 +166,14 @@ type FakeClient struct {
 	// Annotations for GetWorkflowRunAnnotations.
 	Annotations []Annotation
 
+	// Fork state for CreateForkInOrg.
+	CreatedForks []Repository
+
+	// DefaultBranches controls GetDefaultBranch return values.
+	// key: "owner/repo" → branch name. If absent, GetDefaultBranch
+	// returns ErrNotFound (simulating an empty/replicating repo).
+	DefaultBranches map[string]string
+
 	// Call recorders
 	CreatedRepos           []Repository
 	CreatedFiles           []FileRecord
@@ -313,6 +321,63 @@ func (f *FakeClient) DeleteRepo(_ context.Context, owner, repo string) error {
 	}
 
 	return nil
+}
+
+func (f *FakeClient) CreateForkInOrg(_ context.Context, sourceOwner, sourceRepo, org string) (*Repository, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	if e := f.err("CreateForkInOrg"); e != nil {
+		return nil, e
+	}
+
+	// Look up the source repo to get metadata.
+	fullName := sourceOwner + "/" + sourceRepo
+	var source *Repository
+	for i := range f.Repos {
+		if f.Repos[i].FullName == fullName {
+			source = &f.Repos[i]
+			break
+		}
+	}
+	if source == nil {
+		for i := range f.CreatedRepos {
+			if f.CreatedRepos[i].FullName == fullName {
+				source = &f.CreatedRepos[i]
+				break
+			}
+		}
+	}
+	if source == nil {
+		return nil, fmt.Errorf("%w: %s", ErrNotFound, fullName)
+	}
+
+	fork := Repository{
+		Name:          source.Name,
+		FullName:      org + "/" + source.Name,
+		DefaultBranch: source.DefaultBranch,
+		Private:       source.Private,
+		Fork:          true,
+	}
+	f.CreatedForks = append(f.CreatedForks, fork)
+	return &fork, nil
+}
+
+func (f *FakeClient) GetDefaultBranch(_ context.Context, owner, repo string) (string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	if e := f.err("GetDefaultBranch"); e != nil {
+		return "", e
+	}
+
+	key := owner + "/" + repo
+	if f.DefaultBranches != nil {
+		if branch, ok := f.DefaultBranches[key]; ok {
+			return branch, nil
+		}
+	}
+	return "", fmt.Errorf("%w: default branch ref for %s", ErrNotFound, key)
 }
 
 func (f *FakeClient) CreateFile(_ context.Context, owner, repo, path, message string, content []byte) error {

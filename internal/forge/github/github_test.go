@@ -1625,3 +1625,119 @@ func TestDeleteIssueComment(t *testing.T) {
 	err := client.DeleteIssueComment(context.Background(), "org", "repo", 42)
 	require.NoError(t, err)
 }
+
+func TestCreateForkInOrg(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "POST", r.Method)
+			assert.Equal(t, "/repos/upstream-owner/upstream-repo/forks", r.URL.Path)
+
+			var body map[string]any
+			json.NewDecoder(r.Body).Decode(&body)
+			assert.Equal(t, "target-org", body["organization"])
+
+			w.WriteHeader(http.StatusAccepted)
+			json.NewEncoder(w).Encode(map[string]any{
+				"id":             42,
+				"name":           "upstream-repo",
+				"full_name":      "target-org/upstream-repo",
+				"default_branch": "main",
+				"private":        false,
+				"fork":           true,
+			})
+		}))
+		defer srv.Close()
+
+		client := newTestClient(t, srv)
+		repo, err := client.CreateForkInOrg(context.Background(), "upstream-owner", "upstream-repo", "target-org")
+		require.NoError(t, err)
+		assert.Equal(t, int64(42), repo.ID)
+		assert.Equal(t, "upstream-repo", repo.Name)
+		assert.Equal(t, "target-org/upstream-repo", repo.FullName)
+		assert.Equal(t, "main", repo.DefaultBranch)
+		assert.True(t, repo.Fork)
+	})
+
+	t.Run("api error", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(map[string]any{"message": "Not Found"})
+		}))
+		defer srv.Close()
+
+		client := newTestClient(t, srv)
+		_, err := client.CreateForkInOrg(context.Background(), "owner", "missing", "org")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "create fork")
+	})
+}
+
+func TestGetDefaultBranch(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		callNum := 0
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			callNum++
+			switch {
+			case callNum == 1 && r.URL.Path == "/repos/owner/repo":
+				json.NewEncoder(w).Encode(map[string]any{
+					"default_branch": "main",
+				})
+			case callNum == 2 && r.URL.Path == "/repos/owner/repo/git/ref/heads/main":
+				json.NewEncoder(w).Encode(map[string]any{
+					"ref": "refs/heads/main",
+					"object": map[string]string{
+						"sha": "abc123",
+					},
+				})
+			default:
+				t.Errorf("unexpected call %d: %s %s", callNum, r.Method, r.URL.Path)
+			}
+		}))
+		defer srv.Close()
+
+		client := newTestClient(t, srv)
+		branch, err := client.GetDefaultBranch(context.Background(), "owner", "repo")
+		require.NoError(t, err)
+		assert.Equal(t, "main", branch)
+		assert.Equal(t, 2, callNum)
+	})
+
+	t.Run("empty repo 409", func(t *testing.T) {
+		callNum := 0
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			callNum++
+			switch {
+			case callNum == 1 && r.URL.Path == "/repos/owner/repo":
+				json.NewEncoder(w).Encode(map[string]any{
+					"default_branch": "main",
+				})
+			case callNum == 2 && r.URL.Path == "/repos/owner/repo/git/ref/heads/main":
+				w.WriteHeader(http.StatusConflict)
+				json.NewEncoder(w).Encode(map[string]any{
+					"message": "Git Repository is empty.",
+				})
+			default:
+				t.Errorf("unexpected call %d: %s %s", callNum, r.Method, r.URL.Path)
+			}
+		}))
+		defer srv.Close()
+
+		client := newTestClient(t, srv)
+		_, err := client.GetDefaultBranch(context.Background(), "owner", "repo")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "get default branch ref")
+	})
+
+	t.Run("repo not found", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(map[string]any{"message": "Not Found"})
+		}))
+		defer srv.Close()
+
+		client := newTestClient(t, srv)
+		_, err := client.GetDefaultBranch(context.Background(), "owner", "missing")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "get repo")
+	})
+}
