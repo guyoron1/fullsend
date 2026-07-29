@@ -184,6 +184,72 @@ To add a custom skill to the code agent's harness:
 
 **Important:** You must maintain the full harness structure. You cannot add just a `skills:` field—the entire YAML file must be present and valid.
 
+## Per-Repo Config Reference
+
+In per-repo installation mode ([ADR 0033](../../ADRs/0033-per-repo-installation-mode.md)), each repository stores its configuration in `.fullsend/config.yaml`. This file is the **only writable config layer**—code defaults are read-through and cannot be edited. When a field is absent, the code default applies; when present, it replaces the default entirely (scalar override, not deep merge). Marshal emits only locally-set values—fields at their default are omitted from the YAML output.
+
+### Field Merge Rules
+
+| Field | Type | Merge rule | Default when absent |
+|-------|------|------------|---------------------|
+| `version` | string | Required scalar. Must be `"1"`. | `"1"` |
+| `kill_switch` | bool | Scalar override. Absent = `false`. | `false` |
+| `roles` | `[]string` | Replace if set. Absent = all default roles enabled. | `["triage", "coder", "review", "fix", "retro", "prioritize"]` |
+| `allowed_remote_resources` | `[]string` | Replace if set. Absent/nil = deny all URL-based harness bases. Explicit `[]` = deny all. | `[]` (deny all) |
+
+**No deep merge**: Every field uses scalar override or list replace. Setting `roles` in the overlay replaces the entire list; there is no union with a parent role list. **`allowed_remote_resources`** controls which URL prefixes are permitted for `base:` references in harness YAML (see [ADR 0045](../../ADRs/0045-forge-portable-harness-schema.md)). This is a security boundary—absent means deny-all.
+
+### Unset Detection
+
+| Go type | Unset value | YAML representation |
+|---------|-------------|---------------------|
+| `string` | `""` | Field absent or empty string |
+| `bool` | `false` | Field absent (omitted via `omitempty`) |
+| `[]string` | `nil` | Field absent |
+
+When marshaling, fields at their zero value are omitted (`omitempty`). A config file containing only `version: "1"` is valid—all other fields inherit code defaults.
+
+### Writability
+
+Only `.fullsend/config.yaml` is writable by the repository owner. Code defaults (in the Go source) and upstream defaults (in the reusable workflows) are read-through layers that cannot be modified per-repo. To change behavior, set the field explicitly in `.fullsend/config.yaml`.
+
+### Examples
+
+Minimal config overriding only what differs from defaults:
+
+```yaml
+# .fullsend/config.yaml — only override what differs from defaults
+version: "1"
+roles:
+  - triage
+  - coder
+  - review
+# kill_switch omitted → defaults to false
+# allowed_remote_resources omitted → deny all URL bases
+```
+
+All fields explicit:
+
+```yaml
+# .fullsend/config.yaml — all fields explicit
+version: "1"
+kill_switch: false
+roles:
+  - triage
+  - coder
+  - review
+  - fix
+  - retro
+  - prioritize
+allowed_remote_resources:
+  - "https://raw.githubusercontent.com/fullsend-ai/fullsend/"
+```
+
+### See Also
+
+- [ADR 0033: Per-Repo Installation Mode](../../ADRs/0033-per-repo-installation-mode.md)
+- [ADR 0035: Layered Content Resolution](../../ADRs/0035-layered-content-resolution.md)
+
 ## Agent Roles
 
 Each agent role has its own identity, permissions, and purpose:
