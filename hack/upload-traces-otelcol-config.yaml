@@ -1,0 +1,24 @@
+# OTel Collector config for upload-traces.sh.
+#
+# upload-traces.sh reads this template and generates a runtime config,
+# injecting any --header flags as YAML under exporters.otlphttp.headers.
+#
+# Environment variables (set by upload-traces.sh):
+#   REPLAY_ENDPOINT   - OTLP HTTP exporter endpoint
+#   REPLAY_TRACE_DIR  - absolute path to the directory containing trace files
+
+receivers:
+  filelog:
+    include:
+      - "${env:REPLAY_TRACE_DIR}/**/*.jsonl"
+    start_at: beginning
+
+exporters:
+  otlphttp:
+    endpoint: "${env:REPLAY_ENDPOINT}"
+
+service:
+  pipelines:
+    logs:
+      receivers: [filelog]
+      exporters: [otlphttp]
