@@ -694,6 +694,96 @@ run_signoff_test "signoff-variant-casing-passes" \
 signed-off-by: bot <bot@noreply.github.com>" \
   "pass"
 
+# ---------------------------------------------------------------------------
+# PR number extraction tests
+# ---------------------------------------------------------------------------
+
+extract_pr_number() {
+  local pr_url="$1"
+  pr_url="${pr_url%/}"
+  echo "${pr_url##*/}"
+}
+
+run_pr_extraction_test() {
+  local test_name="$1"
+  local pr_url="$2"
+  local expected="$3"
+
+  local actual
+  actual="$(extract_pr_number "${pr_url}")"
+
+  if [ "${actual}" != "${expected}" ]; then
+    echo "FAIL: ${test_name}"
+    echo "  input:    '${pr_url}'"
+    echo "  expected: '${expected}'"
+    echo "  actual:   '${actual}'"
+    FAILURES=$((FAILURES + 1))
+    return
+  fi
+
+  echo "PASS: ${test_name}"
+}
+
+run_pr_extraction_test "extract-from-github-url" \
+  "https://github.com/org/repo/pull/123" \
+  "123"
+
+run_pr_extraction_test "extract-from-github-url-with-trailing-slash" \
+  "https://github.com/org/repo/pull/456/" \
+  "456"
+
+run_pr_extraction_test "extract-large-pr-number" \
+  "https://github.com/org/repo/pull/98765" \
+  "98765"
+
+# ---------------------------------------------------------------------------
+# Label application logic tests
+# ---------------------------------------------------------------------------
+
+apply_review_label_action() {
+  local label_create_success="$1"
+  local pr_edit_success="$2"
+
+  if [ "${pr_edit_success}" = "true" ]; then
+    echo "success"
+  else
+    echo "error"
+  fi
+}
+
+run_label_test() {
+  local test_name="$1"
+  local label_create_success="$2"
+  local pr_edit_success="$3"
+  local expected="$4"
+
+  local actual
+  actual="$(apply_review_label_action "${label_create_success}" "${pr_edit_success}")"
+
+  if [ "${actual}" != "${expected}" ]; then
+    echo "FAIL: ${test_name}"
+    echo "  label_create: ${label_create_success}, pr_edit: ${pr_edit_success}"
+    echo "  expected: '${expected}'"
+    echo "  actual:   '${actual}'"
+    FAILURES=$((FAILURES + 1))
+    return
+  fi
+
+  echo "PASS: ${test_name}"
+}
+
+run_label_test "label-create-and-edit-both-succeed" \
+  "true" "true" "success"
+
+run_label_test "label-create-fails-but-edit-succeeds" \
+  "false" "true" "success"
+
+run_label_test "label-create-succeeds-but-edit-fails" \
+  "true" "false" "error"
+
+run_label_test "label-create-and-edit-both-fail" \
+  "false" "false" "error"
+
 # --- Summary ---
 
 echo ""

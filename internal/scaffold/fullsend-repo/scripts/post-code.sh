@@ -343,6 +343,26 @@ fi
 # 8. Create PR
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Apply ready-for-review label — triggers review agent dispatch.
+#
+# Creates the label if it doesn't exist (idempotent), then applies it to
+# the PR. Escalates to ::error:: if both steps fail — the label is a
+# control marker that drives review dispatch in label-triggered repos.
+# ---------------------------------------------------------------------------
+apply_review_label() {
+  local pr_number="$1"
+  echo "Applying ready-for-review label to PR #${pr_number}..."
+  gh label create "ready-for-review" --repo "${REPO_FULL_NAME}" \
+    --description "Triggers review agent dispatch" --color "0E8A16" \
+    2>/dev/null || true
+  if ! gh pr edit "${pr_number}" --repo "${REPO_FULL_NAME}" \
+    --add-label "ready-for-review" 2>/dev/null; then
+    echo "::error::Failed to apply ready-for-review label to PR #${pr_number}"
+    echo "::error::Review dispatch may not trigger — apply the label manually"
+  fi
+}
+
 EXISTING_PR_NUM="$(gh pr list --repo "${REPO_FULL_NAME}" --head "${BRANCH}" \
   --json number --jq '.[0].number' 2>/dev/null || true)"
 
@@ -352,6 +372,7 @@ if [ -n "${EXISTING_PR_NUM}" ]; then
   echo "PR #${EXISTING_PR_NUM} already exists — branch updated with new commits"
   echo "PR: ${EXISTING_PR_URL}"
   echo "pr_url=${EXISTING_PR_URL}" >> "${GITHUB_OUTPUT:-/dev/null}"
+  apply_review_label "${EXISTING_PR_NUM}"
   exit 0
 fi
 
@@ -416,3 +437,7 @@ PR_URL="$(gh pr create \
 
 echo "PR created: ${PR_URL}"
 echo "pr_url=${PR_URL}" >> "${GITHUB_OUTPUT:-/dev/null}"
+
+PR_NUMBER="${PR_URL%/}"
+PR_NUMBER="${PR_NUMBER##*/}"
+apply_review_label "${PR_NUMBER}"
