@@ -43,6 +43,23 @@ function pruneNodes(
   return out;
 }
 
+export function collectTopLevelDirs(nodes: ManifestNode[]): string[] {
+  return nodes
+    .filter((n): n is Extract<ManifestNode, { type: "dir" }> => n.type === "dir")
+    .map((n) => n.name)
+    .sort();
+}
+
+export function filterByFolders(
+  nodes: ManifestNode[],
+  folders: Set<string>,
+): ManifestNode[] {
+  if (folders.size === 0) return nodes;
+  return nodes.filter(
+    (n) => n.type === "dir" && folders.has(n.name),
+  );
+}
+
 export type TextSegment = { text: string; highlight: boolean };
 
 export function highlightSegments(

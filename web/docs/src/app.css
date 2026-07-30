@@ -314,6 +314,57 @@ body {
   background: var(--docs-border);
 }
 
+.docs-folder-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  padding: 0.35rem 0.5rem 0;
+}
+
+.docs-folder-pill {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  font: inherit;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  border: 1px solid var(--docs-border);
+  border-radius: 1rem;
+  background: var(--docs-surface);
+  color: color-mix(in srgb, var(--docs-text) 72%, transparent);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 0.12s ease,
+    color 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.docs-folder-pill:hover {
+  background: color-mix(in srgb, var(--docs-text) 8%, transparent);
+  color: var(--docs-text);
+}
+
+.docs-folder-pill--active {
+  background: color-mix(in srgb, var(--docs-link) 15%, transparent);
+  border-color: var(--docs-link);
+  color: var(--docs-link);
+  font-weight: 600;
+}
+
+.docs-folder-pill--active:hover {
+  background: color-mix(in srgb, var(--docs-link) 22%, transparent);
+  color: var(--docs-link);
+}
+
+.docs-folder-pill--clear {
+  border-style: dashed;
+  color: color-mix(in srgb, var(--docs-text) 55%, transparent);
+}
+
+.docs-folder-pill--clear:hover {
+  color: var(--docs-text);
+}
+
 .docs-tree-wrap {
   flex: 1;
   min-height: 0;

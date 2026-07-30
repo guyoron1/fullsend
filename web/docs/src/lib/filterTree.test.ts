@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filterTree, highlightSegments } from "./filterTree";
+import { filterTree, highlightSegments, collectTopLevelDirs, filterByFolders } from "./filterTree";
 import type { ManifestNode } from "virtual:fullsend-docs";
 
 const tree: ManifestNode[] = [
@@ -227,5 +227,38 @@ describe("highlightSegments", () => {
       { text: "READ", highlight: true },
       { text: "ME", highlight: false },
     ]);
+  });
+});
+
+describe("collectTopLevelDirs", () => {
+  it("returns sorted top-level directory names", () => {
+    expect(collectTopLevelDirs(tree)).toEqual(["guides"]);
+  });
+
+  it("returns empty array when no dirs", () => {
+    const nodes: ManifestNode[] = [
+      { type: "file", name: "readme", routeKey: "readme", title: "README" },
+    ];
+    expect(collectTopLevelDirs(nodes)).toEqual([]);
+  });
+});
+
+describe("filterByFolders", () => {
+  it("returns all nodes when folder set is empty", () => {
+    expect(filterByFolders(tree, new Set())).toBe(tree);
+  });
+
+  it("returns only matching top-level dirs", () => {
+    const result = filterByFolders(tree, new Set(["guides"]));
+    expect(result).toEqual([tree[0]]);
+  });
+
+  it("excludes top-level files when folder filter is active", () => {
+    const result = filterByFolders(tree, new Set(["guides"]));
+    expect(result.find((n) => n.type === "file")).toBeUndefined();
+  });
+
+  it("returns empty when no folders match", () => {
+    expect(filterByFolders(tree, new Set(["nonexistent"]))).toEqual([]);
   });
 });
