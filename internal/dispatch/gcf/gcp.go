@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand/v2"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -709,7 +710,7 @@ func (c *LiveGCFClient) SetSecretIAMBinding(ctx context.Context, resource, membe
 	if !secretResourcePattern.MatchString(resource) {
 		return fmt.Errorf("invalid secret resource path %q", resource)
 	}
-	const maxRetries = 3
+	const maxRetries = 5
 	getURL := fmt.Sprintf("https://secretmanager.googleapis.com/v1/%s:getIamPolicy", resource)
 	setURL := fmt.Sprintf("https://secretmanager.googleapis.com/v1/%s:setIamPolicy", resource)
 
@@ -724,7 +725,7 @@ func (c *LiveGCFClient) SetSecretIAMBinding(ctx context.Context, resource, membe
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-time.After(time.Duration(200*(attempt+1)) * time.Millisecond):
+		case <-time.After(iamRetryBackoff(attempt)):
 		}
 	}
 	return fmt.Errorf("IAM policy update failed after %d retries", maxRetries)
@@ -741,10 +742,19 @@ func isConflict(err error) bool {
 	return errors.As(err, &ce)
 }
 
+// iamRetryBackoff returns an exponential backoff duration with ±25% jitter
+// for IAM policy conflict retries. Base delay is 200ms, doubling each attempt.
+func iamRetryBackoff(attempt int) time.Duration {
+	base := 200 * time.Millisecond
+	delay := base << attempt // 200ms, 400ms, 800ms, 1600ms, ...
+	jitter := delay / 4
+	return delay - jitter + time.Duration(rand.Int64N(int64(2*jitter)+1))
+}
+
 // SetProjectIAMBinding sets an IAM binding on a GCP project.
 // Uses read-modify-write with retry on 409 Conflict (etag mismatch).
 func (c *LiveGCFClient) SetProjectIAMBinding(ctx context.Context, projectID, member, role string) error {
-	const maxRetries = 3
+	const maxRetries = 5
 	getURL := fmt.Sprintf("https://cloudresourcemanager.googleapis.com/v1/projects/%s:getIamPolicy",
 		url.PathEscape(projectID))
 	setURL := fmt.Sprintf("https://cloudresourcemanager.googleapis.com/v1/projects/%s:setIamPolicy",
@@ -761,7 +771,7 @@ func (c *LiveGCFClient) SetProjectIAMBinding(ctx context.Context, projectID, mem
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-time.After(time.Duration(200*(attempt+1)) * time.Millisecond):
+		case <-time.After(iamRetryBackoff(attempt)):
 		}
 	}
 	return fmt.Errorf("project IAM policy update failed after %d retries", maxRetries)

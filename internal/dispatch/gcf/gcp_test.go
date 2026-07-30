@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/fullsend-ai/fullsend/internal/gcp"
 	"github.com/stretchr/testify/assert"
@@ -316,6 +317,22 @@ func TestLiveGCFClient_AddSecretVersion(t *testing.T) {
 	})
 }
 
+// --- iamRetryBackoff ---
+
+func TestIAMRetryBackoff(t *testing.T) {
+	for attempt := 0; attempt < 5; attempt++ {
+		base := 200 * time.Millisecond << attempt
+		lo := base - base/4
+		hi := base + base/4
+		for i := 0; i < 100; i++ {
+			d := iamRetryBackoff(attempt)
+			if d < lo || d > hi {
+				t.Errorf("attempt %d, iteration %d: got %v, want [%v, %v]", attempt, i, d, lo, hi)
+			}
+		}
+	}
+}
+
 // --- SetSecretIAMBinding ---
 
 func TestLiveGCFClient_SetSecretIAMBinding(t *testing.T) {
@@ -358,6 +375,56 @@ func TestLiveGCFClient_SetSecretIAMBinding(t *testing.T) {
 		err := newTestClient(srv).SetSecretIAMBinding(context.Background(),
 			"projects/proj/secrets/s", "serviceAccount:sa@proj.iam.gserviceaccount.com", "roles/secretmanager.secretAccessor")
 		require.NoError(t, err)
+	})
+
+	t.Run("retries on 409 conflict", func(t *testing.T) {
+		callCount := 0
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			callCount++
+			if callCount <= 2 {
+				if callCount%2 == 1 {
+					w.WriteHeader(http.StatusOK)
+					fmt.Fprintln(w, `{"bindings":[],"etag":"v1"}`)
+					return
+				}
+				w.WriteHeader(http.StatusConflict)
+				fmt.Fprintln(w, `{"error":{"message":"conflict"}}`)
+				return
+			}
+			if callCount == 3 {
+				w.WriteHeader(http.StatusOK)
+				fmt.Fprintln(w, `{"bindings":[],"etag":"v2"}`)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer srv.Close()
+
+		err := newTestClient(srv).SetSecretIAMBinding(context.Background(),
+			"projects/proj/secrets/s", "serviceAccount:sa@proj.iam.gserviceaccount.com", "roles/secretmanager.secretAccessor")
+		require.NoError(t, err)
+		assert.Equal(t, 4, callCount)
+	})
+
+	t.Run("exhausts retries on persistent conflict", func(t *testing.T) {
+		callCount := 0
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			callCount++
+			if callCount%2 == 1 {
+				w.WriteHeader(http.StatusOK)
+				fmt.Fprintln(w, `{"bindings":[],"etag":"v1"}`)
+				return
+			}
+			w.WriteHeader(http.StatusConflict)
+			fmt.Fprintln(w, `{"error":{"message":"conflict"}}`)
+		}))
+		defer srv.Close()
+
+		err := newTestClient(srv).SetSecretIAMBinding(context.Background(),
+			"projects/proj/secrets/s", "member", "role")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "IAM policy conflict")
+		assert.Equal(t, 10, callCount)
 	})
 
 	t.Run("getIamPolicy error", func(t *testing.T) {
@@ -460,6 +527,30 @@ func TestLiveGCFClient_SetProjectIAMBinding(t *testing.T) {
 			"proj", "member", "role")
 		require.NoError(t, err)
 		assert.Equal(t, 4, callCount)
+	})
+
+	t.Run("survives multiple 409 conflicts", func(t *testing.T) {
+		callCount := 0
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			callCount++
+			if callCount%2 == 1 {
+				w.WriteHeader(http.StatusOK)
+				fmt.Fprintln(w, `{"bindings":[],"etag":"v1"}`)
+				return
+			}
+			if callCount <= 8 {
+				w.WriteHeader(http.StatusConflict)
+				fmt.Fprintln(w, `{"error":{"message":"conflict"}}`)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer srv.Close()
+
+		err := newTestClient(srv).SetProjectIAMBinding(context.Background(),
+			"proj", "member", "role")
+		require.NoError(t, err)
+		assert.Equal(t, 10, callCount)
 	})
 
 	t.Run("getIamPolicy error", func(t *testing.T) {
