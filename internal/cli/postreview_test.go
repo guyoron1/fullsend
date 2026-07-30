@@ -1001,3 +1001,189 @@ func TestPostApprovedFollowUpIssues_DisabledIsNoop(t *testing.T) {
 	err := postApprovedFollowUpIssues(context.Background(), "acme", "repo", 9, parsed, printer)
 	require.NoError(t, err)
 }
+
+func TestHasHighSeverityFinding(t *testing.T) {
+	tests := []struct {
+		name     string
+		findings []ReviewFinding
+		want     bool
+	}{
+		{
+			name:     "no findings",
+			findings: nil,
+			want:     false,
+		},
+		{
+			name: "only low and medium",
+			findings: []ReviewFinding{
+				{Severity: "low", Description: "nit"},
+				{Severity: "medium", Description: "issue"},
+			},
+			want: false,
+		},
+		{
+			name: "high present",
+			findings: []ReviewFinding{
+				{Severity: "low", Description: "nit"},
+				{Severity: "high", Description: "bug"},
+			},
+			want: true,
+		},
+		{
+			name: "critical present",
+			findings: []ReviewFinding{
+				{Severity: "critical", Description: "vuln"},
+			},
+			want: true,
+		},
+		{
+			name: "case insensitive HIGH",
+			findings: []ReviewFinding{
+				{Severity: "HIGH", Description: "bug"},
+			},
+			want: true,
+		},
+		{
+			name: "case insensitive Critical",
+			findings: []ReviewFinding{
+				{Severity: "Critical", Description: "vuln"},
+			},
+			want: true,
+		},
+		{
+			name: "info and medium only",
+			findings: []ReviewFinding{
+				{Severity: "info", Description: "note"},
+				{Severity: "medium", Description: "issue"},
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, hasHighSeverityFinding(tt.findings))
+		})
+	}
+}
+
+func TestBodyContainsHighSeveritySection(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+		want bool
+	}{
+		{
+			name: "no severity headers",
+			body: "## Review\n\nLooks good!",
+			want: false,
+		},
+		{
+			name: "#### High with content",
+			body: "## Review\n\n#### High\n\n- Missing error handling\n",
+			want: true,
+		},
+		{
+			name: "#### Critical with content",
+			body: "## Review\n\n#### Critical\n\n- SQL injection\n",
+			want: true,
+		},
+		{
+			name: "only medium and low sections",
+			body: "## Review\n\n#### Medium\n\n- Issue\n\n#### Low\n\n- Nit",
+			want: false,
+		},
+		{
+			name: "empty high section",
+			body: "## Review\n\n#### High\n\n#### Medium\n\n- Real finding",
+			want: false,
+		},
+		{
+			name: "high section with only whitespace",
+			body: "## Review\n\n#### High\n\n   \n\n#### Low\n\n- Nit",
+			want: false,
+		},
+		{
+			name: "### High with content",
+			body: "## Review\n\n### High\n\n- Bug found\n",
+			want: true,
+		},
+		{
+			name: "case insensitive #### HIGH",
+			body: "## Review\n\n#### HIGH\n\n- Problem\n",
+			want: true,
+		},
+		{
+			name: "high at end of body with content",
+			body: "## Review\n\n#### Medium\n\n- Issue\n\n#### High\n\n- Critical bug",
+			want: true,
+		},
+		{
+			name: "multiple sections, high is empty but critical has content",
+			body: "## Review\n\n#### High\n\n#### Critical\n\n- Vuln found\n",
+			want: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, bodyContainsHighSeveritySection(tt.body))
+		})
+	}
+}
+
+func TestContainsHighSeverityFindings(t *testing.T) {
+	tests := []struct {
+		name   string
+		result ReviewResult
+		want   bool
+	}{
+		{
+			name: "structured findings present and high",
+			result: ReviewResult{
+				Body: "Review",
+				Findings: []ReviewFinding{
+					{Severity: "high", Description: "bug"},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "structured findings present, all low, body has HIGH header",
+			result: ReviewResult{
+				Body: "## Review\n\n#### High\n\n- Bug\n",
+				Findings: []ReviewFinding{
+					{Severity: "low", Description: "nit"},
+				},
+			},
+			want: false,
+		},
+		{
+			name: "no structured findings, body has HIGH section",
+			result: ReviewResult{
+				Body:     "## Review\n\n#### High\n\n- Missing error handling\n",
+				Findings: nil,
+			},
+			want: true,
+		},
+		{
+			name: "no structured findings, no body sections",
+			result: ReviewResult{
+				Body:     "## Review\n\nLooks good!",
+				Findings: nil,
+			},
+			want: false,
+		},
+		{
+			name: "empty findings slice, body has high",
+			result: ReviewResult{
+				Body:     "## Review\n\n#### High\n\n- Bug\n",
+				Findings: []ReviewFinding{},
+			},
+			want: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, containsHighSeverityFindings(tt.result))
+		})
+	}
+}

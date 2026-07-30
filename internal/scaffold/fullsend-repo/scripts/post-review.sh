@@ -136,6 +136,60 @@ if [ "${ACTION}" = "approve" ]; then
 fi
 
 # ---------------------------------------------------------------------------
+# High-severity guardrail: the review agent must not approve PRs when the
+# review contains HIGH or CRITICAL severity findings. If the agent chose
+# APPROVE despite high-severity findings, downgrade to COMMENT so only a
+# human can grant approval. This is a defense-in-depth check that
+# complements agent-level severity thresholds and catches verdict-severity
+# mismatches before the review is posted to GitHub.
+# ---------------------------------------------------------------------------
+if [ "${ACTION}" = "approve" ] && [ "${DOWNGRADED}" = "false" ]; then
+  HAS_HIGH_SEVERITY=false
+
+  # Primary: check structured findings for high/critical severity.
+  HIGH_FINDING_COUNT=$(jq '[(.findings // [])[] | select(.severity | ascii_downcase | test("^(high|critical)$"))] | length' "${RESULT_FILE}" 2>/dev/null || echo "0")
+  if [ "${HIGH_FINDING_COUNT}" -gt 0 ]; then
+    HAS_HIGH_SEVERITY=true
+  fi
+
+  # Fallback: check body for severity section headers with content.
+  # Only used when NO structured findings exist (regardless of severity),
+  # catching cases where findings are in the body but not the array.
+  TOTAL_FINDING_COUNT=$(jq '[(.findings // [])[]] | length' "${RESULT_FILE}" 2>/dev/null || echo "0")
+  if [ "${HAS_HIGH_SEVERITY}" = "false" ] && [ "${TOTAL_FINDING_COUNT}" -eq 0 ]; then
+    REVIEW_BODY=$(jq -r '.body // ""' "${RESULT_FILE}")
+    # Match ### or #### High/Critical headers, then verify the section
+    # has at least one non-empty content line before the next heading.
+    SECTION_HAS_CONTENT=$(printf '%s\n' "${REVIEW_BODY}" | awk '
+      BEGIN { IGNORECASE=1 }
+      /^###+ +(High|Critical) *$/ { in_section=1; next }
+      /^#/ { in_section=0 }
+      in_section && /[^[:space:]]/ { print 1; exit }
+    ')
+    if [ -n "${SECTION_HAS_CONTENT}" ]; then
+      HAS_HIGH_SEVERITY=true
+    fi
+  fi
+
+  if [ "${HAS_HIGH_SEVERITY}" = "true" ]; then
+    echo "Review contains HIGH/CRITICAL severity findings — downgrading approve to comment"
+
+    SEVERITY_NOTICE=$'\n\n---\n\n'
+    SEVERITY_NOTICE+='> **Verdict downgraded from APPROVE to COMMENT:** this review contains '
+    SEVERITY_NOTICE+='HIGH or CRITICAL severity findings that require human assessment. The review agent '
+    SEVERITY_NOTICE+='cannot approve PRs with unresolved high-severity issues.'
+
+    MODIFIED_RESULT=$(mktemp)
+    trap 'rm -f "${MODIFIED_RESULT}"' EXIT
+    jq --arg notice "${SEVERITY_NOTICE}" \
+      '.action = "comment" | .body = (.body + $notice)' \
+      "${RESULT_FILE}" > "${MODIFIED_RESULT}"
+    RESULT_FILE="${MODIFIED_RESULT}"
+    DOWNGRADED=true
+  fi
+fi
+
+# ---------------------------------------------------------------------------
 # Post the review. Exit code 10 = stale-head: the PR HEAD moved after the
 # agent reviewed it. When this happens, post a /fs-review comment to
 # re-dispatch a fresh review for the current HEAD.
