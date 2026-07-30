@@ -27,6 +27,12 @@ if [[ "\$1" == "api" ]] && [[ "\$2" == *"/labels" ]] && [[ "\$*" == *"--paginate
   printf '%s\n' "area/api" "area/cli" "priority/high" "component/parser"
   exit 0
 fi
+# When querying issue details for title detection, return the mock title.
+# MOCK_ISSUE_TITLE is set per test case; defaults to a non-matching title.
+if [[ "\$1" == "api" ]] && [[ "\$2" =~ issues/[0-9]+\$ ]] && [[ "\$*" == *".title"* ]]; then
+  printf '%s' "\${MOCK_ISSUE_TITLE:-Regular bug report}"
+  exit 0
+fi
 echo "gh \$*" >> "${GH_LOG}"
 MOCKEOF
 chmod +x "${MOCK_BIN}/gh"
@@ -410,6 +416,41 @@ run_test_label_order "ready-to-code-applied-after-label-actions" \
 run_test "ready-to-code-applied-without-label-actions" \
   '{"action":"sufficient","reasoning":"all clear","clarity_scores":{"symptom":0.9,"cause":0.85,"reproduction":0.9,"impact":0.8,"overall":0.87},"triage_summary":{"title":"Fix crash","severity":"high","category":"bug","problem":"Crash","root_cause_hypothesis":"Buffer overflow","reproduction_steps":["step 1"],"environment":"Linux","impact":"All users","recommended_fix":"Fix buffer","proposed_test_case":"test_crash"},"comment":"## Triage Summary\n\nReady."}' \
   "gh api repos/test-org/test-repo/issues/42/labels -f labels[]=ready-to-code --silent"
+
+# --- E2e triage test issue cleanup (#744) ---
+# Tests below use MOCK_ISSUE_TITLE to control the mock gh response for issue
+# title detection. When set to an e2e-triage-test-* title, post-triage.sh
+# should skip dispatch-triggering labels and close the issue.
+
+SUFFICIENT_BUG_JSON='{"action":"sufficient","reasoning":"all clear","clarity_scores":{"symptom":0.9,"cause":0.85,"reproduction":0.9,"impact":0.8,"overall":0.87},"triage_summary":{"title":"Fix crash","severity":"high","category":"bug","problem":"Crash","root_cause_hypothesis":"Buffer overflow","reproduction_steps":["step 1"],"environment":"Linux","impact":"All users","recommended_fix":"Fix buffer","proposed_test_case":"test_crash"},"comment":"## Triage Summary\n\nReady."}'
+
+export MOCK_ISSUE_TITLE="e2e-triage-test-fed05b4d-abcd-1234"
+
+run_test "e2e-test-issue-closed" \
+  "${SUFFICIENT_BUG_JSON}" \
+  "gh issue close 42 --repo test-org/test-repo"
+
+run_test_no_pattern "e2e-test-issue-no-ready-to-code" \
+  "${SUFFICIENT_BUG_JSON}" \
+  "labels[]=ready-to-code"
+
+run_test_stdout "e2e-test-issue-detected" \
+  "${SUFFICIENT_BUG_JSON}" \
+  "Detected e2e triage test issue"
+
+run_test_stdout "e2e-test-issue-deferred-label-skipped" \
+  "${SUFFICIENT_BUG_JSON}" \
+  "Skipping deferred label"
+
+# Verify regular issues are NOT closed by the e2e cleanup logic.
+export MOCK_ISSUE_TITLE="Fix crash on save"
+
+run_test_no_pattern "regular-issue-not-closed-by-e2e-cleanup" \
+  "${SUFFICIENT_BUG_JSON}" \
+  "gh issue close"
+
+# Reset for any future tests.
+unset MOCK_ISSUE_TITLE
 
 # --- Summary ---
 
