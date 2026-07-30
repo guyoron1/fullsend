@@ -14,6 +14,7 @@ Fullsend is a platform for fully autonomous agentic development for GitHub-hoste
 - You **must** read and follow [COMMITS.md](COMMITS.md) when writing or reviewing commit messages. Getting the prefix right is not optional — GoReleaser uses it to build release notes.
 - This repository requires a [Developer Certificate of Origin (DCO)](https://developercertificate.org/). Human-proposed commits **must** be signed off: use `git commit -s` (or add `Signed-off-by: Your Name <email>` as a trailer). Human-driven agent sessions (e.g., using Claude Code locally) should also sign off — the human directing the session is the one certifying the DCO. **Autonomous agent commits are exempt** and must never supply the DCO with `-s` or with `Signed-off-by`. These agents commit using the GitHub App's bot identity, which the [Probot DCO app](https://github.com/apps/dco) auto-skips.
 - Never commit secrets (tokens, API keys, PEM keys, gcloud credentials) or sensitive data (GCP project names, service account identifiers, Model Armor template names, internal hostnames). Use environment variables with no defaults for sensitive values.
+- When implementing a feature previously described as *in-progress*, *coming soon*, or *planned* elsewhere in the docs, search for and update those references in the same PR. Grep for the feature name, relevant PR/issue numbers, and terms like `in progress`, `coming soon`, `planned`, `not yet implemented`.
 
 ## Go code
 
@@ -71,6 +72,10 @@ These rules apply whenever you touch `docs/ADRs/` or review a PR that does. Full
 **New ADRs in pull requests:** Approval happens at **merge**, not when the branch is created. If the decision is made, set status to **Accepted** in the ADR you are proposing — not a lesser status merely because the PR is open. Valid statuses are **Accepted**, **Deprecated**, and **Superseded**. When status is Accepted, update `docs/architecture.md` and related problem docs in the same PR per the writing-adrs skill.
 
 **When reviewing PRs:** Flag substantial rewrites to Context, Decision, or Consequences on Accepted ADRs already on `main` as a policy violation. Allow minor annotations (cross-references, short notes, typo fixes), status updates, and supersession links. For brand-new ADR files on the PR branch, evaluate whether the recorded decision matches the diff — do not treat **Accepted** on a new file as a mistake if the ADR is ready for human review at merge.
+
+## Documentation consistency
+
+PRs that change user-facing behavior (new CLI commands or flags, new configuration keys, changed API behavior, removed or renamed features) should include documentation updates in the same PR. If documentation changes are intentionally deferred (e.g., behind a feature flag, follow-up PR planned), apply the `docs-not-required` label to the PR so the review agent does not flag it.
 
 ## Key design decisions made
 

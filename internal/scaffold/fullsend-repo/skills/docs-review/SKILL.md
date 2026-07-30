@@ -57,6 +57,40 @@ git diff --name-only $(git merge-base HEAD "$DEFAULT_BRANCH")..HEAD
 
 If no change can be identified, stop and report — do not guess.
 
+### 1a. Check for missing documentation
+
+Before checking individual identifiers, determine whether the PR should
+have documentation changes at all.
+
+**Classify the change:** From the diff and changed file list, determine
+whether the PR modifies user-facing behavior:
+
+- New or changed CLI commands, flags, or subcommands
+- New or changed configuration keys or environment variables
+- Changed API endpoints, request/response shapes, or auth flows
+- Renamed or removed features, options, or behaviors
+- New integrations or platform support
+
+**Check for doc updates:** If the PR changes user-facing behavior,
+check whether any documentation files (`.md`, `.rst`, `.adoc` in
+`docs/`, `README.md`, or similar) are included in the changed file
+list.
+
+**Check for opt-out:** If the PR has a `docs-not-required` label,
+skip this check — the author has explicitly deferred documentation.
+
+**Produce a finding** if the PR changes user-facing behavior AND
+does not include documentation updates AND does not have the
+`docs-not-required` label:
+
+- **Severity:** `medium`
+- **Category:** `missing-doc`
+- **File:** the primary file containing the user-facing change
+- **Description:** what user-facing behavior changed and why docs
+  should be updated
+- **Remediation:** update the relevant documentation, or apply the
+  `docs-not-required` label if documentation is intentionally deferred
+
 ### 2. Build the identifier checklist
 
 Go through **every** changed file in the PR. For each file, extract
