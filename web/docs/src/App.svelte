@@ -14,7 +14,7 @@
   import { bfsFirstRouteKeyUnderDir } from "./lib/manifestBfsDefault";
   import { persistExpandedPathForRouteKey } from "./lib/treeSession";
   import { DocTreeNav } from "./lib/tree";
-  import { filterTree } from "./lib/filterTree";
+  import { filterTree, filterByFolders, collectTopLevelDirs } from "./lib/filterTree";
 
   const NAV_COLLAPSED_KEY = "fullsend-docs-nav-collapsed";
   const WIDTH_STORAGE_KEY = "fullsend-docs-sidebar-width-px";
@@ -36,7 +36,25 @@
   /** Bumps when outline session keys change outside the tree (e.g. directory hash); keeps DocTreeNav in sync with sessionStorage. */
   let outlineSessionEpoch = $state(0);
   let filterQuery = $state("");
-  let filteredManifest = $derived(filterTree(manifest, filterQuery));
+  let selectedFolders = $state<Set<string>>(new Set());
+  const topLevelDirs = collectTopLevelDirs(manifest);
+  let filteredManifest = $derived(
+    filterTree(filterByFolders(manifest, selectedFolders), filterQuery),
+  );
+
+  function toggleFolder(folder: string): void {
+    const next = new Set(selectedFolders);
+    if (next.has(folder)) {
+      next.delete(folder);
+    } else {
+      next.add(folder);
+    }
+    selectedFolders = next;
+  }
+
+  function clearFolders(): void {
+    selectedFolders = new Set();
+  }
 
   let outlineExpanded = $derived(
     narrowViewport ? mobileNavOpen : !navCollapsed,
@@ -453,6 +471,26 @@
           </button>
         {/if}
       </div>
+      {#if topLevelDirs.length > 0}
+        <div class="docs-folder-filter" role="group" aria-label="Filter by folder">
+          {#each topLevelDirs as folder (folder)}
+            <button
+              type="button"
+              class="docs-folder-pill"
+              class:docs-folder-pill--active={selectedFolders.has(folder)}
+              aria-pressed={selectedFolders.has(folder)}
+              onclick={() => toggleFolder(folder)}
+            >{folder}</button>
+          {/each}
+          {#if selectedFolders.size > 0}
+            <button
+              type="button"
+              class="docs-folder-pill docs-folder-pill--clear"
+              onclick={clearFolders}
+            >Clear</button>
+          {/if}
+        </div>
+      {/if}
       <nav class="docs-tree-wrap">
         <DocTreeNav
           nodes={filteredManifest}
