@@ -1,6 +1,7 @@
 package security
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -233,6 +234,48 @@ func TestSecretRedactor(t *testing.T) {
 		assert.False(t, result.Safe)
 		assert.True(t, hasFinding(result, "json_field"))
 		assert.NotContains(t, result.Sanitized, "my-super-secret-pass-1234")
+	})
+
+	t.Run("json structural integrity preserved after env_assignment redaction", func(t *testing.T) {
+		input := `{"body":"The config has SCRIBE_SECRET_BACKEND=env_production_east_v2 set","status":"ok"}`
+		result := r.Scan(input)
+		assert.False(t, result.Safe)
+		assert.True(t, hasFinding(result, "env_assignment"))
+		// Output must be valid JSON
+		assert.True(t, json.Valid([]byte(result.Sanitized)), "sanitized output must be valid JSON")
+		assert.NotContains(t, result.Sanitized, "env_production_east_v2")
+	})
+
+	t.Run("json structural integrity preserved after prefix redaction", func(t *testing.T) {
+		input := `{"token":"ghp_FAKEtesttoken000000000000000000000000","name":"test"}`
+		result := r.Scan(input)
+		assert.False(t, result.Safe)
+		assert.True(t, hasFinding(result, "github_pat"))
+		assert.True(t, json.Valid([]byte(result.Sanitized)), "sanitized output must be valid JSON")
+		assert.NotContains(t, result.Sanitized, "ghp_FAKEtest")
+	})
+
+	t.Run("json with no secrets unchanged", func(t *testing.T) {
+		input := `{"body":"Normal review text","verdict":"approve"}`
+		result := r.Scan(input)
+		assert.True(t, result.Safe)
+		assert.Empty(t, result.Sanitized)
+	})
+
+	t.Run("json nested objects preserved", func(t *testing.T) {
+		input := `{"review":{"body":"Found export DB_PASSWORD=hunter2_secret_value in config","severity":"high"}}`
+		result := r.Scan(input)
+		assert.False(t, result.Safe)
+		assert.True(t, json.Valid([]byte(result.Sanitized)), "sanitized output must be valid JSON")
+		assert.NotContains(t, result.Sanitized, "hunter2_secret_value")
+	})
+
+	t.Run("non-json text uses text-level scan", func(t *testing.T) {
+		input := "export MY_SECRET_KEY=super_secret_value_1234"
+		result := r.Scan(input)
+		assert.False(t, result.Safe)
+		assert.True(t, hasFinding(result, "env_assignment"))
+		assert.NotContains(t, result.Sanitized, "super_secret_value_1234")
 	})
 }
 

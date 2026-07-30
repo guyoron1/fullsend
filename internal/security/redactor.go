@@ -1,6 +1,7 @@
 package security
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
@@ -30,6 +31,13 @@ func NewSecretRedactor() *SecretRedactor {
 func (s *SecretRedactor) Name() string { return "secret_redactor" }
 
 func (s *SecretRedactor) Scan(text string) ScanResult {
+	if result, ok := s.scanJSON(text); ok {
+		return result
+	}
+	return s.scanText(text)
+}
+
+func (s *SecretRedactor) scanText(text string) ScanResult {
 	result := ScanResult{Safe: true, Sanitized: text}
 	current := text
 
@@ -117,6 +125,107 @@ func (s *SecretRedactor) Scan(text string) ScanResult {
 	}
 
 	return result
+}
+
+// scanJSON attempts JSON-aware redaction. If text is valid JSON, it walks
+// the parsed tree and applies redaction patterns only to string values,
+// preserving structural integrity. Returns (result, true) on success,
+// or (ScanResult{}, false) if text is not valid JSON.
+func (s *SecretRedactor) scanJSON(text string) (ScanResult, bool) {
+	trimmed := strings.TrimSpace(text)
+	if len(trimmed) == 0 || (trimmed[0] != '{' && trimmed[0] != '[') {
+		return ScanResult{}, false
+	}
+
+	var parsed any
+	if err := json.Unmarshal([]byte(text), &parsed); err != nil {
+		return ScanResult{}, false
+	}
+
+	aggregate := ScanResult{Safe: true}
+	redacted := s.redactValue(parsed, &aggregate)
+
+	if aggregate.Safe {
+		return ScanResult{Safe: true}, true
+	}
+
+	out, err := json.Marshal(redacted)
+	if err != nil {
+		// ponytail: shouldn't happen on a value we just parsed; fall back to text scan
+		return ScanResult{}, false
+	}
+	aggregate.Sanitized = string(out)
+	return aggregate, true
+}
+
+// redactValue recursively walks a parsed JSON value, applying text-level
+// redaction to string leaves only.
+func (s *SecretRedactor) redactValue(v any, result *ScanResult) any {
+	switch val := v.(type) {
+	case map[string]any:
+		out := make(map[string]any, len(val))
+		for k, child := range val {
+			// For string values, scan for patterns first
+			if str, ok := child.(string); ok {
+				r := s.scanText(str)
+				if !r.Safe {
+					// Pattern matched, use the sanitized value
+					result.Safe = false
+					result.Findings = append(result.Findings, r.Findings...)
+					if r.Sanitized != "" {
+						out[k] = r.Sanitized
+					} else {
+						out[k] = str
+					}
+				} else if s.isSensitiveKey(k) && len(str) >= 8 {
+					// No pattern matched, but key name is sensitive
+					masked := mask(str)
+					result.Findings = append(result.Findings, Finding{
+						Scanner:  "secret_redactor",
+						Name:     "json_field",
+						Severity: "high",
+						Detail:   fmt.Sprintf("Redacted json_field (%d chars) -> %s", len(str), masked),
+					})
+					out[k] = masked
+					result.Safe = false
+				} else {
+					out[k] = str
+				}
+			} else {
+				out[k] = s.redactValue(child, result)
+			}
+		}
+		return out
+	case []any:
+		out := make([]any, len(val))
+		for i, child := range val {
+			out[i] = s.redactValue(child, result)
+		}
+		return out
+	case string:
+		r := s.scanText(val)
+		if !r.Safe {
+			result.Safe = false
+			result.Findings = append(result.Findings, r.Findings...)
+			if r.Sanitized != "" {
+				return r.Sanitized
+			}
+		}
+		return val
+	default:
+		return v
+	}
+}
+
+// isSensitiveKey checks if a JSON key name suggests a secret value.
+func (s *SecretRedactor) isSensitiveKey(key string) bool {
+	lower := strings.ToLower(key)
+	return strings.Contains(lower, "key") ||
+		strings.Contains(lower, "token") ||
+		strings.Contains(lower, "secret") ||
+		strings.Contains(lower, "password") ||
+		strings.Contains(lower, "credential") ||
+		strings.Contains(lower, "auth")
 }
 
 func mask(value string) string {
