@@ -1,31 +1,26 @@
-# This file is managed by fullsend. Do not edit it directly.
-# Upstream: https://github.com/fullsend-ai/fullsend/blob/main/internal/scaffold/fullsend-repo/templates/shim-workflow-call.yaml
----
-# --- fullsend managed below - do not edit ---
-# lint-workflow-size: max-lines=280
-# fullsend shim workflow (workflow_call mode)
-# Routes events to agent workflows in .fullsend via workflow_call.
-# No secrets are needed in the enrolled repo — agents fetch scoped tokens
-# from the centralized token mint using GitHub OIDC.
+# fullsend shim workflow (per-repo installation mode)
+# Routes events to agent workflows via reusable-dispatch.yml.
+# All agent execution happens in this repo's context — no external
+# config repo is needed.
 #
 # Security: pull_request_target runs the BASE branch version of this workflow,
 # preventing PRs from modifying it to exfiltrate credentials.
 # This shim never checks out PR code, so it is not vulnerable to "pwn request"
 # attacks.
 #
-# fullsend-ai is replaced by reconcile-repos.sh at deploy time.
-#
-# Routing: this shim forwards the raw event context to dispatch.yml, which
-# determines the stage from event_type + event_action + payload fields.
-# Adding a new stage requires only a case branch in dispatch.yml — zero
-# changes to enrolled repos.
+# Routing: this shim forwards the raw event context to reusable-dispatch.yml,
+# which determines the stage and conditionally calls the appropriate
+# reusable-{stage}.yml workflow. Adding a new stage requires only a case
+# branch in reusable-dispatch.yml — zero changes to this repo.
 name: fullsend
 
 permissions:
   actions: write
   id-token: write
-  contents: read
-  pull-requests: read
+  contents: write
+  issues: write
+  packages: read
+  pull-requests: write
 
 on:
   issues:
@@ -40,8 +35,6 @@ on:
 jobs:
   dispatch:
     concurrency:
-      # Label-derived suffix for labeled events so routing labels
-      # get isolated concurrency slots (#2452).
       group: >-
         fullsend-dispatch-${{ github.event.issue.number || github.event.pull_request.number }}-${{
           github.event.action == 'labeled' && format('label-{0}', github.event.label.name) || 'dispatch'
@@ -56,16 +49,18 @@ jobs:
         github.event.action != 'labeled'
         || startsWith(github.event.label.name, 'ready-')
       )
-    uses: fullsend-ai/.fullsend/.github/workflows/dispatch.yml@main
+    uses: guyoron1/fullsend/.github/workflows/reusable-dispatch.yml@main
     with:
       event_action: ${{ github.event.action }}
+      install_mode: per-repo
+      mint_url: ${{ vars.FULLSEND_MINT_URL }}
+      gcp_region: ${{ vars.FULLSEND_GCP_REGION }}
+      fullsend_ai_ref: main
+    secrets:
+      FULLSEND_GCP_WIF_PROVIDER: ${{ secrets.FULLSEND_GCP_WIF_PROVIDER }}
+      FULLSEND_GCP_PROJECT_ID: ${{ secrets.FULLSEND_GCP_PROJECT_ID }}
 
   stop-fix:
-    # Job-level if: is intentionally coarse — it only screens for the
-    # /fs-fix-stop command on a PR from a non-bot. The authoritative
-    # authorization decision (collaborator permission API + PR-author escape
-    # hatch) is made in the step below, so a maintainer whose author_association
-    # is not MEMBER (e.g. private org membership) is not filtered out (ADR 0054).
     if: >-
       github.event_name == 'issue_comment'
         && github.event.issue.pull_request
@@ -86,11 +81,6 @@ jobs:
           ISSUE_USER_LOGIN: ${{ github.event.issue.user.login }}
         run: |
           set -euo pipefail
-          # ADR 0054: authorize via the collaborator permission API
-          # (admin|maintain|write), not author_association — the latter grants
-          # contributor status to anyone with a single merged PR (issue #5421).
-          # Mirrors has_repo_permission() in dispatch.yml; keep the two in sync.
-          # The PR author may always stop the fix agent on their own PR.
           authorized=false
           if [[ -n "$COMMENT_USER_LOGIN" && "$COMMENT_USER_LOGIN" == "$ISSUE_USER_LOGIN" ]]; then
             authorized=true
