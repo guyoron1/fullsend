@@ -18,6 +18,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
@@ -32,9 +33,20 @@ const TelemetryFile = "run-telemetry.jsonl"
 
 const scopeName = "github.com/fullsend-ai/fullsend/internal/telemetry"
 
+// cliRetry configures retry timing for a short-lived CLI process.
+// The SDK defaults (5 s initial backoff, 30 s max interval, 60 s elapsed)
+// are tuned for long-lived services; a CLI at exit has ~5 s to flush spans.
+// We use short intervals so at least one retry fits inside the budget.
+var cliRetry = otlptracehttp.WithRetry(otlptracehttp.RetryConfig{
+	Enabled:         true,
+	InitialInterval: 500 * time.Millisecond,
+	MaxInterval:     2 * time.Second,
+	MaxElapsedTime:  4 * time.Second,
+})
+
 // newOTLPExporter is a seam over exporter construction for tests.
 var newOTLPExporter = func(ctx context.Context, endpoint string) (sdktrace.SpanExporter, error) {
-	return otlptracehttp.New(ctx, otlptracehttp.WithEndpointURL(endpoint))
+	return otlptracehttp.New(ctx, otlptracehttp.WithEndpointURL(endpoint), cliRetry)
 }
 
 // Setup creates a TracerProvider with file and (optionally) OTLP exporters.
@@ -63,7 +75,7 @@ func Setup(dir string, serviceVersion string) (trace.Tracer, func(context.Contex
 		sdktrace.WithSpanProcessor(sdktrace.NewSimpleSpanProcessor(newFileExporter(f))),
 	}
 
-	if endpoint := endpointFromEnv(); endpoint != "" && !isExporterNone() {
+	if endpoint := resolveEndpoint(); endpoint != "" && !isExporterNone() {
 		if err := validateEndpoint(endpoint); err != nil {
 			fmt.Fprintf(os.Stderr, "fullsend: OTLP export skipped: %v\n", err)
 		} else if exp, err := newOTLPExporter(context.Background(), endpoint); err != nil {
@@ -79,18 +91,36 @@ func Setup(dir string, serviceVersion string) (trace.Tracer, func(context.Contex
 	tracer := tp.Tracer(scopeName, trace.WithInstrumentationVersion(serviceVersion))
 
 	cleanup := func(ctx context.Context) {
-		_ = tp.Shutdown(ctx)
+		if err := tp.Shutdown(ctx); err != nil {
+			fmt.Fprintf(os.Stderr, "fullsend: OTLP flush incomplete: %v\n", err)
+		}
 		_ = f.Close()
 	}
 
 	return tracer, cleanup
 }
 
-func endpointFromEnv() string {
+// resolveEndpoint returns the OTLP endpoint URL following the OTLP spec:
+//   - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT (signal-specific) is used verbatim.
+//   - OTEL_EXPORTER_OTLP_ENDPOINT (generic) gets /v1/traces appended.
+//
+// This mirrors the behaviour documented in distributed-tracing.md and the
+// OTLP specification.
+func resolveEndpoint() string {
 	if v := strings.TrimSpace(os.Getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")); v != "" {
-		return v
+		return v // signal-specific: used as-is per spec
 	}
-	return strings.TrimSpace(os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"))
+	base := strings.TrimSpace(os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"))
+	if base == "" {
+		return ""
+	}
+	// Generic endpoint: append /v1/traces per the OTLP spec.
+	u, err := url.Parse(base)
+	if err != nil {
+		return base // let validateEndpoint reject it
+	}
+	u.Path = strings.TrimRight(u.Path, "/") + "/v1/traces"
+	return u.String()
 }
 
 func isSDKDisabled() bool {
