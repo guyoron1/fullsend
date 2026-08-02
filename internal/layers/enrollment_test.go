@@ -234,7 +234,7 @@ dispatch:
 defaults:
   roles: [triage]
   max_implementation_retries: 2
-  auto_merge: false
+
 agents: []
 repos:
   repo-a:
@@ -304,7 +304,7 @@ dispatch:
 defaults:
   roles: [triage]
   max_implementation_retries: 2
-  auto_merge: false
+
 agents: []
 repos:
   repo-a:
