@@ -2664,6 +2664,69 @@ func (c *LiveClient) ListOpenIssues(ctx context.Context, owner, repo string, lab
 	return result, nil
 }
 
+// SearchIssues queries the GitHub Search API for issues matching the
+// given filter criteria. Returns at most 100 results sorted by creation
+// time descending. Used for dedup checks before filing new issues.
+func (c *LiveClient) SearchIssues(ctx context.Context, opts forge.IssueSearchOptions) ([]forge.Issue, error) {
+	// Build the search query string per GitHub Search syntax.
+	parts := []string{fmt.Sprintf("repo:%s/%s", opts.Owner, opts.Repo), "is:issue"}
+	if opts.Creator != "" {
+		parts = append(parts, fmt.Sprintf("author:%s", opts.Creator))
+	}
+	if !opts.Since.IsZero() {
+		parts = append(parts, fmt.Sprintf("created:>=%s", opts.Since.UTC().Format(time.RFC3339)))
+	}
+	state := opts.State
+	if state == "" {
+		state = "open"
+	}
+	parts = append(parts, fmt.Sprintf("is:%s", state))
+
+	query := url.Values{}
+	query.Set("q", strings.Join(parts, " "))
+	query.Set("sort", "created")
+	query.Set("order", "desc")
+	query.Set("per_page", "100")
+
+	resp, err := c.get(ctx, fmt.Sprintf("/search/issues?%s", query.Encode()))
+	if err != nil {
+		return nil, fmt.Errorf("search issues: %w", err)
+	}
+
+	var raw struct {
+		Items []struct {
+			Number      int    `json:"number"`
+			Title       string `json:"title"`
+			Body        string `json:"body"`
+			HTMLURL     string `json:"html_url"`
+			PullRequest *struct {
+				URL string `json:"url"`
+			} `json:"pull_request"`
+			Labels []struct {
+				Name string `json:"name"`
+			} `json:"labels"`
+		} `json:"items"`
+	}
+	if err := decodeJSON(resp, &raw); err != nil {
+		return nil, fmt.Errorf("decode search issues: %w", err)
+	}
+
+	var result []forge.Issue
+	for _, item := range raw.Items {
+		if item.PullRequest != nil {
+			continue
+		}
+		result = append(result, forge.Issue{
+			Number: item.Number,
+			Title:  item.Title,
+			Body:   item.Body,
+			URL:    item.HTMLURL,
+			Labels: labelNames(item.Labels),
+		})
+	}
+	return result, nil
+}
+
 // ListIssueComments returns all comments on an issue, paginating automatically.
 func (c *LiveClient) ListIssueComments(ctx context.Context, owner, repo string, number int) ([]forge.IssueComment, error) {
 	var result []forge.IssueComment

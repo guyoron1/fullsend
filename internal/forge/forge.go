@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 )
 
 // ConfigRepoName is the conventional name for the org-level fullsend
@@ -190,6 +191,16 @@ type Issue struct {
 	Body   string
 	URL    string
 	Labels []string
+}
+
+// IssueSearchOptions configures a search for issues. Used by
+// SearchIssues for dedup checks before filing new issues.
+type IssueSearchOptions struct {
+	Owner   string    // repository owner
+	Repo    string    // repository name
+	Creator string    // filter by author login (empty = any)
+	Since   time.Time // only issues created on or after this time
+	State   string    // "open", "closed", or "" for any state
 }
 
 // IssueComment represents a comment on an issue.
@@ -545,6 +556,12 @@ type Client interface {
 	GetIssue(ctx context.Context, owner, repo string, number int) (*Issue, error)
 	CloseIssue(ctx context.Context, owner, repo string, number int) error
 	ListOpenIssues(ctx context.Context, owner, repo string, labels ...string) ([]Issue, error)
+
+	// SearchIssues queries for issues matching an IssueSearchOptions filter.
+	// Used for dedup checks before filing (e.g., retro proposals). Returns
+	// at most one page of results sorted by creation time descending.
+	SearchIssues(ctx context.Context, opts IssueSearchOptions) ([]Issue, error)
+
 	ListIssueComments(ctx context.Context, owner, repo string, number int) ([]IssueComment, error)
 	CreateIssueComment(ctx context.Context, owner, repo string, number int, body string) (*IssueComment, error)
 	UpdateIssueComment(ctx context.Context, owner, repo string, commentID int, body string) error
