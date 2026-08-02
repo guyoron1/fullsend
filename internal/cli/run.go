@@ -961,6 +961,25 @@ func runAgent(ctx context.Context, agentName, fullsendDir, outputBase, targetRep
 		return nil
 	}
 
+	// 4-post. Inject pre-script outputs into sandbox environment (#791).
+	// Non-reserved outputs (everything except skipped/reason) become
+	// sandbox env vars so the agent can consume computed values produced
+	// by the pre-script. Merged after env.sandbox expansion so pre-script
+	// values are injected verbatim — they are not subject to ${VAR}
+	// substitution, matching GITHUB_OUTPUT semantics.
+	if sandboxOutputs := prescript.SandboxEnv(preResult); len(sandboxOutputs) > 0 {
+		if h.Env == nil {
+			h.Env = &harness.EnvConfig{}
+		}
+		if h.Env.Sandbox == nil {
+			h.Env.Sandbox = make(map[string]string)
+		}
+		for k, v := range sandboxOutputs {
+			h.Env.Sandbox[k] = v
+		}
+		printer.StepDone(fmt.Sprintf("Injected %d pre-script output(s) into sandbox env", len(sandboxOutputs)))
+	}
+
 	// 4a. Create sandbox.
 	createStart := time.Now()
 	printer.StepStart("Creating sandbox: " + sandboxName)

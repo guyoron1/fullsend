@@ -278,6 +278,51 @@ func TestParseFile_ValueWhitespaceIsInsignificant(t *testing.T) {
 	assert.Equal(t, "padded", res.Reason)
 }
 
+func TestSandboxEnv_ExcludesReservedKeys(t *testing.T) {
+	t.Parallel()
+
+	res := Result{
+		Skipped: true,
+		Reason:  "dup",
+		Outputs: map[string]string{
+			"skipped":      "true",
+			"reason":       "dup",
+			"COMPUTED_VAR": "computed_value",
+			"API_TOKEN":    "tok123",
+		},
+	}
+	env := SandboxEnv(res)
+	assert.Len(t, env, 2)
+	assert.Equal(t, "computed_value", env["COMPUTED_VAR"])
+	assert.Equal(t, "tok123", env["API_TOKEN"])
+	assert.NotContains(t, env, "skipped")
+	assert.NotContains(t, env, "reason")
+}
+
+func TestSandboxEnv_NilOutputs(t *testing.T) {
+	t.Parallel()
+
+	assert.Nil(t, SandboxEnv(Result{}))
+}
+
+func TestSandboxEnv_EmptyOutputs(t *testing.T) {
+	t.Parallel()
+
+	assert.Nil(t, SandboxEnv(Result{Outputs: map[string]string{}}))
+}
+
+func TestSandboxEnv_OnlyReservedKeys(t *testing.T) {
+	t.Parallel()
+
+	res := Result{
+		Outputs: map[string]string{
+			"skipped": "true",
+			"reason":  "dup",
+		},
+	}
+	assert.Nil(t, SandboxEnv(res))
+}
+
 func TestLogLine(t *testing.T) {
 	t.Parallel()
 

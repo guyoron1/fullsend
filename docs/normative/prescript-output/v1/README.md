@@ -43,10 +43,25 @@ is a hard error rather than an unrelated output — see [Error semantics](#error
 
 ### Other keys
 
-Any other valid key is parsed, logged, and relayed. Reserved-key names are
-owned by the protocol; a future CLI may interpret additional lowercase
-single-word keys, so scripts should prefix their own outputs (`myagent_pr=123`)
-to avoid colliding with a future directive.
+Any other valid key is parsed, logged, relayed, and — when the key is a valid
+POSIX identifier (no hyphens) — injected into the sandbox environment as an
+env var ([#791](https://github.com/fullsend-ai/fullsend/issues/791)). This
+lets pre-scripts pass computed values (tokens, URLs, pre-fetched data) to the
+agent without side-channel files.
+
+Pre-script outputs are merged into `env.sandbox` **after** `${VAR}` expansion
+runs, so their values are injected verbatim and are not subject to variable
+substitution. When a pre-script output key collides with a static `env.sandbox`
+entry, the pre-script output wins — it was computed from runtime context that
+the static config cannot know.
+
+Keys with hyphens (e.g. `existing-pr`) are valid in this protocol and are
+relayed to CI, but are silently skipped for sandbox injection because they are
+not valid POSIX environment variable names.
+
+Reserved-key names are owned by the protocol; a future CLI may interpret
+additional lowercase single-word keys, so scripts should prefix their own
+outputs (`myagent_pr=123`) to avoid colliding with a future directive.
 
 ## Grammar
 

@@ -289,6 +289,35 @@ func Relay(res Result) (relayed bool, err error) {
 	return true, nil
 }
 
+// reservedOutputKeys are the keys the protocol interprets. These are
+// consumed by fullsend run itself (skip gating, status reporting) and are
+// not forwarded into the sandbox environment.
+var reservedOutputKeys = map[string]bool{
+	skippedKey: true,
+	reasonKey:  true,
+}
+
+// SandboxEnv returns the pre-script outputs suitable for injection as
+// sandbox environment variables. Reserved protocol keys (skipped, reason)
+// are excluded — they are consumed by the harness itself, not forwarded
+// to the agent. An empty or nil Outputs map produces a nil return.
+func SandboxEnv(res Result) map[string]string {
+	if len(res.Outputs) == 0 {
+		return nil
+	}
+	env := make(map[string]string, len(res.Outputs))
+	for k, v := range res.Outputs {
+		if reservedOutputKeys[k] {
+			continue
+		}
+		env[k] = v
+	}
+	if len(env) == 0 {
+		return nil
+	}
+	return env
+}
+
 // LogLine renders the outputs as a single stable, sorted line for the run
 // log, so non-GitHub CIs (and local runs) can still see what the
 // pre-script reported. Returns "" when there is nothing to show, or when

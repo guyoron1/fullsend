@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/fullsend-ai/fullsend/internal/harness"
+	"github.com/fullsend-ai/fullsend/internal/prescript"
 	"github.com/fullsend-ai/fullsend/internal/ui"
 )
 
@@ -197,6 +198,132 @@ func TestRunPreScript_CleansUpOutputFile(t *testing.T) {
 	entries, err := os.ReadDir(runDir)
 	require.NoError(t, err)
 	assert.Empty(t, entries)
+}
+
+// Pre-script outputs (other than skipped/reason) are injected into the
+// sandbox environment so the agent can consume computed values (#791).
+// This test verifies the outputs appear in h.Env.Sandbox via
+// buildSandboxEnvLines after runPreScript and the injection step.
+func TestRunPreScript_OutputsFlowIntoSandboxEnv(t *testing.T) {
+	printer := ui.New(io.Discard)
+	h := &harness.Harness{PreScript: writePreScript(t,
+		`echo "COMPUTED_TOKEN=abc123" >> "${FULLSEND_PRESCRIPT_OUTPUT}"`+"\n"+
+			`echo "TARGET_URL=https://example.com" >> "${FULLSEND_PRESCRIPT_OUTPUT}"`+"\n"+
+			`echo "reason=just testing" >> "${FULLSEND_PRESCRIPT_OUTPUT}"`+"\n")}
+
+	res, err := runPreScript(h, t.TempDir(), "", printer)
+	require.NoError(t, err)
+	assert.False(t, res.Skipped)
+
+	// Simulate the injection step from runAgent (step 4-post).
+	sandboxOutputs := prescript.SandboxEnv(res)
+	require.Len(t, sandboxOutputs, 2)
+	assert.Equal(t, "abc123", sandboxOutputs["COMPUTED_TOKEN"])
+	assert.Equal(t, "https://example.com", sandboxOutputs["TARGET_URL"])
+	assert.NotContains(t, sandboxOutputs, "reason")
+
+	// Merge into harness env and verify buildSandboxEnvLines picks them up.
+	if h.Env == nil {
+		h.Env = &harness.EnvConfig{}
+	}
+	if h.Env.Sandbox == nil {
+		h.Env.Sandbox = make(map[string]string)
+	}
+	for k, v := range sandboxOutputs {
+		h.Env.Sandbox[k] = v
+	}
+	lines := buildSandboxEnvLines(h)
+	require.Len(t, lines, 2)
+	assert.Contains(t, lines, "export COMPUTED_TOKEN='abc123'")
+	assert.Contains(t, lines, "export TARGET_URL='https://example.com'")
+}
+
+// Pre-script outputs override static env.sandbox entries: the pre-script
+// ran after env.sandbox was expanded, so its values are computed from
+// runtime context that the static config cannot know.
+func TestRunPreScript_OutputsOverrideStaticEnvSandbox(t *testing.T) {
+	printer := ui.New(io.Discard)
+	h := &harness.Harness{
+		PreScript: writePreScript(t,
+			`echo "TOKEN=dynamic_value" >> "${FULLSEND_PRESCRIPT_OUTPUT}"`+"\n"),
+		Env: &harness.EnvConfig{
+			Sandbox: map[string]string{"TOKEN": "static_value", "OTHER": "kept"},
+		},
+	}
+
+	res, err := runPreScript(h, t.TempDir(), "", printer)
+	require.NoError(t, err)
+
+	sandboxOutputs := prescript.SandboxEnv(res)
+	for k, v := range sandboxOutputs {
+		h.Env.Sandbox[k] = v
+	}
+
+	lines := buildSandboxEnvLines(h)
+	assert.Contains(t, lines, "export TOKEN='dynamic_value'")
+	assert.Contains(t, lines, "export OTHER='kept'")
+}
+
+// Pre-script outputs that use hyphenated keys (valid in prescript protocol)
+// are skipped by buildSandboxEnvLines because they are not valid POSIX
+// env var names.
+func TestRunPreScript_HyphenatedKeysSkippedInSandboxEnv(t *testing.T) {
+	printer := ui.New(io.Discard)
+	h := &harness.Harness{PreScript: writePreScript(t,
+		`echo "existing-pr=123" >> "${FULLSEND_PRESCRIPT_OUTPUT}"`+"\n"+
+			`echo "VALID_KEY=ok" >> "${FULLSEND_PRESCRIPT_OUTPUT}"`+"\n")}
+
+	res, err := runPreScript(h, t.TempDir(), "", printer)
+	require.NoError(t, err)
+
+	// SandboxEnv includes all non-reserved keys (hyphens are valid in the
+	// prescript protocol).
+	sandboxOutputs := prescript.SandboxEnv(res)
+	require.Len(t, sandboxOutputs, 2)
+
+	if h.Env == nil {
+		h.Env = &harness.EnvConfig{}
+	}
+	h.Env.Sandbox = make(map[string]string)
+	for k, v := range sandboxOutputs {
+		h.Env.Sandbox[k] = v
+	}
+
+	// buildSandboxEnvLines filters out keys with hyphens (not valid POSIX).
+	lines := buildSandboxEnvLines(h)
+	require.Len(t, lines, 1)
+	assert.Equal(t, "export VALID_KEY='ok'", lines[0])
+}
+
+// No pre-script outputs means no sandbox env changes (#791).
+func TestRunPreScript_NoOutputs_NoSandboxEnvChanges(t *testing.T) {
+	printer := ui.New(io.Discard)
+	h := &harness.Harness{PreScript: writePreScript(t, "true\n")}
+
+	res, err := runPreScript(h, t.TempDir(), "", printer)
+	require.NoError(t, err)
+
+	sandboxOutputs := prescript.SandboxEnv(res)
+	assert.Nil(t, sandboxOutputs)
+}
+
+// Pre-script sandbox env injection via runAgent: when a pre-script emits
+// non-reserved outputs, runAgent must reach sandbox creation with those
+// outputs merged into h.Env.Sandbox. The openshell stub rejects sandbox
+// creation, so the error message proves we reached that point — and
+// buildSandboxEnvLines in bootstrapEnv would produce the exports.
+func TestRunAgent_PreScriptOutputs_ReachSandboxCreation(t *testing.T) {
+	usePreScriptStub(t)
+	dir := newSkipHarnessDir(t,
+		`echo "MY_COMPUTED=hello" >> "${FULLSEND_PRESCRIPT_OUTPUT}"`+"\n")
+
+	rFlags := resolveFlags{maxDepth: 10, maxResources: 50}
+	err := runAgent(context.Background(), "code", dir, "", t.TempDir(), "", nil, false, "", "", rFlags,
+		statusOpts{}, ui.New(io.Discard), false)
+	// If we reached sandbox creation, the pre-script outputs were merged
+	// into env.sandbox and the flow continued past the injection step.
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "creating sandbox")
 }
 
 // usePreScriptStub puts an openshell stub on PATH that passes the gateway
