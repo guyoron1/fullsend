@@ -234,7 +234,6 @@ dispatch:
 defaults:
   roles: [triage]
   max_implementation_retries: 2
-
 agents: []
 repos:
   repo-a:
@@ -304,7 +303,6 @@ dispatch:
 defaults:
   roles: [triage]
   max_implementation_retries: 2
-
 agents: []
 repos:
   repo-a:
