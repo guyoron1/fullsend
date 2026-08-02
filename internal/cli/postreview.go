@@ -312,11 +312,13 @@ func submitFormalReview(ctx context.Context, client forge.Client, owner, repo st
 	user, err := client.GetAuthenticatedUser(ctx)
 	if err != nil {
 		printer.StepInfo("Could not determine authenticated user, skipping stale review cleanup")
-	} else if reviews, err := client.ListPullRequestReviews(ctx, owner, repo, pr); err != nil {
-		printer.StepInfo("Could not list reviews, skipping stale review cleanup")
 	} else {
-		dismissStaleRequestChanges(ctx, client, owner, repo, pr, event, user, reviews, printer)
-		minimizeStaleReviews(ctx, client, user, reviews, printer)
+		if reviews, err := client.ListPullRequestReviews(ctx, owner, repo, pr); err != nil {
+			printer.StepInfo("Could not list reviews, skipping stale review cleanup")
+		} else {
+			dismissStaleRequestChanges(ctx, client, owner, repo, pr, event, user, reviews, printer)
+			minimizeStaleReviews(ctx, client, user, reviews, printer)
+		}
 		minimizeStaleInlineComments(ctx, client, owner, repo, pr, user, printer)
 	}
 
