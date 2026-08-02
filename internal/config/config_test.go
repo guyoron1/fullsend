@@ -54,7 +54,6 @@ func TestNewOrgConfig(t *testing.T) {
 	assert.Equal(t, "1", cfg.ConfigVersion())
 	assert.Equal(t, "github-actions", cfg.DispatchSettings().Platform)
 	assert.Equal(t, 2, cfg.OrgRepoDefaults().MaxImplementationRetries)
-	assert.False(t, cfg.OrgRepoDefaults().AutoMerge)
 	assert.Equal(t, roles, cfg.OrgRepoDefaults().Roles)
 
 	assert.True(t, cfg.RepoMap()["repo-a"].Enabled)
@@ -76,7 +75,6 @@ func TestOrgConfigMarshal(t *testing.T) {
 		Defaults: RepoDefaults{
 			Roles:                    []string{"fullsend"},
 			MaxImplementationRetries: 2,
-			AutoMerge:                false,
 		},
 		Repos: map[string]RepoConfig{
 			"my-repo": {Enabled: true},
@@ -245,7 +243,6 @@ defaults:
     - fullsend
     - coder
   max_implementation_retries: 3
-  auto_merge: true
 repos:
   repo-x:
     enabled: true
@@ -259,7 +256,6 @@ repos:
 	assert.Equal(t, "1", cfg.ConfigVersion())
 	assert.Equal(t, "github-actions", cfg.DispatchSettings().Platform)
 	assert.Equal(t, 3, cfg.OrgRepoDefaults().MaxImplementationRetries)
-	assert.True(t, cfg.OrgRepoDefaults().AutoMerge)
 	assert.Equal(t, []string{"fullsend", "coder"}, cfg.OrgRepoDefaults().Roles)
 	assert.True(t, cfg.RepoMap()["repo-x"].Enabled)
 	assert.False(t, cfg.RepoMap()["repo-y"].Enabled)
@@ -348,7 +344,6 @@ defaults:
   roles:
     - fullsend
   max_implementation_retries: 2
-  auto_merge: false
 agents: []
 repos: {}
 `
@@ -553,7 +548,6 @@ defaults:
   roles:
     - fullsend
   max_implementation_retries: 2
-  auto_merge: false
 agents: []
 repos: {}
 `
