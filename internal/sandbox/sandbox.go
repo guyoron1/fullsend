@@ -37,7 +37,7 @@ const (
 	retryInitialBackoff      = 5 * time.Second
 	retryMaxBackoff          = 15 * time.Second
 
-	downloadMaxRetries       = 2
+	downloadRetryMaxRetries  = 2
 	downloadRetryBaseBackoff = 30 * time.Second
 	downloadRetryMaxBackoff  = 60 * time.Second
 )
@@ -976,7 +976,7 @@ func Download(sandboxName, remotePath, localPath string) error {
 // On success, the download duration is logged to stderr for monitoring.
 func DownloadWithRetry(sandboxName, remotePath, localPath string) error {
 	return downloadWithRetry(sandboxName, remotePath, localPath, Download,
-		downloadMaxRetries, downloadRetryBaseBackoff, downloadRetryMaxBackoff)
+		downloadRetryMaxRetries, downloadRetryBaseBackoff, downloadRetryMaxBackoff)
 }
 
 // downloadWithRetry implements retry logic for download operations. It is
@@ -1019,6 +1019,9 @@ func downloadWithRetry(
 			}
 
 			shift := uint(attempt - 1)
+			if shift > 30 {
+				shift = 30
+			}
 			backoff := min(baseBackoff*time.Duration(1<<shift), maxBackoff)
 			fmt.Fprintf(os.Stderr, "  Download attempt %d/%d timed out (%.1fs), retrying in %s...\n",
 				attempt, maxAttempts, elapsed.Seconds(), backoff)
