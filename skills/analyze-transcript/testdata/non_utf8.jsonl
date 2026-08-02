@@ -1,0 +1,4 @@
+{"type":"user","message":{"role":"user","content":"hello"}}
+{"type":"assistant","message":{"role":"assistant","content":"café data","usage":{"input_tokens":10,"output_tokens":5},"stop_reason":"end_turn"}}
+ÿş bad bytes line
+{"type":"user","message":{"role":"user","content":"after bad bytes"}}
