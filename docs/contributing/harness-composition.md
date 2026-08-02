@@ -31,7 +31,7 @@ corresponding merge function listed here.
 
 | Function | Purpose | Merge semantics |
 |---|---|---|
-| `mergeBaseIntoChild` | Top-level harness merge | Scalars: child overrides; slices: concatenated; maps: merged (child wins); pointer structs: child replaces if non-nil |
+| `mergeBaseIntoChild` | Top-level harness merge | Scalars: child overrides; slices: concatenated; maps: merged (child wins); pointer structs: child replaces if non-nil (except `PreflightCheck` carry-forward — see `mergeForgeConfigInto` below) |
 | `mergeSkills` | Skill path deduplication | Base + child, child overrides base by basename |
 | `mergeHostFiles` | Host file deduplication | Base + child, child overrides base by dest path |
 | `mergeForgeBlocks` | Per-platform forge merge | Key-by-key merge; each platform uses `mergeForgeConfigInto` |
@@ -41,7 +41,7 @@ corresponding merge function listed here.
 
 | Function | Purpose | Merge semantics |
 |---|---|---|
-| `mergeForgeConfig` | Applies platform-specific forge config to harness at runtime | Skills: appended; runner_env: merged (forge wins); validation_loop: forge replaces entirely (no preflight_check carry-forward) |
+| `mergeForgeConfig` | Applies platform-specific forge config to harness at runtime | Skills: harness + forge, forge overrides harness by basename (via `mergeSkills`); runner_env: merged (forge wins); validation_loop: forge replaces entirely (no preflight_check carry-forward) |
 
 Note: `mergeForgeConfig` (runtime) and `mergeForgeConfigInto` (composition)
 have different semantics. `mergeForgeConfigInto` prepends base skills and

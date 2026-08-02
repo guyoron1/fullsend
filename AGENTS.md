@@ -35,5 +35,5 @@ Detailed guidance lives in `docs/contributing/` and topic-specific guides under 
 | [Design Decisions](docs/contributing/design-decisions.md) | Understanding architectural principles and key decisions |
 | [Vouch System](docs/contributing/vouch-system.md) | Working with the contributor vouch gate or PR workflows |
 | [Tier Conventions](docs/contributing/tier-conventions.md) | Using the term "tier" in code or docs — covers the three distinct tier contexts |
-| [Harness Composition](docs/contributing/harness-composition.md) | Changing merge/compose or diff functions in `internal/harness/` — covers the bidirectional invariant between compose and diff |
+| [Harness Composition](docs/contributing/harness-composition.md) | Changing merge/compose functions in `internal/harness/` (or adding diff functions) — covers the bidirectional invariant between compose and diff |
 | [CI Workflows](docs/contributing/ci-workflows.md) | Adding or modifying GitHub Actions workflows under `.github/workflows/` |
