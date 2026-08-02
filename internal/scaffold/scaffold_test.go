@@ -630,12 +630,23 @@ func TestTriageWorkflowContent(t *testing.T) {
 	assert.Contains(t, s, "concurrency:")
 	assert.Contains(t, s, "fullsend-triage-")
 	assert.Contains(t, s, "cancel-in-progress: true")
-	// Permissions required by the reusable workflow
-	assert.Contains(t, s, "permissions:")
-	assert.Contains(t, s, "actions: write")
-	assert.Contains(t, s, "id-token: write")
-	assert.Contains(t, s, "issues: write")
-	assert.Contains(t, s, "contents: read")
+	// Permissions assertions (YAML-parsed, not string-contains) — #781
+	var triageWf struct {
+		Permissions map[string]string `yaml:"permissions"`
+		Jobs        map[string]struct {
+			Permissions map[string]string `yaml:"permissions"`
+		} `yaml:"jobs"`
+	}
+	require.NoError(t, yaml.Unmarshal(content, &triageWf))
+	assert.Equal(t, map[string]string{
+		"actions":  "write",
+		"contents": "read",
+		"id-token": "write",
+		"issues":   "write",
+	}, triageWf.Permissions, "workflow-level permissions")
+	// Job-level: reusable workflow call inherits workflow permissions
+	assert.Nil(t, triageWf.Jobs["triage"].Permissions,
+		"triage job must not override workflow-level permissions")
 }
 
 func TestCodeWorkflowContent(t *testing.T) {
@@ -654,14 +665,25 @@ func TestCodeWorkflowContent(t *testing.T) {
 	assert.Contains(t, s, "concurrency:")
 	assert.Contains(t, s, "fullsend-code-")
 	assert.Contains(t, s, "cancel-in-progress: true")
-	// Permissions required by the reusable workflow
-	assert.Contains(t, s, "permissions:")
-	assert.Contains(t, s, "actions: write")
-	assert.Contains(t, s, "contents: write")
-	assert.Contains(t, s, "id-token: write")
-	assert.Contains(t, s, "issues: write")
-	assert.Contains(t, s, "packages: read")
-	assert.Contains(t, s, "pull-requests: write")
+	// Permissions assertions (YAML-parsed, not string-contains) — #781
+	var codeWf struct {
+		Permissions map[string]string `yaml:"permissions"`
+		Jobs        map[string]struct {
+			Permissions map[string]string `yaml:"permissions"`
+		} `yaml:"jobs"`
+	}
+	require.NoError(t, yaml.Unmarshal(content, &codeWf))
+	assert.Equal(t, map[string]string{
+		"actions":       "write",
+		"contents":      "write",
+		"id-token":      "write",
+		"issues":        "write",
+		"packages":      "read",
+		"pull-requests": "write",
+	}, codeWf.Permissions, "workflow-level permissions")
+	// Job-level: reusable workflow call inherits workflow permissions
+	assert.Nil(t, codeWf.Jobs["code"].Permissions,
+		"code job must not override workflow-level permissions")
 }
 
 func TestReviewWorkflowContent(t *testing.T) {
@@ -679,13 +701,24 @@ func TestReviewWorkflowContent(t *testing.T) {
 	assert.Contains(t, s, "concurrency:")
 	assert.Contains(t, s, "fullsend-review-")
 	assert.Contains(t, s, "cancel-in-progress: true")
-	// Permissions required by the reusable workflow
-	assert.Contains(t, s, "permissions:")
-	assert.Contains(t, s, "actions: write")
-	assert.Contains(t, s, "contents: read")
-	assert.Contains(t, s, "id-token: write")
-	assert.Contains(t, s, "issues: write")
-	assert.Contains(t, s, "pull-requests: write")
+	// Permissions assertions (YAML-parsed, not string-contains) — #781
+	var reviewWf struct {
+		Permissions map[string]string `yaml:"permissions"`
+		Jobs        map[string]struct {
+			Permissions map[string]string `yaml:"permissions"`
+		} `yaml:"jobs"`
+	}
+	require.NoError(t, yaml.Unmarshal(content, &reviewWf))
+	assert.Equal(t, map[string]string{
+		"actions":       "write",
+		"contents":      "read",
+		"id-token":      "write",
+		"issues":        "write",
+		"pull-requests": "write",
+	}, reviewWf.Permissions, "workflow-level permissions")
+	// Job-level: reusable workflow call inherits workflow permissions
+	assert.Nil(t, reviewWf.Jobs["review"].Permissions,
+		"review job must not override workflow-level permissions")
 }
 
 func TestFixWorkflowContent(t *testing.T) {
@@ -704,14 +737,25 @@ func TestFixWorkflowContent(t *testing.T) {
 	assert.Contains(t, s, "concurrency:")
 	assert.Contains(t, s, "fullsend-fix-")
 	assert.Contains(t, s, "cancel-in-progress: true")
-	// Permissions required by the reusable workflow
-	assert.Contains(t, s, "permissions:")
-	assert.Contains(t, s, "actions: write")
-	assert.Contains(t, s, "contents: write")
-	assert.Contains(t, s, "id-token: write")
-	assert.Contains(t, s, "issues: write")
-	assert.Contains(t, s, "packages: read")
-	assert.Contains(t, s, "pull-requests: write")
+	// Permissions assertions (YAML-parsed, not string-contains) — #781
+	var fixWf struct {
+		Permissions map[string]string `yaml:"permissions"`
+		Jobs        map[string]struct {
+			Permissions map[string]string `yaml:"permissions"`
+		} `yaml:"jobs"`
+	}
+	require.NoError(t, yaml.Unmarshal(content, &fixWf))
+	assert.Equal(t, map[string]string{
+		"actions":       "write",
+		"contents":      "write",
+		"id-token":      "write",
+		"issues":        "write",
+		"packages":      "read",
+		"pull-requests": "write",
+	}, fixWf.Permissions, "workflow-level permissions")
+	// Job-level: reusable workflow call inherits workflow permissions
+	assert.Nil(t, fixWf.Jobs["fix"].Permissions,
+		"fix job must not override workflow-level permissions")
 }
 
 func TestRetroWorkflowContent(t *testing.T) {
@@ -729,12 +773,28 @@ func TestRetroWorkflowContent(t *testing.T) {
 	assert.Contains(t, s, "concurrency:")
 	assert.Contains(t, s, "fullsend-retro-")
 	assert.Contains(t, s, "cancel-in-progress: true")
-	// Permissions required by the reusable workflow
-	assert.Contains(t, s, "permissions:")
-	assert.Contains(t, s, "actions: write")
-	assert.Contains(t, s, "contents: read")
-	assert.Contains(t, s, "id-token: write")
-	assert.Contains(t, s, "issues: write")
+	// Permissions assertions (YAML-parsed, not string-contains) — #781
+	var retroWf struct {
+		Permissions map[string]string `yaml:"permissions"`
+		Jobs        map[string]struct {
+			Permissions map[string]string `yaml:"permissions"`
+		} `yaml:"jobs"`
+	}
+	require.NoError(t, yaml.Unmarshal(content, &retroWf))
+	assert.Equal(t, map[string]string{
+		"actions":  "write",
+		"contents": "read",
+		"id-token": "write",
+		"issues":   "write",
+	}, retroWf.Permissions, "workflow-level permissions")
+	// Debounce job: explicit empty permissions (least-privilege)
+	require.NotNil(t, retroWf.Jobs["debounce"].Permissions,
+		"debounce job must declare permissions: {}")
+	assert.Empty(t, retroWf.Jobs["debounce"].Permissions,
+		"debounce job must have empty permissions")
+	// Retro job: reusable workflow call inherits workflow permissions
+	assert.Nil(t, retroWf.Jobs["retro"].Permissions,
+		"retro job must not override workflow-level permissions")
 }
 
 func TestValidateSourceRepoContent(t *testing.T) {
@@ -835,11 +895,23 @@ func TestPrioritizeWorkflowContent(t *testing.T) {
 	assert.Contains(t, s, "concurrency:")
 	assert.Contains(t, s, "fullsend-prioritize-")
 	assert.Contains(t, s, "cancel-in-progress: true")
-	assert.Contains(t, s, "permissions:")
-	assert.Contains(t, s, "actions: write")
-	assert.Contains(t, s, "id-token: write")
-	assert.Contains(t, s, "issues: write")
-	assert.Contains(t, s, "contents: read")
+	// Permissions assertions (YAML-parsed, not string-contains) — #781
+	var prioWf struct {
+		Permissions map[string]string `yaml:"permissions"`
+		Jobs        map[string]struct {
+			Permissions map[string]string `yaml:"permissions"`
+		} `yaml:"jobs"`
+	}
+	require.NoError(t, yaml.Unmarshal(content, &prioWf))
+	assert.Equal(t, map[string]string{
+		"actions":  "write",
+		"contents": "read",
+		"id-token": "write",
+		"issues":   "write",
+	}, prioWf.Permissions, "workflow-level permissions")
+	// Job-level: reusable workflow call inherits workflow permissions
+	assert.Nil(t, prioWf.Jobs["prioritize"].Permissions,
+		"prioritize job must not override workflow-level permissions")
 }
 
 func TestPrioritizeSchedulerWorkflowContent(t *testing.T) {
