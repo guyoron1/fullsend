@@ -77,6 +77,22 @@ func TestFindInstallation_OrgMismatch(t *testing.T) {
 	assert.Contains(t, err.Error(), "belongs to other-org")
 }
 
+func TestFindInstallation_Returns404AsInstallationLookupError(t *testing.T) {
+	mockGH := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer mockGH.Close()
+
+	_, err := FindInstallation(t.Context(), http.DefaultClient, mockGH.URL, "fake-jwt", "myorg", "deleted-repo")
+	require.Error(t, err)
+
+	var ile *installationLookupError
+	require.ErrorAs(t, err, &ile)
+	assert.Equal(t, http.StatusNotFound, ile.StatusCode)
+	assert.Equal(t, "myorg", ile.Org)
+	assert.Equal(t, "deleted-repo", ile.Repo)
+}
+
 func TestCreateInstallationToken_Unscoped(t *testing.T) {
 	mockGH := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/app/installations/42/access_tokens", r.URL.Path)
@@ -448,7 +464,7 @@ func TestCreateInstallationToken_Returns422AsTokenCreationError(t *testing.T) {
 	_, _, _, err := CreateInstallationToken(t.Context(), http.DefaultClient, mockGH.URL, "fake-jwt", 42, "coder", []string{"deleted-repo"})
 	require.Error(t, err)
 
-	var tce *TokenCreationError
+	var tce *tokenCreationError
 	require.ErrorAs(t, err, &tce)
 	assert.Equal(t, http.StatusUnprocessableEntity, tce.StatusCode)
 	assert.Contains(t, err.Error(), "status 422")

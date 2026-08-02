@@ -365,7 +365,8 @@ func (h *Handler) mintToken(ctx context.Context, org, role string, repos []strin
 		installationID, err = FindOrgInstallation(ctx, h.httpClient, h.githubBaseURL, jwt, org)
 	} else {
 		installationID, err = FindInstallation(ctx, h.httpClient, h.githubBaseURL, jwt, org, repos[0])
-		if err != nil && strings.Contains(err.Error(), "status 404") {
+		var ile *installationLookupError
+		if errors.As(err, &ile) && ile.StatusCode == http.StatusNotFound {
 			// repos[0] may have been deleted/transferred; fall back to
 			// org-level installation lookup so we can still validate the
 			// remaining repos. Only fall back on 404 — other errors
@@ -380,7 +381,7 @@ func (h *Handler) mintToken(ctx context.Context, org, role string, repos []strin
 
 	token, expiresAt, granted, err := CreateInstallationToken(ctx, h.httpClient, h.githubBaseURL, jwt, installationID, role, repos)
 	if err != nil {
-		var tce *TokenCreationError
+		var tce *tokenCreationError
 		if errors.As(err, &tce) && tce.StatusCode == http.StatusUnprocessableEntity && len(repos) > 0 {
 			// GitHub returned 422 — one or more repo names are invalid
 			// (deleted, transferred, or renamed). Validate each repo

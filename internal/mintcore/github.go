@@ -255,7 +255,7 @@ func FindInstallation(ctx context.Context, httpClient HTTPDoer, githubBaseURL, j
 
 	if resp.StatusCode != http.StatusOK {
 		io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
-		return 0, fmt.Errorf("getting installation for %s/%s returned status %d", org, repo, resp.StatusCode)
+		return 0, &installationLookupError{StatusCode: resp.StatusCode, Org: org, Repo: repo}
 	}
 
 	var inst installationResponse
@@ -419,14 +419,28 @@ func ReadForeignAllowlist(ctx context.Context, httpClient HTTPDoer, githubBaseUR
 	return ParseForeignAllowlist(value), nil
 }
 
-// TokenCreationError is returned when the GitHub API rejects a token creation
+// installationLookupError is returned when the GitHub API returns a non-200
+// response for a repo-level installation lookup. It carries the HTTP status
+// code so callers can distinguish recoverable failures (e.g. 404 from deleted
+// repos) from security-relevant errors (e.g. cross-org mismatch).
+type installationLookupError struct {
+	StatusCode int
+	Org        string
+	Repo       string
+}
+
+func (e *installationLookupError) Error() string {
+	return fmt.Sprintf("getting installation for %s/%s returned status %d", e.Org, e.Repo, e.StatusCode)
+}
+
+// tokenCreationError is returned when the GitHub API rejects a token creation
 // request. It carries the HTTP status code so callers can distinguish
 // recoverable failures (e.g. 422 from invalid repo names) from others.
-type TokenCreationError struct {
+type tokenCreationError struct {
 	StatusCode int
 }
 
-func (e *TokenCreationError) Error() string {
+func (e *tokenCreationError) Error() string {
 	return fmt.Sprintf("creating installation token returned status %d", e.StatusCode)
 }
 
@@ -466,7 +480,7 @@ func CreateInstallationToken(ctx context.Context, httpClient HTTPDoer, githubBas
 
 	if resp.StatusCode != http.StatusCreated {
 		io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
-		return "", "", nil, &TokenCreationError{StatusCode: resp.StatusCode}
+		return "", "", nil, &tokenCreationError{StatusCode: resp.StatusCode}
 	}
 
 	var tokenResp installationTokenResponse
