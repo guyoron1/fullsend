@@ -467,6 +467,13 @@ func matchingAllowedPrefix(rawURL string, allowlist []string) string {
 //   - forge: key-by-key merge; per-platform uses same rules
 //   - allowed_remote_resources: NOT merged (security; child must declare its own)
 func mergeBaseIntoChild(base, child *Harness) {
+	// Record which script fields the child explicitly declared before
+	// scalar merge. After forge blocks are merged (below), inherited
+	// forge-level scripts must not shadow these explicit declarations
+	// during ResolveForge — see clearInheritedForgeScripts.
+	childHadPreScript := child.PreScript != ""
+	childHadPostScript := child.PostScript != ""
+
 	// Scalars: child overrides if non-zero
 	if child.Agent == "" {
 		child.Agent = base.Agent
@@ -588,10 +595,82 @@ func mergeBaseIntoChild(base, child *Harness) {
 		child.Security = base.Security
 	}
 
-	// Forge: key-by-key merge
+	// Forge: key-by-key merge. Snapshot the child's forge-level scripts
+	// before merging so clearInheritedForgeScripts can distinguish
+	// child-authored values from base-inherited ones.
+	childForgeSnap := snapshotChildForgeScripts(child.Forge)
 	if base.Forge != nil {
 		child.Forge = mergeForgeBlocks(base.Forge, child.Forge)
 	}
+
+	// When the child explicitly declared a top-level pre_script or
+	// post_script, clear any forge-level equivalents that were inherited
+	// from the base. Without this, ResolveForge would overwrite the
+	// child's explicit script with the base's forge-level script —
+	// causing the child's pre_script to be silently ignored. See #847.
+	clearInheritedForgeScripts(child, childHadPreScript, childHadPostScript, childForgeSnap)
+}
+
+// clearInheritedForgeScripts removes forge-level pre_script / post_script
+// values that were inherited from a base harness when the child explicitly
+// declared the corresponding top-level field.
+//
+// Motivation: ResolveForge unconditionally overwrites the top-level
+// pre_script / post_script with non-empty forge-level values. This is
+// correct for fields the child authored itself, but wrong for values
+// inherited from a base via mergeForgeBlocks — the child's explicit
+// top-level declaration should take precedence over a base's
+// forge-level default. Without this, a per-repo triage harness that
+// declares pre_script: scripts/custom.sh loses it when the upstream
+// base has forge.github.pre_script set (issue #847).
+//
+// childForgeScripts records the forge-level scripts the child declared
+// itself (before base merge). Only base-inherited values (those NOT
+// present in childForgeScripts) are cleared; child-authored
+// forge-level scripts are preserved.
+func clearInheritedForgeScripts(child *Harness, childHadPreScript, childHadPostScript bool, childForgeScripts map[string]forgeScriptSnapshot) {
+	if child.Forge == nil || (!childHadPreScript && !childHadPostScript) {
+		return
+	}
+	for platform, fc := range child.Forge {
+		if fc == nil {
+			continue
+		}
+		snap := childForgeScripts[platform]
+		if childHadPreScript && fc.PreScript != "" && !snap.hadPreScript {
+			fc.PreScript = ""
+		}
+		if childHadPostScript && fc.PostScript != "" && !snap.hadPostScript {
+			fc.PostScript = ""
+		}
+	}
+}
+
+// forgeScriptSnapshot records which script fields a forge config had
+// before base composition, so clearInheritedForgeScripts can distinguish
+// child-authored values from base-inherited ones.
+type forgeScriptSnapshot struct {
+	hadPreScript  bool
+	hadPostScript bool
+}
+
+// snapshotChildForgeScripts captures the child's forge-level script
+// state before mergeForgeBlocks modifies it.
+func snapshotChildForgeScripts(forge map[string]*ForgeConfig) map[string]forgeScriptSnapshot {
+	if len(forge) == 0 {
+		return nil
+	}
+	snap := make(map[string]forgeScriptSnapshot, len(forge))
+	for platform, fc := range forge {
+		if fc == nil {
+			continue
+		}
+		snap[platform] = forgeScriptSnapshot{
+			hadPreScript:  fc.PreScript != "",
+			hadPostScript: fc.PostScript != "",
+		}
+	}
+	return snap
 }
 
 // isFullsendCachePath reports whether p is an absolute path already inside
