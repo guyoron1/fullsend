@@ -81,6 +81,22 @@ var heredocRe = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_-]*<<`)
 // an unrelated output — see the package doc on silent-proceed failures.
 var reservedKeys = []string{skippedKey, reasonKey}
 
+// reservedOutputKeys is derived from reservedKeys so the two sets stay in
+// sync — a future key addition to reservedKeys is automatically excluded
+// from sandbox injection without a separate update.
+var reservedOutputKeys = func() map[string]bool {
+	m := make(map[string]bool, len(reservedKeys))
+	for _, k := range reservedKeys {
+		m[k] = true
+	}
+	return m
+}()
+
+// validPosixKeyRe matches POSIX-portable environment variable names (no
+// hyphens). Used by SandboxEnv to filter keys that are valid in the
+// prescript protocol but cannot be exported as env vars.
+var validPosixKeyRe = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
+
 // Result is the parsed pre-script output.
 type Result struct {
 	// Skipped is true when the pre-script wrote skipped=true, requesting
@@ -289,18 +305,13 @@ func Relay(res Result) (relayed bool, err error) {
 	return true, nil
 }
 
-// reservedOutputKeys are the keys the protocol interprets. These are
-// consumed by fullsend run itself (skip gating, status reporting) and are
-// not forwarded into the sandbox environment.
-var reservedOutputKeys = map[string]bool{
-	skippedKey: true,
-	reasonKey:  true,
-}
-
 // SandboxEnv returns the pre-script outputs suitable for injection as
 // sandbox environment variables. Reserved protocol keys (skipped, reason)
 // are excluded — they are consumed by the harness itself, not forwarded
-// to the agent. An empty or nil Outputs map produces a nil return.
+// to the agent. Keys that are not valid POSIX identifiers (e.g. hyphenated
+// keys like "existing-pr") are filtered here so the caller's injected-count
+// log message matches what actually reaches the sandbox. An empty or nil
+// Outputs map produces a nil return.
 func SandboxEnv(res Result) map[string]string {
 	if len(res.Outputs) == 0 {
 		return nil
@@ -308,6 +319,9 @@ func SandboxEnv(res Result) map[string]string {
 	env := make(map[string]string, len(res.Outputs))
 	for k, v := range res.Outputs {
 		if reservedOutputKeys[k] {
+			continue
+		}
+		if !validPosixKeyRe.MatchString(k) {
 			continue
 		}
 		env[k] = v

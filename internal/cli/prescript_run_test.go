@@ -276,10 +276,12 @@ func TestRunPreScript_HyphenatedKeysSkippedInSandboxEnv(t *testing.T) {
 	res, err := runPreScript(h, t.TempDir(), "", printer)
 	require.NoError(t, err)
 
-	// SandboxEnv includes all non-reserved keys (hyphens are valid in the
-	// prescript protocol).
+	// SandboxEnv filters out hyphenated keys (not valid POSIX identifiers)
+	// so the injected count matches what buildSandboxEnvLines will export.
 	sandboxOutputs := prescript.SandboxEnv(res)
-	require.Len(t, sandboxOutputs, 2)
+	require.Len(t, sandboxOutputs, 1)
+	assert.Equal(t, "ok", sandboxOutputs["VALID_KEY"])
+	assert.NotContains(t, sandboxOutputs, "existing-pr")
 
 	if h.Env == nil {
 		h.Env = &harness.EnvConfig{}
@@ -289,7 +291,6 @@ func TestRunPreScript_HyphenatedKeysSkippedInSandboxEnv(t *testing.T) {
 		h.Env.Sandbox[k] = v
 	}
 
-	// buildSandboxEnvLines filters out keys with hyphens (not valid POSIX).
 	lines := buildSandboxEnvLines(h)
 	require.Len(t, lines, 1)
 	assert.Equal(t, "export VALID_KEY='ok'", lines[0])

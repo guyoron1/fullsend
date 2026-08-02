@@ -188,3 +188,7 @@ for harnesses that still reference it.
   would make this evolution explicit.
 - Env merge is strictly additive. A child cannot remove a key inherited from
   its base — it can only override the value.
+- `env.sandbox` can be dynamically populated at runtime by pre-script outputs
+  ([#791](https://github.com/fullsend-ai/fullsend/issues/791)). Non-reserved
+  pre-script outputs are merged into `env.sandbox` after `${VAR}` expansion,
+  with pre-script values overriding static entries on key collision.

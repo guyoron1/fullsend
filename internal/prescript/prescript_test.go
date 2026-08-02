@@ -323,6 +323,21 @@ func TestSandboxEnv_OnlyReservedKeys(t *testing.T) {
 	assert.Nil(t, SandboxEnv(res))
 }
 
+func TestSandboxEnv_FiltersHyphenatedKeys(t *testing.T) {
+	t.Parallel()
+
+	res := Result{
+		Outputs: map[string]string{
+			"existing-pr": "123",
+			"VALID_KEY":   "ok",
+		},
+	}
+	env := SandboxEnv(res)
+	assert.Len(t, env, 1)
+	assert.Equal(t, "ok", env["VALID_KEY"])
+	assert.NotContains(t, env, "existing-pr")
+}
+
 func TestLogLine(t *testing.T) {
 	t.Parallel()
 

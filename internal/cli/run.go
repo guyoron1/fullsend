@@ -975,6 +975,9 @@ func runAgent(ctx context.Context, agentName, fullsendDir, outputBase, targetRep
 			h.Env.Sandbox = make(map[string]string)
 		}
 		for k, v := range sandboxOutputs {
+			if existing, overridden := h.Env.Sandbox[k]; overridden {
+				fmt.Fprintf(os.Stderr, "INFO: pre-script output %q overrides static env.sandbox value (%q → %q)\n", k, existing, v)
+			}
 			h.Env.Sandbox[k] = v
 		}
 		printer.StepDone(fmt.Sprintf("Injected %d pre-script output(s) into sandbox env", len(sandboxOutputs)))
