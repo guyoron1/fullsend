@@ -94,7 +94,7 @@ func Setup(dir string, serviceVersion string) (trace.Tracer, func(context.Contex
 		if err := tp.Shutdown(ctx); err != nil {
 			fmt.Fprintf(os.Stderr, "fullsend: OTLP flush incomplete: %v\n", err)
 		}
-		_ = f.Close()
+		_ = f.Close() // file already flushed by SimpleSpanProcessor; close error is not actionable
 	}
 
 	return tracer, cleanup
@@ -103,6 +103,10 @@ func Setup(dir string, serviceVersion string) (trace.Tracer, func(context.Contex
 // resolveEndpoint returns the OTLP endpoint URL following the OTLP spec:
 //   - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT (signal-specific) is used verbatim.
 //   - OTEL_EXPORTER_OTLP_ENDPOINT (generic) gets /v1/traces appended.
+//
+// Named resolveEndpoint (not endpointFromEnv) because it performs URL
+// parsing and path construction beyond simple env-var reading.
+// protocolFromEnv retains the *FromEnv suffix since it only reads env vars.
 //
 // This mirrors the behaviour documented in distributed-tracing.md and the
 // OTLP specification.
