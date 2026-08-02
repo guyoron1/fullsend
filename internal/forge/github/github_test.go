@@ -3361,6 +3361,52 @@ func TestDeleteFiles_StaleTreeSHARetry(t *testing.T) {
 	assert.Equal(t, 2, treePostCount, "expected one failed + one successful tree creation")
 }
 
+func TestDeleteFiles_NonFastForwardRefUpdateRetry(t *testing.T) {
+	patchCount := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == "GET" && r.URL.Path == "/repos/org/repo":
+			json.NewEncoder(w).Encode(map[string]string{"default_branch": "main"})
+		case r.Method == "GET" && r.URL.Path == "/repos/org/repo/git/ref/heads/main":
+			json.NewEncoder(w).Encode(map[string]any{"object": map[string]string{"sha": "abc123"}})
+		case r.Method == "GET" && strings.HasPrefix(r.URL.Path, "/repos/org/repo/git/commits/"):
+			json.NewEncoder(w).Encode(map[string]any{"tree": map[string]string{"sha": "tree000"}})
+		case r.Method == "GET" && strings.HasPrefix(r.URL.Path, "/repos/org/repo/git/trees/"):
+			json.NewEncoder(w).Encode(map[string]any{
+				"tree": []map[string]string{
+					{"path": "stale.txt", "mode": "100644"},
+				},
+				"truncated": false,
+			})
+		case r.Method == "POST" && r.URL.Path == "/repos/org/repo/git/trees":
+			w.WriteHeader(http.StatusCreated)
+			json.NewEncoder(w).Encode(map[string]string{"sha": "newtree"})
+		case r.Method == "POST" && r.URL.Path == "/repos/org/repo/git/commits":
+			w.WriteHeader(http.StatusCreated)
+			json.NewEncoder(w).Encode(map[string]string{"sha": "newcommit"})
+		case r.Method == "PATCH" && r.URL.Path == "/repos/org/repo/git/refs/heads/main":
+			patchCount++
+			if patchCount == 1 {
+				w.WriteHeader(http.StatusUnprocessableEntity)
+				json.NewEncoder(w).Encode(map[string]string{"message": "Update is not a fast forward"})
+				return
+			}
+			json.NewEncoder(w).Encode(map[string]any{})
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer srv.Close()
+
+	client := newTestClient(t, srv)
+	deleted, err := client.DeleteFiles(context.Background(), "org", "repo", "remove stale", []string{
+		"stale.txt",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, 1, deleted)
+	assert.Equal(t, 2, patchCount, "expected one failed + one successful ref update")
+}
+
 func TestDeleteIssueComment(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "DELETE", r.Method)

@@ -1269,6 +1269,13 @@ func (c *LiveClient) deleteFilesOnBranch(ctx context.Context, owner, repo, branc
 		refUpdateResp.Body.Close()
 		return nil
 	}); err != nil {
+		// A 422 non-fast-forward means the ref moved between our read
+		// and this update — same handling as commitFilesTo's ref-update
+		// step. Wrap so deleteFilesWithRetry retries from scratch.
+		var apiErr *APIError
+		if errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusUnprocessableEntity && isNonFastForwardError(apiErr) {
+			return 0, fmt.Errorf("update ref: %w: %w", forge.ErrNonFastForward, err)
+		}
 		return 0, err
 	}
 
