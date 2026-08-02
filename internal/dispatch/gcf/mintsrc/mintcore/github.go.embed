@@ -39,8 +39,8 @@ func (e *GitHubAPIError) Error() string {
 	return fmt.Sprintf("%s returned status %d", e.Action, e.StatusCode)
 }
 
-// readErrorBody reads up to maxBytes from r, drains any remainder, and
-// returns the content as a trimmed string.
+// readErrorBody reads up to maxBytes from r and returns the content as a
+// trimmed string.
 func readErrorBody(r io.Reader, maxBytes int64) string {
 	body, _ := io.ReadAll(io.LimitReader(r, maxBytes))
 	return strings.TrimSpace(string(body))

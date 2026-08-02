@@ -384,7 +384,7 @@ func (h *Handler) mintToken(ctx context.Context, org, role string, repos []strin
 func (h *Handler) mintTokenCrossOrg(ctx context.Context, claims *Claims, targetOrg, role string, repos []string) (string, string, *GrantedScope, error) {
 	allowlist, err := h.loadForeignAllowlist(ctx, targetOrg, role)
 	if err != nil {
-		return "", "", nil, &mintError{status: http.StatusBadGateway, msg: err.Error()}
+		return "", "", nil, &mintError{status: upstreamStatus(err), msg: err.Error()}
 	}
 	if len(allowlist) == 0 {
 		return "", "", nil, &mintError{status: http.StatusForbidden, msg: "foreign caller not authorized for target org"}
@@ -462,7 +462,7 @@ func (h *Handler) fetchForeignAllowlist(ctx context.Context, targetOrg, role str
 
 	installationID, err := FindOrgInstallation(ctx, h.httpClient, h.githubBaseURL, jwt, targetOrg)
 	if err != nil {
-		return nil, fmt.Errorf("finding org installation on %s: %v", targetOrg, err)
+		return nil, fmt.Errorf("finding org installation on %s: %w", targetOrg, err)
 	}
 
 	allowlist, err := ReadForeignAllowlist(ctx, h.httpClient, h.githubBaseURL, jwt, installationID, targetOrg, role)
