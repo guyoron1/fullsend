@@ -168,6 +168,43 @@ func TestMintDeployCmd_DryRun(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestMintDeployCmd_DryRunShowsResolvedSourceDir(t *testing.T) {
+	// Capture stdout to verify dry-run reports the resolved checkout path
+	// instead of "embedded mint function".
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"mint", "deploy", "--project=my-project-id", "--dry-run"})
+	_ = cmd.Execute()
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	out, _ := io.ReadAll(r)
+	stdout := string(out)
+	assert.Contains(t, stdout, gcf.DefaultFunctionSourceDir())
+	assert.NotContains(t, stdout, "embedded mint function")
+}
+
+func TestMintDeployCmd_DryRunWithExplicitSourceDir(t *testing.T) {
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"mint", "deploy", "--project=my-project-id", "--dry-run", "--source-dir=/custom/path"})
+	_ = cmd.Execute()
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	out, _ := io.ReadAll(r)
+	stdout := string(out)
+	assert.Contains(t, stdout, "/custom/path")
+}
+
 func TestMintDeployCmd_DryRunPublic(t *testing.T) {
 	cmd := newRootCmd()
 	cmd.SetArgs([]string{"mint", "deploy", "--project=my-project-id", "--dry-run", "--public"})
@@ -235,6 +272,14 @@ func TestMintDeployCmd_DryRunWithInvalidPEM(t *testing.T) {
 	err := cmd.Execute()
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid PEM for role")
+}
+
+func TestMintDeployCmd_SourceDirFlagUsage(t *testing.T) {
+	cmd := newMintDeployCmd()
+	sourceDirFlag := cmd.Flags().Lookup("source-dir")
+	require.NotNil(t, sourceDirFlag)
+	assert.NotContains(t, sourceDirFlag.Usage, "(default: embedded)",
+		"--source-dir usage should not claim embedded is always the default")
 }
 
 // --- deploy command: platform flag tests ---
@@ -318,6 +363,36 @@ func TestMintDeployCmd_CloudflareDryRun(t *testing.T) {
 	cmd.SetArgs([]string{"mint", "deploy", "--platform=cloudflare", "--dry-run"})
 	err := cmd.Execute()
 	require.NoError(t, err)
+}
+
+func TestMintDeployCmd_CloudflareDryRunShowsResolvedSourceDir(t *testing.T) {
+	origAccount := os.Getenv("CLOUDFLARE_ACCOUNT_ID")
+	origToken := os.Getenv("CLOUDFLARE_API_TOKEN")
+	defer func() {
+		os.Setenv("CLOUDFLARE_ACCOUNT_ID", origAccount)
+		os.Setenv("CLOUDFLARE_API_TOKEN", origToken)
+	}()
+
+	os.Setenv("CLOUDFLARE_ACCOUNT_ID", "test-account")
+	os.Setenv("CLOUDFLARE_API_TOKEN", "test-token")
+
+	// Capture stdout to verify dry-run reports the resolved checkout path
+	// instead of "embedded Worker adapter".
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	cmd := newRootCmd()
+	cmd.SetArgs([]string{"mint", "deploy", "--platform=cloudflare", "--dry-run"})
+	_ = cmd.Execute()
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	out, _ := io.ReadAll(r)
+	stdout := string(out)
+	assert.Contains(t, stdout, cf.DefaultWorkerSourceDir())
+	assert.NotContains(t, stdout, "embedded Worker adapter")
 }
 
 func TestMintDeployCmd_CloudflareDryRunPreview(t *testing.T) {
