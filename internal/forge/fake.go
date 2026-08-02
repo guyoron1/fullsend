@@ -236,6 +236,9 @@ type FakeClient struct {
 	// Pull request reviews for ListPullRequestReviews.
 	PRReviews map[string][]PullRequestReview // key: "owner/repo/number"
 
+	// Pull request review comments for ListPullRequestReviewComments.
+	PRReviewComments map[string][]PullRequestReviewComment // key: "owner/repo/number"
+
 	// Annotations for GetWorkflowRunAnnotations.
 	Annotations []Annotation
 
@@ -1488,6 +1491,21 @@ func (f *FakeClient) ListPullRequestReviews(_ context.Context, owner, repo strin
 		key := fmt.Sprintf("%s/%s/%d", owner, repo, number)
 		if reviews, ok := f.PRReviews[key]; ok {
 			return reviews, nil
+		}
+	}
+	return nil, nil
+}
+
+func (f *FakeClient) ListPullRequestReviewComments(_ context.Context, owner, repo string, number int) ([]PullRequestReviewComment, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if e := f.err("ListPullRequestReviewComments"); e != nil {
+		return nil, e
+	}
+	if f.PRReviewComments != nil {
+		key := fmt.Sprintf("%s/%s/%d", owner, repo, number)
+		if comments, ok := f.PRReviewComments[key]; ok {
+			return comments, nil
 		}
 	}
 	return nil, nil
