@@ -65,12 +65,15 @@ type githubValidationError struct {
 }
 
 // githubValidationErrorItem is a single entry in the errors array.
+// The Value field is json.RawMessage because GitHub may return it as either
+// a JSON array (["repo-a","repo-b"]) or a plain string ("repo-a") depending
+// on the error context.
 type githubValidationErrorItem struct {
-	Resource string   `json:"resource"`
-	Field    string   `json:"field"`
-	Code     string   `json:"code"`
-	Value    []string `json:"value"`
-	Message  string   `json:"message"`
+	Resource string          `json:"resource"`
+	Field    string          `json:"field"`
+	Code     string          `json:"code"`
+	Value    json.RawMessage `json:"value"`
+	Message  string          `json:"message"`
 }
 
 // canonicalRolePermissions defines the minimum GitHub App permissions per agent role.
@@ -510,8 +513,11 @@ func (e *repoValidationError) Error() string {
 
 // parseInvalidRepos extracts invalid repo names from a GitHub 422 response body.
 // GitHub returns errors with field:"repositories" and a value array listing the
-// invalid repo names. Returns nil if the error cannot be parsed or is unrelated
-// to repositories.
+// invalid repo names. The value may be a JSON array (["repo-a","repo-b"]) or a
+// plain string ("repo-a"); both forms are handled. Each extracted name is
+// validated against RepoNamePattern as a defense-in-depth measure — names that
+// don't match a valid repo pattern are silently dropped. Returns nil if the error
+// cannot be parsed or is unrelated to repositories.
 func parseInvalidRepos(body []byte) []string {
 	var ghErr githubValidationError
 	if err := json.Unmarshal(body, &ghErr); err != nil {
@@ -519,8 +525,22 @@ func parseInvalidRepos(body []byte) []string {
 	}
 	var invalid []string
 	for _, e := range ghErr.Errors {
-		if e.Field == "repositories" && len(e.Value) > 0 {
-			invalid = append(invalid, e.Value...)
+		if e.Field != "repositories" || len(e.Value) == 0 {
+			continue
+		}
+		// Try []string first (the common case), then fall back to a single string.
+		var names []string
+		if err := json.Unmarshal(e.Value, &names); err != nil {
+			var single string
+			if err := json.Unmarshal(e.Value, &single); err != nil {
+				continue
+			}
+			names = []string{single}
+		}
+		for _, n := range names {
+			if RepoNamePattern.MatchString(n) {
+				invalid = append(invalid, n)
+			}
 		}
 	}
 	return invalid
@@ -534,6 +554,14 @@ func parseInvalidRepos(body []byte) []string {
 // populates GrantedScope.InvalidRepos with the dropped names. If ALL repos are
 // invalid the function returns an error rather than falling back to an
 // installation-wide token.
+//
+// Design note: this recovery behavior is intentionally asymmetric with the
+// fail-closed validation used elsewhere in the mint (role, provenance, org).
+// Repo validation failures are caused by external config drift (repos renamed
+// or deleted outside the mint's control), not by invalid caller input. Dropping
+// stale repos and succeeding with a narrower scope is safe because the token is
+// strictly downscoped — never widened — and the all-invalid case errors out to
+// prevent accidental fall-through to an installation-wide token.
 func CreateInstallationToken(ctx context.Context, httpClient HTTPDoer, githubBaseURL, jwt string, installationID int64, role string, repos []string) (string, string, *GrantedScope, error) {
 	perms := RolePermissionsFor(role)
 	if perms == nil {

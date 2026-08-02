@@ -165,7 +165,7 @@ func TestCreateInstallationToken_InvalidRepos_Retry(t *testing.T) {
 						Resource: "InstallationToken",
 						Field:    "repositories",
 						Code:     "invalid",
-						Value:    []string{"deleted-repo"},
+						Value:    json.RawMessage(`["deleted-repo"]`),
 					},
 				},
 			})
@@ -215,7 +215,7 @@ func TestCreateInstallationToken_AllReposInvalid(t *testing.T) {
 					Resource: "InstallationToken",
 					Field:    "repositories",
 					Code:     "invalid",
-					Value:    []string{"deleted-a", "deleted-b"},
+					Value:    json.RawMessage(`["deleted-a","deleted-b"]`),
 				},
 			},
 		})
@@ -277,14 +277,24 @@ func TestParseInvalidRepos(t *testing.T) {
 		expected []string
 	}{
 		{
-			name: "single invalid repo",
-			body: `{"message":"Validation Failed","errors":[{"resource":"InstallationToken","field":"repositories","code":"invalid","value":["bad-repo"]}]}`,
+			name:     "single invalid repo",
+			body:     `{"message":"Validation Failed","errors":[{"resource":"InstallationToken","field":"repositories","code":"invalid","value":["bad-repo"]}]}`,
 			expected: []string{"bad-repo"},
 		},
 		{
-			name: "multiple invalid repos",
-			body: `{"message":"Validation Failed","errors":[{"resource":"InstallationToken","field":"repositories","code":"invalid","value":["repo-a","repo-b"]}]}`,
+			name:     "multiple invalid repos",
+			body:     `{"message":"Validation Failed","errors":[{"resource":"InstallationToken","field":"repositories","code":"invalid","value":["repo-a","repo-b"]}]}`,
 			expected: []string{"repo-a", "repo-b"},
+		},
+		{
+			name:     "value as plain string",
+			body:     `{"message":"Validation Failed","errors":[{"resource":"InstallationToken","field":"repositories","code":"invalid","value":"single-repo"}]}`,
+			expected: []string{"single-repo"},
+		},
+		{
+			name:     "value with invalid repo name pattern",
+			body:     `{"message":"Validation Failed","errors":[{"resource":"InstallationToken","field":"repositories","code":"invalid","value":["good-repo","../traversal","","good.repo2"]}]}`,
+			expected: []string{"good-repo", "good.repo2"},
 		},
 		{
 			name:     "non-repo error",
