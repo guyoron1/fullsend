@@ -105,8 +105,15 @@ Otherwise, search open issues for duplicates. If you find a likely
 duplicate, note it in the triage output.
 ```
 
-**Key principle:** The agent treats an unset or empty variable the same
-as `false` — the default behavior. This ensures backward compatibility.
+**Key principles:**
+
+- The agent treats an unset or empty variable the same as `false` — the
+  default behavior. This ensures backward compatibility.
+- Stick to a canonical boolean value (`true` / `false`) and document it
+  in the variable table. Since agents interpret the value via prompt
+  logic rather than a strict parser, explicitly state the expected value
+  rather than relying on the agent to infer equivalents like `1`, `yes`,
+  or `TRUE`.
 
 ## Step 4: Wire the variable through the harness
 
@@ -122,16 +129,19 @@ The agent's `.env` file (e.g., `env/triage.env`) is copied into the
 sandbox with `expand: true`, which resolves `${VAR}` references from
 the host environment before the file enters the sandbox.
 
-Add the variable with a shell default:
+Add the variable:
 
 ```bash
 # env/triage.env
-TRIAGE_SKIP_DUPLICATE_CHECK=${TRIAGE_SKIP_DUPLICATE_CHECK:-false}
+TRIAGE_SKIP_DUPLICATE_CHECK=${TRIAGE_SKIP_DUPLICATE_CHECK}
 ```
 
-The `:-false` default means:
-- If the CI workflow sets the variable, that value is used.
-- If the variable is unset (most users), it resolves to `false`.
+> **Important:** Expansion uses Go's `os.Expand`, which supports `$VAR`
+> and `${VAR}` only — no default values (`:-default`), substring
+> operations, or other shell parameter expansion features
+> ([ADR 0055](../ADRs/0055-unified-env-var-delivery.md)). If the host
+> variable is unset, it resolves to an empty string. The agent must
+> treat both unset and empty as "use the default" (see Step 3).
 
 ### 4b. Add to the harness `env:` block (if scripts need it)
 
@@ -145,7 +155,7 @@ env:
   runner:
     # ... existing vars ...
   sandbox:
-    TRIAGE_SKIP_DUPLICATE_CHECK: "${TRIAGE_SKIP_DUPLICATE_CHECK:-false}"
+    TRIAGE_SKIP_DUPLICATE_CHECK: "${TRIAGE_SKIP_DUPLICATE_CHECK}"
 ```
 
 > **Note:** `env.sandbox` delivers variables directly into the sandbox
