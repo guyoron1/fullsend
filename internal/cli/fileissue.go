@@ -17,10 +17,11 @@ import (
 
 // FileIssueResult is the JSON output of the file-issue command.
 type FileIssueResult struct {
-	Created     bool   `json:"created"`
-	URL         string `json:"url"`
-	Number      int    `json:"number"`
-	DuplicateOf string `json:"duplicate_of,omitempty"`
+	Created      bool   `json:"created"`
+	URL          string `json:"url"`
+	Number       int    `json:"number"`
+	DuplicateOf  string `json:"duplicate_of,omitempty"`
+	DedupSkipped bool   `json:"dedup_skipped,omitempty"`
 }
 
 // defaultDedupWindow is the lookback duration for dedup searches.
@@ -28,6 +29,10 @@ const defaultDedupWindow = 30 * time.Minute
 
 // defaultSimilarityThreshold is the minimum Jaccard word-overlap
 // coefficient for two titles to be considered duplicates.
+// 0.6 balances precision vs. recall for the target use case (same-bot,
+// short dedup window): titles sharing ≥60% of their content words are
+// near-certain rephrasings, while genuinely different proposals rarely
+// exceed 0.4 in practice.
 const defaultSimilarityThreshold = 0.6
 
 func newFileIssueCmd() *cobra.Command {
@@ -117,8 +122,8 @@ Output is JSON with fields: created, url, number, duplicate_of.`,
 }
 
 // fileIssueWithDedup checks for duplicates and, if none are found,
-// creates the issue. It is exported-name-style (lowercase, unexported)
-// to keep the function testable via the forge.Client interface.
+// creates the issue. It is unexported but testable via the
+// forge.Client interface.
 func fileIssueWithDedup(
 	ctx context.Context,
 	client forge.Client,
@@ -130,6 +135,8 @@ func fileIssueWithDedup(
 	printer *ui.Printer,
 ) (*FileIssueResult, error) {
 	printer.Header("File Issue")
+
+	dedupSkipped := false
 
 	// Phase 1: Dedup search (only when creator is specified).
 	if creator != "" {
@@ -147,6 +154,7 @@ func fileIssueWithDedup(
 			// Non-fatal: if the search fails (e.g., rate limit, unsupported
 			// forge), fall through to creation rather than blocking filing.
 			printer.StepWarn(fmt.Sprintf("Dedup search failed: %v (proceeding with creation)", err))
+			dedupSkipped = true
 		} else {
 			printer.StepDone(fmt.Sprintf("Found %d recent issue(s)", len(existing)))
 
@@ -184,12 +192,13 @@ func fileIssueWithDedup(
 		}
 	} else {
 		printer.StepInfo("Skipping dedup (no --creator specified)")
+		dedupSkipped = true
 	}
 
 	// Phase 2: Create the issue.
 	if dryRun {
 		printer.StepInfo("Dry run — would create issue")
-		return &FileIssueResult{Created: false}, nil
+		return &FileIssueResult{Created: false, DedupSkipped: dedupSkipped}, nil
 	}
 
 	printer.StepStart(fmt.Sprintf("Creating issue in %s/%s", owner, repo))
@@ -200,19 +209,20 @@ func fileIssueWithDedup(
 	printer.StepDone(fmt.Sprintf("Created #%d: %s", issue.Number, issue.URL))
 
 	return &FileIssueResult{
-		Created: true,
-		URL:     issue.URL,
-		Number:  issue.Number,
+		Created:      true,
+		URL:          issue.URL,
+		Number:       issue.Number,
+		DedupSkipped: dedupSkipped,
 	}, nil
 }
 
 // titlesSimilar reports whether two issue titles are similar enough to
 // be considered duplicates. It uses the Jaccard coefficient of word
 // sets (intersection / union) after normalizing to lowercase and
-// stripping punctuation. A coefficient >= defaultSimilarityThreshold
-// is considered a match.
+// stripping punctuation. A coefficient strictly above
+// defaultSimilarityThreshold is considered a match.
 func titlesSimilar(a, b string) bool {
-	return titleSimilarity(a, b) >= defaultSimilarityThreshold
+	return titleSimilarity(a, b) > defaultSimilarityThreshold
 }
 
 // titleSimilarity computes the Jaccard similarity coefficient between
@@ -276,12 +286,14 @@ func normalizeWords(s string) []string {
 }
 
 // isStopWord returns true for common English stop words that add noise
-// to title similarity comparisons.
+// to title similarity comparisons. Action verbs (add, fix, remove,
+// update, etc.) are intentionally excluded — they carry semantic
+// meaning in issue titles and must contribute to similarity scoring.
 func isStopWord(w string) bool {
 	switch w {
 	case "the", "in", "on", "at", "to", "for", "of", "and", "or",
 		"is", "it", "an", "by", "be", "as", "do", "if", "so",
-		"no", "up", "add", "with", "from", "that", "this", "when":
+		"no", "up", "with", "from", "that", "this", "when":
 		return true
 	}
 	return false

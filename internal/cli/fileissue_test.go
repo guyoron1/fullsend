@@ -66,6 +66,12 @@ func TestTitleSimilarity(t *testing.T) {
 			b:       "add empty-diff guard",
 			similar: true,
 		},
+		{
+			name:    "opposite actions are not duplicates",
+			a:       "Add retro dedup guard",
+			b:       "Remove retro dedup guard",
+			similar: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -87,12 +93,12 @@ func TestNormalizeWords(t *testing.T) {
 		{
 			name:  "simple phrase",
 			input: "Add empty-diff guard",
-			want:  []string{"empty", "diff", "guard"},
+			want:  []string{"add", "empty", "diff", "guard"},
 		},
 		{
-			name:  "strips stop words",
+			name:  "strips stop words but preserves action verbs",
 			input: "Add the guard to the PR for creation",
-			want:  []string{"guard", "pr", "creation"},
+			want:  []string{"add", "guard", "pr", "creation"},
 		},
 		{
 			name:  "strips single chars",
@@ -232,6 +238,7 @@ func TestFileIssueWithDedup_NoCreator(t *testing.T) {
 	)
 	require.NoError(t, err)
 	assert.True(t, result.Created)
+	assert.True(t, result.DedupSkipped, "dedup_skipped should be true when no creator specified")
 	assert.Len(t, fc.CreatedIssues, 1)
 }
 
@@ -256,6 +263,7 @@ func TestFileIssueWithDedup_SearchFailsFallsThrough(t *testing.T) {
 	require.NoError(t, err)
 	// Should still create despite search failure.
 	assert.True(t, result.Created)
+	assert.True(t, result.DedupSkipped, "dedup_skipped should be true when search fails")
 	assert.Len(t, fc.CreatedIssues, 1)
 }
 
