@@ -12,7 +12,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/fullsend-ai/fullsend/internal/forge"
-	gh "github.com/fullsend-ai/fullsend/internal/forge/github"
 	"github.com/fullsend-ai/fullsend/internal/ui"
 )
 
@@ -51,14 +50,15 @@ func newFileIssueCmd() *cobra.Command {
 Before filing, searches for issues created by the same author in the
 target repo within a configurable time window. If an existing issue
 has a similar title (measured by word-overlap similarity), the new
-issue is skipped and the existing issue URL is returned instead.
+issue is skipped, a comment is added to the existing issue noting
+the additional evidence, and the existing issue URL is returned.
 
 This prevents duplicate issue filing when multiple concurrent agents
 (e.g., retro agents) identify the same improvement independently.
 
 Output is JSON with fields: created, url, number, duplicate_of.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			printer := ui.New(os.Stdout)
+			printer := ui.New(os.Stderr)
 
 			if token == "" {
 				token = os.Getenv("GITHUB_TOKEN")
@@ -87,7 +87,7 @@ Output is JSON with fields: created, url, number, duplicate_of.`,
 				bodyText = raw
 			}
 
-			client := gh.New(token)
+			client := newGitHubLiveClient(token, "")
 
 			result, err := fileIssueWithDedup(
 				cmd.Context(), client, owner, repoName,
@@ -151,11 +151,27 @@ func fileIssueWithDedup(
 			printer.StepDone(fmt.Sprintf("Found %d recent issue(s)", len(existing)))
 
 			for _, issue := range existing {
-				if TitlesSimilar(title, issue.Title) {
+				if titlesSimilar(title, issue.Title) {
 					printer.StepInfo(fmt.Sprintf(
 						"Duplicate detected: #%d %q (similarity above threshold)",
 						issue.Number, issue.Title,
 					))
+
+					// Add a comment on the existing issue noting the
+					// additional evidence, per issue #800.
+					commentBody := fmt.Sprintf(
+						"Duplicate proposal detected — another agent independently proposed:\n\n"+
+							"> **%s**\n\n"+
+							"Skipping duplicate issue creation.",
+						title,
+					)
+					if _, err := client.CreateIssueComment(ctx, owner, repo, issue.Number, commentBody); err != nil {
+						// Non-fatal: log and proceed with the dedup result.
+						printer.StepWarn(fmt.Sprintf("Failed to comment on #%d: %v", issue.Number, err))
+					} else {
+						printer.StepDone(fmt.Sprintf("Added evidence comment to #%d", issue.Number))
+					}
+
 					return &FileIssueResult{
 						Created:     false,
 						URL:         issue.URL,
@@ -190,12 +206,12 @@ func fileIssueWithDedup(
 	}, nil
 }
 
-// TitlesSimilar reports whether two issue titles are similar enough to
+// titlesSimilar reports whether two issue titles are similar enough to
 // be considered duplicates. It uses the Jaccard coefficient of word
 // sets (intersection / union) after normalizing to lowercase and
 // stripping punctuation. A coefficient >= defaultSimilarityThreshold
 // is considered a match.
-func TitlesSimilar(a, b string) bool {
+func titlesSimilar(a, b string) bool {
 	return titleSimilarity(a, b) >= defaultSimilarityThreshold
 }
 

@@ -70,9 +70,9 @@ func TestTitleSimilarity(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := TitlesSimilar(tt.a, tt.b)
+			got := titlesSimilar(tt.a, tt.b)
 			assert.Equal(t, tt.similar, got,
-				"TitlesSimilar(%q, %q) = %v, want %v (similarity=%.2f)",
+				"titlesSimilar(%q, %q) = %v, want %v (similarity=%.2f)",
 				tt.a, tt.b, got, tt.similar, titleSimilarity(tt.a, tt.b))
 		})
 	}
@@ -143,6 +143,45 @@ func TestFileIssueWithDedup_DuplicateFound(t *testing.T) {
 	assert.Equal(t, "https://github.com/org/repo/issues/42", result.DuplicateOf)
 	assert.Equal(t, 42, result.Number)
 	// No issue should have been created.
+	assert.Empty(t, fc.CreatedIssues)
+	// A comment should have been added to the existing issue.
+	comments := fc.IssueComments["org/repo/42"]
+	require.Len(t, comments, 1)
+	assert.Contains(t, comments[0].Body, "Duplicate proposal detected")
+	assert.Contains(t, comments[0].Body, "Add empty-diff guard for PR creation")
+}
+
+func TestFileIssueWithDedup_DuplicateCommentFailureNonFatal(t *testing.T) {
+	fc := &forge.FakeClient{
+		OpenIssues: map[string][]forge.Issue{
+			"org/repo": {
+				{
+					Number: 42,
+					Title:  "Add empty-diff guard to PR creation",
+					URL:    "https://github.com/org/repo/issues/42",
+				},
+			},
+		},
+		Errors: map[string]error{
+			"CreateIssueComment": assert.AnError,
+		},
+	}
+
+	printer := ui.New(&discardWriter{})
+	result, err := fileIssueWithDedup(
+		context.Background(), fc, "org", "repo",
+		"Add empty-diff guard for PR creation", // similar title
+		"Body text",
+		[]string{"feature"},
+		"retro-bot[bot]",
+		30*time.Minute,
+		false,
+		printer,
+	)
+	// Comment failure should not prevent dedup from working.
+	require.NoError(t, err)
+	assert.False(t, result.Created)
+	assert.Equal(t, "https://github.com/org/repo/issues/42", result.DuplicateOf)
 	assert.Empty(t, fc.CreatedIssues)
 }
 
