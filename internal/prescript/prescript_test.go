@@ -323,6 +323,65 @@ func TestLogLine_DropsInvalidOutputs(t *testing.T) {
 	assert.Empty(t, LogLine(Result{Outputs: map[string]string{"ok": "a\rb"}}))
 }
 
+func TestSandboxEnv_NilOutputs(t *testing.T) {
+	t.Parallel()
+
+	assert.Nil(t, SandboxEnv(Result{}))
+}
+
+func TestSandboxEnv_EmptyOutputs(t *testing.T) {
+	t.Parallel()
+
+	assert.Nil(t, SandboxEnv(Result{Outputs: map[string]string{}}))
+}
+
+func TestSandboxEnv_ReservedOnlyReturnsNil(t *testing.T) {
+	t.Parallel()
+
+	res := Result{
+		Skipped: true,
+		Reason:  "dup",
+		Outputs: map[string]string{
+			"skipped": "true",
+			"reason":  "dup",
+		},
+	}
+	assert.Nil(t, SandboxEnv(res))
+}
+
+func TestSandboxEnv_FiltersReservedKeys(t *testing.T) {
+	t.Parallel()
+
+	res := Result{
+		Outputs: map[string]string{
+			"skipped":     "false",
+			"reason":      "some reason",
+			"MY_TOKEN":    "abc123",
+			"existing_pr": "42",
+		},
+	}
+	got := SandboxEnv(res)
+	assert.Equal(t, map[string]string{
+		"MY_TOKEN":    "abc123",
+		"existing_pr": "42",
+	}, got)
+}
+
+// Hyphenated keys are valid in the prescript protocol and should pass
+// through SandboxEnv. buildSandboxEnvLines in the CLI layer will
+// silently skip them since they are not valid POSIX env var names.
+func TestSandboxEnv_HyphenatedKeysPassThrough(t *testing.T) {
+	t.Parallel()
+
+	res := Result{
+		Outputs: map[string]string{
+			"my-output": "value",
+		},
+	}
+	got := SandboxEnv(res)
+	assert.Equal(t, map[string]string{"my-output": "value"}, got)
+}
+
 // The heredoc check is anchored at the key, so an ordinary value
 // containing "<<" is not mistaken for one.
 func TestParseFile_HeredocDetection(t *testing.T) {

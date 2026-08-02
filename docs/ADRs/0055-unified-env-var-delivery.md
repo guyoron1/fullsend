@@ -129,6 +129,12 @@ When `env.sandbox` is present (after all merges), the runner:
 executing pre/post scripts and the validation loop — identical to current
 `runner_env` behavior.
 
+Pre-script outputs (non-reserved keys written to `$FULLSEND_PRESCRIPT_OUTPUT`)
+are merged into `env.sandbox` after the skip check and before sandbox creation.
+Pre-script outputs override static `env.sandbox` entries on key collision —
+runtime-computed values take precedence over static config. See
+[prescript-output/v1](../normative/prescript-output/v1/README.md#sandbox-injection).
+
 ### Precedence
 
 When both `env.sandbox` and `host_files` `.env` entries define the same

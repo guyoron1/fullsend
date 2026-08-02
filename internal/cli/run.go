@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"math"
 	"net/http"
 	"os"
@@ -959,6 +960,22 @@ func runAgent(ctx context.Context, agentName, fullsendDir, outputBase, targetRep
 		}
 		printer.StepDone("Run skipped by pre-script: " + reason)
 		return nil
+	}
+
+	// 4-post. Inject non-reserved pre-script outputs into the sandbox
+	// environment so pre-scripts can pass computed values to the agent
+	// (issue #839, #791). Pre-script outputs override static env.sandbox
+	// entries on key collision — runtime-computed values take precedence
+	// over static config.
+	if sandboxOutputs := prescript.SandboxEnv(preResult); len(sandboxOutputs) > 0 {
+		if h.Env == nil {
+			h.Env = &harness.EnvConfig{}
+		}
+		if h.Env.Sandbox == nil {
+			h.Env.Sandbox = make(map[string]string)
+		}
+		maps.Copy(h.Env.Sandbox, sandboxOutputs)
+		printer.StepDone(fmt.Sprintf("Pre-script injected %d sandbox env var(s)", len(sandboxOutputs)))
 	}
 
 	// 4a. Create sandbox.
