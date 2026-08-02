@@ -1,26 +1,40 @@
-# Training crawlers — blocked site-wide
+# Training crawlers — blocked site-wide, except documentation
 User-agent: ClaudeBot
+Allow: /docs/
+Allow: /llms.txt
 Disallow: /
 
 User-agent: GPTBot
+Allow: /docs/
+Allow: /llms.txt
 Disallow: /
 
 User-agent: CCBot
+Allow: /docs/
+Allow: /llms.txt
 Disallow: /
 
 User-agent: Google-Extended
+Allow: /docs/
+Allow: /llms.txt
 Disallow: /
 
 User-agent: Bytespider
+Allow: /docs/
+Allow: /llms.txt
 Disallow: /
 
 User-agent: meta-externalagent
+Allow: /docs/
+Allow: /llms.txt
 Disallow: /
 
 User-agent: Applebot
 Allow: /
 
 User-agent: Applebot-Extended
+Allow: /docs/
+Allow: /llms.txt
 Disallow: /
 
 # Retrieval / search bots — allowed
