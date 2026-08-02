@@ -64,7 +64,10 @@ Evaluates whether the code does what it claims to do.
 - If test files covering the changed code were recently modified, did those modifications weaken the test's ability to catch regressions?
 - Split-payload attacks: a production change paired with a test modification that masks the real behavior. (See [security-threat-model.md](security-threat-model.md#cross-cutting-attack-pattern-temporal-split-payload-test-poisoning) for why this matters.)
 - Coverage reduction: does the change remove or weaken existing test coverage?
-- Library-utility reimplementation: when the diff introduces manual string parsing or format manipulation (e.g., `indexOf`, `split`, `substring`, `startsWith` chains on structured strings), check whether the project's declared dependencies export a dedicated parsing utility for that format (e.g., `parseLocationRef`, `semver.parse`, `URL` constructor). Flag manual reimplementations that miss edge cases the utility handles as medium-severity with a concrete suggestion. Skip if no utility exists or the manual implementation is intentional (e.g., performance-critical hot path).
+- Library-utility reimplementation: manual string parsing or format manipulation that reimplements a utility available in the project's declared dependencies.
+  - Look for patterns like `indexOf`, `split`, `substring`, or `startsWith` chains on structured strings where a dedicated parsing utility exists (e.g., `parseLocationRef`, `semver.parse`, `URL` constructor).
+  - Flag as medium-severity with a concrete suggestion when the manual reimplementation misses edge cases the utility handles.
+  - Skip if no utility exists or the manual implementation is intentional (e.g., performance-critical hot path).
 
 **Context needed:** The diff, relevant surrounding code, test files, git history of relevant test files, existing patterns in the repo.
 
