@@ -245,8 +245,9 @@ class TestParseLines:
     def test_non_utf8_resilience(self):
         # Should not crash on non-UTF-8 bytes (opened with errors="replace")
         results = list(at.parse_lines(_fixture("non_utf8.jsonl")))
-        # Should parse at least the well-formed JSON lines
-        assert len(results) >= 2
+        # Fixture has exactly 3 parseable JSON dict lines (indices 0, 1, 3);
+        # line 2 is raw bad bytes and is skipped.
+        assert len(results) == 3
 
     def test_line_range_stops_early(self):
         # Only first 2 lines (0 and 1)
@@ -867,10 +868,14 @@ class TestCmdNetwork:
         at.cmd_network(args)
         out = capsys.readouterr().out
         data = json.loads(out)
-        for e in data:
-            host = e.get("host", "")
-            if e.get("verdict") != "DENIED":
-                assert "github.com" in host
+        # Fixture has 5 entries; only 3 match *.github.com (the npmjs and
+        # evil.example.com entries should be excluded).
+        assert len(data) == 3
+        all_hosts = [e.get("host", "") for e in data]
+        for h in all_hosts:
+            assert "github.com" in h
+        # Verify excluded hosts are truly absent.
+        assert not any("npmjs" in h for h in all_hosts)
 
     def test_empty_log(self, tmp_path, capsys):
         log_file = tmp_path / "empty.log"
