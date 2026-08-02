@@ -146,6 +146,175 @@ func TestCreateInstallationToken_UnknownRole(t *testing.T) {
 	assert.Contains(t, err.Error(), "no permissions defined")
 }
 
+func TestCreateInstallationToken_InvalidRepos_Retry(t *testing.T) {
+	var calls int
+	mockGH := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		var body map[string]interface{}
+		json.NewDecoder(r.Body).Decode(&body)
+		repos, _ := body["repositories"].([]interface{})
+
+		if calls == 1 {
+			// First call: 3 repos, one invalid — return 422.
+			assert.Len(t, repos, 3)
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			json.NewEncoder(w).Encode(githubValidationError{
+				Message: "Validation Failed",
+				Errors: []githubValidationErrorItem{
+					{
+						Resource: "InstallationToken",
+						Field:    "repositories",
+						Code:     "invalid",
+						Value:    []string{"deleted-repo"},
+					},
+				},
+			})
+			return
+		}
+
+		// Second call: retried with only valid repos.
+		assert.Len(t, repos, 2)
+		for _, r := range repos {
+			assert.NotEqual(t, "deleted-repo", r)
+		}
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(installationTokenResponse{
+			Token:     "ghs_retried_token",
+			ExpiresAt: "2099-01-01T00:00:00Z",
+			Repositories: []installationTokenRepository{
+				{FullName: "org/valid-repo-a"},
+				{FullName: "org/valid-repo-b"},
+			},
+			RepositorySelection: "selected",
+		})
+	}))
+	defer mockGH.Close()
+
+	token, expiresAt, granted, err := CreateInstallationToken(
+		t.Context(), http.DefaultClient, mockGH.URL, "fake-jwt", 42, "coder",
+		[]string{"valid-repo-a", "deleted-repo", "valid-repo-b"},
+	)
+	require.NoError(t, err)
+	assert.Equal(t, "ghs_retried_token", token)
+	assert.Equal(t, "2099-01-01T00:00:00Z", expiresAt)
+	assert.Equal(t, 2, calls, "should have made exactly 2 API calls")
+
+	require.NotNil(t, granted)
+	assert.Equal(t, []string{"deleted-repo"}, granted.InvalidRepos)
+	assert.Equal(t, "selected", granted.RepoSelection)
+	assert.Equal(t, []string{"org/valid-repo-a", "org/valid-repo-b"}, granted.Repos)
+}
+
+func TestCreateInstallationToken_AllReposInvalid(t *testing.T) {
+	mockGH := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		json.NewEncoder(w).Encode(githubValidationError{
+			Message: "Validation Failed",
+			Errors: []githubValidationErrorItem{
+				{
+					Resource: "InstallationToken",
+					Field:    "repositories",
+					Code:     "invalid",
+					Value:    []string{"deleted-a", "deleted-b"},
+				},
+			},
+		})
+	}))
+	defer mockGH.Close()
+
+	_, _, _, err := CreateInstallationToken(
+		t.Context(), http.DefaultClient, mockGH.URL, "fake-jwt", 42, "coder",
+		[]string{"deleted-a", "deleted-b"},
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "all requested repos are invalid")
+}
+
+func TestCreateInstallationToken_422_NonRepoError(t *testing.T) {
+	mockGH := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"message": "Validation Failed",
+			"errors": []map[string]string{
+				{"resource": "InstallationToken", "field": "permissions", "code": "invalid"},
+			},
+		})
+	}))
+	defer mockGH.Close()
+
+	_, _, _, err := CreateInstallationToken(
+		t.Context(), http.DefaultClient, mockGH.URL, "fake-jwt", 42, "coder",
+		[]string{"some-repo"},
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "status 422")
+	// Should include the response body for diagnostics, not discard it.
+	assert.Contains(t, err.Error(), "Validation Failed")
+}
+
+func TestCreateInstallationToken_422_NoRepos(t *testing.T) {
+	// 422 without repos should not trigger retry logic.
+	mockGH := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		json.NewEncoder(w).Encode(map[string]string{
+			"message": "Validation Failed",
+		})
+	}))
+	defer mockGH.Close()
+
+	_, _, _, err := CreateInstallationToken(
+		t.Context(), http.DefaultClient, mockGH.URL, "fake-jwt", 42, "coder",
+		nil, // no repos
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "status 422")
+}
+
+func TestParseInvalidRepos(t *testing.T) {
+	tests := []struct {
+		name     string
+		body     string
+		expected []string
+	}{
+		{
+			name: "single invalid repo",
+			body: `{"message":"Validation Failed","errors":[{"resource":"InstallationToken","field":"repositories","code":"invalid","value":["bad-repo"]}]}`,
+			expected: []string{"bad-repo"},
+		},
+		{
+			name: "multiple invalid repos",
+			body: `{"message":"Validation Failed","errors":[{"resource":"InstallationToken","field":"repositories","code":"invalid","value":["repo-a","repo-b"]}]}`,
+			expected: []string{"repo-a", "repo-b"},
+		},
+		{
+			name:     "non-repo error",
+			body:     `{"message":"Validation Failed","errors":[{"resource":"InstallationToken","field":"permissions","code":"invalid"}]}`,
+			expected: nil,
+		},
+		{
+			name:     "empty value array",
+			body:     `{"message":"Validation Failed","errors":[{"resource":"InstallationToken","field":"repositories","code":"invalid","value":[]}]}`,
+			expected: nil,
+		},
+		{
+			name:     "invalid JSON",
+			body:     `not json`,
+			expected: nil,
+		},
+		{
+			name:     "empty body",
+			body:     ``,
+			expected: nil,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := parseInvalidRepos([]byte(tc.body))
+			assert.Equal(t, tc.expected, got)
+		})
+	}
+}
+
 func TestRolePermissions_AllRolesPresent(t *testing.T) {
 	expectedRoles := []string{"triage", "coder", "review", "fix", "retro", "prioritize", "fullsend", "e2e"}
 	allPerms := RolePermissions()
