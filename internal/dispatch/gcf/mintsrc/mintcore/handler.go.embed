@@ -365,12 +365,12 @@ func (h *Handler) mintToken(ctx context.Context, org, role string, repos []strin
 		installationID, err = FindInstallation(ctx, h.httpClient, h.githubBaseURL, jwt, org, repos[0])
 	}
 	if err != nil {
-		return "", "", nil, &mintError{status: http.StatusBadGateway, msg: err.Error()}
+		return "", "", nil, &mintError{status: upstreamStatus(err), msg: err.Error()}
 	}
 
 	token, expiresAt, granted, err := CreateInstallationToken(ctx, h.httpClient, h.githubBaseURL, jwt, installationID, role, repos)
 	if err != nil {
-		return "", "", nil, &mintError{status: http.StatusBadGateway, msg: err.Error()}
+		return "", "", nil, &mintError{status: upstreamStatus(err), msg: err.Error()}
 	}
 
 	if granted != nil {
@@ -535,6 +535,18 @@ func (h *Handler) lookupRoleAppID(role string) (string, error) {
 		return "", fmt.Errorf("no app ID configured for role %q", role)
 	}
 	return appID, nil
+}
+
+// upstreamStatus inspects err for a GitHubAPIError. If GitHub returned a
+// 4xx client error the caller's request is at fault and will never succeed on
+// retry, so we forward that status. For 5xx or non-GitHub errors we return 502
+// (Bad Gateway) so clients know to retry.
+func upstreamStatus(err error) int {
+	var ghErr *GitHubAPIError
+	if errors.As(err, &ghErr) && ghErr.StatusCode >= 400 && ghErr.StatusCode < 500 {
+		return ghErr.StatusCode
+	}
+	return http.StatusBadGateway
 }
 
 // mintError is an HTTP-aware error carrying a status code for the response.

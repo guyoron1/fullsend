@@ -22,6 +22,30 @@ import (
 	"time"
 )
 
+// GitHubAPIError is returned when the GitHub API responds with a non-success
+// status code. It preserves the upstream status code and response body so
+// callers can distinguish client errors (4xx) from server errors (5xx) and
+// surface GitHub's error message in logs and client responses.
+type GitHubAPIError struct {
+	StatusCode int
+	Body       string
+	Action     string // what we were doing, e.g. "creating installation token"
+}
+
+func (e *GitHubAPIError) Error() string {
+	if e.Body != "" {
+		return fmt.Sprintf("%s returned status %d: %s", e.Action, e.StatusCode, e.Body)
+	}
+	return fmt.Sprintf("%s returned status %d", e.Action, e.StatusCode)
+}
+
+// readErrorBody reads up to maxBytes from r, drains any remainder, and
+// returns the content as a trimmed string.
+func readErrorBody(r io.Reader, maxBytes int64) string {
+	body, _ := io.ReadAll(io.LimitReader(r, maxBytes))
+	return strings.TrimSpace(string(body))
+}
+
 // installationResponse is the response from GET /repos/{owner}/{repo}/installation.
 type installationResponse struct {
 	ID      int64 `json:"id"`
@@ -253,8 +277,12 @@ func FindInstallation(ctx context.Context, httpClient HTTPDoer, githubBaseURL, j
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
-		return 0, fmt.Errorf("getting installation for %s/%s returned status %d", org, repo, resp.StatusCode)
+		body := readErrorBody(resp.Body, 4096)
+		return 0, &GitHubAPIError{
+			StatusCode: resp.StatusCode,
+			Body:       body,
+			Action:     fmt.Sprintf("getting installation for %s/%s", org, repo),
+		}
 	}
 
 	var inst installationResponse
@@ -293,8 +321,12 @@ func FindOrgInstallation(ctx context.Context, httpClient HTTPDoer, githubBaseURL
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
-		return 0, fmt.Errorf("getting org installation for %s returned status %d", org, resp.StatusCode)
+		body := readErrorBody(resp.Body, 4096)
+		return 0, &GitHubAPIError{
+			StatusCode: resp.StatusCode,
+			Body:       body,
+			Action:     fmt.Sprintf("getting org installation for %s", org),
+		}
 	}
 
 	var inst installationResponse
@@ -340,8 +372,12 @@ func GetOrgVariable(ctx context.Context, httpClient HTTPDoer, githubBaseURL, ins
 		return "", false, nil
 	}
 	if resp.StatusCode != http.StatusOK {
-		io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
-		return "", false, fmt.Errorf("getting org variable %s returned status %d", name, resp.StatusCode)
+		body := readErrorBody(resp.Body, 4096)
+		return "", false, &GitHubAPIError{
+			StatusCode: resp.StatusCode,
+			Body:       body,
+			Action:     fmt.Sprintf("getting org variable %s", name),
+		}
 	}
 
 	var varResp orgVariableResponse
@@ -386,8 +422,12 @@ func createInstallationTokenWithPermissions(ctx context.Context, httpClient HTTP
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
-		io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
-		return "", fmt.Errorf("creating installation token returned status %d", resp.StatusCode)
+		body := readErrorBody(resp.Body, 4096)
+		return "", &GitHubAPIError{
+			StatusCode: resp.StatusCode,
+			Body:       body,
+			Action:     "creating installation token",
+		}
 	}
 
 	var tokenResp installationTokenResponse
@@ -453,8 +493,12 @@ func CreateInstallationToken(ctx context.Context, httpClient HTTPDoer, githubBas
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
-		io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
-		return "", "", nil, fmt.Errorf("creating installation token returned status %d", resp.StatusCode)
+		body := readErrorBody(resp.Body, 4096)
+		return "", "", nil, &GitHubAPIError{
+			StatusCode: resp.StatusCode,
+			Body:       body,
+			Action:     "creating installation token",
+		}
 	}
 
 	var tokenResp installationTokenResponse

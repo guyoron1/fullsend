@@ -419,21 +419,86 @@ func TestReadForeignAllowlist_EmptyVariable(t *testing.T) {
 func TestFindOrgInstallation_NotFound(t *testing.T) {
 	mockGH := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(`{"message":"Not Found"}`))
 	}))
 	defer mockGH.Close()
 
 	_, err := FindOrgInstallation(t.Context(), http.DefaultClient, mockGH.URL, "fake-jwt", "myorg")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "status 404")
+
+	var ghErr *GitHubAPIError
+	require.ErrorAs(t, err, &ghErr)
+	assert.Equal(t, 404, ghErr.StatusCode)
+	assert.Contains(t, ghErr.Body, "Not Found")
+}
+
+func TestCreateInstallationToken_NonCreatedStatus_IncludesBody(t *testing.T) {
+	ghBody := `{"message":"Validation Failed","errors":[{"resource":"Repository","code":"invalid"}]}`
+	mockGH := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		w.Write([]byte(ghBody))
+	}))
+	defer mockGH.Close()
+
+	_, _, _, err := CreateInstallationToken(t.Context(), http.DefaultClient, mockGH.URL, "fake-jwt", 42, "coder", []string{"stale-repo"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "422")
+	assert.Contains(t, err.Error(), "Validation Failed")
+
+	var ghErr *GitHubAPIError
+	require.ErrorAs(t, err, &ghErr)
+	assert.Equal(t, http.StatusUnprocessableEntity, ghErr.StatusCode)
+	assert.Contains(t, ghErr.Body, "Validation Failed")
+}
+
+func TestCreateInstallationToken_5xxStatus_IncludesBody(t *testing.T) {
+	mockGH := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"message":"Internal Server Error"}`))
+	}))
+	defer mockGH.Close()
+
+	_, _, _, err := CreateInstallationToken(t.Context(), http.DefaultClient, mockGH.URL, "fake-jwt", 42, "coder", []string{"repo"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "500")
+	assert.Contains(t, err.Error(), "Internal Server Error")
+
+	var ghErr *GitHubAPIError
+	require.ErrorAs(t, err, &ghErr)
+	assert.Equal(t, http.StatusInternalServerError, ghErr.StatusCode)
+}
+
+func TestFindInstallation_ErrorIncludesBody(t *testing.T) {
+	mockGH := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte(`{"message":"Resource not accessible by integration"}`))
+	}))
+	defer mockGH.Close()
+
+	_, err := FindInstallation(t.Context(), http.DefaultClient, mockGH.URL, "fake-jwt", "myorg", "my-repo")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "403")
+	assert.Contains(t, err.Error(), "Resource not accessible")
+
+	var ghErr *GitHubAPIError
+	require.ErrorAs(t, err, &ghErr)
+	assert.Equal(t, http.StatusForbidden, ghErr.StatusCode)
 }
 
 func TestGetOrgVariable_ErrorStatus(t *testing.T) {
 	mockGH := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte(`{"message":"Resource not accessible"}`))
 	}))
 	defer mockGH.Close()
 
 	_, _, err := GetOrgVariable(t.Context(), http.DefaultClient, mockGH.URL, "ghs_policy", "pool-org", "VAR")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "status 403")
+
+	var ghErr *GitHubAPIError
+	require.ErrorAs(t, err, &ghErr)
+	assert.Equal(t, 403, ghErr.StatusCode)
+	assert.Contains(t, ghErr.Body, "Resource not accessible")
 }
