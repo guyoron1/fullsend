@@ -200,7 +200,7 @@ type IssueSearchOptions struct {
 	Repo    string    // repository name
 	Creator string    // filter by author login (empty = any)
 	Since   time.Time // only issues created on or after this time
-	State   string    // "open", "closed", or "" for any state
+	State   string    // "open" or "closed"; empty defaults to "open"
 }
 
 // IssueComment represents a comment on an issue.

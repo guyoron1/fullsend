@@ -2591,6 +2591,12 @@ func (c *LiveClient) GetIssue(ctx context.Context, owner, repo string, number in
 	}, nil
 }
 
+// containsSearchSyntax reports whether s contains characters that could
+// inject additional GitHub Search qualifiers (spaces, colons, quotes).
+func containsSearchSyntax(s string) bool {
+	return strings.ContainsAny(s, " \t:\"")
+}
+
 func labelNames(labels []struct {
 	Name string `json:"name"`
 }) []string {
@@ -2668,6 +2674,11 @@ func (c *LiveClient) ListOpenIssues(ctx context.Context, owner, repo string, lab
 // given filter criteria. Returns at most 100 results sorted by creation
 // time descending. Used for dedup checks before filing new issues.
 func (c *LiveClient) SearchIssues(ctx context.Context, opts forge.IssueSearchOptions) ([]forge.Issue, error) {
+	// Validate identifier fields to prevent search-qualifier injection.
+	if opts.Creator != "" && containsSearchSyntax(opts.Creator) {
+		return nil, fmt.Errorf("invalid creator %q: must not contain spaces or search qualifiers", opts.Creator)
+	}
+
 	// Build the search query string per GitHub Search syntax.
 	parts := []string{fmt.Sprintf("repo:%s/%s", opts.Owner, opts.Repo), "is:issue"}
 	if opts.Creator != "" {
