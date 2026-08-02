@@ -3564,6 +3564,50 @@ func TestCommitFiles_NonFastForwardRetry(t *testing.T) {
 	assert.True(t, committed)
 	assert.Equal(t, 2, patchCount)
 }
+
+func TestCommitFiles_StaleTreeSHARetry(t *testing.T) {
+	treePostCount := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == "GET" && r.URL.Path == "/repos/org/repo":
+			json.NewEncoder(w).Encode(map[string]string{"default_branch": "main"})
+		case r.Method == "GET" && r.URL.Path == "/repos/org/repo/git/ref/heads/main":
+			json.NewEncoder(w).Encode(map[string]any{"object": map[string]string{"sha": "abc123"}})
+		case r.Method == "GET" && strings.HasPrefix(r.URL.Path, "/repos/org/repo/git/commits/"):
+			json.NewEncoder(w).Encode(map[string]any{"tree": map[string]string{"sha": "tree000"}})
+		case r.Method == "GET" && strings.HasPrefix(r.URL.Path, "/repos/org/repo/git/trees/"):
+			json.NewEncoder(w).Encode(map[string]any{"tree": []any{}, "truncated": false})
+		case r.Method == "POST" && r.URL.Path == "/repos/org/repo/git/trees":
+			treePostCount++
+			if treePostCount == 1 {
+				w.WriteHeader(http.StatusUnprocessableEntity)
+				json.NewEncoder(w).Encode(map[string]any{
+					"message": "Tree SHA does not exist",
+				})
+				return
+			}
+			w.WriteHeader(http.StatusCreated)
+			json.NewEncoder(w).Encode(map[string]string{"sha": "newtree"})
+		case r.Method == "POST" && r.URL.Path == "/repos/org/repo/git/commits":
+			w.WriteHeader(http.StatusCreated)
+			json.NewEncoder(w).Encode(map[string]string{"sha": "newcommit"})
+		case r.Method == "PATCH" && r.URL.Path == "/repos/org/repo/git/refs/heads/main":
+			json.NewEncoder(w).Encode(map[string]any{})
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer srv.Close()
+
+	client := newTestClient(t, srv)
+	committed, err := client.CommitFiles(context.Background(), "org", "repo", "msg", []forge.TreeFile{
+		{Path: "f.txt", Content: []byte("x"), Mode: "100644"},
+	})
+	require.NoError(t, err)
+	assert.True(t, committed)
+	assert.Equal(t, 2, treePostCount, "expected one failed + one successful tree creation")
+}
+
 func TestCommitFiles_NonFastForward(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
