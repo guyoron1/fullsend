@@ -1277,3 +1277,86 @@ func TestBuildProviderUpdateArgs_ConfigNotExpandedForURL(t *testing.T) {
 			"URL-fetched provider config must not expand env vars on update")
 	}
 }
+
+func TestDownloadWithRetry_SucceedsOnFirstAttempt(t *testing.T) {
+	calls := 0
+	dl := func(_, _, _ string) error {
+		calls++
+		return nil
+	}
+
+	err := downloadWithRetry("test-sandbox", "/remote/repo", t.TempDir(), dl,
+		2, time.Millisecond, time.Millisecond)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, calls, "should succeed on first attempt without retrying")
+}
+
+func TestDownloadWithRetry_RetriesOnTimeout(t *testing.T) {
+	calls := 0
+	dl := func(_, _, _ string) error {
+		calls++
+		if calls == 1 {
+			return fmt.Errorf("download timed out: %w", context.DeadlineExceeded)
+		}
+		return nil
+	}
+
+	err := downloadWithRetry("test-sandbox", "/remote/repo", t.TempDir(), dl,
+		2, time.Millisecond, time.Millisecond)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, calls, "should retry once after timeout and then succeed")
+}
+
+func TestDownloadWithRetry_AllAttemptsTimeout(t *testing.T) {
+	calls := 0
+	dl := func(_, _, _ string) error {
+		calls++
+		return fmt.Errorf("download timed out: %w", context.DeadlineExceeded)
+	}
+
+	err := downloadWithRetry("test-sandbox", "/remote/repo", t.TempDir(), dl,
+		2, time.Millisecond, time.Millisecond)
+	require.Error(t, err)
+	assert.Equal(t, 3, calls, "should exhaust all attempts (1 initial + 2 retries)")
+	assert.Contains(t, err.Error(), "failed after 2 retries")
+	assert.ErrorIs(t, err, context.DeadlineExceeded,
+		"final error should wrap context.DeadlineExceeded for upstream classification")
+}
+
+func TestDownloadWithRetry_NonTimeoutError_NoRetry(t *testing.T) {
+	calls := 0
+	dl := func(_, _, _ string) error {
+		calls++
+		return fmt.Errorf("sandbox %q not found", "test-sandbox")
+	}
+
+	err := downloadWithRetry("test-sandbox", "/remote/repo", t.TempDir(), dl,
+		2, time.Millisecond, time.Millisecond)
+	require.Error(t, err)
+	assert.Equal(t, 1, calls, "should not retry on non-timeout errors")
+	assert.Contains(t, err.Error(), "not found")
+}
+
+func TestDownloadWithRetry_CleansUpBetweenRetries(t *testing.T) {
+	dir := t.TempDir()
+
+	calls := 0
+	dl := func(_, _, localPath string) error {
+		calls++
+		if calls == 1 {
+			// Simulate partial download by creating content in the directory.
+			require.NoError(t, os.WriteFile(filepath.Join(localPath, "partial.txt"), []byte("partial"), 0o644))
+			return fmt.Errorf("download timed out: %w", context.DeadlineExceeded)
+		}
+		// On retry, verify the directory was removed between attempts.
+		_, statErr := os.Stat(localPath)
+		assert.True(t, os.IsNotExist(statErr),
+			"directory should be removed before retry to avoid partial content")
+		return nil
+	}
+
+	err := downloadWithRetry("test-sandbox", "/remote/repo", dir, dl,
+		2, time.Millisecond, time.Millisecond)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, calls)
+}
