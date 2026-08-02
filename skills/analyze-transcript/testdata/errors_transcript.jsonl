@@ -1,0 +1,8 @@
+{"type":"agent-setting","agentSetting":"code","sessionId":"sess-err"}
+{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"tu1","is_error":true,"content":"Permission denied: /etc/shadow"}]},"timestamp":"2025-01-01T00:00:01Z"}
+{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"tu2","content":"<tool_use_error>Command not found</tool_use_error>"}]},"timestamp":"2025-01-01T00:00:02Z"}
+{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"tu3","content":"Exit code 1\nsome error output"}]},"timestamp":"2025-01-01T00:00:03Z"}
+{"type":"user","message":{"role":"user","content":"<error>Something went wrong</error>"},"timestamp":"2025-01-01T00:00:04Z"}
+{"type":"assistant","message":{"role":"assistant","content":"I encountered a fatal error while trying to run the command.","usage":{"input_tokens":50,"output_tokens":25},"stop_reason":"end_turn"},"timestamp":"2025-01-01T00:00:05Z"}
+{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"tu4","content":"<error>Read failed</error>"}]},"timestamp":"2025-01-01T00:00:06Z"}
+{"type":"assistant","message":{"role":"assistant","content":"The API error prevented completion.","usage":{"input_tokens":30,"output_tokens":15},"stop_reason":"end_turn"},"timestamp":"2025-01-01T00:00:07Z"}

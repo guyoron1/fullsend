@@ -1,0 +1,2 @@
+{"resourceSpans":[{"resource":{"attributes":[{"key":"service.name","value":{"stringValue":"agent"}}]},"scopeSpans":[]}]}
+{"scopeSpans":[{"scope":{"name":"tracer"},"spans":[{"traceId":"abc","spanId":"def","name":"tool_call"}]}]}
