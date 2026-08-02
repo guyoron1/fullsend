@@ -329,9 +329,9 @@ class TestErrorDetection:
         errors, mentions = at._collect_errors(_fixture("errors_transcript.jsonl"), max_w=400)
         # Errors: is_error tool_result, tool_use_error tool_result,
         # Exit code 1 tool_result, <error> in user text, <error> in tool_result
-        assert len(errors) >= 4
+        assert len(errors) == 5
         # Mentions: assistant text containing "fatal error" and "api error"
-        assert len(mentions) >= 2
+        assert len(mentions) == 2
 
     def test_result_error_patterns_match(self):
         """_RESULT_ERROR_PATTERNS matches expected error prefixes."""
@@ -389,6 +389,11 @@ class TestHostMatching:
 
     def test_case_insensitive(self):
         assert at._host_matches("API.GitHub.COM", "api.github.com") is True
+
+    def test_filter_val_not_lowered(self):
+        # _host_matches lowercases the candidate but not filter_val;
+        # callers are expected to pre-lowercase the filter.
+        assert at._host_matches("api.github.com", "GitHub.COM") is False
 
     def test_match_host_no_filter(self):
         e = {"host": "api.github.com"}
@@ -681,8 +686,12 @@ class TestCmdNetwork:
         at.cmd_network(args)
         out = capsys.readouterr().out
         data = json.loads(out)
-        # HTTP filter returns only entries with http_method plus DENIED
-        assert all(e.get("http_method") or e.get("verdict") == "DENIED" for e in data)
+        # HTTP filter returns entries with http_method plus DENIED entries
+        assert len(data) == 5
+        http_entries = [e for e in data if e.get("http_method")]
+        denied_entries = [e for e in data if e.get("verdict") == "DENIED"]
+        assert len(http_entries) == 4
+        assert len(denied_entries) == 1
 
     def test_json_with_method_filter(self, capsys):
         args = self._make_args(_fixture("sandbox_network.log"), json_output=True, method="POST")
