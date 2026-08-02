@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -533,4 +534,109 @@ func TestListPullRequestReviews(t *testing.T) {
 	assert.Equal(t, "reviewer", reviews[0].User)
 	assert.Equal(t, "APPROVED", reviews[0].State)
 	assert.Equal(t, "LGTM", reviews[0].Body)
+}
+
+func TestSearchIssuesReturnsResults(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, "/search/issues", r.URL.Path)
+
+		q := r.URL.Query().Get("q")
+		assert.Contains(t, q, "repo:owner/repo")
+		assert.Contains(t, q, "author:retro-bot")
+		assert.Contains(t, q, "is:issue")
+		assert.Contains(t, q, "is:open")
+		assert.Contains(t, q, "created:>=")
+		assert.Equal(t, "created", r.URL.Query().Get("sort"))
+		assert.Equal(t, "desc", r.URL.Query().Get("order"))
+
+		json.NewEncoder(w).Encode(map[string]any{
+			"total_count": 2,
+			"items": []map[string]any{
+				{
+					"number":   42,
+					"title":    "Add empty-diff guard",
+					"body":     "Details here",
+					"html_url": "https://github.com/owner/repo/issues/42",
+					"labels":   []map[string]any{{"name": "feature"}},
+				},
+				{
+					"number":   41,
+					"title":    "Another retro proposal",
+					"body":     "More details",
+					"html_url": "https://github.com/owner/repo/issues/41",
+					"labels":   []map[string]any{},
+				},
+			},
+		})
+	}))
+	defer srv.Close()
+
+	client := newTestClient(t, srv)
+	issues, err := client.SearchIssues(context.Background(), forge.IssueSearchOptions{
+		Owner:   "owner",
+		Repo:    "repo",
+		Creator: "retro-bot",
+		Since:   time.Date(2026, 7, 24, 14, 0, 0, 0, time.UTC),
+		State:   "open",
+	})
+	require.NoError(t, err)
+	require.Len(t, issues, 2)
+	assert.Equal(t, 42, issues[0].Number)
+	assert.Equal(t, "Add empty-diff guard", issues[0].Title)
+	assert.Equal(t, []string{"feature"}, issues[0].Labels)
+	assert.Equal(t, 41, issues[1].Number)
+}
+
+func TestSearchIssuesExcludesPullRequests(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(map[string]any{
+			"total_count": 2,
+			"items": []map[string]any{
+				{
+					"number":   1,
+					"title":    "Real Issue",
+					"body":     "",
+					"html_url": "https://github.com/o/r/issues/1",
+				},
+				{
+					"number":       2,
+					"title":        "A PR",
+					"body":         "",
+					"html_url":     "https://github.com/o/r/pull/2",
+					"pull_request": map[string]any{"url": "https://api.github.com/repos/o/r/pulls/2"},
+				},
+			},
+		})
+	}))
+	defer srv.Close()
+
+	client := newTestClient(t, srv)
+	issues, err := client.SearchIssues(context.Background(), forge.IssueSearchOptions{
+		Owner: "o",
+		Repo:  "r",
+	})
+	require.NoError(t, err)
+	require.Len(t, issues, 1)
+	assert.Equal(t, "Real Issue", issues[0].Title)
+}
+
+func TestSearchIssuesDefaultsToOpen(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query().Get("q")
+		assert.Contains(t, q, "is:open")
+		json.NewEncoder(w).Encode(map[string]any{
+			"total_count": 0,
+			"items":       []map[string]any{},
+		})
+	}))
+	defer srv.Close()
+
+	client := newTestClient(t, srv)
+	_, err := client.SearchIssues(context.Background(), forge.IssueSearchOptions{
+		Owner: "o",
+		Repo:  "r",
+		// State deliberately empty — should default to "open"
+	})
+	require.NoError(t, err)
 }
