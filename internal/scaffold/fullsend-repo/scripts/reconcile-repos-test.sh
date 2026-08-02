@@ -748,7 +748,7 @@ fi
 echo "PASS: non-comment YAML above sentinel rejected by content-injection guard"
 
 # ===========================
-# Test 5: shim missing ready- prefix guard is rejected by validation
+# Test 5: broken template aborts reconciliation (pre-loop validation)
 # ===========================
 
 # Reset state for test 5.
@@ -827,24 +827,30 @@ exit "\$rc"
 EOF5
 chmod +x "${MOCK_BIN}/gh"
 
-bash "${RECONCILE_SCRIPT}" "${CONFIG_DIR}" > "${TMPDIR}/stdout5.log" 2>&1 || true
-
-if ! grep -q "rendered shim fails alignment test validation" "${TMPDIR}/stdout5.log"; then
-  echo "FAIL: missing ready- prefix guard was not detected by validation"
+# Broken template must cause a non-zero exit (fail fast, not silent skip).
+if bash "${RECONCILE_SCRIPT}" "${CONFIG_DIR}" > "${TMPDIR}/stdout5.log" 2>&1; then
+  echo "FAIL: script exited 0 despite broken template — expected non-zero exit"
   cat "${TMPDIR}/stdout5.log"
   exit 1
 fi
 
-# Verify no branch/commit operations happened (repo was skipped).
-if grep -q "git/blobs" "${GH_LOG}" 2>/dev/null; then
-  echo "FAIL: blob was created despite validation failure"
+if ! grep -q "Shim template fails alignment test validation" "${TMPDIR}/stdout5.log"; then
+  echo "FAIL: missing pre-loop template validation error message"
+  cat "${TMPDIR}/stdout5.log"
   exit 1
 fi
 
-echo "PASS: shim missing ready- prefix guard rejected by pre-validation"
+# Verify no per-repo processing happened (failed before the loop).
+if grep -q "Checking.*test-repo" "${TMPDIR}/stdout5.log"; then
+  echo "FAIL: per-repo processing started despite broken template"
+  cat "${TMPDIR}/stdout5.log"
+  exit 1
+fi
+
+echo "PASS: broken template (missing ready- prefix guard) aborts with non-zero exit"
 
 # ===========================
-# Test 6: shim missing label-aware concurrency group is rejected
+# Test 6: template missing concurrency group aborts reconciliation
 # ===========================
 
 # Reset state for test 6.
@@ -857,10 +863,8 @@ cat > "${CONFIG_DIR}/templates/shim-workflow-call.yaml" <<'TMPL6'
 # if: (github.event.action != 'labeled' || startsWith(github.event.label.name, 'ready-'))
 TMPL6
 
-bash "${RECONCILE_SCRIPT}" "${CONFIG_DIR}" > "${TMPDIR}/stdout6.log" 2>&1 || true
-
-if ! grep -q "rendered shim fails alignment test validation" "${TMPDIR}/stdout6.log"; then
-  echo "FAIL: missing concurrency pattern was not detected by validation"
+if bash "${RECONCILE_SCRIPT}" "${CONFIG_DIR}" > "${TMPDIR}/stdout6.log" 2>&1; then
+  echo "FAIL: script exited 0 despite template missing concurrency group"
   cat "${TMPDIR}/stdout6.log"
   exit 1
 fi
@@ -871,7 +875,7 @@ if ! grep -q "missing label-aware concurrency group" "${TMPDIR}/stdout6.log"; th
   exit 1
 fi
 
-echo "PASS: shim missing label-aware concurrency group rejected by pre-validation"
+echo "PASS: template missing concurrency group aborts with non-zero exit"
 
 # ===========================
 # Test 7: valid shim template passes validation and proceeds
@@ -959,8 +963,8 @@ chmod +x "${MOCK_BIN}/gh"
 
 bash "${RECONCILE_SCRIPT}" "${CONFIG_DIR}" > "${TMPDIR}/stdout7.log" 2>&1 || true
 
-if grep -q "rendered shim fails alignment test validation" "${TMPDIR}/stdout7.log"; then
-  echo "FAIL: valid shim was rejected by validation"
+if grep -q "Shim template fails alignment test validation" "${TMPDIR}/stdout7.log"; then
+  echo "FAIL: valid shim was rejected by pre-loop validation"
   cat "${TMPDIR}/stdout7.log"
   exit 1
 fi
@@ -972,3 +976,146 @@ if ! grep -q "Created enrollment PR" "${TMPDIR}/stdout7.log"; then
 fi
 
 echo "PASS: valid shim template passes validation and proceeds to enrollment"
+
+# ===========================
+# Test 8: stale shim path validates header-merged content (call site 1)
+# ===========================
+
+# Reset state for test 8.
+rm -f "${GH_LOG}" "${TMPDIR}/blob-input-test-repo.json" "${COMMIT_MSGS_LOG}"
+
+# Valid template with all required patterns.
+cat > "${CONFIG_DIR}/templates/shim-workflow-call.yaml" <<'TMPL8'
+# --- fullsend managed below - do not edit ---
+# Valid shim template with all required patterns
+# if: (github.event.action != 'labeled' || startsWith(github.event.label.name, 'ready-'))
+# group: format('label-{0}', github.event.label.name)
+TMPL8
+
+# Config with a single repo.
+cat > "${CONFIG_DIR}/config.yaml" <<'CFG8'
+version: 1
+repos:
+  test-repo:
+    enabled: true
+CFG8
+
+cat > "${MOCK_BIN}/yq" <<'YQ8'
+#!/usr/bin/env bash
+query="${1:-}"
+if [[ "$query" == *"enabled == true"* ]]; then
+  echo "test-repo"
+elif [[ "$query" == *"enabled == false"* ]]; then
+  :
+fi
+YQ8
+chmod +x "${MOCK_BIN}/yq"
+
+# Mock gh that returns stale shim content with a user header.
+# The remote shim has a license header + sentinel + stale managed content.
+cat > "${MOCK_BIN}/gh" <<EOF8
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'gh' >> "${GH_LOG}"
+for arg in "\$@"; do printf ' %q' "\$arg" >> "${GH_LOG}"; done
+printf '\n' >> "${GH_LOG}"
+
+if [[ "\$1" == "pr" ]]; then
+  if [[ "\$2" == "create" ]]; then
+    echo "https://github.com/test-org/test-repo/pull/200"
+  fi
+  exit 0
+fi
+if [[ "\$1" != "api" ]]; then exit 0; fi
+
+jq_filter=""
+has_input=false
+shift; endpoint="\$1"; shift
+while [[ \$# -gt 0 ]]; do
+  case "\$1" in
+    --jq) jq_filter="\$2"; shift 2 ;;
+    --input) has_input=true; shift 2 ;;
+    --method|--field) shift 2 ;;
+    --silent) shift ;;
+    *) shift ;;
+  esac
+done
+
+if [[ "\$has_input" == "true" ]]; then
+  if [[ "\$endpoint" == *"/git/blobs" ]]; then
+    cat > "${TMPDIR}/blob-input-test-repo.json"
+  else
+    cat > /dev/null
+  fi
+fi
+
+json=""
+rc=0
+case "\$endpoint" in
+  repos/test-org/test-repo/actions/variables/*)
+    json='{"status":"404","message":"Not Found"}'
+    rc=1 ;;
+  repos/test-org/test-repo/contents/.github/workflows/fullsend.yaml)
+    # Stale remote shim with user header + sentinel + old managed content.
+    json='{"content":"IyBDb3B5cmlnaHQgMjAyNiBDb25mb3JtYQojIFNQRFgtTGljZW5zZS1JZGVudGlmaWVyOiBBcGFjaGUtMi4wCiMgLS0tIGZ1bGxzZW5kIG1hbmFnZWQgYmVsb3cgLSBkbyBub3QgZWRpdCAtLS0Kc3RhbGUgc2hpbSB0ZW1wbGF0ZQo=","sha":"file-sha"}' ;;
+  repos/test-org/test-repo/git/ref/heads/main)
+    json='{"object":{"sha":"base-sha"}}' ;;
+  repos/test-org/test-repo/git/commits/base-sha)
+    json='{"tree":{"sha":"base-tree-sha"}}' ;;
+  repos/test-org/test-repo/git/blobs)
+    json='{"sha":"blob-sha"}' ;;
+  repos/test-org/test-repo/git/trees)
+    json='{"sha":"tree-sha"}' ;;
+  repos/test-org/test-repo/git/commits)
+    json='{"sha":"desired-commit-sha"}' ;;
+  repos/test-org/test-repo/git/refs)
+    rc=1 ;;
+  repos/test-org/test-repo/git/refs/heads/*)
+    rc=0 ;;
+  repos/test-org/test-repo)
+    json='{"default_branch":"main","private":false}' ;;
+  *) rc=0 ;;
+esac
+
+if [[ -n "\$json" ]]; then
+  if [[ -n "\$jq_filter" ]]; then
+    printf '%s' "\$json" | jq -r "\$jq_filter"
+  else
+    printf '%s\n' "\$json"
+  fi
+fi
+exit "\$rc"
+EOF8
+chmod +x "${MOCK_BIN}/gh"
+
+bash "${RECONCILE_SCRIPT}" "${CONFIG_DIR}" > "${TMPDIR}/stdout8.log" 2>&1 || true
+
+# Verify the stale shim path was entered.
+if ! grep -q "shim is stale" "${TMPDIR}/stdout8.log"; then
+  echo "FAIL: stale shim was not detected"
+  cat "${TMPDIR}/stdout8.log"
+  exit 1
+fi
+
+# Verify per-repo validation passed (no validation failure message).
+if grep -q "rendered shim fails alignment test validation" "${TMPDIR}/stdout8.log"; then
+  echo "FAIL: stale shim path validation incorrectly rejected valid content"
+  cat "${TMPDIR}/stdout8.log"
+  exit 1
+fi
+
+# Verify the blob was created (update PR proceeded).
+if [ ! -f "${TMPDIR}/blob-input-test-repo.json" ]; then
+  echo "FAIL: no blob created — stale shim update did not proceed"
+  cat "${TMPDIR}/stdout8.log"
+  exit 1
+fi
+
+# Verify the update PR was created or the existing PR was updated.
+if ! grep -q "Created shim update PR\|Updated shim on existing PR" "${TMPDIR}/stdout8.log"; then
+  echo "FAIL: stale shim update did not create/update PR"
+  cat "${TMPDIR}/stdout8.log"
+  exit 1
+fi
+
+echo "PASS: stale shim path validates header-merged content and creates update PR"
