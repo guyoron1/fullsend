@@ -174,14 +174,16 @@ func TestMintDeployCmd_DryRunShowsResolvedSourceDir(t *testing.T) {
 	oldStdout := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
+	t.Cleanup(func() { os.Stdout = oldStdout })
 
 	cmd := newRootCmd()
 	cmd.SetArgs([]string{"mint", "deploy", "--project=my-project-id", "--dry-run"})
-	_ = cmd.Execute()
+	err := cmd.Execute()
 
 	w.Close()
 	os.Stdout = oldStdout
 
+	require.NoError(t, err)
 	out, _ := io.ReadAll(r)
 	stdout := string(out)
 	assert.Contains(t, stdout, gcf.DefaultFunctionSourceDir())
@@ -192,14 +194,16 @@ func TestMintDeployCmd_DryRunWithExplicitSourceDir(t *testing.T) {
 	oldStdout := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
+	t.Cleanup(func() { os.Stdout = oldStdout })
 
 	cmd := newRootCmd()
 	cmd.SetArgs([]string{"mint", "deploy", "--project=my-project-id", "--dry-run", "--source-dir=/custom/path"})
-	_ = cmd.Execute()
+	err := cmd.Execute()
 
 	w.Close()
 	os.Stdout = oldStdout
 
+	require.NoError(t, err)
 	out, _ := io.ReadAll(r)
 	stdout := string(out)
 	assert.Contains(t, stdout, "/custom/path")
@@ -366,29 +370,23 @@ func TestMintDeployCmd_CloudflareDryRun(t *testing.T) {
 }
 
 func TestMintDeployCmd_CloudflareDryRunShowsResolvedSourceDir(t *testing.T) {
-	origAccount := os.Getenv("CLOUDFLARE_ACCOUNT_ID")
-	origToken := os.Getenv("CLOUDFLARE_API_TOKEN")
-	defer func() {
-		os.Setenv("CLOUDFLARE_ACCOUNT_ID", origAccount)
-		os.Setenv("CLOUDFLARE_API_TOKEN", origToken)
-	}()
-
-	os.Setenv("CLOUDFLARE_ACCOUNT_ID", "test-account")
-	os.Setenv("CLOUDFLARE_API_TOKEN", "test-token")
+	withCFEnvVars(t)
 
 	// Capture stdout to verify dry-run reports the resolved checkout path
 	// instead of "embedded Worker adapter".
 	oldStdout := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
+	t.Cleanup(func() { os.Stdout = oldStdout })
 
 	cmd := newRootCmd()
 	cmd.SetArgs([]string{"mint", "deploy", "--platform=cloudflare", "--dry-run"})
-	_ = cmd.Execute()
+	err := cmd.Execute()
 
 	w.Close()
 	os.Stdout = oldStdout
 
+	require.NoError(t, err)
 	out, _ := io.ReadAll(r)
 	stdout := string(out)
 	assert.Contains(t, stdout, cf.DefaultWorkerSourceDir())

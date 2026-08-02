@@ -103,7 +103,7 @@ export GCP_PROJECT="<your-gcp-project>"
 fullsend mint deploy --project="$GCP_PROJECT"
 ```
 
-The binary includes an embedded copy of the mint Cloud Function source, so it works standalone without needing the repository checked out. If you are developing or testing changes to the mint source, run the CLI from a local clone — the `--source-dir` flag (default `internal/mint/`) uses your local copy when the path exists, falling back to the embedded source when it does not. The mint consists of two modules: `internal/mint/` (the entry point) and `internal/mintcore/` (shared verification and token exchange logic). The provisioner bundles `mintcore` automatically from the sibling directory.
+The binary includes an embedded copy of the mint Cloud Function source, so it works standalone without needing the repository checked out. When running from a local clone, the CLI automatically resolves `--source-dir` to the checkout path (`internal/mint/` for GCP, `internal/dispatch/cf/worker/` for Cloudflare) via `DefaultFunctionSourceDir()` / `DefaultWorkerSourceDir()`, falling back to the embedded source when the path does not exist. You can override this with an explicit `--source-dir` value. The mint consists of two modules: `internal/mint/` (the entry point) and `internal/mintcore/` (shared verification and token exchange logic). The provisioner bundles `mintcore` automatically from the sibling directory.
 
 The deploy command automatically detects when the deployed function is up-to-date (same source hash) and skips code redeployment, only updating WIF infrastructure and configuration.
 
@@ -125,7 +125,7 @@ Redeploying or upgrading an existing mint must use the same mode: `--public` for
 | `--region` | `us-central1` | Cloud region for the mint function |
 | `--pem-dir` | | Path to directory containing `{role}.pem` files (first-time bootstrap only); uses the default app set (`fullsend-ai`) |
 | `--public` | `false` | Deploy public mint (`ALLOWED_ORGS=*`, permissive WIF); required to redeploy an existing public mint |
-| `--source-dir` | (embedded) | Path to local mint source directory (for development; default uses the embedded copy) |
+| `--source-dir` | (checkout path when present, embedded otherwise) | Path to local mint source directory (default: resolved automatically via checkout-path detection; falls back to the embedded copy) |
 | `--skip-deploy` | `false` | Skip code upload, reuse existing function (only update WIF/config) |
 | `--dry-run` | `false` | Preview changes without making them |
 
