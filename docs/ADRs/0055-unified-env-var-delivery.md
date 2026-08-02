@@ -137,12 +137,24 @@ runtime-computed values take precedence over static config. See
 
 ### Precedence
 
-When both `env.sandbox` and `host_files` `.env` entries define the same
-key, `env.sandbox` takes precedence. This is enforced by bootstrap
-ordering: `.env.d/` files are sourced first, then `env.sandbox` exports
-are emitted, so `env.sandbox` wins on collision. This matches the
-expected use case: a harness inherits a shared `.env` file via
-`host_files` and overrides a single var with `env.sandbox`.
+Three sources can supply sandbox environment variables, listed from highest
+to lowest priority:
+
+1. **Pre-script outputs** — non-reserved keys written to
+   `$FULLSEND_PRESCRIPT_OUTPUT` (see
+   [prescript-output/v1](../normative/prescript-output/v1/README.md#sandbox-injection)).
+   These are merged into `env.sandbox` after the skip check and before sandbox
+   creation, overriding static entries on key collision.
+2. **Static `env.sandbox`** — key-value pairs declared in the harness YAML.
+3. **`host_files` `.env` entries** — files delivered via `host_files` with
+   `expand: true`.
+
+`env.sandbox` (including pre-script overrides) takes precedence over
+`host_files` `.env` entries. This is enforced by bootstrap ordering:
+`.env.d/` files are sourced first, then `env.sandbox` exports are emitted,
+so `env.sandbox` wins on collision. This matches the expected use case: a
+harness inherits a shared `.env` file via `host_files` and overrides a
+single var with `env.sandbox`.
 
 ### Deprecation
 
