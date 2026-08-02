@@ -51,6 +51,7 @@ type GrantedScope struct {
 	RepoSelection  string
 	AppID          string
 	InstallationID int64
+	DroppedRepos   []string // repos removed from the request because they were inaccessible
 }
 
 // canonicalRolePermissions defines the minimum GitHub App permissions per agent role.
@@ -418,6 +419,17 @@ func ReadForeignAllowlist(ctx context.Context, httpClient HTTPDoer, githubBaseUR
 	return ParseForeignAllowlist(value), nil
 }
 
+// TokenCreationError is returned when the GitHub API rejects a token creation
+// request. It carries the HTTP status code so callers can distinguish
+// recoverable failures (e.g. 422 from invalid repo names) from others.
+type TokenCreationError struct {
+	StatusCode int
+}
+
+func (e *TokenCreationError) Error() string {
+	return fmt.Sprintf("creating installation token returned status %d", e.StatusCode)
+}
+
 // CreateInstallationToken exchanges a JWT for an installation access token,
 // scoped to the given repos and role-specific permissions.
 func CreateInstallationToken(ctx context.Context, httpClient HTTPDoer, githubBaseURL, jwt string, installationID int64, role string, repos []string) (string, string, *GrantedScope, error) {
@@ -454,7 +466,7 @@ func CreateInstallationToken(ctx context.Context, httpClient HTTPDoer, githubBas
 
 	if resp.StatusCode != http.StatusCreated {
 		io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
-		return "", "", nil, fmt.Errorf("creating installation token returned status %d", resp.StatusCode)
+		return "", "", nil, &TokenCreationError{StatusCode: resp.StatusCode}
 	}
 
 	var tokenResp installationTokenResponse
@@ -475,4 +487,35 @@ func CreateInstallationToken(ctx context.Context, httpClient HTTPDoer, githubBas
 	}
 
 	return tokenResp.Token, tokenResp.ExpiresAt, granted, nil
+}
+
+// ValidateRepoAccess checks which repos are accessible to the GitHub App
+// installation by calling GET /repos/{org}/{repo}/installation for each repo.
+// Returns the lists of accessible and inaccessible repos.
+func ValidateRepoAccess(ctx context.Context, httpClient HTTPDoer, githubBaseURL, jwt, org string, repos []string) (valid, invalid []string) {
+	for _, repo := range repos {
+		reqURL := fmt.Sprintf("%s/repos/%s/%s/installation", githubBaseURL, org, repo)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
+		if err != nil {
+			invalid = append(invalid, repo)
+			continue
+		}
+		req.Header.Set("Authorization", "Bearer "+jwt)
+		req.Header.Set("Accept", "application/vnd.github+json")
+
+		resp, err := httpClient.Do(req)
+		if err != nil {
+			invalid = append(invalid, repo)
+			continue
+		}
+		io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
+		resp.Body.Close()
+
+		if resp.StatusCode == http.StatusOK {
+			valid = append(valid, repo)
+		} else {
+			invalid = append(invalid, repo)
+		}
+	}
+	return valid, invalid
 }
