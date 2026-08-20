@@ -1,0 +1,49 @@
+# Temporary diagnostic: check this repo's enrollment status on the fullsend
+# token mint. Calls GET /v1/status with this workflow run's OIDC token and
+# prints the HTTP status + response body. No secrets involved (OIDC only).
+# Safe to delete after diagnosis.
+name: Mint enrollment probe
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Call mint /v1/status
+        env:
+          FALLBACK_MINT_URL: https://fullsend-mint-gljhbkcloq-uc.a.run.app
+          VAR_MINT_URL: ${{ vars.FULLSEND_MINT_URL }}
+        run: |
+          set -euo pipefail
+          MINT_URL="${VAR_MINT_URL:-$FALLBACK_MINT_URL}"
+          echo "using mint url source: $([ -n "$VAR_MINT_URL" ] && echo repo-variable || echo fallback-hardcoded)"
+          OIDC_TOKEN=$(curl -sSf --retry 3 --retry-delay 2 --retry-all-errors \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=fullsend-mint" | jq -r '.value')
+          if [[ -z "$OIDC_TOKEN" || "$OIDC_TOKEN" == "null" ]]; then
+            echo "::error::Failed to obtain OIDC token"; exit 1
+          fi
+          # decode our own claims (public info about this run) for the report
+          echo "--- OIDC claims relevant to mint gates ---"
+          echo "$OIDC_TOKEN" | cut -d. -f2 | base64 -d 2>/dev/null | jq '{repository, repository_owner, job_workflow_ref, ref, aud}' || true
+          echo "--- mint /v1/status response ---"
+          HTTP_CODE=$(curl -s -o /tmp/status-body.json -w '%{http_code}' \
+            -H "Authorization: Bearer $OIDC_TOKEN" \
+            "$MINT_URL/v1/status")
+          echo "HTTP $HTTP_CODE"
+          cat /tmp/status-body.json || true
+          echo
+          if [[ "$HTTP_CODE" == "200" ]]; then
+            echo "RESULT: fork enrollment is INTACT on the mint (all three gates passed)."
+          elif [[ "$HTTP_CODE" == "401" ]]; then
+            echo "RESULT: mint rejects this repo's identity — enrollment entry for guyoron1/fullsend is missing/broken on the deployed service (PER_REPO_WIF_REPOS or WORKFLOW_HOST_REPOS). Re-enrollment needed."
+          else
+            echo "RESULT: unexpected status $HTTP_CODE — see body above."
+          fi
