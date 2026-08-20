@@ -1320,6 +1320,22 @@ func (f *FakeClient) ListOpenIssues(_ context.Context, owner, repo string, label
 	return filtered, nil
 }
 
+func (f *FakeClient) SearchIssues(_ context.Context, opts IssueSearchOptions) ([]Issue, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if e := f.err("SearchIssues"); e != nil {
+		return nil, e
+	}
+	if f.OpenIssues == nil {
+		return nil, nil
+	}
+	// Return all issues for the repo — the FakeClient doesn't track
+	// creator or creation time, so it returns everything and lets
+	// callers apply further filtering in tests.
+	issues := f.OpenIssues[opts.Owner+"/"+opts.Repo]
+	return append([]Issue(nil), issues...), nil
+}
+
 func issueHasLabels(issue Issue, labels []string) bool {
 	present := make(map[string]struct{}, len(issue.Labels))
 	for _, label := range issue.Labels {
