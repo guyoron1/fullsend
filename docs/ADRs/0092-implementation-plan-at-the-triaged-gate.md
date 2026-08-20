@@ -26,7 +26,11 @@ Proposed (implements [#113](https://github.com/fullsend-ai/fullsend/issues/113))
 
 The pipeline already pauses for a human between triage and code. An issue that triage accepts but does not auto-promote gets the `triaged` label — "waits for human review (applies to features and uncategorized issues)" — and stays there until a human applies `ready-to-code` or runs `/fs-code`.
 
-That gate exists, but the human standing at it has only the triage comment: a classification and a summary of *what* the issue is. Nothing says *how* the change would be made. So the promote decision is made blind to the approach, and the first artifact that reveals the approach is the finished PR.
+The human standing at that gate is not empty-handed. Triage already emits a `triage_summary` on every `sufficient` outcome, and its schema requires `root_cause_hypothesis`, `recommended_fix`, and `proposed_test_case` alongside severity, impact, and reproduction steps. So an approach of sorts is already on the issue.
+
+What is missing is **grounding**. `recommended_fix` is defined as "what a developer should investigate," and `proposed_test_case` is instructed to "not assume a specific test framework or file layout." Those are deliberate constraints, not gaps: triage runs on every issue, so it must stay cheap and forge-portable, and an abstract hypothesis is the honest output of an agent that has not read the code in depth. The result is that the promote decision is informed about *what is probably wrong* and uninformed about *what would actually change* — no verified file paths, no repository conventions, no blast radius across callers.
+
+The first artifact that reveals those is still the finished PR.
 
 [#113](https://github.com/fullsend-ai/fullsend/issues/113) has asked for the missing half since the original design review:
 
@@ -54,13 +58,14 @@ The plan is a file on a branch; merging is the approval.
 - Requires a proposals repo and a second enrollment surface, and replaces a label click with a PR review.
 - Disproportionate for the common case; worth revisiting for high-risk changes.
 
-### Option C: Extend the triage agent to emit a plan
+### Option C: Extend the triage agent to emit a grounded plan
 
-No new agent; triage's output gains a plan section.
+No new agent; triage's `triage_summary` gains verified paths and affected callers.
 
-- Cheapest to build.
-- Overloads a persona tuned for classification with a design task, and couples plan quality to triage's sandbox and prompt.
-- A plan is only worth writing for issues that reach the gate; triage runs on all of them.
+- Cheapest to build, and the fields are already there.
+- **Changes triage's cost profile for every issue.** Grounding requires a repository checkout and semantic queries against the code; triage runs on every issue opened or edited, including duplicates, questions, and spam. Paying that on all of them to benefit the subset that reaches the gate is the wrong trade.
+- Contradicts an existing deliberate constraint. Triage is instructed not to assume a file layout or test framework, which keeps it portable across forges and languages. Grounding is the opposite instruction, and putting both in one prompt makes the agent worse at each.
+- Overloads a persona tuned for classification with a design task.
 
 ## Decision
 
@@ -93,7 +98,7 @@ Everything else reuses a shipped primitive:
 
 ## Consequences
 
-- **The promote decision stops being blind.** A human at the `triaged` gate sees the intended approach before authorizing code, and rejecting it costs a comment instead of a PR.
+- **The promote decision gains ground truth.** Triage says what is probably wrong; the plan says what would actually change, in files that exist. Rejecting a wrong approach costs a comment instead of a PR.
 - **The code agent starts from an approved plan** rather than re-deriving intent from the issue body — the same input improvement the fix agent gets from `review-body.txt`.
 - **Issues that reach `triaged` get slower and cost one more sandboxed agent run.** Repo access means a real sandbox with a checkout, not a cheap prompt call — closer to a triage run than a code run, but not free. The gate already made these issues wait for a human; this adds that cost before the wait begins.
 - **Bugs and docs changes are unaffected**, because triage auto-promotes them straight to `ready-to-code` and never stops at `triaged`. Extending the plan step to them would require a new gate, which this ADR deliberately does not create.
