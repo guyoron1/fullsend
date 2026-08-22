@@ -442,7 +442,6 @@ harness files:
 | `inference`             | Inference provider (vertex, etc.)                |
 | `defaults.roles`        | Which roles are active by default for new repos  |
 | `defaults.max_implementation_retries` | Org-wide retry policy        |
-| `defaults.auto_merge`   | Org-wide auto-merge policy                       |
 | `repos`                 | Per-repo enabled/disabled and role overrides      |
 | `allowed_remote_resources` | URL allowlist for remote harness resources    |
 

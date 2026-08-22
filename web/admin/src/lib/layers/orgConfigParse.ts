@@ -7,7 +7,6 @@ export type OrgConfigYaml = {
   defaults?: {
     roles?: string[];
     max_implementation_retries?: number;
-    auto_merge?: boolean;
   };
   agents?: { role: string; name?: string; slug?: string }[];
   repos?: Record<string, { enabled?: boolean; roles?: string[] }>;
