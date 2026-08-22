@@ -123,14 +123,13 @@ type RepoDefaults struct {
 	Roles                    []string                  `yaml:"roles"`
 	Runtime                  string                    `yaml:"runtime,omitempty"`
 	MaxImplementationRetries int                       `yaml:"max_implementation_retries"`
-	AutoMerge                bool                      `yaml:"auto_merge"`
 	StatusNotifications      *StatusNotificationConfig `yaml:"status_notifications,omitempty"`
 }
 
 // RepoConfig holds per-repo configuration.
 // StatusNotifications is intentionally absent here — notification style is an
 // org-wide UX decision (consistent appearance across all repos), unlike roles
-// and auto_merge which are operationally per-repo.
+// which are operationally per-repo.
 type RepoConfig struct {
 	Roles   []string `yaml:"roles,omitempty"`
 	Enabled bool     `yaml:"enabled"`
@@ -247,7 +246,6 @@ func NewOrgConfig(allRepos, enabledRepos, roles []string, inferenceProvider, org
 			Roles:                    roles,
 			Runtime:                  "claude",
 			MaxImplementationRetries: 2,
-			AutoMerge:                false,
 		},
 		Repos:                  repos,
 		AllowedRemoteResources: DefaultAllowedRemoteResources(),
