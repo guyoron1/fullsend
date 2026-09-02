@@ -1874,3 +1874,185 @@ providers:
 	require.NoError(t, err, "Load must not reject URL providers via validProviderName")
 	assert.Len(t, h.Providers, 2)
 }
+
+// TestEnvVarExpansionSemantics documents the contract for ${VAR} references
+// in harness YAML (runner_env, env.runner, env.sandbox). Downstream code
+// (e.g. post-review.sh's REVIEW_PROTECTED_PATHS) relies on this behavior
+// to distinguish "operator didn't configure" from "operator set to empty".
+//
+// The pipeline is:
+//  1. ValidateRunnerEnvWith(lookup) — rejects truly unset vars with an error.
+//  2. os.Expand(v, expander) — replaces ${VAR} with the env value (only
+//     reached when validation passes, so the var is guaranteed to be set).
+//
+// This means there are three possible outcomes for a ${VAR} reference:
+//   - Var unset     → validation error, run aborts before expansion.
+//   - Var set to "" → validation passes, key present with empty string.
+//   - Var set to v  → validation passes, key present with expanded value.
+//
+// See issue #778 and fullsend-ai/agents#569 for the motivating context.
+func TestEnvVarExpansionSemantics(t *testing.T) {
+	t.Run("unset_var_rejects_runner_env", func(t *testing.T) {
+		h := &Harness{
+			Agent:     "agents/test.md",
+			RunnerEnv: map[string]string{"MY_VAR": "${MY_VAR}"},
+		}
+		lookup := func(key string) (string, bool) { return "", false }
+		err := h.ValidateRunnerEnvWith(lookup)
+		require.Error(t, err, "truly unset var must be rejected")
+		assert.Contains(t, err.Error(), "MY_VAR")
+		assert.Contains(t, err.Error(), "not set")
+	})
+
+	t.Run("unset_var_rejects_env_runner", func(t *testing.T) {
+		h := &Harness{
+			Agent: "agents/test.md",
+			Env: &EnvConfig{
+				Runner: map[string]string{"MY_VAR": "${MY_VAR}"},
+			},
+		}
+		lookup := func(key string) (string, bool) { return "", false }
+		err := h.ValidateRunnerEnvWith(lookup)
+		require.Error(t, err, "truly unset var must be rejected in env.runner")
+		assert.Contains(t, err.Error(), "MY_VAR")
+	})
+
+	t.Run("unset_var_rejects_env_sandbox", func(t *testing.T) {
+		h := &Harness{
+			Agent: "agents/test.md",
+			Env: &EnvConfig{
+				Sandbox: map[string]string{"MY_VAR": "${MY_VAR}"},
+			},
+		}
+		lookup := func(key string) (string, bool) { return "", false }
+		err := h.ValidateRunnerEnvWith(lookup)
+		require.Error(t, err, "truly unset var must be rejected in env.sandbox")
+		assert.Contains(t, err.Error(), "MY_VAR")
+	})
+
+	t.Run("empty_string_passes_validation_and_expands_to_empty", func(t *testing.T) {
+		h := &Harness{
+			Agent:     "agents/test.md",
+			RunnerEnv: map[string]string{"MY_VAR": "${MY_VAR}"},
+		}
+		lookup := func(key string) (string, bool) {
+			if key == "MY_VAR" {
+				return "", true // set but empty
+			}
+			return "", false
+		}
+		err := h.ValidateRunnerEnvWith(lookup)
+		require.NoError(t, err, "var set to empty string must pass validation")
+
+		// Simulate the expansion step (mirrors run.go lines 531-533).
+		expander := func(key string) string {
+			if key == "MY_VAR" {
+				return ""
+			}
+			return ""
+		}
+		expanded := os.Expand(h.RunnerEnv["MY_VAR"], expander)
+		assert.Equal(t, "", expanded, "empty-string var must expand to empty string")
+	})
+
+	t.Run("set_var_passes_validation_and_expands_to_value", func(t *testing.T) {
+		h := &Harness{
+			Agent:     "agents/test.md",
+			RunnerEnv: map[string]string{"MY_VAR": "${MY_VAR}"},
+		}
+		lookup := func(key string) (string, bool) {
+			if key == "MY_VAR" {
+				return "path/a,path/b", true
+			}
+			return "", false
+		}
+		err := h.ValidateRunnerEnvWith(lookup)
+		require.NoError(t, err, "var set to a value must pass validation")
+
+		expander := func(key string) string {
+			if key == "MY_VAR" {
+				return "path/a,path/b"
+			}
+			return ""
+		}
+		expanded := os.Expand(h.RunnerEnv["MY_VAR"], expander)
+		assert.Equal(t, "path/a,path/b", expanded,
+			"var set to a value must expand to that value")
+	})
+
+	t.Run("mixed_literal_and_var_expands_correctly", func(t *testing.T) {
+		h := &Harness{
+			Agent:     "agents/test.md",
+			RunnerEnv: map[string]string{"ENDPOINT": "https://${HOST}/api"},
+		}
+		lookup := func(key string) (string, bool) {
+			if key == "HOST" {
+				return "example.com", true
+			}
+			return "", false
+		}
+		err := h.ValidateRunnerEnvWith(lookup)
+		require.NoError(t, err)
+
+		expander := func(key string) string {
+			if key == "HOST" {
+				return "example.com"
+			}
+			return ""
+		}
+		expanded := os.Expand(h.RunnerEnv["ENDPOINT"], expander)
+		assert.Equal(t, "https://example.com/api", expanded)
+	})
+
+	t.Run("env_runner_and_sandbox_expand_independently", func(t *testing.T) {
+		h := &Harness{
+			Agent: "agents/test.md",
+			Env: &EnvConfig{
+				Runner:  map[string]string{"RUNNER_KEY": "${SHARED_VAR}"},
+				Sandbox: map[string]string{"SANDBOX_KEY": "${SHARED_VAR}"},
+			},
+		}
+		lookup := func(key string) (string, bool) {
+			if key == "SHARED_VAR" {
+				return "shared-value", true
+			}
+			return "", false
+		}
+		err := h.ValidateRunnerEnvWith(lookup)
+		require.NoError(t, err)
+
+		expander := func(key string) string {
+			if key == "SHARED_VAR" {
+				return "shared-value"
+			}
+			return ""
+		}
+		assert.Equal(t, "shared-value", os.Expand(h.Env.Runner["RUNNER_KEY"], expander))
+		assert.Equal(t, "shared-value", os.Expand(h.Env.Sandbox["SANDBOX_KEY"], expander))
+	})
+
+	t.Run("optional_host_file_skips_unset_var", func(t *testing.T) {
+		h := &Harness{
+			Agent: "agents/test.md",
+			HostFiles: []HostFile{
+				{Src: "${OPTIONAL_PATH}", Dest: "/tmp/dest", Optional: true},
+			},
+		}
+		lookup := func(key string) (string, bool) { return "", false }
+		err := h.ValidateRunnerEnvWith(lookup)
+		require.NoError(t, err, "optional host_file with unset var must be skipped")
+	})
+
+	t.Run("required_host_file_rejects_unset_var", func(t *testing.T) {
+		h := &Harness{
+			Agent: "agents/test.md",
+			HostFiles: []HostFile{
+				{Src: "${REQUIRED_PATH}", Dest: "/tmp/dest", Optional: false},
+			},
+		}
+		lookup := func(key string) (string, bool) { return "", false }
+		err := h.ValidateRunnerEnvWith(lookup)
+		require.Error(t, err, "required host_file with unset var must be rejected")
+		assert.Contains(t, err.Error(), "REQUIRED_PATH")
+	})
+}
