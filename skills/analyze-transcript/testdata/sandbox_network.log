@@ -1,0 +1,5 @@
+[1000.000] [sandbox] [info ] [ocsf] network_activity [low] -> api.github.com:443 ALLOWED /usr/bin/curl(1234) GET https://api.github.com/repos/foo/bar [policy:github-api engine:nftables]
+[1001.500] [sandbox] [info ] [ocsf] network_activity [low] -> registry.npmjs.org:443 ALLOWED /usr/bin/node(2345) GET https://registry.npmjs.org/express [policy:npm engine:nftables]
+[1002.000] [sandbox] [warn ] [ocsf] network_activity [high] -> evil.example.com:443 DENIED /usr/bin/curl(1234) [reason:blocked by policy]
+[1003.000] [sandbox] [info ] [ocsf] network_activity [low] -> api.github.com:443 ALLOWED /usr/bin/curl(1234) POST https://api.github.com/graphql [policy:github-api engine:nftables]
+[1004.000] [sandbox] [info ] [ocsf] network_activity [low] -> uploads.github.com:443 ALLOWED /usr/bin/curl(1234) PUT https://uploads.github.com/repos/foo/bar/releases/1/assets [policy:github-api engine:nftables]

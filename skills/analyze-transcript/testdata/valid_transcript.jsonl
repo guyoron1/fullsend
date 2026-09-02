@@ -1,0 +1,5 @@
+{"type":"agent-setting","agentSetting":"code","sessionId":"sess-001","timestamp":"2025-01-01T00:00:00Z"}
+{"type":"user","message":{"role":"user","content":"Fix the bug"},"timestamp":"2025-01-01T00:00:01Z"}
+{"type":"assistant","message":{"role":"assistant","model":"claude-sonnet-4-20250514","content":[{"type":"text","text":"I will fix the bug."},{"type":"tool_use","id":"tu1","name":"Read","input":{"path":"foo.py"}}],"usage":{"input_tokens":100,"output_tokens":50,"cache_read_input_tokens":10,"cache_creation_input_tokens":5},"stop_reason":"tool_use"},"timestamp":"2025-01-01T00:00:10Z"}
+{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"tu1","content":"file contents here"}]},"timestamp":"2025-01-01T00:00:11Z"}
+{"type":"assistant","message":{"role":"assistant","model":"claude-sonnet-4-20250514","content":[{"type":"text","text":"Done fixing."}],"usage":{"input_tokens":200,"output_tokens":100,"cache_read_input_tokens":20,"cache_creation_input_tokens":10},"stop_reason":"end_turn"},"timestamp":"2025-01-01T00:01:00Z"}
