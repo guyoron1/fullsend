@@ -214,6 +214,20 @@ type ReviewComment struct {
 	Body string // comment body (Markdown)
 }
 
+// PullRequestReviewComment represents an existing inline comment on a
+// pull request diff, as returned by the "List review comments" API.
+// This is distinct from ReviewComment (which is used when *creating*
+// inline comments). PullRequestReviewComment carries metadata needed
+// for lifecycle management (e.g., minimizing stale comments).
+type PullRequestReviewComment struct {
+	ID     int
+	NodeID string
+	User   string // author login
+	Path   string
+	Line   int
+	Body   string
+}
+
 // PullRequestFileDiff represents a file changed in a pull request along
 // with its unified diff patch. The patch may be empty for binary files,
 // rename-only changes, or when GitHub truncates large diffs.
@@ -524,6 +538,11 @@ type Client interface {
 	// comments, when non-nil, attaches inline diff comments to the review.
 	CreatePullRequestReview(ctx context.Context, owner, repo string, number int, event, body, commitSHA string, comments []ReviewComment) error
 	ListPullRequestReviews(ctx context.Context, owner, repo string, number int) ([]PullRequestReview, error)
+	// ListPullRequestReviewComments returns all inline review comments
+	// on a pull request (comments attached to specific lines in the diff).
+	// Used to identify stale inline comments from prior review runs that
+	// should be minimized before posting new ones.
+	ListPullRequestReviewComments(ctx context.Context, owner, repo string, number int) ([]PullRequestReviewComment, error)
 	DismissPullRequestReview(ctx context.Context, owner, repo string, number, reviewID int, message string) error
 
 	// Change proposal merge

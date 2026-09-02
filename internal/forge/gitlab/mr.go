@@ -471,6 +471,13 @@ func (c *LiveClient) ListPullRequestReviews(ctx context.Context, owner, repo str
 	return result, nil
 }
 
+// ListPullRequestReviewComments is not supported on GitLab — there is no
+// equivalent of GitHub's pull request review comment minimization. Inline
+// comments on GitLab MRs are plain notes without a minimize/hide feature.
+func (c *LiveClient) ListPullRequestReviewComments(_ context.Context, _, _ string, _ int) ([]forge.PullRequestReviewComment, error) {
+	return nil, forge.ErrNotSupported
+}
+
 // DismissPullRequestReview dismisses a review on a merge request.
 //
 // On GitLab, if the review was an approval, this unapproves the MR.
