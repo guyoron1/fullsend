@@ -38,6 +38,7 @@ type mintResponse struct {
 	GrantedRepos  []string          `json:"granted_repos,omitempty"`
 	GrantedPerms  map[string]string `json:"granted_permissions,omitempty"`
 	RepoSelection string            `json:"repository_selection,omitempty"`
+	DroppedRepos  []string          `json:"dropped_repos,omitempty"`
 }
 
 // statusResponse is returned by the /v1/status diagnostic endpoint.
@@ -291,6 +292,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		resp.GrantedRepos = granted.Repos
 		resp.GrantedPerms = granted.Permissions
 		resp.RepoSelection = granted.RepoSelection
+		resp.DroppedRepos = granted.DroppedRepos
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -363,6 +365,15 @@ func (h *Handler) mintToken(ctx context.Context, org, role string, repos []strin
 		installationID, err = FindOrgInstallation(ctx, h.httpClient, h.githubBaseURL, jwt, org)
 	} else {
 		installationID, err = FindInstallation(ctx, h.httpClient, h.githubBaseURL, jwt, org, repos[0])
+		var ile *installationLookupError
+		if errors.As(err, &ile) && ile.StatusCode == http.StatusNotFound {
+			// repos[0] may have been deleted/transferred; fall back to
+			// org-level installation lookup so we can still validate the
+			// remaining repos. Only fall back on 404 — other errors
+			// (e.g. org mismatch) are security-relevant and must
+			// propagate.
+			installationID, err = FindOrgInstallation(ctx, h.httpClient, h.githubBaseURL, jwt, org)
+		}
 	}
 	if err != nil {
 		return "", "", nil, &mintError{status: http.StatusBadGateway, msg: err.Error()}
@@ -370,7 +381,31 @@ func (h *Handler) mintToken(ctx context.Context, org, role string, repos []strin
 
 	token, expiresAt, granted, err := CreateInstallationToken(ctx, h.httpClient, h.githubBaseURL, jwt, installationID, role, repos)
 	if err != nil {
-		return "", "", nil, &mintError{status: http.StatusBadGateway, msg: err.Error()}
+		var tce *tokenCreationError
+		if errors.As(err, &tce) && tce.StatusCode == http.StatusUnprocessableEntity && len(repos) > 0 {
+			// GitHub returned 422 — one or more repo names are invalid
+			// (deleted, transferred, or renamed). Validate each repo
+			// individually and retry with only the accessible ones.
+			validRepos, droppedRepos := ValidateRepoAccess(ctx, h.httpClient, h.githubBaseURL, jwt, org, repos)
+			if len(validRepos) == 0 {
+				return "", "", nil, &mintError{
+					status: http.StatusUnprocessableEntity,
+					msg:    fmt.Sprintf("all %d requested repos are inaccessible", len(repos)),
+				}
+			}
+			log.Printf("dropped %d inaccessible repo(s): %v; retrying with %d valid repo(s): %v",
+				len(droppedRepos), droppedRepos, len(validRepos), validRepos)
+
+			token, expiresAt, granted, err = CreateInstallationToken(ctx, h.httpClient, h.githubBaseURL, jwt, installationID, role, validRepos)
+			if err != nil {
+				return "", "", nil, &mintError{status: http.StatusBadGateway, msg: err.Error()}
+			}
+			if granted != nil {
+				granted.DroppedRepos = droppedRepos
+			}
+		} else {
+			return "", "", nil, &mintError{status: http.StatusBadGateway, msg: err.Error()}
+		}
 	}
 
 	if granted != nil {

@@ -2821,3 +2821,295 @@ func TestHandler_CrossOrgForeignDenied(t *testing.T) {
 		t.Fatalf("expected 403, got %d: %s", rec.Code, rec.Body.String())
 	}
 }
+
+func TestHandler_StaleRepo422Recovery(t *testing.T) {
+	t.Setenv("ROLE_APP_IDS", `{"coder":"200"}`)
+
+	pemData, err := generateTestRSAKey()
+	if err != nil {
+		t.Fatalf("generating test key: %v", err)
+	}
+
+	env := newTestOIDCEnv(t, &fakePEMAccessor{
+		pems: map[string][]byte{"coder": pemData},
+	})
+	token := env.signToken(t, nil)
+
+	var tokenAttempts int
+	github := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/repos/test-org/valid-repo/installation" && r.Method == http.MethodGet:
+			json.NewEncoder(w).Encode(installationResponse{
+				ID: 12345, Account: struct {
+					Login string `json:"login"`
+				}{Login: "test-org"},
+			})
+		case r.URL.Path == "/repos/test-org/disabled-repo/installation" && r.Method == http.MethodGet:
+			// Disabled-but-valid repo still has the app installed.
+			json.NewEncoder(w).Encode(installationResponse{
+				ID: 12345, Account: struct {
+					Login string `json:"login"`
+				}{Login: "test-org"},
+			})
+		case r.URL.Path == "/repos/test-org/deleted-repo/installation" && r.Method == http.MethodGet:
+			w.WriteHeader(http.StatusNotFound)
+		case strings.HasPrefix(r.URL.Path, "/app/installations/12345/access_tokens") && r.Method == http.MethodPost:
+			tokenAttempts++
+			var body map[string]interface{}
+			json.NewDecoder(r.Body).Decode(&body)
+			repos, _ := body["repositories"].([]interface{})
+
+			// First attempt includes deleted-repo: return 422.
+			for _, repo := range repos {
+				if repo == "deleted-repo" {
+					w.WriteHeader(http.StatusUnprocessableEntity)
+					w.Write([]byte(`{"message":"Validation Failed"}`))
+					return
+				}
+			}
+			// Retry without deleted-repo: succeed.
+			w.WriteHeader(http.StatusCreated)
+			json.NewEncoder(w).Encode(installationTokenResponse{
+				Token:     "ghs_recovered_token",
+				ExpiresAt: "2026-05-06T12:00:00Z",
+				Permissions: map[string]string{
+					"contents": "write", "metadata": "read",
+				},
+				Repositories: []installationTokenRepository{
+					{FullName: "test-org/valid-repo"},
+					{FullName: "test-org/disabled-repo"},
+				},
+				RepositorySelection: "selected",
+			})
+		default:
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer github.Close()
+	env.handler.githubBaseURL = github.URL
+
+	body := `{"role":"coder","repos":["valid-repo","deleted-repo","disabled-repo"]}`
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/v1/token", strings.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+token)
+	env.handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var resp mintResponse
+	json.NewDecoder(rec.Body).Decode(&resp)
+	if resp.Token != "ghs_recovered_token" {
+		t.Fatalf("expected ghs_recovered_token, got %s", resp.Token)
+	}
+	if len(resp.DroppedRepos) != 1 || resp.DroppedRepos[0] != "deleted-repo" {
+		t.Fatalf("expected dropped_repos=[deleted-repo], got %v", resp.DroppedRepos)
+	}
+	if len(resp.GrantedRepos) != 2 {
+		t.Fatalf("expected 2 granted repos, got %v", resp.GrantedRepos)
+	}
+	if tokenAttempts != 2 {
+		t.Fatalf("expected 2 token creation attempts, got %d", tokenAttempts)
+	}
+}
+
+func TestHandler_StaleRepo422Recovery_AllInvalid(t *testing.T) {
+	t.Setenv("ROLE_APP_IDS", `{"coder":"200"}`)
+
+	pemData, err := generateTestRSAKey()
+	if err != nil {
+		t.Fatalf("generating test key: %v", err)
+	}
+
+	env := newTestOIDCEnv(t, &fakePEMAccessor{
+		pems: map[string][]byte{"coder": pemData},
+	})
+	token := env.signToken(t, nil)
+
+	github := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/repos/test-org/gone-a/installation" && r.Method == http.MethodGet:
+			w.WriteHeader(http.StatusNotFound)
+		case r.URL.Path == "/repos/test-org/gone-b/installation" && r.Method == http.MethodGet:
+			w.WriteHeader(http.StatusNotFound)
+		case r.URL.Path == "/orgs/test-org/installation" && r.Method == http.MethodGet:
+			// Org-level fallback for FindInstallation failure.
+			json.NewEncoder(w).Encode(installationResponse{
+				ID: 12345, Account: struct {
+					Login string `json:"login"`
+				}{Login: "test-org"},
+			})
+		case strings.HasPrefix(r.URL.Path, "/app/installations/12345/access_tokens") && r.Method == http.MethodPost:
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			w.Write([]byte(`{"message":"Validation Failed"}`))
+		default:
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer github.Close()
+	env.handler.githubBaseURL = github.URL
+
+	body := `{"role":"coder","repos":["gone-a","gone-b"]}`
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/v1/token", strings.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+token)
+	env.handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("expected 422 when all repos invalid, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var resp map[string]string
+	json.NewDecoder(rec.Body).Decode(&resp)
+	if !strings.Contains(resp["error"], "mint failed") {
+		t.Fatalf("expected 'mint failed' error, got: %s", resp["error"])
+	}
+}
+
+func TestHandler_AllReposValid_NoRetry(t *testing.T) {
+	t.Setenv("ROLE_APP_IDS", `{"coder":"200"}`)
+
+	pemData, err := generateTestRSAKey()
+	if err != nil {
+		t.Fatalf("generating test key: %v", err)
+	}
+
+	env := newTestOIDCEnv(t, &fakePEMAccessor{
+		pems: map[string][]byte{"coder": pemData},
+	})
+	token := env.signToken(t, nil)
+
+	var tokenAttempts int
+	github := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/repos/test-org/repo-a/installation" && r.Method == http.MethodGet:
+			json.NewEncoder(w).Encode(installationResponse{
+				ID: 12345, Account: struct {
+					Login string `json:"login"`
+				}{Login: "test-org"},
+			})
+		case strings.HasPrefix(r.URL.Path, "/app/installations/12345/access_tokens") && r.Method == http.MethodPost:
+			tokenAttempts++
+			w.WriteHeader(http.StatusCreated)
+			json.NewEncoder(w).Encode(installationTokenResponse{
+				Token:     "ghs_all_valid",
+				ExpiresAt: "2026-05-06T12:00:00Z",
+			})
+		default:
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer github.Close()
+	env.handler.githubBaseURL = github.URL
+
+	body := `{"role":"coder","repos":["repo-a","repo-b"]}`
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/v1/token", strings.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+token)
+	env.handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var resp mintResponse
+	json.NewDecoder(rec.Body).Decode(&resp)
+	if resp.Token != "ghs_all_valid" {
+		t.Fatalf("expected ghs_all_valid, got %s", resp.Token)
+	}
+	if len(resp.DroppedRepos) != 0 {
+		t.Fatalf("expected no dropped repos, got %v", resp.DroppedRepos)
+	}
+	if tokenAttempts != 1 {
+		t.Fatalf("expected exactly 1 token attempt (no retry), got %d", tokenAttempts)
+	}
+}
+
+func TestHandler_StaleFirstRepo_FallbackToOrgInstallation(t *testing.T) {
+	t.Setenv("ROLE_APP_IDS", `{"coder":"200"}`)
+
+	pemData, err := generateTestRSAKey()
+	if err != nil {
+		t.Fatalf("generating test key: %v", err)
+	}
+
+	env := newTestOIDCEnv(t, &fakePEMAccessor{
+		pems: map[string][]byte{"coder": pemData},
+	})
+	token := env.signToken(t, nil)
+
+	var tokenAttempts int
+	github := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/repos/test-org/deleted-repo/installation" && r.Method == http.MethodGet:
+			// First repo (repos[0]) is deleted.
+			w.WriteHeader(http.StatusNotFound)
+		case r.URL.Path == "/orgs/test-org/installation" && r.Method == http.MethodGet:
+			// Org-level fallback succeeds.
+			json.NewEncoder(w).Encode(installationResponse{
+				ID: 12345, Account: struct {
+					Login string `json:"login"`
+				}{Login: "test-org"},
+			})
+		case r.URL.Path == "/repos/test-org/valid-repo/installation" && r.Method == http.MethodGet:
+			json.NewEncoder(w).Encode(installationResponse{
+				ID: 12345, Account: struct {
+					Login string `json:"login"`
+				}{Login: "test-org"},
+			})
+		case strings.HasPrefix(r.URL.Path, "/app/installations/12345/access_tokens") && r.Method == http.MethodPost:
+			tokenAttempts++
+			var body map[string]interface{}
+			json.NewDecoder(r.Body).Decode(&body)
+			repos, _ := body["repositories"].([]interface{})
+
+			for _, repo := range repos {
+				if repo == "deleted-repo" {
+					w.WriteHeader(http.StatusUnprocessableEntity)
+					w.Write([]byte(`{"message":"Validation Failed"}`))
+					return
+				}
+			}
+			w.WriteHeader(http.StatusCreated)
+			json.NewEncoder(w).Encode(installationTokenResponse{
+				Token:     "ghs_fallback_token",
+				ExpiresAt: "2026-05-06T12:00:00Z",
+				Repositories: []installationTokenRepository{
+					{FullName: "test-org/valid-repo"},
+				},
+				RepositorySelection: "selected",
+			})
+		default:
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer github.Close()
+	env.handler.githubBaseURL = github.URL
+
+	body := `{"role":"coder","repos":["deleted-repo","valid-repo"]}`
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/v1/token", strings.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+token)
+	env.handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var resp mintResponse
+	json.NewDecoder(rec.Body).Decode(&resp)
+	if resp.Token != "ghs_fallback_token" {
+		t.Fatalf("expected ghs_fallback_token, got %s", resp.Token)
+	}
+	if len(resp.DroppedRepos) != 1 || resp.DroppedRepos[0] != "deleted-repo" {
+		t.Fatalf("expected dropped_repos=[deleted-repo], got %v", resp.DroppedRepos)
+	}
+	if tokenAttempts != 2 {
+		t.Fatalf("expected 2 token creation attempts, got %d", tokenAttempts)
+	}
+}
