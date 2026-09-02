@@ -1126,6 +1126,126 @@ func TestMergeForgeConfigInto_PreflightCheckCarryForward(t *testing.T) {
 		"PreflightCheck should be carried forward from base in forge merge")
 }
 
+// Issue #847: child's top-level pre_script must survive forge merge when
+// the base declares forge.<platform>.pre_script.
+func TestMergeBaseIntoChild_ChildPreScriptSurvivesBaseForge(t *testing.T) {
+	base := &Harness{
+		Agent: "agents/base.md",
+		Role:  "triage",
+		Forge: map[string]*ForgeConfig{
+			"github": {
+				PreScript:  "base-forge-pre.sh",
+				PostScript: "base-forge-post.sh",
+			},
+		},
+	}
+	child := &Harness{
+		PreScript: "child-pre.sh",
+	}
+
+	mergeBaseIntoChild(base, child)
+
+	// After merge, the forge block is inherited from base but the forge-level
+	// pre_script should be cleared so ResolveForge does not override the child's
+	// explicit top-level pre_script.
+	assert.Equal(t, "child-pre.sh", child.PreScript)
+	require.NotNil(t, child.Forge)
+	require.NotNil(t, child.Forge["github"])
+	assert.Empty(t, child.Forge["github"].PreScript,
+		"base forge pre_script must be cleared when child has top-level pre_script")
+	assert.Equal(t, "base-forge-post.sh", child.Forge["github"].PostScript,
+		"base forge post_script should be inherited when child has no top-level post_script")
+}
+
+// When a child also declares forge-level scripts, those should be preserved
+// even when the child has a top-level pre_script.
+func TestMergeBaseIntoChild_ChildForgePreScriptPreserved(t *testing.T) {
+	base := &Harness{
+		Agent: "agents/base.md",
+		Role:  "triage",
+		Forge: map[string]*ForgeConfig{
+			"github": {
+				PreScript: "base-forge-pre.sh",
+			},
+		},
+	}
+	child := &Harness{
+		PreScript: "child-top-pre.sh",
+		Forge: map[string]*ForgeConfig{
+			"github": {
+				PreScript: "child-forge-pre.sh",
+			},
+		},
+	}
+
+	mergeBaseIntoChild(base, child)
+
+	// Child's forge pre_script should win over base forge, and should NOT
+	// be cleared even though the child has a top-level pre_script.
+	assert.Equal(t, "child-top-pre.sh", child.PreScript)
+	require.NotNil(t, child.Forge["github"])
+	assert.Equal(t, "child-forge-pre.sh", child.Forge["github"].PreScript,
+		"child's own forge pre_script should be preserved")
+}
+
+// End-to-end test with LoadWithBase: a child that explicitly declares
+// pre_script and inherits from a base with forge.github.pre_script.
+// After forge resolution the child's pre_script should survive.
+func TestLoadWithBase_ChildPreScriptSurvivesBaseForgeResolution(t *testing.T) {
+	dir := t.TempDir()
+
+	writeTestHarness(t, dir, "base.yaml", `
+agent: agents/test.md
+role: test
+forge:
+  github:
+    pre_script: base-forge-pre.sh
+    post_script: base-forge-post.sh
+`)
+
+	path := writeTestHarness(t, dir, "child.yaml", `
+base: base.yaml
+pre_script: child-pre.sh
+`)
+
+	h, _, err := LoadWithBase(context.Background(), path, ComposeOpts{
+		ForgePlatform: "github",
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, "child-pre.sh", h.PreScript,
+		"child's top-level pre_script must survive base forge resolution")
+	assert.Equal(t, "base-forge-post.sh", h.PostScript,
+		"base forge post_script should be promoted when child has no post_script")
+}
+
+// When the child has no top-level pre_script, it should still inherit
+// from the base's forge-level pre_script (existing behavior unchanged).
+func TestLoadWithBase_BaseForgePreScriptInheritedWhenChildOmits(t *testing.T) {
+	dir := t.TempDir()
+
+	writeTestHarness(t, dir, "base.yaml", `
+agent: agents/test.md
+role: test
+forge:
+  github:
+    pre_script: base-forge-pre.sh
+`)
+
+	path := writeTestHarness(t, dir, "child.yaml", `
+base: base.yaml
+model: opus
+`)
+
+	h, _, err := LoadWithBase(context.Background(), path, ComposeOpts{
+		ForgePlatform: "github",
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, "base-forge-pre.sh", h.PreScript,
+		"when child omits pre_script, base forge pre_script should be inherited")
+}
+
 func TestLoadWithBase_InvalidForgeAfterMerge(t *testing.T) {
 	dir := t.TempDir()
 

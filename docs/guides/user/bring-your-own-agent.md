@@ -300,13 +300,15 @@ security:
 
 | Field type | Behavior |
 |-----------|----------|
-| Scalars (`model`, `pre_script`, `image`, etc.) | Child wins if non-empty |
+| Scalars (`model`, `pre_script`, `image`, etc.) | Child wins if non-empty¹ |
 | `skills` | Merged with deduplication by basename (child overrides base) |
 | `plugins`, `providers`, `api_servers`, `openshell.profiles` | Concatenated (base + child) |
 | `host_files` | Concatenated; child overrides by `dest` |
 | `env`, `runner_env` (deprecated) | Merged; child keys win |
 | `validation_loop`, `security` | Child replaces entirely |
 | `allowed_remote_resources`, `allow_runtime_fetch`, `max_runtime_fetches` | NOT inherited (child must declare its own) |
+
+¹ **Exception:** When the child explicitly declares a top-level `pre_script` or `post_script`, any forge-level equivalents inherited from the base are cleared to prevent `ResolveForge` from overriding the child's declaration. Child-authored forge-level scripts are preserved. See [#847](https://github.com/fullsend-ai/fullsend/issues/847).
 
 ### Referencing resources: local vs. remote
 

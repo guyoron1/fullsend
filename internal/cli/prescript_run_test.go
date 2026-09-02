@@ -209,23 +209,59 @@ func usePreScriptStub(t *testing.T) {
 	t.Setenv("PATH", stubDir+string(filepath.ListSeparator)+os.Getenv("PATH"))
 }
 
+// Issue #847: the triage agent must abort on non-zero pre-script exit,
+// matching code/fix behavior. Pre-script handling in runAgent is generic
+// but was never tested with agent name "triage".
+func TestRunAgent_TriagePreScriptExitsNonZero(t *testing.T) {
+	usePreScriptStub(t)
+	dir := newSkipHarnessDirForAgent(t, "triage", "exit 1\n")
+
+	rFlags := resolveFlags{maxDepth: 10, maxResources: 50}
+	err := runAgent(context.Background(), "triage", dir, "", t.TempDir(), "", nil, false, "", "", rFlags,
+		statusOpts{}, ui.New(io.Discard), false)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "running pre-script",
+		"triage agent must fail when pre-script exits non-zero")
+}
+
+// A triage pre-script that exits 0 should allow the run to proceed
+// (reaching sandbox creation, which fails in the test stub).
+func TestRunAgent_TriagePreScriptExitsZero_ProceedsToSandbox(t *testing.T) {
+	usePreScriptStub(t)
+	dir := newSkipHarnessDirForAgent(t, "triage", "true\n")
+
+	rFlags := resolveFlags{maxDepth: 10, maxResources: 50}
+	err := runAgent(context.Background(), "triage", dir, "", t.TempDir(), "", nil, false, "", "", rFlags,
+		statusOpts{}, ui.New(io.Discard), false)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "creating sandbox",
+		"triage agent should proceed past pre-script when it exits 0")
+}
+
 // newSkipHarnessDir builds a minimal fullsend dir whose code harness runs
 // the given pre-script body.
 func newSkipHarnessDir(t *testing.T, preScriptBody string) string {
 	t.Helper()
+	return newSkipHarnessDirForAgent(t, "code", preScriptBody)
+}
+
+// newSkipHarnessDirForAgent builds a minimal fullsend dir for any agent
+// name with an optional pre-script body.
+func newSkipHarnessDirForAgent(t *testing.T, agentName, preScriptBody string) string {
+	t.Helper()
 	dir := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "harness"), 0o755))
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "agents"), 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "agents", "code.md"),
-		[]byte("You are a coding agent."), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "agents", agentName+".md"),
+		[]byte("You are a "+agentName+" agent."), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "config.yaml"),
-		[]byte("agents:\n  - harness/code.yaml\n"), 0o644))
+		[]byte("agents:\n  - harness/"+agentName+".yaml\n"), 0o644))
 
-	harnessYAML := "agent: agents/code.md\nrole: test\n"
+	harnessYAML := "agent: agents/" + agentName + ".md\nrole: test\n"
 	if preScriptBody != "" {
 		harnessYAML += "pre_script: " + writePreScript(t, preScriptBody) + "\n"
 	}
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "harness", "code.yaml"),
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "harness", agentName+".yaml"),
 		[]byte(harnessYAML), 0o644))
 	return dir
 }
