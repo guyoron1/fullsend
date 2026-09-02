@@ -79,9 +79,11 @@ func TestSetup_OTLPExporterSeam(t *testing.T) {
 	defer func() { newOTLPExporter = orig }()
 
 	var called bool
-	newOTLPExporter = func(_ context.Context, _ string) (sdktrace.SpanExporter, error) {
+	var gotEndpoint string
+	newOTLPExporter = func(_ context.Context, endpoint string) (sdktrace.SpanExporter, error) {
 		called = true
-		return orig(context.Background(), "http://localhost:4318")
+		gotEndpoint = endpoint
+		return orig(context.Background(), "http://localhost:4318/v1/traces")
 	}
 
 	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4318")
@@ -93,6 +95,8 @@ func TestSetup_OTLPExporterSeam(t *testing.T) {
 	cleanup(context.Background())
 
 	assert.True(t, called, "OTLP exporter must be created when endpoint is set")
+	assert.Equal(t, "http://localhost:4318/v1/traces", gotEndpoint,
+		"generic endpoint must have /v1/traces appended")
 }
 
 func TestSetup_TracesEndpointPreferred(t *testing.T) {
@@ -100,12 +104,14 @@ func TestSetup_TracesEndpointPreferred(t *testing.T) {
 	defer func() { newOTLPExporter = orig }()
 
 	var called bool
-	newOTLPExporter = func(_ context.Context, _ string) (sdktrace.SpanExporter, error) {
+	var gotEndpoint string
+	newOTLPExporter = func(_ context.Context, endpoint string) (sdktrace.SpanExporter, error) {
 		called = true
-		return orig(context.Background(), "http://localhost:4318")
+		gotEndpoint = endpoint
+		return orig(context.Background(), "http://localhost:4318/v1/traces")
 	}
 
-	t.Setenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "http://traces.local:4318")
+	t.Setenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "http://traces.local:4318/v1/traces")
 	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://generic.local:4318")
 	t.Setenv("OTEL_SDK_DISABLED", "")
 	t.Setenv("OTEL_TRACES_EXPORTER", "")
@@ -115,6 +121,8 @@ func TestSetup_TracesEndpointPreferred(t *testing.T) {
 	cleanup(context.Background())
 
 	assert.True(t, called, "OTLP exporter created when traces-specific endpoint set")
+	assert.Equal(t, "http://traces.local:4318/v1/traces", gotEndpoint,
+		"signal-specific endpoint must be used verbatim (no /v1/traces appended)")
 }
 
 func TestSetup_InvalidEndpointSkipsOTLP(t *testing.T) {
@@ -245,6 +253,68 @@ func TestParentSampledProcessor_AllowsSampledTrace(t *testing.T) {
 	root.End()
 
 	assert.ElementsMatch(t, []string{"root", "child"}, spy.ended)
+}
+
+func TestResolveEndpoint_GenericAppendPath(t *testing.T) {
+	tests := []struct {
+		name    string
+		generic string
+		want    string
+	}{
+		{"bare host:port", "http://collector:4318", "http://collector:4318/v1/traces"},
+		{"trailing slash", "http://collector:4318/", "http://collector:4318/v1/traces"},
+		{"path prefix", "http://collector:4318/otlp", "http://collector:4318/otlp/v1/traces"},
+		{"path prefix trailing slash", "http://collector:4318/otlp/", "http://collector:4318/otlp/v1/traces"},
+		{"https", "https://otel.example.com", "https://otel.example.com/v1/traces"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", tc.generic)
+			t.Setenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "")
+			assert.Equal(t, tc.want, resolveEndpoint())
+		})
+	}
+}
+
+func TestResolveEndpoint_SignalSpecificVerbatim(t *testing.T) {
+	tests := []struct {
+		name    string
+		traces  string
+		generic string
+		want    string
+	}{
+		{
+			"signal-specific used as-is",
+			"http://traces.local:4318/v1/traces",
+			"http://generic.local:4318",
+			"http://traces.local:4318/v1/traces",
+		},
+		{
+			"signal-specific with custom path",
+			"http://traces.local:4318/custom/path",
+			"http://generic.local:4318",
+			"http://traces.local:4318/custom/path",
+		},
+		{
+			"signal-specific bare",
+			"http://traces.local:4318",
+			"http://generic.local:4318",
+			"http://traces.local:4318",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", tc.traces)
+			t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", tc.generic)
+			assert.Equal(t, tc.want, resolveEndpoint())
+		})
+	}
+}
+
+func TestResolveEndpoint_Empty(t *testing.T) {
+	t.Setenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "")
+	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "")
+	assert.Equal(t, "", resolveEndpoint())
 }
 
 func TestSetup_OTLPExporterError(t *testing.T) {
