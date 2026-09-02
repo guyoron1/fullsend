@@ -561,7 +561,8 @@ details, see [Agent runtimes](../../runtimes.md).
 | `ExecStreamReader()` | `openshell sandbox exec ...` | Streaming stdout reader |
 | `Upload()` | `openshell sandbox upload ...` | Copy files into sandbox |
 | `Download()` | `openshell sandbox download ...` | Copy files out of sandbox |
-| `SafeDownload()` | Download + sanitize | Remove dangerous symlinks (absolute or repo-escaping), .git/hooks |
+| `DownloadWithRetry()` | `Download()` with retry | Retries on timeout (max 2 retries, 30s/60s exponential backoff) |
+| `SafeDownload()` | `DownloadWithRetry()` + sanitize | Retries on timeout, removes dangerous symlinks (absolute or repo-escaping), .git/hooks |
 | `CollectLogs()` | Download logs dir | Extract sandbox logs |
 | `ExtractTranscripts()` | Download transcripts | Extract conversation transcripts |
 | `Delete()` | `openshell sandbox delete` | Destroy container |

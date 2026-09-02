@@ -36,6 +36,10 @@ const (
 	DefaultMaxCreateAttempts = 3
 	retryInitialBackoff      = 5 * time.Second
 	retryMaxBackoff          = 15 * time.Second
+
+	downloadRetryMaxRetries  = 2
+	downloadRetryBaseBackoff = 30 * time.Second
+	downloadRetryMaxBackoff  = 60 * time.Second
 )
 
 // errSymlink wraps symlink-related os.Remove failures during
@@ -956,11 +960,77 @@ func Download(sandboxName, remotePath, localPath string) error {
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		if ctx.Err() != nil {
-			return fmt.Errorf("download from sandbox %q timed out after %s", sandboxName, transferTimeout)
+			return fmt.Errorf("download from sandbox %q timed out after %s: %w",
+				sandboxName, transferTimeout, context.DeadlineExceeded)
 		}
 		return fmt.Errorf("download from sandbox %q failed: %s: %w", sandboxName, string(out), err)
 	}
 	return nil
+}
+
+// DownloadWithRetry is like Download but retries up to downloadMaxRetries
+// times on timeout errors with exponential backoff. Non-timeout errors
+// (e.g., sandbox not found, permission denied) are returned immediately
+// without retry. Between retries, the local directory is removed to avoid
+// partial content from a timed-out transfer reaching the caller.
+// On success, the download duration is logged to stderr for monitoring.
+func DownloadWithRetry(sandboxName, remotePath, localPath string) error {
+	return downloadWithRetry(sandboxName, remotePath, localPath, Download,
+		downloadRetryMaxRetries, downloadRetryBaseBackoff, downloadRetryMaxBackoff)
+}
+
+// downloadWithRetry implements retry logic for download operations. It is
+// separated from DownloadWithRetry for testability: callers can inject a
+// mock download function and short backoff durations.
+func downloadWithRetry(
+	sandboxName, remotePath, localPath string,
+	dl func(string, string, string) error,
+	maxRetries int,
+	baseBackoff, maxBackoff time.Duration,
+) error {
+	maxAttempts := maxRetries + 1
+
+	var lastErr error
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		start := time.Now()
+		lastErr = dl(sandboxName, remotePath, localPath)
+		elapsed := time.Since(start)
+
+		if lastErr == nil {
+			if attempt > 1 {
+				fmt.Fprintf(os.Stderr, "  Download completed in %.1fs (retry %d/%d)\n",
+					elapsed.Seconds(), attempt-1, maxRetries)
+			} else {
+				fmt.Fprintf(os.Stderr, "  Download completed in %.1fs\n", elapsed.Seconds())
+			}
+			return nil
+		}
+
+		// Only retry on timeout errors.
+		if !errors.Is(lastErr, context.DeadlineExceeded) {
+			return lastErr
+		}
+
+		if attempt < maxAttempts {
+			// Clean up partial download before retrying.
+			if rmErr := os.RemoveAll(localPath); rmErr != nil {
+				fmt.Fprintf(os.Stderr, "  Warning: failed to clean up %s before retry: %v\n",
+					localPath, rmErr)
+			}
+
+			shift := uint(attempt - 1)
+			if shift > 30 {
+				shift = 30
+			}
+			backoff := min(baseBackoff*time.Duration(1<<shift), maxBackoff)
+			fmt.Fprintf(os.Stderr, "  Download attempt %d/%d timed out (%.1fs), retrying in %s...\n",
+				attempt, maxAttempts, elapsed.Seconds(), backoff)
+			time.Sleep(backoff)
+		}
+	}
+
+	return fmt.Errorf("download from sandbox %q failed after %d retries: %w",
+		sandboxName, maxRetries, lastErr)
 }
 
 // DownloadFile copies a single file from a sandbox to a specific local path.
@@ -982,9 +1052,11 @@ func DownloadFile(sandboxName, remotePath, localPath string) error {
 }
 
 // SafeDownload copies a directory from a sandbox to the local machine and then
-// sanitizes the result by removing dangerous symlinks (absolute or repo-escaping) and .git/hooks/.
+// sanitizes the result by removing dangerous symlinks (absolute or repo-escaping)
+// and .git/hooks/. The download step retries on timeout errors to handle
+// transient I/O latency — sanitization runs only after a successful download.
 func SafeDownload(sandboxName, remoteDir, localDir string) error {
-	if err := Download(sandboxName, remoteDir, localDir); err != nil {
+	if err := DownloadWithRetry(sandboxName, remoteDir, localDir); err != nil {
 		return err
 	}
 	return sanitizeDownload(localDir)
