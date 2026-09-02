@@ -1246,6 +1246,104 @@ func TestHandler_FullFlowWithRepos_Prioritize(t *testing.T) {
 	}
 }
 
+func TestHandler_FullFlowWithInvalidRepos(t *testing.T) {
+	t.Setenv("ROLE_APP_IDS", `{"coder":"200"}`)
+
+	pemData, err := generateTestRSAKey()
+	if err != nil {
+		t.Fatalf("generating test key: %v", err)
+	}
+
+	env := newTestOIDCEnv(t, &fakePEMAccessor{
+		pems: map[string][]byte{"coder": pemData},
+	})
+	token := env.signToken(t, nil)
+
+	var tokenCalls int
+	github := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/repos/test-org/good-repo/installation" && r.Method == http.MethodGet:
+			json.NewEncoder(w).Encode(installationResponse{
+				ID: 12345, Account: struct {
+					Login string `json:"login"`
+				}{Login: "test-org"},
+			})
+		case strings.HasPrefix(r.URL.Path, "/app/installations/12345/access_tokens") && r.Method == http.MethodPost:
+			tokenCalls++
+			var body map[string]interface{}
+			json.NewDecoder(r.Body).Decode(&body)
+			repos, _ := body["repositories"].([]interface{})
+
+			if tokenCalls == 1 {
+				// First call includes stale repo — return 422.
+				w.WriteHeader(http.StatusUnprocessableEntity)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"message": "Validation Failed",
+					"errors": []map[string]interface{}{
+						{
+							"resource": "InstallationToken",
+							"field":    "repositories",
+							"code":     "invalid",
+							"value":    []string{"stale-repo"},
+						},
+					},
+				})
+				return
+			}
+
+			// Retry should not include stale-repo.
+			for _, r := range repos {
+				if r == "stale-repo" {
+					t.Error("retry should not include stale-repo")
+				}
+			}
+			w.WriteHeader(http.StatusCreated)
+			json.NewEncoder(w).Encode(installationTokenResponse{
+				Token:     "ghs_recovered_token",
+				ExpiresAt: "2026-08-02T12:00:00Z",
+				Permissions: map[string]string{
+					"contents": "write", "pull_requests": "write",
+					"issues": "write", "checks": "read", "metadata": "read",
+				},
+				Repositories: []installationTokenRepository{
+					{FullName: "test-org/good-repo"},
+				},
+				RepositorySelection: "selected",
+			})
+		default:
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer github.Close()
+	env.handler.githubBaseURL = github.URL
+
+	body := `{"role":"coder","repos":["good-repo","stale-repo"]}`
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/v1/token", strings.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+token)
+	env.handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var resp mintResponse
+	json.NewDecoder(rec.Body).Decode(&resp)
+	if resp.Token != "ghs_recovered_token" {
+		t.Fatalf("expected token=ghs_recovered_token, got %s", resp.Token)
+	}
+	if len(resp.InvalidRepos) != 1 || resp.InvalidRepos[0] != "stale-repo" {
+		t.Fatalf("expected invalid_repos=[stale-repo], got %v", resp.InvalidRepos)
+	}
+	if len(resp.GrantedRepos) != 1 || resp.GrantedRepos[0] != "test-org/good-repo" {
+		t.Fatalf("expected granted_repos=[test-org/good-repo], got %v", resp.GrantedRepos)
+	}
+	if tokenCalls != 2 {
+		t.Fatalf("expected 2 token API calls, got %d", tokenCalls)
+	}
+}
+
 func TestHandler_InstallationNotFound(t *testing.T) {
 	t.Setenv("ROLE_APP_IDS", `{"coder":"200"}`)
 

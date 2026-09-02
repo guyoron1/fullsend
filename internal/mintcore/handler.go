@@ -38,6 +38,7 @@ type mintResponse struct {
 	GrantedRepos  []string          `json:"granted_repos,omitempty"`
 	GrantedPerms  map[string]string `json:"granted_permissions,omitempty"`
 	RepoSelection string            `json:"repository_selection,omitempty"`
+	InvalidRepos  []string          `json:"invalid_repos,omitempty"`
 }
 
 // statusResponse is returned by the /v1/status diagnostic endpoint.
@@ -262,6 +263,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			callerOrg, targetOrg, req.Role, granted.AppID, granted.InstallationID, req.Repos, claims.Repository, claims.JobWorkflowRef)
 		log.Printf("granted scope: repos=%v permissions=%v repo_selection=%s",
 			granted.Repos, granted.Permissions, granted.RepoSelection)
+		if len(granted.InvalidRepos) > 0 {
+			log.Printf("WARNING: dropped %d invalid repos from token request: %v",
+				len(granted.InvalidRepos), granted.InvalidRepos)
+		}
 		if len(req.Repos) == 0 {
 			log.Printf("WARNING: installation-wide token granted for target_org=%s role=%s repo_selection=%s",
 				targetOrg, req.Role, granted.RepoSelection)
@@ -291,6 +296,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		resp.GrantedRepos = granted.Repos
 		resp.GrantedPerms = granted.Permissions
 		resp.RepoSelection = granted.RepoSelection
+		resp.InvalidRepos = granted.InvalidRepos
 	}
 
 	w.Header().Set("Content-Type", "application/json")

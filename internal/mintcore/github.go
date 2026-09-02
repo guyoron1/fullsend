@@ -13,6 +13,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -51,6 +52,28 @@ type GrantedScope struct {
 	RepoSelection  string
 	AppID          string
 	InstallationID int64
+	// InvalidRepos lists repo names that were requested but rejected by GitHub
+	// (e.g. deleted, transferred, or renamed). These repos were dropped from the
+	// token request and a retry succeeded with the remaining valid repos.
+	InvalidRepos []string
+}
+
+// githubValidationError represents GitHub's 422 Validation Failed response.
+type githubValidationError struct {
+	Message string                      `json:"message"`
+	Errors  []githubValidationErrorItem `json:"errors"`
+}
+
+// githubValidationErrorItem is a single entry in the errors array.
+// The Value field is json.RawMessage because GitHub may return it as either
+// a JSON array (["repo-a","repo-b"]) or a plain string ("repo-a") depending
+// on the error context.
+type githubValidationErrorItem struct {
+	Resource string          `json:"resource"`
+	Field    string          `json:"field"`
+	Code     string          `json:"code"`
+	Value    json.RawMessage `json:"value"`
+	Message  string          `json:"message"`
 }
 
 // canonicalRolePermissions defines the minimum GitHub App permissions per agent role.
@@ -418,13 +441,10 @@ func ReadForeignAllowlist(ctx context.Context, httpClient HTTPDoer, githubBaseUR
 	return ParseForeignAllowlist(value), nil
 }
 
-// CreateInstallationToken exchanges a JWT for an installation access token,
-// scoped to the given repos and role-specific permissions.
-func CreateInstallationToken(ctx context.Context, httpClient HTTPDoer, githubBaseURL, jwt string, installationID int64, role string, repos []string) (string, string, *GrantedScope, error) {
-	perms := RolePermissionsFor(role)
-	if perms == nil {
-		return "", "", nil, fmt.Errorf("no permissions defined for role %q", role)
-	}
+// requestInstallationToken makes a single POST to GitHub's access_tokens endpoint.
+// On success it returns the parsed response. On 422 with repo-scoped requests it
+// returns a *repoValidationError so the caller can retry without the bad repos.
+func requestInstallationToken(ctx context.Context, httpClient HTTPDoer, githubBaseURL, jwt string, installationID int64, perms map[string]string, repos []string) (*installationTokenResponse, error) {
 	tokenReqBody := map[string]interface{}{
 		"permissions": perms,
 	}
@@ -434,13 +454,13 @@ func CreateInstallationToken(ctx context.Context, httpClient HTTPDoer, githubBas
 
 	tokenReqBytes, err := json.Marshal(tokenReqBody)
 	if err != nil {
-		return "", "", nil, fmt.Errorf("marshaling token request: %w", err)
+		return nil, fmt.Errorf("marshaling token request: %w", err)
 	}
 
 	reqURL := fmt.Sprintf("%s/app/installations/%d/access_tokens", githubBaseURL, installationID)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, reqURL, bytes.NewReader(tokenReqBytes))
 	if err != nil {
-		return "", "", nil, fmt.Errorf("creating token request: %w", err)
+		return nil, fmt.Errorf("creating token request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+jwt)
 	req.Header.Set("Accept", "application/vnd.github+json")
@@ -448,24 +468,146 @@ func CreateInstallationToken(ctx context.Context, httpClient HTTPDoer, githubBas
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return "", "", nil, fmt.Errorf("creating installation token: %w", err)
+		return nil, fmt.Errorf("creating installation token: %w", err)
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == http.StatusUnprocessableEntity && len(repos) > 0 {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 8192))
+		invalid := parseInvalidRepos(body)
+		if len(invalid) > 0 {
+			return nil, &repoValidationError{InvalidRepos: invalid}
+		}
+		// 422 but we could not identify specific bad repos — return the
+		// response body for diagnostics instead of discarding it.
+		detail := strings.TrimSpace(string(body))
+		if detail == "" {
+			detail = "no details"
+		}
+		return nil, fmt.Errorf("creating installation token returned status 422: %s", detail)
+	}
+
 	if resp.StatusCode != http.StatusCreated {
 		io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
-		return "", "", nil, fmt.Errorf("creating installation token returned status %d", resp.StatusCode)
+		return nil, fmt.Errorf("creating installation token returned status %d", resp.StatusCode)
 	}
 
 	var tokenResp installationTokenResponse
 	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
-		return "", "", nil, fmt.Errorf("decoding token response: %w", err)
+		return nil, fmt.Errorf("decoding token response: %w", err)
 	}
-
 	if tokenResp.Token == "" {
-		return "", "", nil, fmt.Errorf("empty installation token returned")
+		return nil, fmt.Errorf("empty installation token returned")
+	}
+	return &tokenResp, nil
+}
+
+// repoValidationError signals that GitHub rejected specific repos in the token request.
+type repoValidationError struct {
+	InvalidRepos []string
+}
+
+func (e *repoValidationError) Error() string {
+	return fmt.Sprintf("invalid repositories: %v", e.InvalidRepos)
+}
+
+// parseInvalidRepos extracts invalid repo names from a GitHub 422 response body.
+// GitHub returns errors with field:"repositories" and a value array listing the
+// invalid repo names. The value may be a JSON array (["repo-a","repo-b"]) or a
+// plain string ("repo-a"); both forms are handled. Each extracted name is
+// validated against RepoNamePattern as a defense-in-depth measure — names that
+// don't match a valid repo pattern are silently dropped. Returns nil if the error
+// cannot be parsed or is unrelated to repositories.
+func parseInvalidRepos(body []byte) []string {
+	var ghErr githubValidationError
+	if err := json.Unmarshal(body, &ghErr); err != nil {
+		return nil
+	}
+	var invalid []string
+	for _, e := range ghErr.Errors {
+		if e.Field != "repositories" || len(e.Value) == 0 {
+			continue
+		}
+		// Try []string first (the common case), then fall back to a single string.
+		var names []string
+		if err := json.Unmarshal(e.Value, &names); err != nil {
+			var single string
+			if err := json.Unmarshal(e.Value, &single); err != nil {
+				continue
+			}
+			names = []string{single}
+		}
+		for _, n := range names {
+			if RepoNamePattern.MatchString(n) {
+				invalid = append(invalid, n)
+			}
+		}
+	}
+	return invalid
+}
+
+// CreateInstallationToken exchanges a JWT for an installation access token,
+// scoped to the given repos and role-specific permissions.
+//
+// When GitHub returns a 422 because some repos in the list are invalid (deleted,
+// transferred, or renamed), the function retries with only the valid repos and
+// populates GrantedScope.InvalidRepos with the dropped names. If ALL repos are
+// invalid the function returns an error rather than falling back to an
+// installation-wide token.
+//
+// Design note: this recovery behavior is intentionally asymmetric with the
+// fail-closed validation used elsewhere in the mint (role, provenance, org).
+// Repo validation failures are caused by external config drift (repos renamed
+// or deleted outside the mint's control), not by invalid caller input. Dropping
+// stale repos and succeeding with a narrower scope is safe because the token is
+// strictly downscoped — never widened — and the all-invalid case errors out to
+// prevent accidental fall-through to an installation-wide token.
+func CreateInstallationToken(ctx context.Context, httpClient HTTPDoer, githubBaseURL, jwt string, installationID int64, role string, repos []string) (string, string, *GrantedScope, error) {
+	perms := RolePermissionsFor(role)
+	if perms == nil {
+		return "", "", nil, fmt.Errorf("no permissions defined for role %q", role)
 	}
 
+	tokenResp, err := requestInstallationToken(ctx, httpClient, githubBaseURL, jwt, installationID, perms, repos)
+	if err != nil {
+		var rve *repoValidationError
+		if !errors.As(err, &rve) {
+			return "", "", nil, err
+		}
+
+		// Filter out invalid repos and retry.
+		invalidSet := make(map[string]bool, len(rve.InvalidRepos))
+		for _, r := range rve.InvalidRepos {
+			invalidSet[strings.ToLower(r)] = true
+		}
+		var validRepos []string
+		for _, r := range repos {
+			if !invalidSet[strings.ToLower(r)] {
+				validRepos = append(validRepos, r)
+			}
+		}
+		if len(validRepos) == 0 {
+			return "", "", nil, fmt.Errorf("all requested repos are invalid: %v", rve.InvalidRepos)
+		}
+
+		log.Printf("WARNING: retrying token request without invalid repos %v (%d of %d repos dropped)",
+			rve.InvalidRepos, len(rve.InvalidRepos), len(repos))
+
+		tokenResp, err = requestInstallationToken(ctx, httpClient, githubBaseURL, jwt, installationID, perms, validRepos)
+		if err != nil {
+			return "", "", nil, fmt.Errorf("retry after dropping invalid repos: %w", err)
+		}
+
+		granted := buildGrantedScope(tokenResp)
+		granted.InvalidRepos = rve.InvalidRepos
+		return tokenResp.Token, tokenResp.ExpiresAt, granted, nil
+	}
+
+	return tokenResp.Token, tokenResp.ExpiresAt, buildGrantedScope(tokenResp), nil
+}
+
+// buildGrantedScope converts an installationTokenResponse into a GrantedScope.
+func buildGrantedScope(tokenResp *installationTokenResponse) *GrantedScope {
 	granted := &GrantedScope{
 		Permissions:   tokenResp.Permissions,
 		RepoSelection: tokenResp.RepositorySelection,
@@ -473,6 +615,5 @@ func CreateInstallationToken(ctx context.Context, httpClient HTTPDoer, githubBas
 	for _, r := range tokenResp.Repositories {
 		granted.Repos = append(granted.Repos, r.FullName)
 	}
-
-	return tokenResp.Token, tokenResp.ExpiresAt, granted, nil
+	return granted
 }
