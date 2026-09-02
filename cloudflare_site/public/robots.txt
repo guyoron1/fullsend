@@ -1,20 +1,35 @@
-# Training crawlers — blocked site-wide
+# Training crawlers — blocked site-wide, except documentation paths
+# Allow agents to discover and read docs, guides, and examples
+# so they can reference documentation during operational tasks.
+# llms.txt provides a machine-readable index of available docs.
 User-agent: ClaudeBot
+Allow: /docs/
+Allow: /llms.txt
 Disallow: /
 
 User-agent: GPTBot
+Allow: /docs/
+Allow: /llms.txt
 Disallow: /
 
 User-agent: CCBot
+Allow: /docs/
+Allow: /llms.txt
 Disallow: /
 
 User-agent: Google-Extended
+Allow: /docs/
+Allow: /llms.txt
 Disallow: /
 
 User-agent: Bytespider
+Allow: /docs/
+Allow: /llms.txt
 Disallow: /
 
 User-agent: meta-externalagent
+Allow: /docs/
+Allow: /llms.txt
 Disallow: /
 
 User-agent: Applebot
