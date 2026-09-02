@@ -145,6 +145,15 @@ fullsend
 │   ├── output                               # Scan agent output for leaked secrets
 │   ├── context                              # Scan context files for prompt injection
 │   └── url                                  # Validate URLs against SSRF attacks
+├── file-issue                               # Create GitHub issue with dedup guard
+│   ├── --repo <owner/repo>                  #   Repository in owner/repo format (required)
+│   ├── --title <string>                     #   Issue title (required)
+│   ├── --body <string>                      #   Issue body (reads stdin if omitted)
+│   ├── --label <string>                     #   Labels to apply (repeatable)
+│   ├── --token <string>                     #   GitHub token (default: $GITHUB_TOKEN)
+│   ├── --creator <string>                   #   Author login for dedup search
+│   ├── --dedup-window <duration>            #   Lookback window for dedup (default: 30m)
+│   └── --dry-run                            #   Check for duplicates without creating
 ├── post-review                              # Post PR review comments to GitHub
 ├── post-comment                             # Post issue/PR comments to GitHub
 └── reconcile-status                         # Finalize orphaned status comments

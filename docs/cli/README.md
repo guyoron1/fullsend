@@ -27,6 +27,7 @@ Download the latest binary from [GitHub Releases](https://github.com/fullsend-ai
 | `fullsend run` | Execute an agent locally in a sandbox. See [running agents locally](../guides/user/running-agents-locally.md). |
 | `fullsend lock [agent-name]` | Pin remote dependencies to `lock.yaml` |
 | `fullsend scan` | Run security scanners on agent input/output |
+| `fullsend file-issue` | Create a GitHub issue with dedup guard (duplicate detection) |
 
 ## Global flags
 
