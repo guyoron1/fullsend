@@ -72,6 +72,44 @@ if [[ ! "$ORG" =~ ^[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]$ && ! "$ORG" =~ ^[a-zA-Z0
   exit 1
 fi
 
+# validate_shim_content checks that rendered shim content satisfies the
+# alignment test contract (TestShimLabeledEventFiltering) before creating
+# a PR. This prevents the reconciliation script from opening PRs that
+# would fail CI.
+# Args: $1 = base64-encoded rendered shim content
+#       $2 = repo name (for diagnostic messages)
+# Returns 0 if valid, 1 if invalid (with warning logged to stderr).
+validate_shim_content() {
+  local content_b64="$1"
+  local repo="${2:-unknown}"
+  local raw
+  raw=$(printf '%s' "$content_b64" | base64 -d)
+
+  local failed=0
+
+  # Check 1: if: guard must contain the ready- prefix filter (#2452).
+  # TestShimLabeledEventFiltering requires both clauses:
+  #   github.event.action != 'labeled'
+  #   startsWith(github.event.label.name, 'ready-')
+  if ! printf '%s\n' "$raw" | grep -qF "github.event.action != 'labeled'"; then
+    echo "::warning::$repo: shim is missing 'github.event.action != labeled' guard — required by TestShimLabeledEventFiltering" >&2
+    failed=1
+  fi
+  if ! printf '%s\n' "$raw" | grep -qF "startsWith(github.event.label.name, 'ready-')"; then
+    echo "::warning::$repo: shim is missing ready- prefix filter in if: guard — required by TestShimLabeledEventFiltering" >&2
+    failed=1
+  fi
+
+  # Check 2: concurrency group must contain the label-aware structure.
+  # TestShimLabeledEventFiltering requires the format('label-{0}' pattern.
+  if ! printf '%s\n' "$raw" | grep -qF "format('label-{0}'"; then
+    echo "::warning::$repo: shim is missing label-aware concurrency group — required by TestShimLabeledEventFiltering" >&2
+    failed=1
+  fi
+
+  return "$failed"
+}
+
 # shim_content_b64 returns the shim template as base64, with __ORG__
 # substituted for the actual org name (used by workflow_call templates).
 shim_content_b64() {
@@ -369,6 +407,16 @@ ENABLED_REPOS=$(yq '.repos | to_entries[] | select(.value.enabled == true) | .ke
 
 if [ -n "$ENABLED_REPOS" ]; then
   echo "=== Phase 1: Enrolling enabled repos ==="
+
+  # Validate the base template once before processing any repos.
+  # A broken template would cause every repo's PR to fail CI — validate
+  # early and fail fast so the reconciliation exits with non-zero.
+  TEMPLATE_B64=$(shim_content_b64)
+  if ! validate_shim_content "$TEMPLATE_B64" "template"; then
+    echo "::error::Shim template fails alignment test validation — aborting reconciliation"
+    exit 1
+  fi
+
   while IFS= read -r REPO; do
     echo "--- Checking $ORG/$REPO ---"
 
@@ -417,6 +465,11 @@ if [ -n "$ENABLED_REPOS" ]; then
       echo "⟳ $REPO enrolled but shim is stale — creating update PR"
 
       FINAL_B64=$(shim_with_header_b64 "$REMOTE_B64" "$REPO")
+      if ! validate_shim_content "$FINAL_B64" "$REPO"; then
+        echo "::error::Skipping update PR for $REPO — rendered shim fails alignment test validation after header merge"
+        FAILED=$((FAILED + 1))
+        continue
+      fi
       if ! write_shim_to_branch_from_default "$REPO" "$ENROLL_BRANCH" "$FINAL_B64" "$UPDATE_COMMIT_MSG"; then
         FAILED=$((FAILED + 1))
         continue
