@@ -52,6 +52,7 @@ func newRootCmd() *cobra.Command {
 	cmd.AddCommand(newReposCmd())
 	cmd.AddCommand(newPostReviewCmd())
 	cmd.AddCommand(newPostCommentCmd())
+	cmd.AddCommand(newFileIssueCmd())
 	cmd.AddCommand(newReconcileStatusCmd())
 	cmd.AddCommand(newPollCmd())
 	return cmd
