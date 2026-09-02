@@ -370,6 +370,15 @@ The same inheritance table applies to base→child merging:
   `forge:` map. For each platform key present in both, the per-platform
   `ForgeConfig` fields merge using the rules above.
 
+  **Exception — inherited forge-level scripts:** When the child explicitly
+  declares a top-level `pre_script` or `post_script`, any forge-level
+  equivalents inherited from the base are cleared after merging to prevent
+  `ResolveForge` from overriding the child's explicit declaration.
+  Child-authored forge-level scripts are preserved. Without this, a child
+  harness that declares `pre_script: scripts/custom.sh` would silently
+  lose it when the base has `forge.github.pre_script` set. See
+  [#799](https://github.com/fullsend-ai/fullsend/issues/799).
+
 #### URL support
 
 `base` can be a URL, reusing ADR 0038's infrastructure:
