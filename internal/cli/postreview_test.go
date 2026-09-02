@@ -1511,3 +1511,100 @@ func TestBuildFallbackReviewBody(t *testing.T) {
 		assert.Equal(t, "", body)
 	})
 }
+
+func TestMinimizeStaleInlineComments_MinimizesOwnComments(t *testing.T) {
+	fc := forge.NewFakeClient()
+	fc.PRReviewComments = map[string][]forge.PullRequestReviewComment{
+		"acme/repo/1": {
+			{ID: 1, NodeID: "PRC_1", User: "fullsend-bot", Path: "a.go", Line: 10, Body: "old finding"},
+			{ID: 2, NodeID: "PRC_2", User: "human-reviewer", Path: "a.go", Line: 12, Body: "human comment"},
+			{ID: 3, NodeID: "PRC_3", User: "fullsend-bot", Path: "b.go", Line: 5, Body: "another old finding"},
+		},
+	}
+
+	printer := ui.New(io.Discard)
+	minimizeStaleInlineComments(context.Background(), fc, "acme", "repo", 1, "fullsend-bot", printer)
+
+	require.Len(t, fc.MinimizedComments, 2)
+	assert.Equal(t, "PRC_1", fc.MinimizedComments[0].NodeID)
+	assert.Equal(t, "OUTDATED", fc.MinimizedComments[0].Reason)
+	assert.Equal(t, "PRC_3", fc.MinimizedComments[1].NodeID)
+	assert.Equal(t, "OUTDATED", fc.MinimizedComments[1].Reason)
+}
+
+func TestMinimizeStaleInlineComments_NoComments(t *testing.T) {
+	fc := forge.NewFakeClient()
+	printer := ui.New(io.Discard)
+	minimizeStaleInlineComments(context.Background(), fc, "acme", "repo", 1, "fullsend-bot", printer)
+	assert.Empty(t, fc.MinimizedComments)
+}
+
+func TestMinimizeStaleInlineComments_ListErrorIsNonFatal(t *testing.T) {
+	fc := forge.NewFakeClient()
+	fc.Errors["ListPullRequestReviewComments"] = fmt.Errorf("API error")
+
+	var out bytes.Buffer
+	printer := ui.New(&out)
+	minimizeStaleInlineComments(context.Background(), fc, "acme", "repo", 1, "fullsend-bot", printer)
+
+	assert.Empty(t, fc.MinimizedComments)
+	assert.Contains(t, out.String(), "Could not list inline comments")
+}
+
+func TestMinimizeStaleInlineComments_MinimizeErrorIsNonFatal(t *testing.T) {
+	fc := forge.NewFakeClient()
+	fc.Errors["MinimizeComment"] = fmt.Errorf("GraphQL error")
+	fc.PRReviewComments = map[string][]forge.PullRequestReviewComment{
+		"acme/repo/1": {
+			{ID: 1, NodeID: "PRC_1", User: "fullsend-bot", Path: "a.go", Line: 10, Body: "old"},
+			{ID: 2, NodeID: "PRC_2", User: "fullsend-bot", Path: "b.go", Line: 5, Body: "old2"},
+		},
+	}
+
+	var out bytes.Buffer
+	printer := ui.New(&out)
+	minimizeStaleInlineComments(context.Background(), fc, "acme", "repo", 1, "fullsend-bot", printer)
+
+	// MinimizeComment errors should be logged but not stop processing.
+	assert.Contains(t, out.String(), "could not minimize inline comment")
+}
+
+func TestMinimizeStaleInlineComments_NotSupportedIsSilent(t *testing.T) {
+	fc := forge.NewFakeClient()
+	fc.Errors["ListPullRequestReviewComments"] = forge.ErrNotSupported
+
+	var out bytes.Buffer
+	printer := ui.New(&out)
+	minimizeStaleInlineComments(context.Background(), fc, "acme", "repo", 1, "fullsend-bot", printer)
+
+	assert.Empty(t, fc.MinimizedComments)
+	assert.NotContains(t, out.String(), "Could not list inline comments",
+		"ErrNotSupported should be silently skipped")
+}
+
+func TestSubmitFormalReview_MinimizesStaleInlineComments(t *testing.T) {
+	fc := forge.NewFakeClient()
+	fc.AuthenticatedUser = "fullsend-bot"
+	fc.PRReviews = map[string][]forge.PullRequestReview{
+		"acme/repo/1": {
+			{ID: 100, NodeID: "PRR_100", User: "fullsend-bot", State: "COMMENTED", Body: "old review"},
+		},
+	}
+	fc.PRReviewComments = map[string][]forge.PullRequestReviewComment{
+		"acme/repo/1": {
+			{ID: 1, NodeID: "PRC_1", User: "fullsend-bot", Path: "a.go", Line: 10, Body: "old inline"},
+			{ID: 2, NodeID: "PRC_2", User: "someone-else", Path: "a.go", Line: 12, Body: "human inline"},
+			{ID: 3, NodeID: "PRC_3", User: "fullsend-bot", Path: "b.go", Line: 5, Body: "old inline 2"},
+		},
+	}
+
+	printer := ui.New(io.Discard)
+	err := submitFormalReview(context.Background(), fc, "acme", "repo", 1, "approve", "", "", nil, false, printer)
+	require.NoError(t, err)
+
+	// Should minimize: 1 stale review body + 2 stale inline comments = 3.
+	require.Len(t, fc.MinimizedComments, 3)
+	assert.Equal(t, "PRR_100", fc.MinimizedComments[0].NodeID, "review body minimized first")
+	assert.Equal(t, "PRC_1", fc.MinimizedComments[1].NodeID, "first inline comment minimized")
+	assert.Equal(t, "PRC_3", fc.MinimizedComments[2].NodeID, "second inline comment minimized")
+}

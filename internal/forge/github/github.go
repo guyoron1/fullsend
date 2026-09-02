@@ -2908,6 +2908,49 @@ func (c *LiveClient) ListPullRequestReviews(ctx context.Context, owner, repo str
 	return result, nil
 }
 
+// ListPullRequestReviewComments returns all inline review comments on a
+// pull request, paginating automatically. These are the comments attached
+// to specific lines in the diff (not issue comments or review bodies).
+func (c *LiveClient) ListPullRequestReviewComments(ctx context.Context, owner, repo string, number int) ([]forge.PullRequestReviewComment, error) {
+	var result []forge.PullRequestReviewComment
+
+	for page := 1; page <= 100; page++ {
+		resp, err := c.get(ctx, fmt.Sprintf("/repos/%s/%s/pulls/%d/comments?per_page=100&page=%d", owner, repo, number, page))
+		if err != nil {
+			return nil, fmt.Errorf("list pull request review comments page %d: %w", page, err)
+		}
+		var raw []struct {
+			ID     int    `json:"id"`
+			NodeID string `json:"node_id"`
+			User   struct {
+				Login string `json:"login"`
+			} `json:"user"`
+			Path string `json:"path"`
+			Line int    `json:"line"`
+			Body string `json:"body"`
+		}
+		if err := decodeJSON(resp, &raw); err != nil {
+			return nil, fmt.Errorf("decoding pull request review comments page %d: %w", page, err)
+		}
+
+		for _, r := range raw {
+			result = append(result, forge.PullRequestReviewComment{
+				ID:     r.ID,
+				NodeID: r.NodeID,
+				User:   r.User.Login,
+				Path:   r.Path,
+				Line:   r.Line,
+				Body:   r.Body,
+			})
+		}
+
+		if len(raw) < 100 {
+			break
+		}
+	}
+	return result, nil
+}
+
 // DismissPullRequestReview dismisses a review, changing its state to DISMISSED.
 func (c *LiveClient) DismissPullRequestReview(ctx context.Context, owner, repo string, number, reviewID int, message string) error {
 	payload := map[string]string{

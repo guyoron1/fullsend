@@ -312,11 +312,14 @@ func submitFormalReview(ctx context.Context, client forge.Client, owner, repo st
 	user, err := client.GetAuthenticatedUser(ctx)
 	if err != nil {
 		printer.StepInfo("Could not determine authenticated user, skipping stale review cleanup")
-	} else if reviews, err := client.ListPullRequestReviews(ctx, owner, repo, pr); err != nil {
-		printer.StepInfo("Could not list reviews, skipping stale review cleanup")
 	} else {
-		dismissStaleRequestChanges(ctx, client, owner, repo, pr, event, user, reviews, printer)
-		minimizeStaleReviews(ctx, client, user, reviews, printer)
+		if reviews, err := client.ListPullRequestReviews(ctx, owner, repo, pr); err != nil {
+			printer.StepInfo("Could not list reviews, skipping stale review cleanup")
+		} else {
+			dismissStaleRequestChanges(ctx, client, owner, repo, pr, event, user, reviews, printer)
+			minimizeStaleReviews(ctx, client, user, reviews, printer)
+		}
+		minimizeStaleInlineComments(ctx, client, owner, repo, pr, user, printer)
 	}
 
 	var diffHunks map[string][][2]int
@@ -616,6 +619,45 @@ func minimizeStaleReviews(ctx context.Context, client forge.Client, user string,
 		}
 	}
 	printer.StepDone("Stale reviews minimized")
+}
+
+// minimizeStaleInlineComments finds all inline review comments posted
+// by the given user on the PR and minimizes them. This prevents
+// duplicate inline comments from accumulating across re-review runs.
+// The sticky comment already preserves full review history, so
+// minimizing prior inline comments loses no information.
+//
+// Errors are non-fatal — failing to minimize stale inline comments
+// should not prevent the new review from being submitted.
+func minimizeStaleInlineComments(ctx context.Context, client forge.Client, owner, repo string, pr int, user string, printer *ui.Printer) {
+	comments, err := client.ListPullRequestReviewComments(ctx, owner, repo, pr)
+	if err != nil {
+		// ErrNotSupported is expected for forges that don't support this
+		// operation (e.g., GitLab). Silently skip in that case.
+		if !forge.IsNotSupported(err) {
+			printer.StepInfo(fmt.Sprintf("Could not list inline comments (%v), skipping stale inline comment cleanup", err))
+		}
+		return
+	}
+
+	var stale []forge.PullRequestReviewComment
+	for _, c := range comments {
+		if c.User == user {
+			stale = append(stale, c)
+		}
+	}
+
+	if len(stale) == 0 {
+		return
+	}
+
+	printer.StepStart(fmt.Sprintf("Minimizing %d stale inline comment(s)", len(stale)))
+	for _, c := range stale {
+		if err := client.MinimizeComment(ctx, c.NodeID, "OUTDATED"); err != nil {
+			printer.StepInfo(fmt.Sprintf("Warning: could not minimize inline comment %s: %v", c.NodeID, err))
+		}
+	}
+	printer.StepDone("Stale inline comments minimized")
 }
 
 // sanitizeReviewResult runs the security output pipeline over all
