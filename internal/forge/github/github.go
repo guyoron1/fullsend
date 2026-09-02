@@ -1032,6 +1032,14 @@ func (c *LiveClient) commitFilesTo(ctx context.Context, owner, repo, branch, mes
 	}
 	newTreeResp, err := c.post(ctx, fmt.Sprintf("/repos/%s/%s/git/trees", owner, repo), treePayload)
 	if err != nil {
+		// A 422 "Tree SHA does not exist" means the base_tree SHA went
+		// stale between when we read it and now — same class of race as
+		// non-fast-forward on the ref update. Wrap it so
+		// commitFilesWithRetry retries the entire operation from scratch.
+		var apiErr *APIError
+		if errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusUnprocessableEntity && isStaleTreeSHAError(apiErr) {
+			return false, fmt.Errorf("create tree: %w: %w", forge.ErrNonFastForward, err)
+		}
 		return false, fmt.Errorf("create tree: %w", err)
 	}
 	var newTree struct {
@@ -1049,6 +1057,11 @@ func (c *LiveClient) commitFilesTo(ctx context.Context, owner, repo, branch, mes
 	}
 	newCommitResp, err := c.post(ctx, fmt.Sprintf("/repos/%s/%s/git/commits", owner, repo), commitPayload)
 	if err != nil {
+		// Same stale-SHA race as the create-tree step above.
+		var apiErr *APIError
+		if errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusUnprocessableEntity && isStaleTreeSHAError(apiErr) {
+			return false, fmt.Errorf("create commit: %w: %w", forge.ErrNonFastForward, err)
+		}
 		return false, fmt.Errorf("create commit: %w", err)
 	}
 	var newCommit struct {
@@ -1099,9 +1112,38 @@ func (c *LiveClient) DeleteFiles(ctx context.Context, owner, repo, message strin
 		return 0, fmt.Errorf("decode repo info: %w", err)
 	}
 
+	return c.deleteFilesWithRetry(ctx, owner, repo, repoInfo.DefaultBranch, message, paths)
+}
+
+func (c *LiveClient) deleteFilesWithRetry(ctx context.Context, owner, repo, branch, message string, paths []string) (int, error) {
+	const maxAttempts = 3
+	var deleted int
+	var err error
+	for attempt := range maxAttempts {
+		if attempt > 0 {
+			jitter := time.Duration(100+rand.IntN(400)) * time.Millisecond
+			select {
+			case <-ctx.Done():
+				return 0, ctx.Err()
+			case <-time.After(jitter):
+			}
+			log.Printf("retrying delete files on %s/%s@%s (attempt %d/%d): %v", owner, repo, branch, attempt+1, maxAttempts, err)
+		}
+		deleted, err = c.deleteFilesOnBranch(ctx, owner, repo, branch, message, paths)
+		if err == nil || !forge.IsNonFastForward(err) {
+			break
+		}
+	}
+	return deleted, err
+}
+
+// deleteFilesOnBranch is the inner implementation for DeleteFiles. It
+// atomically removes paths from the specified branch using the Git
+// Trees/Commits API.
+func (c *LiveClient) deleteFilesOnBranch(ctx context.Context, owner, repo, branch, message string, paths []string) (int, error) {
 	var commitSHA string
 	if err := c.retryOnRepoRace(ctx, "get branch ref", func() error {
-		refResp, refErr := c.get(ctx, fmt.Sprintf("/repos/%s/%s/git/ref/heads/%s", owner, repo, repoInfo.DefaultBranch))
+		refResp, refErr := c.get(ctx, fmt.Sprintf("/repos/%s/%s/git/ref/heads/%s", owner, repo, branch))
 		if refErr != nil {
 			return fmt.Errorf("get branch ref: %w", refErr)
 		}
@@ -1182,6 +1224,12 @@ func (c *LiveClient) DeleteFiles(ctx context.Context, owner, repo, message strin
 	}
 	newTreeResp, err := c.post(ctx, fmt.Sprintf("/repos/%s/%s/git/trees", owner, repo), treePayload)
 	if err != nil {
+		// A 422 "Tree SHA does not exist" means the base_tree SHA went
+		// stale — wrap so deleteFilesWithRetry retries from scratch.
+		var apiErr *APIError
+		if errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusUnprocessableEntity && isStaleTreeSHAError(apiErr) {
+			return 0, fmt.Errorf("create tree: %w: %w", forge.ErrNonFastForward, err)
+		}
 		return 0, fmt.Errorf("create tree: %w", err)
 	}
 	var newTree struct {
@@ -1198,6 +1246,11 @@ func (c *LiveClient) DeleteFiles(ctx context.Context, owner, repo, message strin
 	}
 	newCommitResp, err := c.post(ctx, fmt.Sprintf("/repos/%s/%s/git/commits", owner, repo), commitPayload)
 	if err != nil {
+		// Same stale-SHA race as the create-tree step above.
+		var apiErr *APIError
+		if errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusUnprocessableEntity && isStaleTreeSHAError(apiErr) {
+			return 0, fmt.Errorf("create commit: %w: %w", forge.ErrNonFastForward, err)
+		}
 		return 0, fmt.Errorf("create commit: %w", err)
 	}
 	var newCommit struct {
@@ -1209,13 +1262,20 @@ func (c *LiveClient) DeleteFiles(ctx context.Context, owner, repo, message strin
 
 	refPayload := map[string]string{"sha": newCommit.SHA}
 	if err := c.retryOnRepoRace(ctx, "update ref", func() error {
-		refUpdateResp, patchErr := c.patch(ctx, fmt.Sprintf("/repos/%s/%s/git/refs/heads/%s", owner, repo, repoInfo.DefaultBranch), refPayload)
+		refUpdateResp, patchErr := c.patch(ctx, fmt.Sprintf("/repos/%s/%s/git/refs/heads/%s", owner, repo, branch), refPayload)
 		if patchErr != nil {
 			return fmt.Errorf("update ref: %w", patchErr)
 		}
 		refUpdateResp.Body.Close()
 		return nil
 	}); err != nil {
+		// A 422 non-fast-forward means the ref moved between our read
+		// and this update — same handling as commitFilesTo's ref-update
+		// step. Wrap so deleteFilesWithRetry retries from scratch.
+		var apiErr *APIError
+		if errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusUnprocessableEntity && isNonFastForwardError(apiErr) {
+			return 0, fmt.Errorf("update ref: %w: %w", forge.ErrNonFastForward, err)
+		}
 		return 0, err
 	}
 
@@ -1242,6 +1302,19 @@ func isNonFastForwardError(apiErr *APIError) bool {
 		msg += " " + strings.ToLower(d.Message)
 	}
 	return strings.Contains(msg, "not a fast forward") || strings.Contains(msg, "not a fast-forward")
+}
+
+// isStaleTreeSHAError checks whether a 422 APIError indicates a stale
+// tree SHA — the base_tree or tree parameter references an object that no
+// longer exists (e.g. due to concurrent branch operations during parallel
+// e2e cleanup). This is the same class of race as a non-fast-forward ref
+// update and should be retried from scratch.
+func isStaleTreeSHAError(apiErr *APIError) bool {
+	msg := strings.ToLower(apiErr.Message)
+	for _, d := range apiErr.Errors {
+		msg += " " + strings.ToLower(d.Message)
+	}
+	return strings.Contains(msg, "tree sha does not exist")
 }
 
 func isAlreadyExistsError(apiErr *APIError) bool {
