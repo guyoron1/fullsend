@@ -349,6 +349,12 @@ func (c *LiveClient) tryNoteOperation(ctx context.Context, proj string, issueIID
 	return nil
 }
 
+// SearchIssues is not yet implemented for GitLab. The retro dedup
+// guard currently only runs on GitHub-hosted repositories.
+func (c *LiveClient) SearchIssues(_ context.Context, _ forge.IssueSearchOptions) ([]forge.Issue, error) {
+	return nil, forge.ErrNotSupported
+}
+
 // MinimizeComment is not supported on GitLab -- there is no equivalent
 // concept of hiding/minimizing individual comments.
 func (c *LiveClient) MinimizeComment(_ context.Context, _, _ string) error {
