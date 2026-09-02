@@ -365,12 +365,12 @@ func (h *Handler) mintToken(ctx context.Context, org, role string, repos []strin
 		installationID, err = FindInstallation(ctx, h.httpClient, h.githubBaseURL, jwt, org, repos[0])
 	}
 	if err != nil {
-		return "", "", nil, &mintError{status: http.StatusBadGateway, msg: err.Error()}
+		return "", "", nil, &mintError{status: upstreamStatus(err), msg: err.Error()}
 	}
 
 	token, expiresAt, granted, err := CreateInstallationToken(ctx, h.httpClient, h.githubBaseURL, jwt, installationID, role, repos)
 	if err != nil {
-		return "", "", nil, &mintError{status: http.StatusBadGateway, msg: err.Error()}
+		return "", "", nil, &mintError{status: upstreamStatus(err), msg: err.Error()}
 	}
 
 	if granted != nil {
@@ -384,7 +384,7 @@ func (h *Handler) mintToken(ctx context.Context, org, role string, repos []strin
 func (h *Handler) mintTokenCrossOrg(ctx context.Context, claims *Claims, targetOrg, role string, repos []string) (string, string, *GrantedScope, error) {
 	allowlist, err := h.loadForeignAllowlist(ctx, targetOrg, role)
 	if err != nil {
-		return "", "", nil, &mintError{status: http.StatusBadGateway, msg: err.Error()}
+		return "", "", nil, &mintError{status: upstreamStatus(err), msg: err.Error()}
 	}
 	if len(allowlist) == 0 {
 		return "", "", nil, &mintError{status: http.StatusForbidden, msg: "foreign caller not authorized for target org"}
@@ -462,7 +462,7 @@ func (h *Handler) fetchForeignAllowlist(ctx context.Context, targetOrg, role str
 
 	installationID, err := FindOrgInstallation(ctx, h.httpClient, h.githubBaseURL, jwt, targetOrg)
 	if err != nil {
-		return nil, fmt.Errorf("finding org installation on %s: %v", targetOrg, err)
+		return nil, fmt.Errorf("finding org installation on %s: %w", targetOrg, err)
 	}
 
 	allowlist, err := ReadForeignAllowlist(ctx, h.httpClient, h.githubBaseURL, jwt, installationID, targetOrg, role)
@@ -535,6 +535,18 @@ func (h *Handler) lookupRoleAppID(role string) (string, error) {
 		return "", fmt.Errorf("no app ID configured for role %q", role)
 	}
 	return appID, nil
+}
+
+// upstreamStatus inspects err for a GitHubAPIError. If GitHub returned a
+// 4xx client error the caller's request is at fault and will never succeed on
+// retry, so we forward that status. For 5xx or non-GitHub errors we return 502
+// (Bad Gateway) so clients know to retry.
+func upstreamStatus(err error) int {
+	var ghErr *GitHubAPIError
+	if errors.As(err, &ghErr) && ghErr.StatusCode >= 400 && ghErr.StatusCode < 500 {
+		return ghErr.StatusCode
+	}
+	return http.StatusBadGateway
 }
 
 // mintError is an HTTP-aware error carrying a status code for the response.
