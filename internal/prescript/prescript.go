@@ -289,6 +289,32 @@ func Relay(res Result) (relayed bool, err error) {
 	return true, nil
 }
 
+// SandboxEnv returns the subset of pre-script outputs that should be
+// injected into the sandbox environment. Reserved protocol keys (skipped,
+// reason) are excluded — they are consumed by the CLI itself and have no
+// meaning inside the sandbox. Returns nil when there are no outputs to
+// inject.
+func SandboxEnv(res Result) map[string]string {
+	if len(res.Outputs) == 0 {
+		return nil
+	}
+	reserved := make(map[string]bool, len(reservedKeys))
+	for _, k := range reservedKeys {
+		reserved[k] = true
+	}
+	out := make(map[string]string, len(res.Outputs))
+	for k, v := range res.Outputs {
+		if reserved[k] {
+			continue
+		}
+		out[k] = v
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
 // LogLine renders the outputs as a single stable, sorted line for the run
 // log, so non-GitHub CIs (and local runs) can still see what the
 // pre-script reported. Returns "" when there is nothing to show, or when

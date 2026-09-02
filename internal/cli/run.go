@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"math"
 	"net/http"
 	"os"
@@ -961,7 +962,33 @@ func runAgent(ctx context.Context, agentName, fullsendDir, outputBase, targetRep
 		return nil
 	}
 
-	// 4a. Create sandbox.
+	// 4a. Merge non-reserved pre-script outputs into the sandbox
+	// environment so pre-scripts can pass computed values to the agent
+	// (issue #839, #791). Pre-script outputs override static env.sandbox
+	// entries on key collision — runtime-computed values take precedence
+	// over static config.
+	if sandboxOutputs := prescript.SandboxEnv(preResult); len(sandboxOutputs) > 0 {
+		// Defense-in-depth: filter sandbox-infrastructure reserved keys
+		// so they cannot reach h.Env.Sandbox even if a future code path
+		// reads the map directly (bypassing buildSandboxEnvLines).
+		for k := range sandboxOutputs {
+			if reservedSandboxKeys[k] {
+				delete(sandboxOutputs, k)
+			}
+		}
+		if len(sandboxOutputs) > 0 {
+			if h.Env == nil {
+				h.Env = &harness.EnvConfig{}
+			}
+			if h.Env.Sandbox == nil {
+				h.Env.Sandbox = make(map[string]string)
+			}
+			maps.Copy(h.Env.Sandbox, sandboxOutputs)
+			printer.StepDone(fmt.Sprintf("Pre-script merged %d sandbox env var(s)", len(sandboxOutputs)))
+		}
+	}
+
+	// 4b. Create sandbox.
 	createStart := time.Now()
 	printer.StepStart("Creating sandbox: " + sandboxName)
 	_, sandboxSpan := tracer.Start(ctx, "sandbox_create", trace.WithAttributes(

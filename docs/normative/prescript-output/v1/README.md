@@ -48,6 +48,33 @@ owned by the protocol; a future CLI may interpret additional lowercase
 single-word keys, so scripts should prefix their own outputs (`myagent_pr=123`)
 to avoid colliding with a future directive.
 
+### Sandbox injection
+
+Non-reserved outputs are injected into the sandbox environment as `env.sandbox`
+entries (ADR 0055) before the agent starts. This allows pre-scripts to pass
+computed values — API tokens, resolved URLs, feature flags — into the sandbox
+without requiring the harness to declare them statically.
+
+Pre-script outputs **override** static `env.sandbox` entries on key collision:
+runtime-computed values take precedence over static config. Hyphenated keys
+(valid in this protocol) are accepted by the parser but silently skipped by
+`buildSandboxEnvLines` because they are not valid POSIX environment variable
+names.
+
+Example: a pre-script that resolves a PR URL and passes it to the agent:
+
+```sh
+if [ -n "${FULLSEND_PRESCRIPT_OUTPUT:-}" ]; then
+  pr_url=$(gh pr view --json url -q .url 2>/dev/null || true)
+  if [ -n "${pr_url}" ]; then
+    echo "RESOLVED_PR_URL=${pr_url}" >> "${FULLSEND_PRESCRIPT_OUTPUT}"
+  fi
+fi
+```
+
+The agent sees `RESOLVED_PR_URL` as a regular environment variable inside the
+sandbox.
+
 ## Grammar
 
 Line-based. One assignment per line:
