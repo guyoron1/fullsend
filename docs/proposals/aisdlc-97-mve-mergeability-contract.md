@@ -2,6 +2,9 @@
 
 Proposal v0.5 · 2026-09-27 · Guy Oron · Jira: [AISDLC-97] (parent [AISDLC-29])
 
+> This is the full reference version, for implementers. The short proposal for review is
+> [aisdlc-97-proposal.md](https://github.com/guyoron1/fullsend/blob/aisdlc-97-mve-contract/docs/proposals/aisdlc-97-proposal.md).
+
 ## 1. Summary
 
 This proposal defines when an ADLC agent may merge a pull request on its own, when it has to fix something first,
@@ -48,7 +51,7 @@ the blast-radius algorithm (AISDLC-96).
 
 | Counterpart | Gives this contract | Gets from this contract |
 |---|---|---|
-| AISDLC-96, change impact | the affected behaviour and consumers, with a confidence level | how low confidence raises the tier; how much relevant test evidence each tier needs |
+| AISDLC-96, change impact | the affected behavior and consumers, with a confidence level | how low confidence raises the tier; how much relevant test evidence each tier needs |
 | AISDLC-98, debt and golden path | the flaky-test quarantine list; the remediation workflow | which REMEDIATE outcomes route to the golden path; the mergeability record (8.1) as retained merge evidence |
 | AISDLC-99, tooling | the tools that produce each kind of evidence, including the outcome baseline | the evidence classes (5.1) those tools must emit |
 | AISDLC-100, test selection | the selected test subset and its fallback | the test categories each tier requires; when a cached result may count |
@@ -69,8 +72,8 @@ Four rules run through every step:
   or approve a merge. This is what keeps the gate safe against prompt injection and a badly calibrated model.
 - **Unknown never passes.** Anything that couldn't be measured counts as not present.
 - **Policy is not risk.** Paths people always own (CODEOWNERS, CI, agent configuration, credentials) are a tier of
-  their own, not a "severe finding" inside a score. In the sample, 21 of the 31 "major or critical" findings were
-  this protected-path rule, 17 of them on Renovate digest bumps.
+  their own, not a "severe finding" inside a score. In the sample, 21 of the 31 PRs with a "major or critical"
+  finding had it only for this protected-path rule, 17 of them Renovate digest bumps.
 - **Every refusal names what's missing.** A decision carries reason codes and a blocking list, so a person who gets
   an escalation sees exactly which gate is unmet.
 
@@ -92,7 +95,7 @@ leave out lockfiles, minified and generated files and source maps; database migr
 | Linked issue | present or absent, from the repository's intent source (closing keywords or a Jira key); labels such as `security`, `breaking-change`, `needs-design` |
 | Declared PR dependencies | each one merged, unmerged, or closed without merging |
 | Consumers | code, charts or overlays outside the repository that use a changed interface, or `unknown` |
-| Reversibility | behind a default-off flag, behind a default-on flag, only adds code, changes behaviour, irreversible |
+| Reversibility | behind a default-off flag, behind a default-on flag, only adds code, changes behavior, irreversible |
 | Test-suite delta | stronger, neutral, weakened |
 | Impact and its confidence | from the AISDLC-96 model |
 | Advisory risk score | the ADR 0089 composite for this commit, 1–5, or `degraded` |
@@ -111,7 +114,7 @@ A PR's tier is the highest tier of any of its files or inputs.
 | **T0** Pre-authorized | every file is docs; or it is a dependency pin or patch bump that passes the dependency rules (4.4); or it only adds tests; or it only bumps the digest of a pinned CI action and an allowlisted bot opened it. In every case: at most 20 files, a member or allowlisted-bot author, nothing sensitive, restricted or binary, no structural CI change, no weakened tests |
 | **T1** Low | at most 10 files and 100 lines; only source, docs, test or config files; the change only adds code or sits behind a default-off flag; a linked issue; a member or allowlisted-bot author; the affected packages have tests that run in CI |
 | **T2** Standard | at most 25 files and 800 lines; nothing sensitive, CI or restricted; dependency changes are pin or patch only; not irreversible |
-| **T3** Sensitive | anything larger; any sensitive path (auth, crypto, RBAC, tokens, secrets); a structural CI change; a minor or major dependency bump; a migration or irreversible change; a consumer outside the repository (4.4); a first-time or external-fork author; weakened tests; a linked issue labelled `security`, `breaking-change` or `needs-design` |
+| **T3** Sensitive | anything larger; any sensitive path (auth, crypto, RBAC, tokens, secrets); a structural CI change; a minor or major dependency bump; a migration or irreversible change; a consumer outside the repository (4.4); a first-time or external-fork author; weakened tests; a linked issue labeled `security`, `breaking-change` or `needs-design` |
 | **T4** Restricted | any restricted file: CODEOWNERS, branch protection or rulesets, the auto-merge policy file, agent, harness, prompt, skill or hook definitions, credential and sandbox configuration, release, deployment, packaging or signing configuration, `.gitmodules` URL changes, binaries, and the tests that cover these paths |
 
 Two inputs can only raise the tier. An advisory risk score of 3 raises it to at least T2, and 4 or more to at least
@@ -121,7 +124,7 @@ T3. Impact confidence that comes back low or unknown from an impact model that r
 the tier is the higher of the size tier and the impact tier: a change inside one package with no exported symbol
 changed can be T1; exported functions or callers in other packages make it at least T2; callers in other
 repositories or through shared templates make it at least T3. The sample put 17 of 246 PRs in T3 on size alone,
-one of them only 2 files.
+two of them only 2 files each.
 
 The size limits are starting values, taken from [Cloudflare's AI code review] tiers and the ADR 0089 rubric, and
 they get recalibrated on outcomes (8.5).
@@ -150,7 +153,8 @@ already blocks them (5.0).
 Dependencies run three ways, and each has its own rule. The full conditions are in Appendix A.
 
 - **Inbound** (packages this repository uses): a dependency bump is T0 only when it is a pure patch or pin bump with
-  no new package, a consistent lockfile, no registry change, no new known vulnerability and no license change.
+  no new package, a consistent lockfile, no registry change, no new known vulnerability and an unchanged or
+  allowlisted license.
   Renovate's own config already expresses part of this; the scanner and lockfile checks are what it can't.
 - **Outbound** (code elsewhere that uses this change): any consumer outside the repository makes the PR T3. Its
   evidence includes the consumers' tests, and the producer merges before its consumers.
@@ -178,16 +182,16 @@ That only works if branch protection is set up for it. A repository can receive 
 target branch meets P1–P5. P6 is needed only for automatic mode. The agent reads the rules on every evaluation;
 anything unmet is ESCALATE with `protection_insufficient`.
 
-| | Prerequisite | Why | fullsend `main`, 2026-09-24 |
+| | Prerequisite | Why | fullsend `main`, 2026-09-27 |
 |---|---|---|---|
-| P1 | the policy's required checks are required status checks, strict | E1 belongs to branch protection | met (`behaviour`, `e2e`, strict) |
+| P1 | the policy's required checks are required status checks, strict | E1 belongs to branch protection | met (`behavior`, `e2e`, strict) |
 | P2 | the scope verdict is itself a required check | ties the verdict to one commit (7.3) | not met |
 | P3 | `require_code_owner_review`, and CODEOWNERS covers every sensitive and restricted path | E6 at T3 and T4 belongs to branch protection | review required; coverage not checked |
 | P4 | `required_review_thread_resolution`: unresolved threads block merge | open findings block | met |
-| P5 | an approval doesn't survive a new push (`dismiss_stale_reviews_on_push` or `require_last_push_approval`) | nobody approves a commit they never saw | not met (whether `require_extra_approval_for_unattributed_changes` covers it is unverified) |
+| P5 | an approval doesn't survive a new push (`dismiss_stale_reviews_on_push` or `require_last_push_approval`) | an approval shouldn't carry over to a commit the reviewer never saw | not met (whether `require_extra_approval_for_unattributed_changes` covers it is unverified) |
 | P6 | automatic mode only: `required_approving_review_count` set to 0 | with 1 or more, every PR needs a person | not met (1 approval), so explicit mode only |
 
-Source: `GET /repos/fullsend-ai/fullsend/rules/branches/main`, read 2026-09-24. Classic branch protection, if any,
+Source: `GET /repos/fullsend-ai/fullsend/rules/branches/main`, read 2026-09-24 and again 2026-09-27 (unchanged). Classic branch protection, if any,
 needs admin access to read and isn't included.
 
 ### 5.1 Evidence classes
@@ -195,7 +199,7 @@ needs admin access to read and isn't included.
 | | Evidence | What it proves | Produced by |
 |---|---|---|---|
 | E1 | Required checks | every required check passed on this exact commit | branch protection |
-| E2 | Relevant tests | tests that exercise the affected behaviour passed on this commit; from T2, the changed lines actually ran | CI, with the AISDLC-96 impact set and AISDLC-100 selection |
+| E2 | Relevant tests | tests that exercise the affected behavior passed on this commit; from T2, the changed lines actually ran | CI, with the AISDLC-96 impact set and AISDLC-100 selection |
 | E3 | Review | a structured review of this commit with no open critical, major or human-required finding, written by the review stage into storage the PR can't edit (not parsed from a comment) | review agent |
 | E4 | Classification record | the tier and every input behind it | classification script |
 | E5 | Intent and scope | a linked issue, and the diff does what it asks and nothing more | review agent |
@@ -224,6 +228,8 @@ protection. A tier's MVE is met when every R cell is `present` for the current c
 | E8 track record | R for automatic mode | R for automatic mode | – | – | – |
 | E9 model veto | R for automatic mode | R for automatic mode | O | O | – |
 
+Whatever the tier, a PR written by an agent needs a human approving review of that commit before it merges (10).
+
 ### 5.3 Substitutes
 
 A substitute is allowed only when the policy file declares it. Every use is recorded by name, so it can be counted.
@@ -247,7 +253,7 @@ These void a tier's evidence and escalate:
 | Tier | Escalate when |
 |---|---|
 | T0 | a docs change also carries a generated or binary file; a dependency bump touches anything but the manifest and lockfile, or is a minor or major bump disguised as a pin, or fails the dependency rules (Appendix A); a test-only change weakens any existing assertion |
-| T1 | the linked issue is labelled `needs-design`, `security` or `breaking-change`; the flag defaults on; the change reaches a sensitive, CI or restricted path through a shared template or base overlay |
+| T1 | the linked issue is labeled `needs-design`, `security` or `breaking-change`; the flag defaults on; the change reaches a sensitive, CI or restricted path through a shared template or base overlay |
 | T2 | the review has a human-required finding; impact confidence is unknown; changed lines never ran and no substitute is declared |
 | T3 | the code owner hasn't approved; an irreversible change has no rollback note; the integration evidence is unreliable |
 | T4 | always: T4 only ever escalates, and the agent never changes the guardrails it runs under |
@@ -261,7 +267,7 @@ never the raw PR) and returns a calibrated probability for each yes/no question.
 
 | Question | "Yes" means | Tiers |
 |---|---|---|
-| `exceeds_issue_scope` | the diff changes behaviour the linked issue didn't ask for | T1 and above |
+| `exceeds_issue_scope` | the diff changes behavior the linked issue didn't ask for | T1 and above |
 | `weakens_tests` | the change loosens, removes, skips or mocks away an existing test or assertion | all |
 | `removes_safeguard` | the change removes or disables a safety, sync, retry or permission control, or changes permission data | all |
 | `description_mismatch` | the PR description claims something the diff doesn't do, or leaves out something it does | all |
@@ -301,9 +307,9 @@ the model veto.
 **Limits.** At most two REMEDIATE attempts per commit and four per PR; the next unmet gate escalates with
 `remediation_budget_exhausted`. WAIT covers pending CI (`ci_pending`), unknown mergeability (`mergeability_unknown`),
 conflicts (`merge_conflict`), an existing merge-queue entry (`already_queued`), an unmerged dependency
-(`dependency_unmerged`), a stacked PR (`stacked_on_open_pr`) and refreshing evidence (`evidence_refreshing`). It ends after 24 hours: pending CI, unknown
-mergeability and conflicts become REMEDIATE (re-run or rebase) while attempts remain, and everything else becomes
-ESCALATE.
+(`dependency_unmerged`), a stacked PR (`stacked_on_open_pr`) and refreshing evidence (`evidence_refreshing`). It
+ends after 24 hours: pending CI, unknown mergeability and conflicts become REMEDIATE (re-run or rebase) while
+attempts remain, and everything else becomes ESCALATE.
 
 ## 7. Outcomes
 
@@ -425,7 +431,7 @@ review since the scorer shipped on 2026-08-25: 246 PRs.
 | Scores are lopsided; the top of the scale never occurs | 53 / 177 / 15 / 1 / 0 across scores 1–5 |
 | Correlation with how much review found is real but weak | Spearman rho 0.387, 95% CI 0.253–0.506 |
 | By the review's own labels, score 1 looks clean | 0 of 53 at score 1 vs 31 of 193 at 2 or more had a major or critical finding |
-| Read as actual defects, the difference disappears | of the 31: 21 protected-path rule (17 Renovate), 5 process or docs, 4 behaviour defects; defects by score 0/53, 2/177, 2/15, 0/1; score 1 vs 2 indistinguishable (Fisher p ≥ 0.59) |
+| Read as actual defects, the difference disappears | of the 31: 21 protected-path rule (17 Renovate), 5 process or docs, 4 behavior defects, 1 arguable ([fullsend#6994]); defects by score 0/53, 2/177, 2/15, 0/1; score 1 vs 2 indistinguishable (Fisher p ≥ 0.59) |
 | A bash-only tier-1 gate isn't the same as the composite | tier 1 rounds to 1 on 104 PRs, 6 of them with a major or critical label |
 | The score is silently missing on many PRs | about 15% of recent coder PRs have none ([fullsend#7387]); model outages and token limits removed it from about 10 more in the sample |
 | The same commit can score differently on re-review | tier 1 was re-emitted by the model; fixed by computing it in the script ([agents#1245], open) |
@@ -449,7 +455,7 @@ support that, so this proposal doesn't use it. The routing draft [agents#1246] s
 - **By authorship** (read 2026-09-27), 35 of the 48 were agent-authored: `fullsend-ai-coder` opened all 20 T1
   changes and 15 of the 24 docs PRs. Those stay in explicit mode (section 10). That leaves 13 for the automatic lane:
   9 docs PRs by maintainers, all 9 marked AI-assisted, and the 4 Renovate bumps.
-- **Where the defects landed:** four of the five labelled defects land in T3. The arguable one ([fullsend#6994])
+- **Where the defects landed:** four of the five labeled defects land in T3. The arguable one ([fullsend#6994])
   lands in T1 and is held by its changes-requested review. The 21 protected-path PRs land in T4 (12) and T3 (9).
 - **The tiers aren't the old score:** only 16 of the 53 score-1 PRs are candidates, and 32 candidates carry score 2.
 - **Fixes the check forced:** it exposed five weak rules, all fixed above:
@@ -479,7 +485,7 @@ support that, so this proposal doesn't use it. The routing draft [agents#1246] s
   - "Any high dimension escalates."
   - Test changes are pre-authorized only when strictly stronger.
   - Policy changes need a higher bar than code.
-- **[fullsend#3016]** shows the practical blocker: Renovate PRs wait 8–36 hours for an approval even when labelled
+- **[fullsend#3016]** shows the practical blocker: Renovate PRs wait 8–36 hours for an approval even when labeled
   low risk. That is why T0 is the first cohort. [fullsend#6892] asks for the revert view E8 needs.
 - **Model judgment:** E9 follows the shape of typed decision models: a calibrated probability per atomic question,
   composed in code, with thresholds checked against this domain's own outcomes, because typed output guarantees the
@@ -491,7 +497,7 @@ support that, so this proposal doesn't use it. The routing draft [agents#1246] s
    blocking list as a check summary. Compare against what people decided for at least 30 days and 50 decisions per
    cohort.
 2. **Explicit, T0, one repository.** A trusted person triggers each evaluation, and every gate applies. On fullsend
-   `main` the approval branch protection already requires is that trigger. P2 and P5 come first (5.0).
+   `main`, that trigger is the approval branch protection already requires. P2 and P5 come first (5.0).
 3. **Automatic, T0.** Only once the observe period shows no false MERGE verdicts (a MERGE a person then had to
    block), the outcome baseline (E8) exists, and the repository meets P6.
    - Automatic mode never covers a PR whose AI authorship is `agent` (4.1). Red Hat's guidelines for AI code
@@ -582,7 +588,7 @@ elsewhere.
   WAITs, a merged one clears, and one closed without merging escalates (`dependency_closed`).
 - WAIT ends in ESCALATE after the policy timeout (section 6).
 - Two open PRs touching the same files need no rule: merging one makes the other's evidence stale, and the merge
-  queue serialises them.
+  queue serializes them.
 
 ## Appendix B. Repository profiles (from the 2026-09-23 check)
 
@@ -677,7 +683,7 @@ elsewhere.
 ## Changelog
 
 - **v0.5** (2026-09-27): restructured for reading: summary first, plainer wording, reference material moved to
-  appendices. No rule changed.
+  appendices; internal-only links removed. No rule changed.
 - **v0.4** (2026-09-27): applies Red Hat's guidelines for AI code assistants:
   - an AI-authorship input;
   - agent-authored PRs are kept out of automatic mode;
