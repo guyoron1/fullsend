@@ -28,35 +28,20 @@ Five principles:
 - **Every decision is logged with its evidence,** and the thresholds are checked against what actually needed a fix
   later.
 
-## 1. Where 97 sits in AISDLC-29
+## 1. How 97 fits with the other epics
 
-97 turns the other epics' outputs into a merge decision. It doesn't define how impact is computed, which tests run,
-how debt is fixed or which tools are used. It defines how much evidence each scope of change needs, and what happens
-when that evidence isn't there.
+97 turns the other epics' outputs into a merge decision. It sets how much evidence each scope of change needs and
+what happens when it's missing; the other epics define how that evidence is produced.
 
-| Epic | Defines | 97 uses it for | 97 gives back |
-|---|---|---|---|
-| AISDLC-96: change impact and coverage adequacy | the blast radius and its confidence; what counts as adequate coverage of the affected behavior | setting the tier; the "tests cover the affected behavior" requirement | which tier needs which confidence and which level of adequacy |
-| AISDLC-100: test selection and CI capacity | which tests run for a change, the fallback to a broader suite, CI handling of flaky, slow and unavailable tests, cached results | meeting each tier's test requirement at the lowest cost | the evidence bar each tier must reach |
-| AISDLC-98: debt taxonomy and golden path | the debt categories, the golden path (fix now, defer, escalate), and how agent-written tests are validated | the "fix first" outcome, and deferring debt instead of blocking | when a merge decision sends a gap to the golden path, and a decision record it can audit |
-| AISDLC-99: tooling | which tool produces each piece of evidence | everything in section 3 | the list of evidence the tools have to produce |
+| Epic | What 97 needs from it | Until it's ready |
+|---|---|---|
+| 96: change impact and coverage adequacy | the blast radius with a confidence level, and what "adequate coverage" means (97 only sets which tier requires it) | size stands in for blast radius, the 80% changed-line figure is a placeholder, and T1 and above can't merge automatically |
+| 100: test selection and CI capacity | which tests meet each tier's bar, with a fallback, and CI handling of flaky, slow and unavailable tests | full suites run |
+| 98: debt taxonomy and golden path | the debt categories (used in section 4), the fix-now / defer / escalate path, and what an agent may fix on its own | gaps go to a person |
+| 99: tooling | a tool for each piece of evidence in section 3; today nothing checks reversibility or weakened tests | those checks count as unknown, so they never pass |
 
-Where the epics overlap, this is the proposed split:
-
-| Topic | Who owns what |
-|---|---|
-| Coverage adequacy | 96 defines what "adequate" means. 97 only sets which tier requires it. The 80% changed-line figure used below is a placeholder until 96 defines it. |
-| Test requirements by risk | 97 sets the bar for each tier. 100 picks the tests, and the fallback, that meet it. |
-| Flaky, slow and unavailable tests | 98 names them, 100 handles them in CI, and 97 decides what the merge does in the meantime. |
-| Keeping merge evidence | 97 defines the record each decision writes. 98 uses it for audit, and adds the validation evidence for agent-written tests. |
-| What an agent may fix on its own | 98. 97 only says when a fix is needed. |
-| The benchmark for judging the gate | 97, as Ella noted on AISDLC-99: past PRs later followed by a customer case or a quick bug fix (Hofni's proposal). Section 6 uses it to set and check the thresholds. |
-
-What 97 can settle now, and what it waits on:
-
-| Can be settled now | Waits on |
-|---|---|
-| the tiers, each tier's evidence bar, the outcomes, the decision record, the rollout | 96 for blast radius and adequacy (until then, size stands in and T1+ can't merge automatically); 100 for cheaper evidence (until then, full suites run); 98 for the fix-first path and deferral (until then, gaps go to a person); 99 for the tools, including reversibility and weakened-test checks, which no tool does today |
+The benchmark for judging the gate is part of 97, as Ella noted on AISDLC-99 (section 6). The record each merge
+decision writes is 97's; 98 audits it.
 
 ## 2. Risk tiers, by scope of change
 
