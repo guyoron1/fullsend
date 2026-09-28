@@ -457,7 +457,8 @@ review since the scorer shipped on 2026-08-25: 246 PRs.
 So this design uses the score only to raise a tier, takes protected paths and dependency bumps out of it, requires a
 classification that a script computes and that can't silently not run, and calibrates on post-merge outcomes. The
 2026-09-10 comment on [fullsend#4698] concluded that "score 1 alone is a safe gate"; the defect reading above doesn't
-support that, so this proposal doesn't use it. The routing draft [agents#1246] stays a draft for the same reason.
+support that, so this proposal doesn't use it; the comment was corrected on 2026-09-28. The routing draft [agents#1246]
+was closed on 2026-09-28 for the same reason.
 
 **The tier rules, applied to the same 246 PRs** (2026-09-23), with reversibility, test delta and impact left unknown:
 
