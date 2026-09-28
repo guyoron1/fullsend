@@ -1,3 +1,5 @@
+> **Superseded where they differ (2026-09-28):** see `aisdlc-97-architecture-proposal.md`, the current architecture design proposal.
+
 # AISDLC-97: Risk-Tiered MVE and Mergeability Contract
 
 ## What this decides
