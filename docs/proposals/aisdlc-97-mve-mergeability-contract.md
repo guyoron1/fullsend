@@ -19,9 +19,9 @@ and when it has to hand the PR to a person.
 - **Branch protection does the enforcing.** Required checks, review verdicts and approvals stay with GitHub. The
   agent decides only whether a PR is inside the scope the repository declared safe for auto-merge. If it is, the
   agent turns on GitHub's merge-when-ready for that commit, and GitHub merges.
-- **Changes written by an agent always get a human approving review,** as Red Hat's guidelines for AI code assistants
-  require. Merging without a person is reserved for changes written by people or by deterministic bots such as
-  Renovate.
+- **Changes written by an agent always get a human approving review,** as we read Red Hat's guidelines for AI code
+  assistants (11.11 asks the policy owner to confirm). Merging with no approval is reserved for changes written by
+  people or by deterministic bots such as Renovate.
 - **Every decision is recorded** against the commit, the base and the policy version. Thresholds are tuned against
   what actually gets reverted or fixed after merge.
 

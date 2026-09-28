@@ -1,7 +1,5 @@
 # AISDLC-97: Risk-Tiered MVE and Mergeability Contract
 
-Guy Oron · 2026-09-28 · Draft for review · Jira: AISDLC-97, part of AISDLC-29
-
 ## What this decides
 
 AISDLC-29 asks for "the specific, dynamic testing thresholds an agent must meet to qualify for an auto-merge, based
@@ -16,10 +14,11 @@ gap, then check again) or **escalate** (hand to a person).
   two failures AISDLC-29 names.
 - **GitHub keeps enforcing checks, reviews and approvals.** The agent only decides whether a PR is in scope, then
   turns on merge-when-ready.
-- **A PR written by an agent always needs a human approval,** per Red Hat's guidelines for AI code assistants. For
+- **Agent-written PRs keep a human approval, for now.** Red Hat's guidelines for AI code assistants require a human in
+  the loop who verifies AI-generated code; when no person wrote the PR, we read that as a person approving it. So for
   agent PRs, the contract decides what evidence must be in place before a person is asked, and which person; the
-  merge itself is then automatic. Merging with no person at all applies only to PRs by people or by bots like
-  Renovate, until that policy changes.
+  merge then happens on its own. PRs written by people, and bot bumps with no AI in them, can merge with no approval
+  if the policy owner agrees (section 8). The decision record is the evidence for moving to a person on the loop.
 - **Every decision is logged with its evidence,** and the thresholds are checked against which merges later needed
   a fix.
 
@@ -150,7 +149,3 @@ In the 246-PR sample, 48 fit T0 or T1. 35 of those were written by an agent, whi
 - Git history: which signals beyond reverts should raise a tier, and over what window? ADR 0089 already reads churn,
   regression history and reverts through a model. Should they move into the script, stay in its raise-only score, or
   fold into 96's impact model?
-
-The evidence behind each rule, the dependency rules, the record format and the repository profiles are in the
-[full reference](https://github.com/guyoron1/fullsend/blob/aisdlc-97-mve-contract/docs/proposals/aisdlc-97-mve-mergeability-contract.md),
-kept separately for implementers.
