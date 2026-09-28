@@ -7,8 +7,8 @@ on the scope of the change". This contract gives every pull request a **risk tie
 the minimal viable **evidence** (MVE) that tier needs, and one **outcome**: **merge**, **remediate** (fix a named
 gap, then check again) or **escalate** (hand to a person).
 
-- **A script sets the tier, not a model:** paths, size, author, linked issue and the files' recent history; the riskiest
-  file decides.
+- **A script sets the tier, not a model:** paths, size, blast radius, author, linked issue and the files' history; the
+  riskiest signal decides, and weaker signals can only raise the tier.
 - **Missing or unclear evidence never merges,** so regressions don't slip through. A gap goes into 98's golden path
   (fix now, defer as debt, or escalate), so agents aren't blocked forever on flaky or missing tests. These are the
   two failures AISDLC-29 names.
@@ -26,8 +26,8 @@ gap, then check again) or **escalate** (hand to a person).
 
 The other epics produce the evidence; 97 sets how much of it each tier needs and what happens when it's missing.
 
-- **96** gives the blast radius and what "adequate coverage" means. Until then, size stands in and T1 and above
-  can't merge automatically.
+- **96** gives the blast radius and what "adequate coverage" means. Until then, a count of dependent packages stands
+  in, and T1 and above can't merge automatically.
 - **100** picks the tests that meet each tier's bar and handles flaky, slow and unavailable tests in CI. Until then,
   full suites run.
 - **98** gives the debt categories (section 4) and the fix-now / defer / escalate path. Until then, gaps go to a
@@ -42,19 +42,26 @@ The benchmark (section 6) and the decision record (section 5) are 97's; 98 audit
 | Tier | Scope of change | Outcome with complete evidence |
 |---|---|---|
 | T0 Pre-authorized | docs only; a patch or pin dependency bump that passes supply-chain checks; new tests only | merge (an agent's PR after a human approves) |
-| T1 Low | up to 10 files and 100 lines; only adds code or sits behind a default-off flag; linked issue | merge (an agent's PR after a human approves) |
-| T2 Standard | up to 25 files and 800 lines, nothing sensitive | a team member approves |
-| T3 Sensitive | auth or secrets, CI structure, migrations, minor or major bumps, code other repositories use, weakened tests, anything larger | the code owner approves |
+| T1 Low | up to 10 files and 100 lines; new code only (new files or functions nothing calls yet) or behind a default-off flag; few dependents; linked issue | merge (an agent's PR after a human approves) |
+| T2 Standard | up to 25 files and 800 lines; nothing sensitive; no new dependency | a team member approves |
+| T3 Sensitive | auth or secrets, CI structure, migrations, new dependencies or minor or major bumps, core code, code other repositories use, weakened tests, anything larger | the code owner approves |
 | T4 Restricted | CODEOWNERS, branch rules, the policy file, agent prompts, credentials, release config | people only; the agent doesn't touch it |
 
-- The size limits are starting values (Cloudflare's published review tiers, ADR 0089), checked against the
-  benchmark. Once 96's impact model exists, the tier is the higher of the two, and low or unknown confidence adds
-  one. The ADR 0089 risk score can only raise a tier.
-- **Git history raises a tier, never lowers it.** To start, a changed file that was reverted in the last 90 days
-  raises the tier by one. Reverts are rare (about 5 in fullsend's last 90 days), but about half of its 2,806 commits
-  are labeled fix, so a recent fix is recorded, not used, until the benchmark shows which history predicts later
-  fixes. The same history (recent reverts and fixes, and the decisions behind them) goes to the reviewer and the model
-  check as context.
+- **Floors: the riskiest signal sets the tier, and nothing averages it down.** Each of these sets a minimum on its own:
+  - Blast radius: a script counts the packages that depend on each changed package. A code change (not only
+    comments) in a package with 10 or more dependents is at least T2. Core code is T3: paths the repository declares
+    as core in the policy file, or a package most of the repository depends on. Once 96's impact model exists, it
+    replaces the count, and low or unknown confidence adds one.
+  - A line added inside an existing function changes behavior, so it isn't "new code only".
+  - A new import of a risky standard package (running commands, unsafe memory, cryptography) is at least T2.
+- **Raises: weaker signals add up, and can only push the tier up.** A changed file that was reverted in the last 90
+  days raises it by one. So do two or more of these: a file that usually changes together with a changed file is
+  missing from the PR; the file is a churn hotspot; it was untouched for 6 months; recent commits on it mention a
+  workaround or hack; the ADR 0089 score is 3 or more. These are ADR 0089's history signals, used as raises instead of
+  a weighted average, so one serious signal can't be diluted by several harmless ones. The same history goes to the
+  reviewer and the model check as context.
+- **Every threshold is a starting value:** the sizes (Cloudflare's published review tiers), 10 dependents, two
+  signals, 90 days and 6 months. The benchmark (section 6) sets and checks them.
 - **Always handed to a person:** the PR edits the rules it's judged by; it's a draft; the code changed after review;
   the agent would merge its own work; a T1+ PR has no linked issue; tests were weakened.
 - **Also per tier:** T0, a docs PR with generated or binary files, or a "pin" that is really a minor or major bump;
@@ -121,11 +128,13 @@ Every decision appends a record (the tier, each piece of evidence and its source
 
 ## 6. How the thresholds are set and checked
 
-- **Starting values:** the tier sizes and the 80% placeholder above.
+- **Starting values:** the thresholds in section 2 and the 80% placeholder above.
 - **Benchmark** (Hofni's proposal, placed in 97 by Ella): past PRs later followed by a customer case or a quick bug
   fix, labeled by how critical the problem was. For each tier: would the gate have merged a PR that later needed a
-  fix, and would the files' history have flagged it? The pilot runs on the 246 fullsend and infra-deployments PRs already analyzed (5 labeled defects), then on
-  a larger set.
+  fix, and which signals would have flagged it? It needs several repositories and post-merge outcomes (reverts,
+  fix-forwards, customer cases), not review findings. The 246 fullsend and infra-deployments PRs analyzed so far were
+  collected to evaluate the ADR 0089 scorer, and their 5 defects come from review findings, so they can test the
+  pipeline but not the thresholds.
 - **In production:** a monthly review, per tier, of automatic merges that later needed a fix. Two in 30 days send
   the tier back to human approval.
 
@@ -133,19 +142,18 @@ Every decision appends a record (the tier, each piece of evidence and its source
 
 | Step | What happens | Needs first |
 |---|---|---|
-| 1. Observe | classify every PR and publish its tier and what's missing, for at least 30 days | a classification script (paths, size, author, agent-written or not, linked issue, file history); buildable now |
+| 1. Observe | classify every PR and publish its tier and what's missing, for at least 30 days | a classification script (paths, size, dependents, author, agent-written or not, linked issue, file history); buildable now |
 | 2. Explicit | docs PRs and Renovate bumps in one repository; fullsend's existing required approval triggers each merge | on fullsend: the verdict as a required check, approvals reset on a new push; supply-chain checks for bumps |
 | 3. Automatic | only PRs by people or bots like Renovate; no approval needed | no wrong merges in observe; the benchmark and an outcome baseline (fullsend#6892); a model for the checks, approved under Red Hat's AI policy (99); the repository stops requiring an approval on every PR |
 | 4. T1 and up | T1 next; T2 and above stay human-approved until the data says otherwise | 96's impact model and adequacy criteria; reversibility and weakened-test checks (99) |
 
-In the 246-PR sample, 48 fit T0 or T1. 35 of those were written by an agent, which leaves 13 for automatic merging:
-9 docs PRs by maintainers and 4 Renovate bumps.
+In the 246 PRs checked so far, 13 could merge with no approval under these rules: 9 docs PRs by maintainers and 4
+Renovate bumps. Most other low-tier PRs were written by an agent.
 
 ## 8. Open questions
 
 - Is our reading of Red Hat's AI guidelines right: agent-written PRs are always human-approved, and Renovate bumps fall
   outside them?
 - Is the split with 96, 98 and 100 in section 1 the right one?
-- Git history: which signals beyond reverts should raise a tier, and over what window? ADR 0089 already reads churn,
-  regression history and reverts through a model. Should they move into the script, stay in its raise-only score, or
-  fold into 96's impact model?
+- Blast radius and history: the dependent count stands in until 96's model exists, and the history signals come from
+  ADR 0089. Should ADR 0089's script compute them for both, or should they fold into 96's impact model?

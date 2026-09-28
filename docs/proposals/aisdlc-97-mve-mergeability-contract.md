@@ -98,6 +98,9 @@ leave out lockfiles, minified and generated files and source maps; database migr
 | Reversibility | behind a default-off flag, behind a default-on flag, only adds code, changes behavior, irreversible |
 | Test-suite delta | stronger, neutral, weakened |
 | Impact and its confidence | from the AISDLC-96 model |
+| Dependents | per changed package, how many packages in the repository import it, directly or not; whether a changed path is declared `core` in the policy file |
+| Risky imports | new third-party modules; new imports of standard packages that run commands, use unsafe memory or do cryptography |
+| File history | per changed file: reverts in the last 90 days; files that changed with it in 3 or more commits in the last 90 days but aren't in the PR; commits in the last 30 days; days since its last change; commits in the last 90 days whose message says workaround, hack or temporary |
 | Advisory risk score | the ADR 0089 composite for this commit, 1–5, or `degraded` |
 
 Two inputs have no tool to compute them yet: reversibility and test-suite delta. In the sample, 55 of 246 PRs deleted
@@ -112,22 +115,33 @@ A PR's tier is the highest tier of any of its files or inputs.
 | Tier | The PR stays at or below this tier only if |
 |---|---|
 | **T0** Pre-authorized | every file is docs; or it is a dependency pin or patch bump that passes the dependency rules (4.4); or it only adds tests; or it only bumps the digest of a pinned CI action and an allowlisted bot opened it. In every case: at most 20 files, a member or allowlisted-bot author, nothing sensitive, restricted or binary, no structural CI change, no weakened tests |
-| **T1** Low | at most 10 files and 100 lines; only source, docs, test or config files; the change only adds code or sits behind a default-off flag; a linked issue; a member or allowlisted-bot author; the affected packages have tests that run in CI |
-| **T2** Standard | at most 25 files and 800 lines; nothing sensitive, CI or restricted; dependency changes are pin or patch only; not irreversible |
-| **T3** Sensitive | anything larger; any sensitive path (auth, crypto, RBAC, tokens, secrets); a structural CI change; a minor or major dependency bump; a migration or irreversible change; a consumer outside the repository (4.4); a first-time or external-fork author; weakened tests; a linked issue labeled `security`, `breaking-change` or `needs-design` |
+| **T1** Low | at most 10 files and 100 lines; only source, docs, test or config files; the change is new code only (new files, or new functions nothing existing calls yet; a line added inside an existing function is a behavior change) or sits behind a default-off flag; no changed package has 10 or more dependents; a linked issue; a member or allowlisted-bot author; the affected packages have tests that run in CI |
+| **T2** Standard | at most 25 files and 800 lines; nothing sensitive, CI or restricted; dependency changes are pin or patch only, with no new third-party module; not irreversible |
+| **T3** Sensitive | anything larger; any sensitive path (auth, crypto, RBAC, tokens, secrets); a structural CI change; a minor or major dependency bump or a new third-party module; core code (a path the policy file declares `core`, or a package more than half the repository depends on); a migration or irreversible change; a consumer outside the repository (4.4); a first-time or external-fork author; weakened tests; a linked issue labeled `security`, `breaking-change` or `needs-design` |
 | **T4** Restricted | any restricted file: CODEOWNERS, branch protection or rulesets, the auto-merge policy file, agent, harness, prompt, skill or hook definitions, credential and sandbox configuration, release, deployment, packaging or signing configuration, `.gitmodules` URL changes, binaries, and the tests that cover these paths |
 
-Two inputs can only raise the tier. An advisory risk score of 3 raises it to at least T2, and 4 or more to at least
-T3. Impact confidence that comes back low or unknown from an impact model that ran raises it by one, to at least T2.
+**Floors.** The tier is the highest floor any input sets, and nothing averages it down. Beyond the table, a code
+change (not only comments or docs) in a package with 10 or more dependents is at least T2, a new import of a risky
+standard package is at least T2, and an advisory risk score of 4 or more is at least T3.
 
-**Size stands in for blast radius** until AISDLC-96's impact model exists, and the record says so. Once it exists,
-the tier is the higher of the size tier and the impact tier: a change inside one package with no exported symbol
-changed can be T1; exported functions or callers in other packages make it at least T2; callers in other
-repositories or through shared templates make it at least T3. The sample put 17 of 246 PRs in T3 on size alone,
-two of them only 2 files each.
+**The dependent count stands in for blast radius** until AISDLC-96's impact model exists, and the record says so.
+Once it exists, the tier is the higher of the size tier and the impact tier: a change inside one package with no
+exported symbol changed can be T1; exported functions or callers in other packages make it at least T2; callers in
+other repositories or through shared templates make it at least T3. Impact confidence that comes back low or unknown
+from a model that ran raises the tier by one, to at least T2. The sample put 17 of 246 PRs in T3 on size alone, two
+of them only 2 files each. In fullsend on 2026-09-28, 14 of the 76 sample PRs in T1 or T2 changed a package with 10 or
+more dependents (from `go list` on main); `internal/forge` alone has 40 of the repository's 70 packages depending on
+it.
 
-The size limits are starting values, taken from [Cloudflare's AI code review] tiers and the ADR 0089 rubric, and
-they get recalibrated on outcomes (8.5).
+**Raises.** Weaker signals can only push the tier up. A changed file reverted in the last 90 days raises it by one.
+Two or more of these raise it by one: a missing co-change partner, more than 10 commits to the file in 30 days, no
+change to it in 180 days, workaround or hack commit messages in 90 days, an advisory risk score of 3. These are ADR
+0089's git-history signals, used as raises instead of its weighted average, so one serious signal can't be diluted by
+several harmless ones. Commits labeled fix don't count: in fullsend they are 1,349 of 2,806 commits in 90 days, so
+they would flag nearly every file. The same history is passed to the reviewer and to E9 as context.
+
+The size limits are starting values, taken from [Cloudflare's AI code review] tiers and the ADR 0089 rubric. They,
+the 10-dependent threshold, the two-signal rule and the 30-, 90- and 180-day windows get recalibrated on outcomes (8.5).
 
 ### 4.3 Hard disqualifiers
 
@@ -407,8 +421,11 @@ state observed at decision time; they are audit data, not inputs (5.0). An examp
 
 ### 8.5 Calibration and revocation
 
-- **Calibration:** a monthly review of questions 3–7, per repository and tier. Tier sizes, the T2 coverage threshold
-  and the model-veto thresholds change only through a policy change, which is itself T4. Model-veto thresholds are
+- **Calibration:** a monthly review of questions 3–7, per repository and tier. Tier sizes, the dependent threshold,
+  the raise rule and its windows, the T2 coverage threshold and the model-veto thresholds change only through a
+  policy change, which is itself T4. They are set against the benchmark's post-merge outcomes (reverts, fix-forwards,
+  customer cases) across several repositories. The 246-PR sample in section 9 was collected to evaluate the ADR 0089
+  scorer, and its defects are read from review findings, so it tests the pipeline, not the thresholds. Model-veto thresholds are
   first fitted in observe mode, before automatic mode relies on them.
 - **Automatic revocation:** a cohort drops back from automatic to observe mode when two or more automatic merges are
   reverted or fixed forward within 30 days, or when its outcome baseline falls below threshold. Turning it back on
