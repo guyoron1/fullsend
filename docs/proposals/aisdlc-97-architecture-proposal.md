@@ -22,7 +22,7 @@ evidence that requires, and who may merge it.
    automatically (a code-owned policy edit), approve every escalation with its evidence, audit a monthly sample, and
    a severe outcome revokes automatic mode at once. Agents' PRs start in explicit mode like every PR, and go automatic
    at T0, then T1, once they have a track record and Red Hat's AI policy owners confirm that this oversight meets the
-   "human in the loop" of the [AI code assistant guidelines] (question 1). Our classification script, run on 2026-09-23
+   "human in the loop" of the [AI code assistant guidelines]. Our classification script, run on 2026-09-23
    with earlier rules over the 246 PRs of [fullsend#4698] (the risk-score measurement thread), found 48 of T0 or T1
    shape; 35 of them were agent-authored, the lane this epic exists for.
 5. **Every decision writes a record before it acts**: commit, base, policy version, each signal with its tool and
@@ -42,7 +42,7 @@ flowchart LR
   LOOP -. new push .-> EV
   RDY -- yes --> RP{Restricted<br/>path?}
   RP -- no, or exempt --> CLS["Classify → T0–T3<br/>cheap signals first<br/>class · size · sensitivity<br/>dependencies · author<br/>then, only if needed<br/>reach · behavior<br/>compatibility · history"]
-  CLS --> EVD["Evidence the tier needs<br/>tests · approval<br/>reversibility<br/>track record · model veto"]
+  CLS --> EVD["Evidence the tier needs<br/>tests · approval<br/>track record · model veto"]
   EVD --> VER{Verdict}
   RP -- yes: agent → escalate<br/>person → code owner --> VER
   VER --> REC[(Record)]
@@ -60,9 +60,10 @@ flowchart LR
 
 ## 3. Risk tiers
 
-A risk tier is how bad a wrong change would be and how easily it is undone; it is not ADR 0089's score (that feeds the
-history signal) or fullsend's per-repository autonomy level ([autonomy-spectrum]); it is the per-change check that document
-proposes on top of that level.
+A risk tier is how much harm a wrong change could do before a fix lands, and whether a fix can repair it at all.
+Recovery means fixing forward, not reverting, since later PRs may already build on the change. The tier is not ADR
+0089's score, which feeds the history signal, or fullsend's autonomy level, which is set per repository; it is set per
+change, the finer check [autonomy-spectrum] proposes on top of that level.
 
 | Risk tier | Definition |
 |---|---|
@@ -119,8 +120,7 @@ AISDLC-98's path and run in CI on this commit, so an agent never grades its own 
 | Evidence | T0 | T1 | T2 | T3 |
 |---|---|---|---|---|
 | Tests | existing suite; none for docs | tests that reference the changed code | tests executed ≥ 80% of the changed hand-written lines | as T2, plus integration or e2e, and consumers' tests if any |
-| Human approval | explicit mode: today's rule; automatic mode: none | as T0 | a team member | the code owner |
-| Reversible | – | new code only, or a default-off flag | not irreversible | a revert note if irreversible |
+| Human approval | explicit mode: today's rule; automatic mode: none | as T0 | a team member | the code owner, with a recovery plan if irreversible |
 | Track record | automatic mode | automatic mode | – | – |
 | Model check, veto only | automatic mode, except docs and digest bumps | automatic mode | advisory | advisory |
 
@@ -160,7 +160,7 @@ stateDiagram-v2
   [*] --> Observe
   Observe --> Explicit: a person edits the policy
   Explicit --> Automatic: a person edits the policy
-  Automatic --> Explicit: severe outcome · minor fixes · false verdict · track record reset (question 7)
+  Automatic --> Explicit: severe outcome · minor fixes · false verdict · track record reset
   Explicit --> Observe: false merge verdict found by audit
   Automatic --> Automatic: weekly canaries · monthly audit
 ```
@@ -175,7 +175,7 @@ policy allows them.
 Observe mode comes first: every PR gets a tier-and-gaps check, and nothing merges differently. T0 then goes explicit,
 then automatic; T2 and T3 stay human-approved until the benchmark shows otherwise.
 
-**Critical path.** Automatic merging beyond docs and digest bumps needs post-merge outcome data ([fullsend#6892]) and an approved model; agents' PRs also need question 1 answered. Without them, automatic T0 for docs and
+**Critical path.** Automatic merging beyond docs and digest bumps needs post-merge outcome data ([fullsend#6892]) and an approved model; agents' PRs also need the AI policy confirmation in decision 4. Without them, automatic T0 for docs and
 digest bumps still works.
 
 **Alternatives considered.** A score or a model as the tier lets one serious signal be averaged away and isn't
@@ -196,7 +196,7 @@ T0", then raw size against the same limits.
 | Wire that helper into `Reconcile`, +6/−2 | T1 | behavior: first caller; re-tiered at `Reconcile`'s reach | **T2**: envtest on the reconcile loop |
 | Flip `--enable-live-migration` from off to on, +1/−1 | T1 | behavior: default flip of a whole feature | **T2 or above**: full e2e, upgrade test |
 | A-1: add optional field `spec.memoryOvercommitPercent`, 12 files, +380, 8 generated | T3 by the `api/` path | reach: 14 dependents, 11 outside the org | **T3**: envtest, e2e on the field, consumers' tests or their owners' approval |
-| A-2: tighten a validation pattern on an existing field, +1/−1 | T3 by the `api/` path | compatibility: breaking, existing objects may fail on update | **T3**: CRD compatibility check, upgrade test with existing objects, revert runbook |
+| A-2: tighten a validation pattern on an existing field, +1/−1 | T3 by the `api/` path | compatibility: breaking, existing objects may fail on update | **T3**: CRD compatibility check, upgrade test with existing objects, recovery plan |
 | B-1: bump A's module to the release with the field, and 9 lines using it; 7 files, 5 vendored | T0 (a bump) | dependency: a minor bump, since A-1 added a field | **T3**: e2e, B's code owner; gap: no test executes the 9 lines |
 
 [AISDLC-29]: https://redhat.atlassian.net/browse/AISDLC-29
