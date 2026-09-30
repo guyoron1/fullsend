@@ -95,7 +95,7 @@ tier, never lower it.
 
 **Policy file.** Each repository keeps these settings in a code-owned block of `.fullsend/config.yaml` ([ADR 0080];
 proposed, fullsend has no such block today), starting from an org-wide preset that it can make stricter but never
-looser. These are starting guesses that the benchmark (section 5) checks.
+looser. These are starting guesses that the benchmark checks.
 
 | Setting | T0 | T1 | T2 | T3 |
 |---|---|---|---|---|
