@@ -49,21 +49,13 @@ flowchart LR
   REC -- await approval --> PKT["check in progress<br/>packet to the approver"]
   REC -- remediate --> GP["check in progress<br/>golden path<br/>fix now or defer"]
   REC -- escalate --> ESC["check action_required<br/>reasons and packet<br/>to a person"]
-  PKT -. approval .-> EV
+  ESC -. a person acts .-> EV
+  PKT -. approve or<br/>request changes .-> EV
   GP -. fix push or debt item .-> EV
   REC -. later .-> POST[Retro · audit<br/>benchmark · track record]
   POST -. recommends .-> POL[/Policy file<br/>code-owned/]
   POL -.-> CLS
 ```
-
-Each event (a push, a check, a review, an approval, a recorded debt item) re-evaluates the PR's head commit. Until the
-PR is ready, the gate only reports what it waits for, while the author and review agents iterate as they do today, so
-nothing is classified on a commit the review agent may still send back. Signal results belong to their commit: an
-approval or a debt item on the same commit reuses them, and a new push discards them. Reach only queries a dependency
-graph kept current outside the PR flow. Signal tools return a value, a confidence, and their name and version.
-Evidence collectors read GitHub state and CI outputs, never PR text; only the model check sees sanitized PR content.
-The record is written before any action; the retro agent, audit and benchmark read the records later and can only
-recommend policy changes.
 
 ## 3. Risk tiers
 
@@ -153,9 +145,7 @@ prompts; its author is its approver; there is no linked issue at T1 or above; or
 | **Remediate** | evidence missing, partial, stale or flaky, and fixable within the attempt budget | check in progress; the gap goes to AISDLC-98's path; a fix push, a re-run or a recorded debt item re-enters the loop |
 | **Escalate** | a hard disqualifier, an agent's PR on a restricted path, the budget spent, evidence unmeasurable or contradictory, or an unknown signal with no waiver | check `action_required`; reasons and packet go to a person; a person with bypass can still merge, and GitHub logs it |
 
-Evidence problems follow [AISDLC-98]'s taxonomy: *missing* → run the producer, else defer or escalate; *partial* →
-remediate, never merge; *stale* → update the branch and recompute; *flaky* → one re-run, and a second failure is real;
-*slow* → counts as missing; *unmeasurable* or *contradictory* → escalate.
+Evidence problems following the [AISDLC-98] taxonomy
 
 ## 5. Record and trust over time
 
@@ -179,24 +169,19 @@ nothing. *Explicit*: today's approval stays, and the gate merges the approved co
 *Automatic*: T0, later T1, merges with no approval: PRs by people and allowlisted bots first, agents' PRs once the
 policy allows them.
 
-- **Tightening is automatic.** A severe outcome revokes automatic mode for that repository and tier at once and quarantines agent activity in the path.
-  A change of classifier, tool, model or prompt resets the track record ([trustworthiness-evidence]), so the tier drops
-  to explicit until the record is rebuilt.
-- **Loosening is a person's edit** of the policy file, once the record supports it: leaving observe needs at least 30
-  days and 50 PRs; automatic mode needs at least 50 gate merges with at most 2% needing a fix within 30 days. A mode
-  or threshold edit does not reset the track record, so merges earned in explicit mode count.
-- **The gate is tested continuously.** Weekly and on every change, canary PRs must escalate (an out-of-scope edit, a
-  weakened test, a hidden instruction, a rules-file edit, a split-PR wiring, a flag flip), and broken tools must yield
-  unknown, never a merge. Each month a person audits a random sample of verdicts.
-- **Benchmark** (proposed by Hofni Gartner, moved into this epic by Ella): past PRs from several repositories, labeled
-  by what happened after merge. Would the gate have merged a PR that later needed a fix, and which signal would have
-  caught it? It sets the policy defaults and calibrates the model check. It needs post-merge outcome data
-  ([fullsend#6892]); the 246 PRs of fullsend#4698 were collected to evaluate ADR 0089's scorer, with defects taken
-  from review findings, so they test the pipeline, not the thresholds.
-- **Revert plan**, required before automatic mode: who reverts (the tier's code owner), how to find affected merges
-  (the record), what to do when later work builds on top, and a drill in the canary suite.
+## 6. Rollout and critical path
 
-## 6. Worked examples (mock data)
+Observe mode comes first: every PR gets a tier-and-gaps check, and nothing merges differently. T0 then goes explicit,
+then automatic; T2 and T3 stay human-approved until the benchmark shows otherwise.
+
+**Critical path.** Automatic merging beyond docs and digest bumps needs post-merge outcome data ([fullsend#6892]) and an approved model; agents' PRs also need question 1 answered. Without them, automatic T0 for docs and
+digest bumps still works.
+
+**Alternatives considered.** A score or a model as the tier lets one serious signal be averaged away and isn't
+reproducible, so they only raise the tier or veto. Merge-on-green tools (Renovate automerge, Kodiak) and policy engines
+(Mergify, Prow Tide, GitHub rulesets) decide from PR attributes and a fixed check list; none of them computes reach.
+
+## 7. Worked examples (mock data)
 
 Repository A, `vm-operator`, is a Kubernetes operator that owns the `VirtualMachine` API;
 repository B, `vm-backup-operator`, imports it. *Naive rules* means a static core-path list, then "a dependency bump is
@@ -212,31 +197,6 @@ T0", then raw size against the same limits.
 | A-1: add optional field `spec.memoryOvercommitPercent`, 12 files, +380, 8 generated | T3 by the `api/` path | reach: 14 dependents, 11 outside the org | **T3**: envtest, e2e on the field, consumers' tests or their owners' approval |
 | A-2: tighten a validation pattern on an existing field, +1/−1 | T3 by the `api/` path | compatibility: breaking, existing objects may fail on update | **T3**: CRD compatibility check, upgrade test with existing objects, revert runbook |
 | B-1: bump A's module to the release with the field, and 9 lines using it; 7 files, 5 vendored | T0 (a bump) | dependency: a minor bump, since A-1 added a field | **T3**: e2e, B's code owner; gap: no test executes the 9 lines |
-
-## 7. Rollout and critical path
-
-Observe mode comes first: every PR gets a tier-and-gaps check, and nothing merges differently. T0 then goes explicit,
-then automatic; T2 and T3 stay human-approved until the benchmark shows otherwise.
-
-**Critical path.** Automatic merging beyond docs and digest bumps needs post-merge outcome data ([fullsend#6892]) and an approved model; agents' PRs also need question 1 answered. Without them, automatic T0 for docs and
-digest bumps still works.
-
-**Alternatives considered.** A score or a model as the tier lets one serious signal be averaged away and isn't
-reproducible, so they only raise the tier or veto. Merge-on-green tools (Renovate automerge, Kodiak) and policy engines
-(Mergify, Prow Tide, GitHub rulesets) decide from PR attributes and a fixed check list; none of them computes reach.
-
-## 8. Open questions
-
-| # | Question |
-|---|---|
-| 1 | The [AI code assistant guidelines] ask a person to review AI-generated code; written for people using assistants, they don't mention PR approval or agents that open PRs. Does oversight of the system (policy, escalations, audit, revocation) meet their "human in the loop" for agents' PRs at T0 and T1? |
-| 2 | Approval at scale: are the packet and time-to-approval enough, or do we need a per-approver cap or a rubber-stamp threshold? |
-| 3 | Who owns the policy outside fullsend, and who writes each repository's revert runbook? |
-| 4 | Is the "post" agent fullsend's [retro agent]? It runs when a PR closes, before outcomes exist; should a revert or fix PR re-run it with the outcome? |
-| 5 | What counts as a post-merge outcome, over what look-back, and which policy defaults does the benchmark confirm? |
-| 6 | Multi-repository PR sets: declare-and-wait (a `Depends-On` footer, as Zuul reads it) or enforced merge order? |
-| 7 | After a classifier, tool, model or prompt change: a full reset to explicit, or a shorter probation? |
-| 8 | Which model answers the model check, approved under which policy, fed what sanitized context? |
 
 [AISDLC-29]: https://redhat.atlassian.net/browse/AISDLC-29
 [AISDLC-96]: https://redhat.atlassian.net/browse/AISDLC-96
