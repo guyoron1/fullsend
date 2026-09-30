@@ -141,10 +141,10 @@ Evidence problems following the [AISDLC-98] taxonomy
 
 ## 5. Record and trust over time
 
-**The record** (decision 5) is the gate's log: one entry per verdict, written before the gate acts. It holds facts such
-as paths, counts and tool versions, never code or secrets. It is written by a different identity from the one that
-merges, so a stolen merge key can't fake an entry. How long it is kept is still open. The check on the PR only shows a
-copy.
+**The record** (decision 5) is the gate's log: one entry per verdict, written before the gate acts. It is kept for a
+certain amount of time, still to be decided. It holds facts such as paths, counts and tool versions, never code or
+secrets. It is written by a different identity from the one that merges, so a stolen merge key can't fake an entry. The
+PR's check run only mirrors it.
 
 ```mermaid
 stateDiagram-v2
