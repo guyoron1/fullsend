@@ -78,16 +78,16 @@ Recovery means fixing forward (not reverting back a PR, as later PRs may already
 | **2. Change class** | Docs or tests only → T0; dependency only → T0 or T3; configuration or code → T1; several classes → the riskiest. Generated files take the tier of the change behind them, and count as generated only if CI regenerates them with no diff. | Sets the starting tier and which signals run, so a docs PR never pays for costly signals. |
 | **3. Signals** | The highest minimum wins; each raise adds one tier, up to T3; nothing lowers it. Size counts hand-written code only. A signal no tool can compute takes its riskiest value, unless the policy records a waiver. | The same inputs always give the same tier, and one serious signal can't be averaged away. |
 
-| Signal | Effect on the tier | Example public tools |
-|---|---|---|
-| **Size** | over the T1 limit → T2; over the T2 limit → T3 | `git diff --numstat`; verify-generated CI jobs |
-| **Reach (blast radius)** | 10+ dependents, direct or transitive → T2; 3+ layers deep → +1; any consumer in another repository → T3; low confidence → +1 | in-repo: `go list -deps`, Bazel `rdeps`; across repositories: org code search over `go.mod`, GUAC over SBOMs |
-| **Behavior change** | the first caller of new code re-runs the classifier on that code at the caller's reach, and the PR takes the higher tier; a flag default flip takes the tier of the code it guards, at least T2 | code-index call hierarchy; flag-file diff |
-| **Interface compatibility** | breaking → T3 | go-apidiff, crdify, oasdiff, `buf breaking`, japicmp |
-| **Sensitivity** | auth, secrets, RBAC, CI, migrations → T3; a risky new import → T2 | ADR 0089's security patterns |
-| **Dependencies** | patch, pin or digest with clean supply-chain checks → T0; new, minor or major → T3 | lockfile diff, OSV-Scanner, OpenSSF Scorecard |
-| **History** | a touched file reverted in 90 days → +1; two other signs (a missing co-change, a hotspot, ADR 0089 score ≥ 3) → +1 | `git log`, code-maat, PyDriller |
-| **Author and intent** | issue labeled security or breaking-change → T3 | GitHub API, commit trailers |
+| Signal | Runs for | Effect on the tier | Example public tools |
+|---|---|---|---|
+| **Size** | every class except docs; cheap | over the T1 limit → T2; over the T2 limit → T3 | `git diff --numstat`; verify-generated CI jobs |
+| **Reach (blast radius)** | code and configuration; costly | 10+ dependents, direct or transitive → T2; 3+ layers deep → +1; any consumer in another repository → T3; low confidence → +1 | in-repo: `go list -deps`, Bazel `rdeps`; across repositories: org code search over `go.mod`, GUAC over SBOMs |
+| **Behavior change** | code and configuration; costly | the first caller of new code re-runs the classifier on that code at the caller's reach, and the PR takes the higher tier; a flag default flip takes the tier of the code it guards, at least T2 | code-index call hierarchy; flag-file diff |
+| **Interface compatibility** | code or configuration touching an API, CRD or proto; costly | breaking → T3 | go-apidiff, crdify, oasdiff, `buf breaking`, japicmp |
+| **Sensitivity** | every class; cheap | auth, secrets, RBAC, CI, migrations → T3; a risky new import → T2 | ADR 0089's security patterns |
+| **Dependencies** | dependency changes; cheap | patch, pin or digest with clean supply-chain checks → T0; new, minor or major → T3 | lockfile diff, OSV-Scanner, OpenSSF Scorecard |
+| **History** | code and configuration; costly | a touched file reverted in 90 days → +1; two other signs (a missing co-change, a hotspot, ADR 0089 score ≥ 3) → +1 | `git log`, code-maat, PyDriller |
+| **Author and intent** | every class; cheap | issue labeled security or breaking-change → T3 | GitHub API, commit trailers |
 
 [AISDLC-96] owns the blast-radius model behind reach; this contract only sets its thresholds. Where no tool exists and the
 policy waives the signal (flag flips in Go code, first callers, risky imports), a fixed model question can still raise the
@@ -97,12 +97,19 @@ tier, never lower it.
 proposed, fullsend has no such block today), starting from an org-wide preset that it can make stricter but never
 looser. These are starting guesses that the benchmark checks.
 
-| Setting | T0 | T1 | T2 | T3 |
-|---|---|---|---|---|
-| Starting mode | observe | observe | observe | observe |
-| Who approves | as the branch rule says | as the branch rule says | a team member | the code owner |
-| Largest change (hand-written code) | – | 10 files, 100 lines | 25 files, 800 lines | no limit |
-| Tests must run the changed lines | – | – | 80% | 80% |
+| Setting | What it controls | Starting value |
+|---|---|---|
+| Mode, per tier | how much the gate may do (section 5) | observe for every tier |
+| Who may go automatic | whose PRs may merge with no approval | people and allowlisted bots; agents after decision 4's confirmation |
+| Allowlisted bots | which bots count as trusted, including step 1's bump exemption | Renovate, Dependabot |
+| Size limits | the size signal (hand-written code) | T1: 10 files, 100 lines; T2: 25 files, 800 lines |
+| Signal thresholds | the other numbers in the signals table | as listed there |
+| Tools | which tool computes each signal, by name and version | chosen per repository |
+| Changed-line coverage | the tests evidence at T2 and T3 | 80% |
+| Fix attempts | how many fix rounds before remediate becomes escalate | 2 per commit, 4 per PR |
+| Waivers | signals the repository accepts as unknown | none |
+| Substitutes | proof accepted in place of the normal kind | none |
+| Extra restricted paths | paths added to step 1's list | none |
 
 ## 4. Evidence and verdicts
 
@@ -112,7 +119,8 @@ AISDLC-98's path and run in CI on this commit, so an agent never grades its own 
 
 | Evidence | T0 | T1 | T2 | T3 |
 |---|---|---|---|---|
-| Tests | existing suite; none for docs | tests that reference the changed code | tests executed ≥ 80% of the changed hand-written lines | as T2, plus integration or e2e, and consumers' tests if any |
+| Tests | existing suite; for docs, the docs build (render, link check) | tests that reference the changed code | tests executed ≥ 80% of the changed hand-written lines | as T2, plus integration or e2e, and consumers' tests if any |
+| Extra proof from the signal that set the tier | – | – | first caller: tests at the caller; flag flip: e2e with the flag on | breaking interface: compatibility report and upgrade test; migration: upgrade test |
 | Human approval | explicit mode: today's rule; automatic mode: none | as T0 | a team member | the code owner, with a recovery plan if irreversible |
 | Track record | automatic mode | automatic mode | – | – |
 | Model check, veto only | automatic mode, except docs and digest bumps | automatic mode | advisory | advisory |
