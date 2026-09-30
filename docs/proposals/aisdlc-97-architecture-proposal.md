@@ -60,10 +60,8 @@ flowchart LR
 
 ## 3. Risk tiers
 
-A risk tier is how much harm a wrong change could do before a fix lands, and whether a fix can repair it at all.
-Recovery means fixing forward, not reverting, since later PRs may already build on the change. The tier is not ADR
-0089's score, which feeds the history signal, or fullsend's autonomy level, which is set per repository; it is set per
-change, the finer check [autonomy-spectrum] proposes on top of that level.
+A risk tier is how much harm a wrong change could do before a fix lands, and whether a fix can repair it at all\
+Recovery means fixing forward (not reverting back a PR, as later PRs may already be built on this change)
 
 | Risk tier | Definition |
 |---|---|
