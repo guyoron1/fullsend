@@ -141,9 +141,10 @@ Evidence problems following the [AISDLC-98] taxonomy
 
 ## 5. Record and trust over time
 
-**The record** (decision 5) must be kept for a certain amount of time, hold no credentials and no PR content beyond paths and
-counts, and be written where the merge identity cannot write, so a leaked merge token cannot forge history. The PR's
-check run only mirrors it.
+**The record** (decision 5) is the gate's log: one entry per verdict, written before the gate acts. It holds facts such
+as paths, counts and tool versions, never code or secrets. It is written by a different identity from the one that
+merges, so a stolen merge key can't fake an entry. How long it is kept is still open. The check on the PR only shows a
+copy.
 
 ```mermaid
 stateDiagram-v2
@@ -156,10 +157,10 @@ stateDiagram-v2
   Automatic --> Automatic: weekly canaries · monthly audit
 ```
 
-**Modes**, per repository and tier. *Observe* (fullsend's "shadow mode"): the gate publishes tier and gaps and merges
-nothing. *Explicit*: today's approval stays, and the gate merges the approved commit once its evidence is complete.
-*Automatic*: T0, later T1, merges with no approval: PRs by people and allowlisted bots first, agents' PRs once the
-policy allows them.
+**Modes** set how much the gate may do, per repository and tier. *Observe* (fullsend's "shadow mode"): the gate only
+reports, and people merge as today. *Explicit*: people still approve, and the gate checks the evidence and merges.
+*Automatic* (T0, later T1): the gate merges with no approval, first for people's and allowlisted bots' PRs, then for
+agents' PRs once the policy allows them.
 
 ## 6. Rollout and critical path
 
