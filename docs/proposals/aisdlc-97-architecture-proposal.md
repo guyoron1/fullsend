@@ -89,7 +89,9 @@ Recovery means fixing forward (not reverting back a PR, as later PRs may already
 | **History** | a touched file reverted in 90 days → +1; two other signs (a missing co-change, a hotspot, ADR 0089 score ≥ 3) → +1 | `git log`, code-maat, PyDriller |
 | **Author and intent** | issue labeled security or breaking-change → T3 | GitHub API, commit trailers |
 
-[AISDLC-96] owns the blast-radius model behind reach; this contract only sets its thresholds.
+[AISDLC-96] owns the blast-radius model behind reach; this contract only sets its thresholds. Where no tool exists and the
+policy waives the signal (flag flips in Go code, first callers, risky imports), a fixed model question can still raise the
+tier, never lower it.
 
 **Policy file.** Each repository keeps these settings in a code-owned block of `.fullsend/config.yaml` ([ADR 0080];
 proposed, fullsend has no such block today), starting from an org-wide preset that it can make stricter but never
