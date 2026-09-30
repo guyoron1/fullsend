@@ -13,7 +13,8 @@ evidence that requires, and who may merge it.
 2. **Risk tier from consequence, not from file counts.** Four risk tiers, T0 to T3, are set by the riskiest signal;
    weaker signals only raise the tier, and nothing averages it down. Signals come from pluggable per-repository tools,
    recorded by name and version. Cheap signals run first, and costly ones only when the change class needs them, once
-   per ready commit. The rule that combines them is fixed, so the same inputs always give the same verdict.
+   per ready commit. An approval or a recorded debt item on the same commit reuses its signals; a new push runs
+   them again. The rule that combines them is fixed, so the same inputs always give the same verdict.
 3. **Evidence scales with the tier, and unknown never merges.** Each tier names its **minimal viable evidence** (MVE).
    Missing evidence goes to [AISDLC-98]'s golden path (Define Verification Debt Taxonomy and Resolution Golden Path):
    fix now, defer as recorded debt, or escalate. Stale, contradictory or unmeasurable evidence never counts.
