@@ -72,18 +72,11 @@ Recovery means fixing forward (not reverting back a PR, as later PRs may already
 
 **How the tier is set**, in order:
 
-1. **Restricted paths.** CODEOWNERS and branch rules, the policy file, agent prompts and harness files,
-   credentials and provider configuration, release configuration. An agent-authored PR touching one escalates; a human-authored one waits for the path's code owner. A
-   patch or digest bump by an allowlisted bot that touches only the manifest and lockfile is exempt. fullsend's
-   `REVIEW_PROTECTED_PATHS` already applies such a list at review time; the gate enforces it at merge and adds
-   `.fullsend/`.
-2. **Change class** sets the starting tier and which signals run; a PR with several classes takes its riskiest one.
-   Docs-only and tests-only are T0 candidates, dependency-only is T0 or
-   T3, configuration and code start at T1, and generated files take the tier of the hand-written change behind them. Files count as generated only when a CI job
-   regenerates them and finds no diff; otherwise they are hand-written.
-3. **Signals: the highest minimum wins, and each raise adds one tier, up to T3.** No weights; nothing lowers the tier.
-   Size counts hand-written code only; docs, tests, generated and vendored files are excluded. A signal the class needs but no tool can
-   compute is **unknown** and takes its riskiest value, unless the policy names a waiver, which is recorded.
+| Step | Rule | Why |
+|---|---|---|
+| **1. Restricted paths** | CODEOWNERS and branch rules, the policy file, agent prompts and harness files, credentials, release configuration, `.fullsend/`: an agent's PR escalates; a person's waits for the path's code owner. Exempt: an allowlisted bot's patch or digest bump that touches only the manifest and lockfile. | An agent can't rewrite the rules that judge it. fullsend's `REVIEW_PROTECTED_PATHS` does this at review; the gate repeats it at merge. |
+| **2. Change class** | Docs or tests only → T0; dependency only → T0 or T3; configuration or code → T1; several classes → the riskiest. Generated files take the tier of the change behind them, and count as generated only if CI regenerates them with no diff. | Sets the starting tier and which signals run, so a docs PR never pays for costly signals. |
+| **3. Signals** | The highest minimum wins; each raise adds one tier, up to T3; nothing lowers it. Size counts hand-written code only. A signal no tool can compute takes its riskiest value, unless the policy records a waiver. | The same inputs always give the same tier, and one serious signal can't be averaged away. |
 
 | Signal | Effect on the tier | Example public tools |
 |---|---|---|
