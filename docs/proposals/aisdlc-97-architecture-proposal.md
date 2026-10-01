@@ -40,10 +40,6 @@ flowchart LR
   POL -.-> CLS
 ```
 
-*Read left to right:* an event wakes the gate; a restricted path goes straight to a person; otherwise signals set the
-tier and the tier sets the evidence. The gate records one verdict before it acts. Dotted lines loop back: fixes,
-approvals, and what the record teaches.
-
 ## 2. Proposed decisions
 
 1. **A merge gate, not a merge bot.** A **trusted runtime** (a platform-run GitHub App outside any agent's sandbox,
