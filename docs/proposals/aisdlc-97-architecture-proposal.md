@@ -55,30 +55,21 @@ flowchart LR
    recorded by name and version. Cheap signals run first, and costly ones only when the change class needs them, once
    per ready commit. An approval or a recorded debt item on the same commit reuses its signals; a new push runs
    them again. The rule that combines them is fixed, so the same inputs always give the same verdict.
-3. **Evidence scales with the tier, and unknown never merges.** Each tier names its **minimal viable evidence** (MVE).
-   Missing evidence goes to [AISDLC-98]'s golden path (Define Verification Debt Taxonomy and Resolution Golden Path):
+3. **Evidence scales with the tier.** Each tier names its **minimal viable evidence** (MVE).
+   Missing evidence goes to [AISDLC-98]'s golden path:
    fix now, defer as recorded debt, or escalate. Stale, contradictory or unmeasurable evidence never counts.
-4. **Agents' PRs can merge automatically; people are on the loop: they oversee the system, not each PR.** People decide
+4. **Agents' PRs can merge automatically; people are on the loop, not in the loop: they oversee the system, not each PR.** People decide
    which tiers merge automatically (a code-owned policy edit), approve every escalation with its evidence, audit a
    monthly sample, and a severe outcome (a security issue, a user-facing regression, data loss, or a halt on a
-   production signal) revokes automatic mode at once. Agents' PRs start in explicit mode like every PR, and go automatic
-   at T0, then T1, once they have a track record and Red Hat's AI policy owners confirm that this human-on-the-loop oversight meets
-   the "human in the loop" of the [AI code assistant guidelines]. Our classification script, run on 2026-09-23
-   with earlier rules over the 246 PRs of [fullsend#4698] (the risk-score measurement thread), found 48 of T0 or T1
-   shape; 35 of them were agent-authored, the lane this epic exists for.
-5. **Every verdict is written down before the gate acts.** The record says which commit was judged and against which
+   production signal) revokes automatic mode at once. **Every verdict is written down before the gate acts.** The record says which commit was judged and against which
    base and policy version, what each signal found and which tool (and version) found it, what evidence was there, and
    the verdict. Audits, fullsend's [retro agent], the benchmark and the track record read it; only people turn what
    they read into policy.
-6. **For now, the system only tightens itself; people loosen it.** Each repository and tier runs in **observe**, **explicit** or
+5. **For now, the system only tightens itself; people loosen it, and that's configurable.** Each repository and tier runs in **observe**, **explicit** or
    **automatic** mode (section 5). A severe outcome, repeated fixes, or a change of classifier, tool, model or prompt drops a tier
    back on its own. Promotion is always a code-owned edit of the policy file, as fullsend's fleet configuration
    already rejects any loosening that isn't explicitly declared ([ADR 0122]). Once the record holds enough data to learn
    from, the system may also loosen itself, within limits people set in the policy.
-
-**Alternatives considered.** A score or a model as the tier lets one serious signal be averaged away and isn't
-reproducible, so they only raise the tier or veto. Merge-on-green tools (Renovate automerge, Kodiak) and policy engines
-(Mergify, Prow Tide, GitHub rulesets) decide from PR attributes and a fixed check list; none of them computes reach.
 
 ## 3. How the tier is set
 
@@ -98,10 +89,6 @@ reproducible, so they only raise the tier or veto. Merge-on-green tools (Renovat
 | **Dependencies** | dependency changes; cheap | patch, pin or digest with clean supply-chain checks → T0; new, minor or major → T3 | lockfile diff, OSV-Scanner, OpenSSF Scorecard |
 | **History** | code and configuration; costly | a touched file reverted in 90 days → +1; two other signs (a missing co-change, a hotspot, a fullsend risk score ≥ 3) → +1 | `git log`, code-maat, PyDriller |
 | **Intent** | every class; cheap | the review agent or the issue marks the change security or breaking → T3 | the review agent's review; issue labels |
-
-[AISDLC-96] owns the blast-radius model behind reach; this contract only sets its thresholds. Where no tool exists and the
-policy waives the signal (flag flips in Go code, first callers, risky imports), a fixed model question can still raise the
-tier, never lower it.
 
 ## 4. Evidence and verdicts
 
@@ -209,23 +196,6 @@ then automatic; T2 and T3 stay human-approved until the benchmark shows otherwis
 
 **Critical path.** Automatic merging beyond docs and digest bumps needs post-merge outcome data ([fullsend#6892]) and an approved model; agents' PRs also need the AI policy confirmation in decision 4. Without them, automatic T0 for docs and
 digest bumps still works.
-
-## 8. Worked examples
-
-*Mock data.* Repository A, `vm-operator`, is a Kubernetes operator that owns the `VirtualMachine` API;
-repository B, `vm-backup-operator`, imports it. *Naive rules* means a static core-path list, then "a dependency bump is
-T0", then raw size against the same limits.
-
-| PR | Naive rules | Decisive signal | Risk tier and required evidence |
-|---|---|---|---|
-| Docs only, 3 files, +120/−40 | T2 by raw size | change class: docs | **T0**: link check, render |
-| Renovate patch bump of `k8s.io/client-go`, 41 vendored files | T0 | dependency: patch, lockfile consistent, OSV clean | **T0**: build, unit, one smoke e2e |
-| New helper `pkg/util/retry.go` that nothing calls, +45 code, +80 tests | T2 by raw size | reach: no callers | **T1**: unit tests |
-| Wire that helper into `Reconcile`, +6/−2 | T1 | behavior: first caller; re-tiered at `Reconcile`'s reach | **T2**: envtest on the reconcile loop |
-| Flip `--enable-live-migration` from off to on, +1/−1 | T1 | behavior: default flip of a whole feature | **T2 or above**: full e2e, upgrade test |
-| A-1: add optional field `spec.memoryOvercommitPercent`, 12 files, +380, 8 generated | T3 by the `api/` path | reach: 14 dependents, 11 outside the org | **T3**: envtest, e2e on the field, consumers' tests or their owners' approval |
-| A-2: tighten a validation pattern on an existing field, +1/−1 | T3 by the `api/` path | compatibility: breaking, existing objects may fail on update | **T3**: CRD compatibility check, upgrade test with existing objects, recovery plan |
-| B-1: bump A's module to the release with the field, and 9 lines using it; 7 files, 5 vendored | T0 (a bump) | dependency: a minor bump, since A-1 added a field | **T3**: e2e, B's code owner; gap: no test executes the 9 lines |
 
 [mermaid-architecture]: https://mermaid.live/edit#pako:eNp1VGFr2zAQ_SuHP22QtGn7YSyMjpGGDJbR4ITAiMtQrIstZkueJCf1Qv_7TpLlpoN9Snw6vXvv3Z3OSa44JtPkUKlTXjJtYZlmEmC-3a1SwCNK-2mvr--b1pSQtZPJ_gPkJea_4ofGo8CTz2FNo9WRVfGI496CsFg_wXh8D-nDj3OKjHefX1wF-qQwSDUFrtnBjoARGA_oIw8YsKFByYUsQGkfJZqyQEPJv1s0lq449OXj42r3pbWl0sAkf8OrIBXGMdHM4pMr7rJhfAXSwTtpVwQx317w6qiCZ70i0sZqkVOlYAWzZS9hFRSMiBrgM9aN9Xdmy_UuS2YVM0YcOrLj9ubjLWwm9Gdyc7e562Uga8CIQrLKwEFoE5zO3bVooRF_cPiP0ggrjsJ2PpGjMwZlLnDIF9LGjtkSJRGTVQfiQEKR9_w1snzo5R5LdhTRWVWTOLEXFdWIGaUwVukuS7xxJM1LnG8fSOL8KBwBBCoGVqD2dUyoT64NvOJohBPNaH405krzmFDTGFZwRKv6QlTAF9rO0_MWNSf_Lzyn7kzB9zW6iyZnFbU3tAi1UTIeuREHdZJEr0d0QPQTGjyf7d6lnsx7X5kCrkSNukCf8T1dkNYw9abNczRB4ULYr-0edFthCIQrNJUt9ip6LHZiwg4meNDVt80AKiTQSaEjcEP-oAWrvK_hGuq3kBpr5IIEe7TF6r9ghaqoR-Cm1n8fxDON7MmNLMfDv7DRxtDk9WyAZbkVSv50Syf06ySRzcbvW-Ac-qtolUMLYjPXM7dtMerAzMXKkRf-OAiNe97vN8R9f81f-N11QvzueiX9U3O5yHNf1KnRPrx6XG92KVqthrFsuQic9zTGZc308K5dDqnX4G47PBeqa9o804Mud9crVYm8I0YV9ovEcewmjl_3d5d0NbwMmUxGCU1KzQSnh_ecJdTkmgZmCllCHWFtZbPkhZJYa9W6k3kytbrFUdI2nLQ8CFZoVofgy188GuMb
 [mermaid-trust-modes]: https://mermaid.live/edit#pako:eNqFUcFqwzAM_RXh42ig7DLIYTDYboNBd5x3UGylFY3tYMtZQ-m_z-mSdqyHnWw_vff0ZB2VCZZUrZKg0DPjNqKrhnvtASxHMsLBw-tmen_cfUJVPcJbkygONEHz9Qy_HPqODUsNCD3FVHRkWRLIjqAPpTZOkoV21jxlCQ6FzT-iC-9Pp0QDRYKQxQRHoPN63TyAYx8itHygtEAtdomgkC0bWUCJaPZQhgzRliOR3AScB6xnA0dxe7VpQ_YWmhEwl8y3OX9N90W070Yw6DHyNZYLXnbdxUCtVOngkG3ZyFGr8gmOtKpBK0st5k60OhUSFuP30RtVS8y0Urm31-39gKdvwWqj1w
