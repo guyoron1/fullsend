@@ -23,7 +23,7 @@ flowchart LR
   RDY -- no: draft, a red check,<br/>review pending or<br/>changes requested --> LOOP[Author and review<br/>agents iterate]
   LOOP -. new push .-> EV
   RDY -- yes --> RP{Restricted<br/>path?}
-  RP -- no, or exempt --> CLS["Classify → T0–T3<br/>cheap signals first<br/>class · size · sensitivity<br/>dependencies · intent<br/>then, only if needed<br/>reach · behavior<br/>compatibility · history"]
+  RP -- no, or exempt --> CLS["Classify → T0–T3<br/>cheap signals first<br/>class · size · sensitivity<br/>dependencies<br/>then, only if needed<br/>reach · behavior<br/>compatibility · history"]
   CLS --> EVD["Evidence the tier needs<br/>tests · approval<br/>track record · model veto"]
   EVD --> VER{Verdict}
   RP -- yes: agent → escalate<br/>person → code owner --> VER
@@ -46,7 +46,7 @@ flowchart LR
 
 1. **A merge gate, not a merge bot.** A **trusted runtime** (a platform-run GitHub App outside any agent's sandbox,
    holding the only merge credential) computes one verdict per PR commit, **merge**, **await approval**, **remediate**
-   or **escalate**, publishes it as a required check, and merges through the repository's own merge path. It evaluates a commit only once the PR is ready: not a draft, the other required checks green, the review agent's approval on that commit, and no open change request. [ADR 0110] (open) defines this authority boundary and leaves the unattended-merge scope to follow-up work; this
+   or **escalate**, publishes it as a required check, and merges through the repository's own merge path. It evaluates a commit only once the PR is ready: not a draft, the other required checks green, the review agent's approval on that commit (the review also judges intent: whether the change does what its issue asks), and no open change request. [ADR 0110] (open) defines this authority boundary and leaves the unattended-merge scope to follow-up work; this
    contract is that scope. One departure: fit to the scope is computed deterministically and the model only vetoes,
    where ADR 0110 has an agent assess it: a model's risk score flipped from 1 to 2 on identical reasoning ([agents#1037]),
    and a merge decision must give the same answer for the same inputs.
@@ -58,27 +58,31 @@ flowchart LR
 3. **Evidence scales with the tier.** Each tier names its **minimal viable evidence** (MVE).
    Missing evidence goes to [AISDLC-98]'s golden path:
    fix now, defer as recorded debt, or escalate. Stale, contradictory or unmeasurable evidence never counts.
-4. **Agents' PRs can merge automatically; people are on the loop, not in the loop: they oversee the system, not each PR.** People decide
+4. **Agents' PRs can merge automatically; humans ON the loop, not in the loop: they oversee the system, not each PR.** People decide
    which tiers merge automatically (a code-owned policy edit), approve every escalation with its evidence, audit a
    monthly sample, and a severe outcome (a security issue, a user-facing regression, data loss, or a halt on a
    production signal) revokes automatic mode at once.
 5. **Every verdict is written down before the gate acts.** The record says which commit was judged and against which
    base and policy version, what each signal found and which tool (and version) found it, what evidence was there, and
-   the verdict. Audits, fullsend's [retro agent], the benchmark and the track record read it; only people turn what
+   the verdict. Audits, fullsend's [retro agent], the benchmark (past PRs labeled by what happened after they merged) and the track record read it; only people turn what
    they read into policy.
-6. **For now, the system only tightens itself; people loosen it, and that's configurable.** Each repository and tier runs in **observe**, **explicit** or
+6. **For now, the system only tightens itself; people loosen it (configurable, per TEAM/ORG).** Each repository and tier runs in **observe**, **explicit** or
    **automatic** mode (section 5). A severe outcome, repeated fixes, or a change of classifier, tool, model or prompt drops a tier
-   back on its own. Promotion is always a code-owned edit of the policy file, as fullsend's fleet configuration
+   back on its own. Promotion is (configurable) a code-owned edit of the policy file, as fullsend's fleet configuration
    already rejects any loosening that isn't explicitly declared ([ADR 0122]). Once the record holds enough data to learn
    from, the system may also loosen itself, within limits people set in the policy.
 
 ## 3. How the tier is set
 
+The gate sets the tier in three steps, in this order:
+
 | Step | Rule | Why |
 |---|---|---|
 | **1. Restricted paths** | CODEOWNERS and branch rules, the policy file, agent prompts and harness files, credentials, release configuration, `.fullsend/`: an agent's PR escalates; a person's waits for the path's code owner. Exempt: an allowlisted bot's patch or digest bump that touches only the manifest and lockfile. | An agent can't rewrite the rules that judge it. fullsend's `REVIEW_PROTECTED_PATHS` does this at review; the gate repeats it at merge. |
 | **2. Change class** | Docs or tests only → T0; dependency only → T0 or T3; configuration or code → T1; several classes → the riskiest. Generated files take the tier of the change behind them, and count as generated only if CI regenerates them with no diff. | Sets the starting tier and which signals run, so a docs PR never pays for costly signals. |
-| **3. Signals** | The highest minimum wins; each raise adds one tier, up to T3; nothing lowers it. Size counts hand-written code only. A signal no tool can compute takes its riskiest value, unless the policy records a waiver. | The same inputs always give the same tier, and one serious signal can't be averaged away. |
+| **3. Signals** | Each raise adds one tier, up to T3; nothing lowers it. Size counts hand-written code only. A signal no tool can compute takes its riskiest value, unless the policy records a waiver. | The same inputs always give the same tier, and one serious signal can't be averaged away. |
+
+**The signals behind step 3:** when each one runs, how it moves the tier, and tools that could compute it.
 
 | Signal | Runs for | Effect on the tier | Example public tools (not yet evaluated) |
 |---|---|---|---|
@@ -89,7 +93,6 @@ flowchart LR
 | **Sensitivity** | every class; cheap | auth, secrets, RBAC, CI, migrations → T3; a risky new import → T2 | security path patterns from fullsend's PR risk scoring ([ADR 0089]) |
 | **Dependencies** | dependency changes; cheap | patch, pin or digest with clean supply-chain checks → T0; new, minor or major → T3 | lockfile diff, OSV-Scanner, OpenSSF Scorecard |
 | **History** | code and configuration; costly | a touched file reverted in 90 days → +1; two other signs (a missing co-change, a hotspot, a fullsend risk score ≥ 3) → +1 | `git log`, code-maat, PyDriller |
-| **Intent** | every class; cheap | the review agent or the issue marks the change security or breaking → T3 | the review agent's review; issue labels |
 
 ## 4. Evidence and verdicts
 
@@ -104,6 +107,8 @@ required, on top of the green required checks and review-agent approval that mad
 | Human approval | explicit mode: today's rule; automatic mode: none | as T0 | a team member | the code owner, with a recovery plan if irreversible |
 | Track record | automatic mode | automatic mode | – | – |
 | Model check, veto only | automatic mode, except docs and digest bumps | automatic mode | advisory | advisory |
+
+Two rules on top: the model check can only block, and some proof can be swapped for a declared substitute.
 
 | Item | Rule | Why |
 |---|---|---|
@@ -123,7 +128,7 @@ untested. The record keeps time to approval, so a click-through on a 2,000-line 
 | Operator or controller | the resource before and after, and the events it emitted | a manifest to apply on a test cluster, and what to watch |
 | Flag or configuration | the effective configuration, before and after | how to switch it on, and back off |
 | Migration | a dry run on a copy of the data, with row counts | the upgrade steps and the recovery plan |
-| Performance | benchmark results on the base and on this commit | the benchmark command |
+| Performance | timing or load results on the base and on this commit | the command that produces them |
 | Docs | the rendered pages | the preview link |
 
 **4.3 Verdicts.** Before any evidence, hard disqualifiers escalate: an agent-authored PR edits the gate's rules or
@@ -198,7 +203,7 @@ then automatic; T2 and T3 stay human-approved until the benchmark shows otherwis
 **Critical path.** Automatic merging beyond docs and digest bumps needs post-merge outcome data ([fullsend#6892]) and an approved model; agents' PRs also need Red Hat's AI policy owners to confirm that this oversight meets the [AI code assistant guidelines]. Without them, automatic T0 for docs and
 digest bumps still works.
 
-[mermaid-architecture]: https://mermaid.live/edit#pako:eNp1VGFr2zAQ_SuHP22QtGn7YSyMjpGGDJbR4ITAiMtQrIstZkueJCf1Qv_7TpLlpoN9Snw6vXvv3Z3OSa44JtPkUKlTXjJtYZlmEmC-3a1SwCNK-2mvr--b1pSQtZPJ_gPkJea_4ofGo8CTz2FNo9WRVfGI496CsFg_wXh8D-nDj3OKjHefX1wF-qQwSDUFrtnBjoARGA_oIw8YsKFByYUsQGkfJZqyQEPJv1s0lq449OXj42r3pbWl0sAkf8OrIBXGMdHM4pMr7rJhfAXSwTtpVwQx317w6qiCZ70i0sZqkVOlYAWzZS9hFRSMiBrgM9aN9Xdmy_UuS2YVM0YcOrLj9ubjLWwm9Gdyc7e562Uga8CIQrLKwEFoE5zO3bVooRF_cPiP0ggrjsJ2PpGjMwZlLnDIF9LGjtkSJRGTVQfiQEKR9_w1snzo5R5LdhTRWVWTOLEXFdWIGaUwVukuS7xxJM1LnG8fSOL8KBwBBCoGVqD2dUyoT64NvOJohBPNaH405krzmFDTGFZwRKv6QlTAF9rO0_MWNSf_Lzyn7kzB9zW6iyZnFbU3tAi1UTIeuREHdZJEr0d0QPQTGjyf7d6lnsx7X5kCrkSNukCf8T1dkNYw9abNczRB4ULYr-0edFthCIQrNJUt9ip6LHZiwg4meNDVt80AKiTQSaEjcEP-oAWrvK_hGuq3kBpr5IIEe7TF6r9ghaqoR-Cm1n8fxDON7MmNLMfDv7DRxtDk9WyAZbkVSv50Syf06ySRzcbvW-Ac-qtolUMLYjPXM7dtMerAzMXKkRf-OAiNe97vN8R9f81f-N11QvzueiX9U3O5yHNf1KnRPrx6XG92KVqthrFsuQic9zTGZc308K5dDqnX4G47PBeqa9o804Mud9crVYm8I0YV9ovEcewmjl_3d5d0NbwMmUxGCU1KzQSnh_ecJdTkmgZmCllCHWFtZbPkhZJYa9W6k3kytbrFUdI2nLQ8CFZoVofgy188GuMb
+[mermaid-architecture]: https://mermaid.live/edit#pako:eNp1VGFr2zAQ_SuHP22QtGn7YSyMjpGGDJZR44TAiMuQrYstZkueJCf1Qv_7TpLtpoN9Snw6vbv37p3OUa44RvPoUKlTXjJtYZ2kEmC528cJ4BGl_ZTp6_umNSWk7WyWfYC8xPzX8KHxKPDkc1jTaHVk1XDEMbMgLNZPMJ3eQ_Lw45wg493nF1eBPikMUs2Ba3awE2AExgP6xAMGbGhQciELUNpHqU1ZoKHk3y0aS1cc-vrxMd5_aW2pNDDJ3_RVEAvjOtHM4pMr7rJhegXSwTtqVwSx3F301VEF33VMTRurRU6VghTMlj2FODCYUGuAz1g31t9ZrDf7NFpUzBhx6EiO25uPt7Cd0Z_Zzd32rqeBrAEjCskqAwehTVA6d9cGCY34g-N_lEZYcRS284kcnTAoc4HGB2yJklqRVQfiQNSQ9x1rZPk4vQxLdhSDlqomOiITFaEOGaUwVukujbxURMaTWu4eiNTyKFxJBCoGVqD2dfr6pNPY-WCGcKIZOUZjrjQfEmoyXgVHtKovRAV8od0yOe9Qc1L8QmWaxxz8JAc90eSsooGGoaA2Sg5HztSgTpLa6xEdEP2EkS4X-3eJb-a9r0wBV6JGXaDP-J6siGvwuWnzHE1guBL2a5uBbqte8nCFfNhiz6LHYicm7CiCB42_bUdQIYFOCj0AN6QPWrDK6xquoX4LqbFGLoiwR1vF_wUrVEUzAudT_30Qz2TSkzMpx8O_sIOMYcibxQjLciuU_OnWTOhXJ5HMxm9Y6DnMV9HyhhEMw9ws3H4NUQdmLpaMtPDHgeiw2f1Gw7Dhr_krv62OiN9Wz6R_XC5Xd-mLOjbah-PHzXafoNVqtGXLReg5IxuXNdPjS3ZpUs_B3XZ4LlTXtGumB13vr2NVibyjjirsF4nj1DmOX_d313Q1vAWpjCYROaVmgtNTe04jGnJNhplDGtFEWFvZNHqhJNZatelkHs2tbnEStQ0nLg-CFZrVIfjyF9Am3n8
 [mermaid-trust-modes]: https://mermaid.live/edit#pako:eNqFUcFqwzAM_RXh42ig7DLIYTDYboNBd5x3UGylFY3tYMtZQ-m_z-mSdqyHnWw_vff0ZB2VCZZUrZKg0DPjNqKrhnvtASxHMsLBw-tmen_cfUJVPcJbkygONEHz9Qy_HPqODUsNCD3FVHRkWRLIjqAPpTZOkoV21jxlCQ6FzT-iC-9Pp0QDRYKQxQRHoPN63TyAYx8itHygtEAtdomgkC0bWUCJaPZQhgzRliOR3AScB6xnA0dxe7VpQ_YWmhEwl8y3OX9N90W070Yw6DHyNZYLXnbdxUCtVOngkG3ZyFGr8gmOtKpBK0st5k60OhUSFuP30RtVS8y0Urm31-39gKdvwWqj1w
 [AISDLC-29]: https://redhat.atlassian.net/browse/AISDLC-29
 [AISDLC-96]: https://redhat.atlassian.net/browse/AISDLC-96
