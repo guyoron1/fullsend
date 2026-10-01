@@ -40,6 +40,8 @@ flowchart LR
   POL -.-> CLS
 ```
 
+[Edit this diagram in Mermaid][mermaid-architecture]
+
 ## 2. Proposed decisions
 
 1. **A merge gate, not a merge bot.** A **trusted runtime** (a platform-run GitHub App outside any agent's sandbox,
@@ -119,9 +121,24 @@ required, on top of the green required checks and review-agent approval that mad
 |---|---|---|
 | **Model check** | Fixed yes/no questions where "yes" is a concern: the PR exceeds the issue's scope, weakens tests, removes a safeguard, contradicts its description, or a dependency change does more than it claims. Each answer carries a probability calibrated against the benchmark, and until then it is advisory. It can block, never approve. | A model's "fine" can vary; its "concern" can only add safety. |
 | **Substitutes** | Count only when the policy declares them, and each use is recorded: a debt item in place of coverage when the package has no measurable coverage, after which the PR needs the next tier's approver (at T3, the code owner); [AISDLC-100]'s selected subset at T1 when its confidence is high; a merge-queue run on the merged result in place of checks on the exact commit; the consumer's code owner when consumers' tests cannot run. | Keeps a PR moving when some proof can't be produced, without quietly lowering the bar. |
-| **Approver packet** | A PR that waits for a person carries what changed and why, the signals that set its tier, the evidence and what is missing, and how to try it: for a UI change, screenshots or a short recording; for a feature, the steps to demo it. | The record keeps time to approval, so a click-through on a 2,000-line diff shows up in audits. |
 
-**4.2 Verdicts.** Before any evidence, hard disqualifiers escalate: an agent-authored PR edits the gate's rules or
+**4.2 Approver packet.** A PR that waits for a person carries what changed and why, the signals that set its tier, the
+evidence and what is missing, and a way to see the change work, so the approver checks the behavior, not only the diff.
+The agent that wrote the PR produces it; each item comes with its output on this commit, and anything not run is marked
+untested. The record keeps time to approval, so a click-through on a 2,000-line diff shows up in audits.
+
+| Change | Show me | How to try it |
+|---|---|---|
+| UI | before-and-after screenshots; a short recording of the changed flow | a preview link and the clicks to repeat |
+| CLI or API | the command or request and its real output | the same call against a preview build |
+| Bug fix | the reproduction failing on the base and passing on this commit | the reproduction steps |
+| Operator or controller | the resource before and after, and the events it emitted | a manifest to apply on a test cluster, and what to watch |
+| Flag or configuration | the effective configuration, before and after | how to switch it on, and back off |
+| Migration | a dry run on a copy of the data, with row counts | the upgrade steps and the recovery plan |
+| Performance | benchmark results on the base and on this commit | the benchmark command |
+| Docs | the rendered pages | the preview link |
+
+**4.3 Verdicts.** Before any evidence, hard disqualifiers escalate: an agent-authored PR edits the gate's rules or
 prompts; its author is its approver; there is no linked issue at T1 or above; or tests were weakened
 (an assertion removed, a test skipped, deleted or mocked away).
 
@@ -152,6 +169,8 @@ stateDiagram-v2
   Explicit --> Observe: false merge verdict found by audit
   Automatic --> Automatic: weekly canaries · monthly audit
 ```
+
+[Edit this diagram in Mermaid][mermaid-trust-modes]
 
 Trust is slow to earn and quick to lose: moving right always takes a person editing the policy, and moving left
 happens on its own. Weekly canaries are planted known-bad PRs (an out-of-scope edit, a weakened test, a hidden
@@ -208,6 +227,8 @@ T0", then raw size against the same limits.
 | A-2: tighten a validation pattern on an existing field, +1/−1 | T3 by the `api/` path | compatibility: breaking, existing objects may fail on update | **T3**: CRD compatibility check, upgrade test with existing objects, recovery plan |
 | B-1: bump A's module to the release with the field, and 9 lines using it; 7 files, 5 vendored | T0 (a bump) | dependency: a minor bump, since A-1 added a field | **T3**: e2e, B's code owner; gap: no test executes the 9 lines |
 
+[mermaid-architecture]: https://mermaid.live/edit#pako:eNp1VGFr2zAQ_SuHP22QtGn7YSyMjpGGDJbR4ITAiMtQrIstZkueJCf1Qv_7TpLlpoN9Snw6vXvv3Z3OSa44JtPkUKlTXjJtYZlmEmC-3a1SwCNK-2mvr--b1pSQtZPJ_gPkJea_4ofGo8CTz2FNo9WRVfGI496CsFg_wXh8D-nDj3OKjHefX1wF-qQwSDUFrtnBjoARGA_oIw8YsKFByYUsQGkfJZqyQEPJv1s0lq449OXj42r3pbWl0sAkf8OrIBXGMdHM4pMr7rJhfAXSwTtpVwQx317w6qiCZ70i0sZqkVOlYAWzZS9hFRSMiBrgM9aN9Xdmy_UuS2YVM0YcOrLj9ubjLWwm9Gdyc7e562Uga8CIQrLKwEFoE5zO3bVooRF_cPiP0ggrjsJ2PpGjMwZlLnDIF9LGjtkSJRGTVQfiQEKR9_w1snzo5R5LdhTRWVWTOLEXFdWIGaUwVukuS7xxJM1LnG8fSOL8KBwBBCoGVqD2dUyoT64NvOJohBPNaH405krzmFDTGFZwRKv6QlTAF9rO0_MWNSf_Lzyn7kzB9zW6iyZnFbU3tAi1UTIeuREHdZJEr0d0QPQTGjyf7d6lnsx7X5kCrkSNukCf8T1dkNYw9abNczRB4ULYr-0edFthCIQrNJUt9ip6LHZiwg4meNDVt80AKiTQSaEjcEP-oAWrvK_hGuq3kBpr5IIEe7TF6r9ghaqoR-Cm1n8fxDON7MmNLMfDv7DRxtDk9WyAZbkVSv50Syf06ySRzcbvW-Ac-qtolUMLYjPXM7dtMerAzMXKkRf-OAiNe97vN8R9f81f-N11QvzueiX9U3O5yHNf1KnRPrx6XG92KVqthrFsuQic9zTGZc308K5dDqnX4G47PBeqa9o804Mud9crVYm8I0YV9ovEcewmjl_3d5d0NbwMmUxGCU1KzQSnh_ecJdTkmgZmCllCHWFtZbPkhZJYa9W6k3kytbrFUdI2nLQ8CFZoVofgy188GuMb
+[mermaid-trust-modes]: https://mermaid.live/edit#pako:eNqFUcFqwzAM_RXh42ig7DLIYTDYboNBd5x3UGylFY3tYMtZQ-m_z-mSdqyHnWw_vff0ZB2VCZZUrZKg0DPjNqKrhnvtASxHMsLBw-tmen_cfUJVPcJbkygONEHz9Qy_HPqODUsNCD3FVHRkWRLIjqAPpTZOkoV21jxlCQ6FzT-iC-9Pp0QDRYKQxQRHoPN63TyAYx8itHygtEAtdomgkC0bWUCJaPZQhgzRliOR3AScB6xnA0dxe7VpQ_YWmhEwl8y3OX9N90W070Yw6DHyNZYLXnbdxUCtVOngkG3ZyFGr8gmOtKpBK0st5k60OhUSFuP30RtVS8y0Urm31-39gKdvwWqj1w
 [AISDLC-29]: https://redhat.atlassian.net/browse/AISDLC-29
 [AISDLC-96]: https://redhat.atlassian.net/browse/AISDLC-96
 [AISDLC-97]: https://redhat.atlassian.net/browse/AISDLC-97
