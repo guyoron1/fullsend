@@ -3,7 +3,44 @@
 **Goal.** [AISDLC-29] asks what evidence an agent's PR must meet to merge automatically, scaled to the change. This contract answers three questions per PR commit: how risky it is, what
 evidence that requires, and who may merge it.
 
-## 1. Decisions
+## 1. At a glance
+
+Every ready PR commit gets a risk tier; the tier sets the evidence it needs and who approves it.
+
+A risk tier is how much harm a wrong change could do before a fix lands, and whether a fix can repair it at all\
+Recovery means fixing forward (not reverting back a PR, as later PRs may already be built on this change)
+
+| Risk tier | Definition | Evidence | Who approves |
+|---|---|---|---|
+| **T0 Pre-authorized** | no intended behavior change in shipped code: docs only, tests only, or a patch, pin or digest dependency bump that passes supply-chain checks | the existing suite; for docs, the docs build | today's rule; none once automatic |
+| **T1 Low** | a behavior change nothing reaches yet: new code with no callers, or code behind a default-off flag; small hand-written size | tests that reference the changed code | today's rule; none once automatic |
+| **T2 Standard** | a behavior change in reachable code inside the repository; compatible interfaces; nothing sensitive; no new dependency | tests executing ≥ 80% of the changed lines | a team member |
+| **T3 Sensitive** | reaches other repositories or breaks an interface; auth, secrets, CI structure or migrations; a new dependency or a minor or major bump; irreversible; anything larger | T2's tests plus e2e and consumers' tests | the code owner |
+
+```mermaid
+flowchart LR
+  EV[PR event<br/>push · check · review<br/>approval · debt item] --> RDY{Ready?}
+  RDY -- no: draft, a red check,<br/>review pending or<br/>changes requested --> LOOP[Author and review<br/>agents iterate]
+  LOOP -. new push .-> EV
+  RDY -- yes --> RP{Restricted<br/>path?}
+  RP -- no, or exempt --> CLS["Classify → T0–T3<br/>cheap signals first<br/>class · size · sensitivity<br/>dependencies · author<br/>then, only if needed<br/>reach · behavior<br/>compatibility · history"]
+  CLS --> EVD["Evidence the tier needs<br/>tests · approval<br/>track record · model veto"]
+  EVD --> VER{Verdict}
+  RP -- yes: agent → escalate<br/>person → code owner --> VER
+  VER --> REC[(Record)]
+  REC -- merge --> MRG["check success<br/>GitHub rules<br/>merge queue"]
+  REC -- await approval --> PKT["check in progress<br/>packet to the approver"]
+  REC -- remediate --> GP["check in progress<br/>golden path<br/>fix now or defer"]
+  REC -- escalate --> ESC["check action_required<br/>reasons and packet<br/>to a person"]
+  ESC -. a person acts .-> EV
+  PKT -. approve or<br/>request changes .-> EV
+  GP -. fix push or debt item .-> EV
+  REC -. later .-> POST[Retro · audit<br/>benchmark · track record]
+  POST -. recommends .-> POL[/Policy file<br/>code-owned/]
+  POL -.-> CLS
+```
+
+## 2. Decisions
 
 1. **A merge gate, not a merge bot.** A **trusted runtime** (a platform-run GitHub App outside any agent's sandbox,
    holding the only merge credential) computes one verdict per PR commit, **merge**, **await approval**, **remediate**
@@ -33,44 +70,11 @@ evidence that requires, and who may merge it.
    back on its own. Promotion is always a code-owned edit of the policy file, as fullsend's fleet configuration
    already rejects any loosening that isn't explicitly declared ([ADR 0122]).
 
-## 2. Architecture
+**Alternatives considered.** A score or a model as the tier lets one serious signal be averaged away and isn't
+reproducible, so they only raise the tier or veto. Merge-on-green tools (Renovate automerge, Kodiak) and policy engines
+(Mergify, Prow Tide, GitHub rulesets) decide from PR attributes and a fixed check list; none of them computes reach.
 
-```mermaid
-flowchart LR
-  EV[PR event<br/>push · check · review<br/>approval · debt item] --> RDY{Ready?}
-  RDY -- no: draft, a red check,<br/>review pending or<br/>changes requested --> LOOP[Author and review<br/>agents iterate]
-  LOOP -. new push .-> EV
-  RDY -- yes --> RP{Restricted<br/>path?}
-  RP -- no, or exempt --> CLS["Classify → T0–T3<br/>cheap signals first<br/>class · size · sensitivity<br/>dependencies · author<br/>then, only if needed<br/>reach · behavior<br/>compatibility · history"]
-  CLS --> EVD["Evidence the tier needs<br/>tests · approval<br/>track record · model veto"]
-  EVD --> VER{Verdict}
-  RP -- yes: agent → escalate<br/>person → code owner --> VER
-  VER --> REC[(Record)]
-  REC -- merge --> MRG["check success<br/>GitHub rules<br/>merge queue"]
-  REC -- await approval --> PKT["check in progress<br/>packet to the approver"]
-  REC -- remediate --> GP["check in progress<br/>golden path<br/>fix now or defer"]
-  REC -- escalate --> ESC["check action_required<br/>reasons and packet<br/>to a person"]
-  ESC -. a person acts .-> EV
-  PKT -. approve or<br/>request changes .-> EV
-  GP -. fix push or debt item .-> EV
-  REC -. later .-> POST[Retro · audit<br/>benchmark · track record]
-  POST -. recommends .-> POL[/Policy file<br/>code-owned/]
-  POL -.-> CLS
-```
-
-## 3. Risk tiers
-
-A risk tier is how much harm a wrong change could do before a fix lands, and whether a fix can repair it at all\
-Recovery means fixing forward (not reverting back a PR, as later PRs may already be built on this change)
-
-| Risk tier | Definition |
-|---|---|
-| **T0 Pre-authorized** | no intended behavior change in shipped code: docs only, tests only, or a patch, pin or digest dependency bump that passes supply-chain checks |
-| **T1 Low** | a behavior change nothing reaches yet: new code with no callers, or code behind a default-off flag; small hand-written size |
-| **T2 Standard** | a behavior change in reachable code inside the repository; compatible interfaces; nothing sensitive; no new dependency |
-| **T3 Sensitive** | reaches other repositories or breaks an interface; auth, secrets, CI structure or migrations; a new dependency or a minor or major bump; irreversible; anything larger |
-
-**How the tier is set**, in order:
+## 3. How the tier is set
 
 | Step | Rule | Why |
 |---|---|---|
@@ -93,7 +97,65 @@ Recovery means fixing forward (not reverting back a PR, as later PRs may already
 policy waives the signal (flag flips in Go code, first callers, risky imports), a fixed model question can still raise the
 tier, never lower it.
 
-**Policy file.** Each repository keeps these settings in a code-owned block of `.fullsend/config.yaml` ([ADR 0080];
+## 4. Evidence and verdicts
+
+**4.1 Minimal viable evidence.** Evidence is proof, for the exact commit, that the change was checked; the tier sets how much is
+required, on top of the green required checks and review-agent approval that made the PR ready. Tests an agent wrote for its own change count only once they have passed
+AISDLC-98's path and run in CI on this commit, so an agent never grades its own work.
+
+| Evidence | T0 | T1 | T2 | T3 |
+|---|---|---|---|---|
+| Tests | existing suite; for docs, the docs build (render, link check) | tests that reference the changed code | tests executed ≥ 80% of the changed hand-written lines | as T2, plus integration or e2e, and consumers' tests if any |
+| Extra proof from the signal that set the tier | – | – | first caller: tests at the caller; flag flip: e2e with the flag on | breaking interface: compatibility report and upgrade test; migration: upgrade test |
+| Human approval | explicit mode: today's rule; automatic mode: none | as T0 | a team member | the code owner, with a recovery plan if irreversible |
+| Track record | automatic mode | automatic mode | – | – |
+| Model check, veto only | automatic mode, except docs and digest bumps | automatic mode | advisory | advisory |
+
+| Item | Rule | Why |
+|---|---|---|
+| **Model check** | Fixed yes/no questions where "yes" is a concern: the PR exceeds the issue's scope, weakens tests, removes a safeguard, contradicts its description, or a dependency change does more than it claims. Each answer carries a probability calibrated against the benchmark, and until then it is advisory. It can block, never approve. | A model's "fine" can vary; its "concern" can only add safety. |
+| **Substitutes** | Count only when the policy declares them, and each use is recorded: a debt item in place of coverage when the package has no measurable coverage, after which the PR needs the next tier's approver (at T3, the code owner); AISDLC-100's selected subset at T1 when its confidence is high; a merge-queue run on the merged result in place of checks on the exact commit; the consumer's code owner when consumers' tests cannot run. | Keeps a PR moving when some proof can't be produced, without quietly lowering the bar. |
+| **Approver packet** | A PR that waits for a person carries what changed and why, the signals that set its tier, the evidence and what is missing, and how to try it. | The record keeps time to approval, so a click-through on a 2,000-line diff shows up in audits. |
+
+**4.2 Verdicts.** Before any evidence, hard disqualifiers escalate: an agent-authored PR edits the gate's rules or
+prompts; its author is its approver; there is no linked issue at T1 or above; or tests were weakened
+(an assertion removed, a test skipped, deleted or mocked away).
+
+| Verdict | When | What happens |
+|---|---|---|
+| **Merge** | evidence complete and no approval pending (the tier is automatic, or the approval is in) | check `success`; the gate merges the exact commit; a new push needs a new verdict |
+| **Await approval** | evidence complete, but a person must approve: explicit mode, a T2 or T3 approver, or an agent's PR the policy does not yet allow | check in progress; the approver gets the packet; the approval re-enters the loop, and the gate merges the approved commit |
+| **Remediate** | evidence missing, partial, stale or flaky, and fixable within the attempt budget | check in progress; the gap goes to AISDLC-98's path; a fix push, a re-run or a recorded debt item re-enters the loop |
+| **Escalate** | a hard disqualifier, an agent's PR on a restricted path, the budget spent, evidence unmeasurable or contradictory, or an unknown signal with no waiver | check `action_required`; reasons and packet go to a person; a person with bypass can still merge, and GitHub logs it |
+
+Evidence problems following the [AISDLC-98] taxonomy
+
+## 5. Trust over time
+
+**Modes** set how much the gate may do, per repository and tier. *Observe* (fullsend's "shadow mode"): the gate only
+reports, and people merge as today. *Explicit*: people still approve, and the gate checks the evidence and merges.
+*Automatic* (T0, later T1): the gate merges with no approval, first for people's and allowlisted bots' PRs, then for
+agents' PRs once the policy allows them.
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  [*] --> Observe
+  Observe --> Explicit: a person edits the policy
+  Explicit --> Automatic: a person edits the policy
+  Automatic --> Explicit: severe outcome · minor fixes · false verdict · track record reset
+  Explicit --> Observe: false merge verdict found by audit
+  Automatic --> Automatic: weekly canaries · monthly audit
+```
+
+**The record** (decision 5) is the gate's log: one entry per verdict, written before the gate acts. It is kept for a
+certain amount of time, still to be decided. It holds facts such as paths, counts and tool versions, never code or
+secrets. It is written by a different identity from the one that merges, so a stolen merge key can't fake an entry. The
+PR's check run only mirrors it.
+
+## 6. Policy file
+
+Each repository keeps these settings in a code-owned block of `.fullsend/config.yaml` ([ADR 0080];
 proposed, fullsend has no such block today), starting from an org-wide preset that it can make stricter but never
 looser. These are starting guesses that the benchmark checks.
 
@@ -111,68 +173,7 @@ looser. These are starting guesses that the benchmark checks.
 | Substitutes | proof accepted in place of the normal kind | none |
 | Extra restricted paths | paths added to step 1's list | none |
 
-## 4. Evidence and verdicts
-
-**4.1 Minimal viable evidence.** Evidence is proof, for the exact commit, that the change was checked; the tier sets how much is
-required, on top of the green required checks and review-agent approval that made the PR ready. Tests an agent wrote for its own change count only once they have passed
-AISDLC-98's path and run in CI on this commit, so an agent never grades its own work.
-
-| Evidence | T0 | T1 | T2 | T3 |
-|---|---|---|---|---|
-| Tests | existing suite; for docs, the docs build (render, link check) | tests that reference the changed code | tests executed ≥ 80% of the changed hand-written lines | as T2, plus integration or e2e, and consumers' tests if any |
-| Extra proof from the signal that set the tier | – | – | first caller: tests at the caller; flag flip: e2e with the flag on | breaking interface: compatibility report and upgrade test; migration: upgrade test |
-| Human approval | explicit mode: today's rule; automatic mode: none | as T0 | a team member | the code owner, with a recovery plan if irreversible |
-| Track record | automatic mode | automatic mode | – | – |
-| Model check, veto only | automatic mode, except docs and digest bumps | automatic mode | advisory | advisory |
-
-- **Model check:** fixed yes/no questions where "yes" is a concern: the PR exceeds the issue's scope, weakens tests,
-  removes a safeguard, contradicts its description, or a dependency change does more than it claims. Each answer
-  carries a probability calibrated against the benchmark, and until then it is advisory. It can block, never approve.
-- **Substitutes** count only when the policy declares them, and each use is recorded: a debt item in place of coverage
-  when the package has no measurable coverage, after which the PR needs the next tier's approver (at T3, the code
-  owner); AISDLC-100's selected subset at T1 when its confidence is high; a merge-queue run on the merged result in
-  place of checks on the exact commit; the consumer's code owner when consumers' tests cannot run.
-- **Reviewer packet:** a PR that waits for a person carries what changed and why, the signals that set its tier, the
-  evidence and what is missing, and how to try it. The record keeps time to approval, so a click-through on a
-  2,000-line diff shows up in audits.
-
-**4.2 Verdicts.** Before any evidence, hard disqualifiers escalate: an agent-authored PR edits the gate's rules or
-prompts; its author is its approver; there is no linked issue at T1 or above; or tests were weakened
-(an assertion removed, a test skipped, deleted or mocked away).
-
-| Verdict | When | What happens |
-|---|---|---|
-| **Merge** | evidence complete and no approval pending (the tier is automatic, or the approval is in) | check `success`; the gate merges the exact commit; a new push needs a new verdict |
-| **Await approval** | evidence complete, but a person must approve: explicit mode, a T2 or T3 approver, or an agent's PR the policy does not yet allow | check in progress; the approver gets the packet; the approval re-enters the loop, and the gate merges the approved commit |
-| **Remediate** | evidence missing, partial, stale or flaky, and fixable within the attempt budget | check in progress; the gap goes to AISDLC-98's path; a fix push, a re-run or a recorded debt item re-enters the loop |
-| **Escalate** | a hard disqualifier, an agent's PR on a restricted path, the budget spent, evidence unmeasurable or contradictory, or an unknown signal with no waiver | check `action_required`; reasons and packet go to a person; a person with bypass can still merge, and GitHub logs it |
-
-Evidence problems following the [AISDLC-98] taxonomy
-
-## 5. Record and trust over time
-
-**The record** (decision 5) is the gate's log: one entry per verdict, written before the gate acts. It is kept for a
-certain amount of time, still to be decided. It holds facts such as paths, counts and tool versions, never code or
-secrets. It is written by a different identity from the one that merges, so a stolen merge key can't fake an entry. The
-PR's check run only mirrors it.
-
-```mermaid
-stateDiagram-v2
-  direction LR
-  [*] --> Observe
-  Observe --> Explicit: a person edits the policy
-  Explicit --> Automatic: a person edits the policy
-  Automatic --> Explicit: severe outcome · minor fixes · false verdict · track record reset
-  Explicit --> Observe: false merge verdict found by audit
-  Automatic --> Automatic: weekly canaries · monthly audit
-```
-
-**Modes** set how much the gate may do, per repository and tier. *Observe* (fullsend's "shadow mode"): the gate only
-reports, and people merge as today. *Explicit*: people still approve, and the gate checks the evidence and merges.
-*Automatic* (T0, later T1): the gate merges with no approval, first for people's and allowlisted bots' PRs, then for
-agents' PRs once the policy allows them.
-
-## 6. Rollout and critical path
+## 7. Rollout and critical path
 
 Observe mode comes first: every PR gets a tier-and-gaps check, and nothing merges differently. T0 then goes explicit,
 then automatic; T2 and T3 stay human-approved until the benchmark shows otherwise.
@@ -180,13 +181,9 @@ then automatic; T2 and T3 stay human-approved until the benchmark shows otherwis
 **Critical path.** Automatic merging beyond docs and digest bumps needs post-merge outcome data ([fullsend#6892]) and an approved model; agents' PRs also need the AI policy confirmation in decision 4. Without them, automatic T0 for docs and
 digest bumps still works.
 
-**Alternatives considered.** A score or a model as the tier lets one serious signal be averaged away and isn't
-reproducible, so they only raise the tier or veto. Merge-on-green tools (Renovate automerge, Kodiak) and policy engines
-(Mergify, Prow Tide, GitHub rulesets) decide from PR attributes and a fixed check list; none of them computes reach.
+## 8. Worked examples
 
-## 7. Worked examples (mock data)
-
-Repository A, `vm-operator`, is a Kubernetes operator that owns the `VirtualMachine` API;
+*Mock data.* Repository A, `vm-operator`, is a Kubernetes operator that owns the `VirtualMachine` API;
 repository B, `vm-backup-operator`, imports it. *Naive rules* means a static core-path list, then "a dependency bump is
 T0", then raw size against the same limits.
 
