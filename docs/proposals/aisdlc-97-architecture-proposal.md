@@ -68,7 +68,7 @@ flowchart LR
    they read into policy.
 6. **For now, the system only tightens itself; people loosen it (configurable, per TEAM/ORG).** Each repository and tier runs in **observe**, **explicit** or
    **automatic** mode (section 5). A severe outcome, repeated fixes, or a change of classifier, tool, model or prompt drops a tier
-   back on its own. Promotion is (configurable) a code-owned edit of the policy file, as fullsend's fleet configuration
+   back on its own. Promotion is a code-owned edit of the policy file, configurable per team or org, as fullsend's fleet configuration
    already rejects any loosening that isn't explicitly declared ([ADR 0122]). Once the record holds enough data to learn
    from, the system may also loosen itself, within limits people set in the policy.
 
