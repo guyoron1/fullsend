@@ -61,11 +61,12 @@ flowchart LR
 4. **Agents' PRs can merge automatically; people are on the loop, not in the loop: they oversee the system, not each PR.** People decide
    which tiers merge automatically (a code-owned policy edit), approve every escalation with its evidence, audit a
    monthly sample, and a severe outcome (a security issue, a user-facing regression, data loss, or a halt on a
-   production signal) revokes automatic mode at once. **Every verdict is written down before the gate acts.** The record says which commit was judged and against which
+   production signal) revokes automatic mode at once.
+5. **Every verdict is written down before the gate acts.** The record says which commit was judged and against which
    base and policy version, what each signal found and which tool (and version) found it, what evidence was there, and
    the verdict. Audits, fullsend's [retro agent], the benchmark and the track record read it; only people turn what
    they read into policy.
-5. **For now, the system only tightens itself; people loosen it, and that's configurable.** Each repository and tier runs in **observe**, **explicit** or
+6. **For now, the system only tightens itself; people loosen it, and that's configurable.** Each repository and tier runs in **observe**, **explicit** or
    **automatic** mode (section 5). A severe outcome, repeated fixes, or a change of classifier, tool, model or prompt drops a tier
    back on its own. Promotion is always a code-owned edit of the policy file, as fullsend's fleet configuration
    already rejects any loosening that isn't explicitly declared ([ADR 0122]). Once the record holds enough data to learn
@@ -177,7 +178,7 @@ looser. These are starting guesses that the benchmark checks.
 | Setting | What it controls | Starting value |
 |---|---|---|
 | Mode, per tier | how much the gate may do (section 5) | observe for every tier |
-| Who may go automatic | whose PRs may merge with no approval | people and allowlisted bots; agents after decision 4's confirmation |
+| Who may go automatic | whose PRs may merge with no approval | people and allowlisted bots; agents once Red Hat's AI policy owners approve |
 | Allowlisted bots | which bots count as trusted, including step 1's bump exemption | Renovate, Dependabot |
 | Size limits | the size signal (hand-written code) | T1: 10 files, 100 lines; T2: 25 files, 400 lines, since reviewers find fewer defects past 400 lines ([SmartBear's Cisco study]) |
 | Signal thresholds | the other numbers in the signals table | as listed there |
@@ -194,7 +195,7 @@ looser. These are starting guesses that the benchmark checks.
 Observe mode comes first: every PR gets a tier-and-gaps check, and nothing merges differently. T0 then goes explicit,
 then automatic; T2 and T3 stay human-approved until the benchmark shows otherwise.
 
-**Critical path.** Automatic merging beyond docs and digest bumps needs post-merge outcome data ([fullsend#6892]) and an approved model; agents' PRs also need the AI policy confirmation in decision 4. Without them, automatic T0 for docs and
+**Critical path.** Automatic merging beyond docs and digest bumps needs post-merge outcome data ([fullsend#6892]) and an approved model; agents' PRs also need Red Hat's AI policy owners to confirm that this oversight meets the [AI code assistant guidelines]. Without them, automatic T0 for docs and
 digest bumps still works.
 
 [mermaid-architecture]: https://mermaid.live/edit#pako:eNp1VGFr2zAQ_SuHP22QtGn7YSyMjpGGDJbR4ITAiMtQrIstZkueJCf1Qv_7TpLlpoN9Snw6vXvv3Z3OSa44JtPkUKlTXjJtYZlmEmC-3a1SwCNK-2mvr--b1pSQtZPJ_gPkJea_4ofGo8CTz2FNo9WRVfGI496CsFg_wXh8D-nDj3OKjHefX1wF-qQwSDUFrtnBjoARGA_oIw8YsKFByYUsQGkfJZqyQEPJv1s0lq449OXj42r3pbWl0sAkf8OrIBXGMdHM4pMr7rJhfAXSwTtpVwQx317w6qiCZ70i0sZqkVOlYAWzZS9hFRSMiBrgM9aN9Xdmy_UuS2YVM0YcOrLj9ubjLWwm9Gdyc7e562Uga8CIQrLKwEFoE5zO3bVooRF_cPiP0ggrjsJ2PpGjMwZlLnDIF9LGjtkSJRGTVQfiQEKR9_w1snzo5R5LdhTRWVWTOLEXFdWIGaUwVukuS7xxJM1LnG8fSOL8KBwBBCoGVqD2dUyoT64NvOJohBPNaH405krzmFDTGFZwRKv6QlTAF9rO0_MWNSf_Lzyn7kzB9zW6iyZnFbU3tAi1UTIeuREHdZJEr0d0QPQTGjyf7d6lnsx7X5kCrkSNukCf8T1dkNYw9abNczRB4ULYr-0edFthCIQrNJUt9ip6LHZiwg4meNDVt80AKiTQSaEjcEP-oAWrvK_hGuq3kBpr5IIEe7TF6r9ghaqoR-Cm1n8fxDON7MmNLMfDv7DRxtDk9WyAZbkVSv50Syf06ySRzcbvW-Ac-qtolUMLYjPXM7dtMerAzMXKkRf-OAiNe97vN8R9f81f-N11QvzueiX9U3O5yHNf1KnRPrx6XG92KVqthrFsuQic9zTGZc308K5dDqnX4G47PBeqa9o804Mud9crVYm8I0YV9ovEcewmjl_3d5d0NbwMmUxGCU1KzQSnh_ecJdTkmgZmCllCHWFtZbPkhZJYa9W6k3kytbrFUdI2nLQ8CFZoVofgy188GuMb
