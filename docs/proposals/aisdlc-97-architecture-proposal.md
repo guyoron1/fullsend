@@ -23,7 +23,7 @@ flowchart LR
   RDY -- no: draft, a red check,<br/>review pending or<br/>changes requested --> LOOP[Author and review<br/>agents iterate]
   LOOP -. new push .-> EV
   RDY -- yes --> RP{Restricted<br/>path?}
-  RP -- no, or exempt --> CLS["Classify → T0–T3<br/>cheap signals first<br/>class · size · sensitivity<br/>dependencies · author<br/>then, only if needed<br/>reach · behavior<br/>compatibility · history"]
+  RP -- no, or exempt --> CLS["Classify → T0–T3<br/>cheap signals first<br/>class · size · sensitivity<br/>dependencies · intent<br/>then, only if needed<br/>reach · behavior<br/>compatibility · history"]
   CLS --> EVD["Evidence the tier needs<br/>tests · approval<br/>track record · model veto"]
   EVD --> VER{Verdict}
   RP -- yes: agent → escalate<br/>person → code owner --> VER
@@ -40,13 +40,18 @@ flowchart LR
   POL -.-> CLS
 ```
 
-## 2. Decisions
+*Read left to right:* an event wakes the gate; a restricted path goes straight to a person; otherwise signals set the
+tier and the tier sets the evidence. The gate records one verdict before it acts. Dotted lines loop back: fixes,
+approvals, and what the record teaches.
+
+## 2. Proposed decisions
 
 1. **A merge gate, not a merge bot.** A **trusted runtime** (a platform-run GitHub App outside any agent's sandbox,
    holding the only merge credential) computes one verdict per PR commit, **merge**, **await approval**, **remediate**
    or **escalate**, publishes it as a required check, and merges through the repository's own merge path. It evaluates a commit only once the PR is ready: not a draft, the other required checks green, the review agent's approval on that commit, and no open change request. [ADR 0110] (open) defines this authority boundary and leaves the unattended-merge scope to follow-up work; this
    contract is that scope. One departure: fit to the scope is computed deterministically and the model only vetoes,
-   where ADR 0110 has an agent assess it.
+   where ADR 0110 has an agent assess it: a model's risk score flipped from 1 to 2 on identical reasoning ([agents#1037]),
+   and a merge decision must give the same answer for the same inputs.
 2. **Risk tier from consequence, not from file counts.** Four risk tiers, T0 to T3, are set by the riskiest signal;
    weaker signals only raise the tier, and nothing averages it down. Signals come from pluggable per-repository tools,
    recorded by name and version. Cheap signals run first, and costly ones only when the change class needs them, once
@@ -55,20 +60,23 @@ flowchart LR
 3. **Evidence scales with the tier, and unknown never merges.** Each tier names its **minimal viable evidence** (MVE).
    Missing evidence goes to [AISDLC-98]'s golden path (Define Verification Debt Taxonomy and Resolution Golden Path):
    fix now, defer as recorded debt, or escalate. Stale, contradictory or unmeasurable evidence never counts.
-4. **Agents' PRs can merge automatically; people oversee the system, not each PR.** People decide which tiers merge
-   automatically (a code-owned policy edit), approve every escalation with its evidence, audit a monthly sample, and
-   a severe outcome revokes automatic mode at once. Agents' PRs start in explicit mode like every PR, and go automatic
-   at T0, then T1, once they have a track record and Red Hat's AI policy owners confirm that this oversight meets the
-   "human in the loop" of the [AI code assistant guidelines]. Our classification script, run on 2026-09-23
+4. **Agents' PRs can merge automatically; people are on the loop: they oversee the system, not each PR.** People decide
+   which tiers merge automatically (a code-owned policy edit), approve every escalation with its evidence, audit a
+   monthly sample, and a severe outcome (a security issue, a user-facing regression, data loss, or a halt on a
+   production signal) revokes automatic mode at once. Agents' PRs start in explicit mode like every PR, and go automatic
+   at T0, then T1, once they have a track record and Red Hat's AI policy owners confirm that this human-on-the-loop oversight meets
+   the "human in the loop" of the [AI code assistant guidelines]. Our classification script, run on 2026-09-23
    with earlier rules over the 246 PRs of [fullsend#4698] (the risk-score measurement thread), found 48 of T0 or T1
    shape; 35 of them were agent-authored, the lane this epic exists for.
-5. **Every decision writes a record before it acts**: commit, base, policy version, each signal with its tool and
-   version, the evidence and the outcome. Audits, fullsend's [retro agent], the benchmark and the track record read it;
-   only people turn what they read into policy.
-6. **The system only tightens itself; people loosen it.** Each repository and tier runs in **observe**, **explicit** or
+5. **Every verdict is written down before the gate acts.** The record says which commit was judged and against which
+   base and policy version, what each signal found and which tool (and version) found it, what evidence was there, and
+   the verdict. Audits, fullsend's [retro agent], the benchmark and the track record read it; only people turn what
+   they read into policy.
+6. **For now, the system only tightens itself; people loosen it.** Each repository and tier runs in **observe**, **explicit** or
    **automatic** mode (section 5). A severe outcome, repeated fixes, or a change of classifier, tool, model or prompt drops a tier
    back on its own. Promotion is always a code-owned edit of the policy file, as fullsend's fleet configuration
-   already rejects any loosening that isn't explicitly declared ([ADR 0122]).
+   already rejects any loosening that isn't explicitly declared ([ADR 0122]). Once the record holds enough data to learn
+   from, the system may also loosen itself, within limits people set in the policy.
 
 **Alternatives considered.** A score or a model as the tier lets one serious signal be averaged away and isn't
 reproducible, so they only raise the tier or veto. Merge-on-green tools (Renovate automerge, Kodiak) and policy engines
@@ -82,16 +90,16 @@ reproducible, so they only raise the tier or veto. Merge-on-green tools (Renovat
 | **2. Change class** | Docs or tests only → T0; dependency only → T0 or T3; configuration or code → T1; several classes → the riskiest. Generated files take the tier of the change behind them, and count as generated only if CI regenerates them with no diff. | Sets the starting tier and which signals run, so a docs PR never pays for costly signals. |
 | **3. Signals** | The highest minimum wins; each raise adds one tier, up to T3; nothing lowers it. Size counts hand-written code only. A signal no tool can compute takes its riskiest value, unless the policy records a waiver. | The same inputs always give the same tier, and one serious signal can't be averaged away. |
 
-| Signal | Runs for | Effect on the tier | Example public tools |
+| Signal | Runs for | Effect on the tier | Example public tools (not yet evaluated) |
 |---|---|---|---|
 | **Size** | every class except docs; cheap | over the T1 limit → T2; over the T2 limit → T3 | `git diff --numstat`; verify-generated CI jobs |
 | **Reach (blast radius)** | code and configuration; costly | 10+ dependents, direct or transitive → T2; 3+ layers deep → +1; any consumer in another repository → T3; low confidence → +1 | in-repo: `go list -deps`, Bazel `rdeps`; across repositories: org code search over `go.mod`, GUAC over SBOMs |
 | **Behavior change** | code and configuration; costly | the first caller of new code re-runs the classifier on that code at the caller's reach, and the PR takes the higher tier; a flag default flip takes the tier of the code it guards, at least T2 | code-index call hierarchy; flag-file diff |
 | **Interface compatibility** | code or configuration touching an API, CRD or proto; costly | breaking → T3 | go-apidiff, crdify, oasdiff, `buf breaking`, japicmp |
-| **Sensitivity** | every class; cheap | auth, secrets, RBAC, CI, migrations → T3; a risky new import → T2 | ADR 0089's security patterns |
+| **Sensitivity** | every class; cheap | auth, secrets, RBAC, CI, migrations → T3; a risky new import → T2 | security path patterns from fullsend's PR risk scoring ([ADR 0089]) |
 | **Dependencies** | dependency changes; cheap | patch, pin or digest with clean supply-chain checks → T0; new, minor or major → T3 | lockfile diff, OSV-Scanner, OpenSSF Scorecard |
-| **History** | code and configuration; costly | a touched file reverted in 90 days → +1; two other signs (a missing co-change, a hotspot, ADR 0089 score ≥ 3) → +1 | `git log`, code-maat, PyDriller |
-| **Author and intent** | every class; cheap | issue labeled security or breaking-change → T3 | GitHub API, commit trailers |
+| **History** | code and configuration; costly | a touched file reverted in 90 days → +1; two other signs (a missing co-change, a hotspot, a fullsend risk score ≥ 3) → +1 | `git log`, code-maat, PyDriller |
+| **Intent** | every class; cheap | the review agent or the issue marks the change security or breaking → T3 | the review agent's review; issue labels |
 
 [AISDLC-96] owns the blast-radius model behind reach; this contract only sets its thresholds. Where no tool exists and the
 policy waives the signal (flag flips in Go code, first callers, risky imports), a fixed model question can still raise the
@@ -101,7 +109,7 @@ tier, never lower it.
 
 **4.1 Minimal viable evidence.** Evidence is proof, for the exact commit, that the change was checked; the tier sets how much is
 required, on top of the green required checks and review-agent approval that made the PR ready. Tests an agent wrote for its own change count only once they have passed
-AISDLC-98's path and run in CI on this commit, so an agent never grades its own work.
+[AISDLC-98]'s path and run in CI on this commit, so an agent never grades its own work.
 
 | Evidence | T0 | T1 | T2 | T3 |
 |---|---|---|---|---|
@@ -114,8 +122,8 @@ AISDLC-98's path and run in CI on this commit, so an agent never grades its own 
 | Item | Rule | Why |
 |---|---|---|
 | **Model check** | Fixed yes/no questions where "yes" is a concern: the PR exceeds the issue's scope, weakens tests, removes a safeguard, contradicts its description, or a dependency change does more than it claims. Each answer carries a probability calibrated against the benchmark, and until then it is advisory. It can block, never approve. | A model's "fine" can vary; its "concern" can only add safety. |
-| **Substitutes** | Count only when the policy declares them, and each use is recorded: a debt item in place of coverage when the package has no measurable coverage, after which the PR needs the next tier's approver (at T3, the code owner); AISDLC-100's selected subset at T1 when its confidence is high; a merge-queue run on the merged result in place of checks on the exact commit; the consumer's code owner when consumers' tests cannot run. | Keeps a PR moving when some proof can't be produced, without quietly lowering the bar. |
-| **Approver packet** | A PR that waits for a person carries what changed and why, the signals that set its tier, the evidence and what is missing, and how to try it. | The record keeps time to approval, so a click-through on a 2,000-line diff shows up in audits. |
+| **Substitutes** | Count only when the policy declares them, and each use is recorded: a debt item in place of coverage when the package has no measurable coverage, after which the PR needs the next tier's approver (at T3, the code owner); [AISDLC-100]'s selected subset at T1 when its confidence is high; a merge-queue run on the merged result in place of checks on the exact commit; the consumer's code owner when consumers' tests cannot run. | Keeps a PR moving when some proof can't be produced, without quietly lowering the bar. |
+| **Approver packet** | A PR that waits for a person carries what changed and why, the signals that set its tier, the evidence and what is missing, and how to try it: for a UI change, screenshots or a short recording; for a feature, the steps to demo it. | The record keeps time to approval, so a click-through on a 2,000-line diff shows up in audits. |
 
 **4.2 Verdicts.** Before any evidence, hard disqualifiers escalate: an agent-authored PR edits the gate's rules or
 prompts; its author is its approver; there is no linked issue at T1 or above; or tests were weakened
@@ -125,10 +133,11 @@ prompts; its author is its approver; there is no linked issue at T1 or above; or
 |---|---|---|
 | **Merge** | evidence complete and no approval pending (the tier is automatic, or the approval is in) | check `success`; the gate merges the exact commit; a new push needs a new verdict |
 | **Await approval** | evidence complete, but a person must approve: explicit mode, a T2 or T3 approver, or an agent's PR the policy does not yet allow | check in progress; the approver gets the packet; the approval re-enters the loop, and the gate merges the approved commit |
-| **Remediate** | evidence missing, partial, stale or flaky, and fixable within the attempt budget | check in progress; the gap goes to AISDLC-98's path; a fix push, a re-run or a recorded debt item re-enters the loop |
+| **Remediate** | evidence missing, partial, stale or flaky, and fixable within the attempt budget | check in progress; the gap goes to [AISDLC-98]'s path; a fix push, a re-run or a recorded debt item re-enters the loop |
 | **Escalate** | a hard disqualifier, an agent's PR on a restricted path, the budget spent, evidence unmeasurable or contradictory, or an unknown signal with no waiver | check `action_required`; reasons and packet go to a person; a person with bypass can still merge, and GitHub logs it |
 
-Evidence problems following the [AISDLC-98] taxonomy
+The evidence problems named here (missing, partial, stale, flaky, unmeasurable, contradictory) follow [AISDLC-98]'s
+taxonomy, so each gap the gate finds is one that AISDLC-98's path fixes, defers or escalates.
 
 ## 5. Trust over time
 
@@ -148,10 +157,14 @@ stateDiagram-v2
   Automatic --> Automatic: weekly canaries · monthly audit
 ```
 
+Trust is slow to earn and quick to lose: moving right always takes a person editing the policy, and moving left
+happens on its own. Weekly canaries are planted known-bad PRs (an out-of-scope edit, a weakened test, a hidden
+instruction) that must escalate, and a broken tool that must give unknown, never a merge.
+
 **The record** (decision 5) is the gate's log: one entry per verdict, written before the gate acts. It is kept for a
 certain amount of time, still to be decided. It holds facts such as paths, counts and tool versions, never code or
 secrets. It is written by a different identity from the one that merges, so a stolen merge key can't fake an entry. The
-PR's check run only mirrors it.
+PR's check run only mirrors it, since GitHub deletes check runs after 90 days by default ([GitHub checks retention]).
 
 ## 6. Policy file
 
@@ -164,10 +177,11 @@ looser. These are starting guesses that the benchmark checks.
 | Mode, per tier | how much the gate may do (section 5) | observe for every tier |
 | Who may go automatic | whose PRs may merge with no approval | people and allowlisted bots; agents after decision 4's confirmation |
 | Allowlisted bots | which bots count as trusted, including step 1's bump exemption | Renovate, Dependabot |
-| Size limits | the size signal (hand-written code) | T1: 10 files, 100 lines; T2: 25 files, 800 lines |
+| Size limits | the size signal (hand-written code) | T1: 10 files, 100 lines; T2: 25 files, 400 lines, since reviewers find fewer defects past 400 lines ([SmartBear's Cisco study]) |
 | Signal thresholds | the other numbers in the signals table | as listed there |
 | Tools | which tool computes each signal, by name and version | chosen per repository |
-| Changed-line coverage | the tests evidence at T2 and T3 | 80% |
+| Changed-line coverage | the tests evidence at T2 and T3 | 80%, the coverage on new code that [Sonar's default quality gate][Sonar quality gate] requires |
+| Track record | clean gate merges a tier needs before it may go automatic; restarts when the classifier, a tool, the model or a prompt changes | 150 merges with no fix within 30 days: no fix in 150 shows a fix rate under 2% with 95% confidence |
 | Fix attempts | how many fix rounds before remediate becomes escalate | 2 per commit, 4 per PR |
 | Waivers | signals the repository accepts as unknown | none |
 | Substitutes | proof accepted in place of the normal kind | none |
@@ -224,6 +238,7 @@ T0", then raw size against the same limits.
 [AI code assistant guidelines]: https://source.redhat.com/projects_and_programs/ai/wiki/code_assistants_guidelines_for_responsible_use_of_ai_code_assistants
 [GitHub check runs]: https://docs.github.com/en/rest/checks/runs
 [GitHub checks retention]: https://github.blog/changelog/2026-07-17-actions-retention-will-cover-checks-workflow-runs-and-statuses/
+[SmartBear's Cisco study]: https://smartbear.com/learn/code-review/best-practices-for-peer-code-review/
 [Sonar quality gate]: https://docs.sonarsource.com/sonarqube-server/quality-standards-administration/managing-quality-gates/introduction-to-quality-gates
 [Cloudflare's AI code review]: https://blog.cloudflare.com/ai-code-review/
 [McIntosh 2014]: https://dl.acm.org/doi/10.1145/2597073.2597076
