@@ -40,7 +40,7 @@ flowchart LR
   POL -.-> CLS
 ```
 
-[Edit this diagram in Mermaid][mermaid-architecture]
+[Mermaid source (opens an editable copy)][mermaid-architecture]
 
 ## 2. Proposed decisions
 
@@ -158,7 +158,7 @@ stateDiagram-v2
   Automatic --> Automatic: weekly canaries · monthly audit
 ```
 
-[Edit this diagram in Mermaid][mermaid-trust-modes]
+[Mermaid source (opens an editable copy)][mermaid-trust-modes]
 
 Trust is slow to earn and quick to lose: moving right always takes a person editing the policy, and moving left
 happens on its own. Weekly canaries are planted known-bad PRs (an out-of-scope edit, a weakened test, a hidden
