@@ -118,7 +118,7 @@ Two rules on top: the model check can only block, and some proof can be swapped 
 **4.2 Approver packet.** A PR that waits for a person carries what changed and why, the signals that set its tier, the
 evidence and what is missing, and a way to see the change work, so the approver checks the behavior, not only the diff.
 The agent that wrote the PR produces it; each item comes with its output on this commit, and anything not run is marked
-untested. The record keeps time to approval, so a click-through on a 2,000-line diff shows up in audits.
+untested.
 
 | Change | Show me | How to try it |
 |---|---|---|
@@ -165,7 +165,7 @@ stateDiagram-v2
 
 [Mermaid source (opens an editable copy)][mermaid-trust-modes]
 
-Trust is slow to earn and quick to lose: moving right always takes a person editing the policy, and moving left
+Trust is slow to earn and quick to lose (configurable, Per ORG/TEAM/policy): moving right always takes a person editing the policy, and moving left
 happens on its own. Weekly canaries are planted known-bad PRs (an out-of-scope edit, a weakened test, a hidden
 instruction) that must escalate, and a broken tool that must give unknown, never a merge.
 
@@ -195,12 +195,9 @@ looser. These are starting guesses that the benchmark checks.
 | Substitutes | proof accepted in place of the normal kind | none |
 | Extra restricted paths | paths added to step 1's list | none |
 
-## 7. Rollout and critical path
+## 7. What it depends on
 
-Observe mode comes first: every PR gets a tier-and-gaps check, and nothing merges differently. T0 then goes explicit,
-then automatic; T2 and T3 stay human-approved until the benchmark shows otherwise.
-
-**Critical path.** Automatic merging beyond docs and digest bumps needs post-merge outcome data ([fullsend#6892]) and an approved model; agents' PRs also need Red Hat's AI policy owners to confirm that this oversight meets the [AI code assistant guidelines]. Without them, automatic T0 for docs and
+Automatic merging beyond docs and digest bumps needs post-merge outcome data ([fullsend#6892]) and an approved model; agents' PRs also need Red Hat's AI policy owners to confirm that this oversight meets the [AI code assistant guidelines]. Without them, automatic T0 for docs and
 digest bumps still works.
 
 [mermaid-architecture]: https://mermaid.live/edit#pako:eNp1VGFr2zAQ_SuHP22QtGn7YSyMjpGGDJZR44TAiMuQrYstZkueJCf1Qv_7TpLtpoN9Snw6vbv37p3OUa44RvPoUKlTXjJtYZ2kEmC528cJ4BGl_ZTp6_umNSWk7WyWfYC8xPzX8KHxKPDkc1jTaHVk1XDEMbMgLNZPMJ3eQ_Lw45wg493nF1eBPikMUs2Ba3awE2AExgP6xAMGbGhQciELUNpHqU1ZoKHk3y0aS1cc-vrxMd5_aW2pNDDJ3_RVEAvjOtHM4pMr7rJhegXSwTtqVwSx3F301VEF33VMTRurRU6VghTMlj2FODCYUGuAz1g31t9ZrDf7NFpUzBhx6EiO25uPt7Cd0Z_Zzd32rqeBrAEjCskqAwehTVA6d9cGCY34g-N_lEZYcRS284kcnTAoc4HGB2yJklqRVQfiQNSQ9x1rZPk4vQxLdhSDlqomOiITFaEOGaUwVukujbxURMaTWu4eiNTyKFxJBCoGVqD2dfr6pNPY-WCGcKIZOUZjrjQfEmoyXgVHtKovRAV8od0yOe9Qc1L8QmWaxxz8JAc90eSsooGGoaA2Sg5HztSgTpLa6xEdEP2EkS4X-3eJb-a9r0wBV6JGXaDP-J6siGvwuWnzHE1guBL2a5uBbqte8nCFfNhiz6LHYicm7CiCB42_bUdQIYFOCj0AN6QPWrDK6xquoX4LqbFGLoiwR1vF_wUrVEUzAudT_30Qz2TSkzMpx8O_sIOMYcibxQjLciuU_OnWTOhXJ5HMxm9Y6DnMV9HyhhEMw9ws3H4NUQdmLpaMtPDHgeiw2f1Gw7Dhr_krv62OiN9Wz6R_XC5Xd-mLOjbah-PHzXafoNVqtGXLReg5IxuXNdPjS3ZpUs_B3XZ4LlTXtGumB13vr2NVibyjjirsF4nj1DmOX_d313Q1vAWpjCYROaVmgtNTe04jGnJNhplDGtFEWFvZNHqhJNZatelkHs2tbnEStQ0nLg-CFZrVIfjyF9Am3n8
