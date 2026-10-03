@@ -52,7 +52,8 @@ flowchart LR
    and a merge decision must give the same answer for the same inputs.
 2. **Risk tier from consequence, not from file counts.** Four risk tiers, T0 to T3, are set by the riskiest signal;
    weaker signals only raise the tier, and nothing averages it down. Signals come from pluggable per-repository tools,
-   recorded by name and version. Cheap signals run first, and costly ones only when the change class needs them, once
+   recorded by name and version. The review agent's risk assessment ([ADR 0089]) is one of those signals, not a second tier.
+   Cheap signals run first, and costly ones only when the change class needs them, once
    per ready commit. An approval or a recorded debt item on the same commit reuses its signals; a new push runs
    them again. The rule that combines them is fixed, so the same inputs always give the same verdict.
 3. **Evidence scales with the tier.** Each tier names its **minimal viable evidence** (MVE).
@@ -67,7 +68,7 @@ flowchart LR
    the verdict. Audits, fullsend's [retro agent], the benchmark (past PRs labeled by what happened after they merged) and the track record read it; only people turn what
    they read into policy.
 6. **For now, the system only tightens itself; people loosen it (configurable, per TEAM/ORG).** Each repository and tier runs in **observe**, **explicit** or
-   **automatic** mode (section 5). A severe outcome, repeated fixes, or a change of classifier, tool, model or prompt drops a tier
+   **automatic** mode (section 5). A severe outcome, repeated fixes, a drop in the review agent's approval quality, or a change of classifier, tool, model or prompt drops a tier
    back on its own. Promotion is a code-owned edit of the policy file, configurable per team or org, as fullsend's fleet configuration
    already rejects any loosening that isn't explicitly declared ([ADR 0122]). Once the record holds enough data to learn
    from, the system may also loosen itself, within limits people set in the policy.
@@ -150,7 +151,8 @@ taxonomy, so each gap the gate finds is one that AISDLC-98's path fixes, defers 
 **Modes** set how much the gate may do, per repository and tier. *Observe* (fullsend's "shadow mode"): the gate only
 reports, and people merge as today. *Explicit*: people still approve, and the gate checks the evidence and merges.
 *Automatic* (T0, later T1): the gate merges with no approval, first for people's and allowlisted bots' PRs, then for
-agents' PRs once the policy allows them.
+agents' PRs once the policy allows them. With no merge right (upstream, or a repository that requires a maintainer's
+approval, as fullsend does), the gate stops at its verdict and an approving review; the repository's rules decide the merge.
 
 ```mermaid
 stateDiagram-v2
@@ -167,11 +169,12 @@ stateDiagram-v2
 
 Trust is slow to earn and quick to lose (configurable, Per ORG/TEAM/policy): moving right always takes a person editing the policy, and moving left
 happens on its own. Weekly canaries are planted known-bad PRs (an out-of-scope edit, a weakened test, a hidden
-instruction) that must escalate, and a broken tool that must give unknown, never a merge.
+instruction) that must escalate, and a broken tool that must give unknown, never a merge. If the review agent's wrong approvals (scored by
+fullsend's trace judges) or reverts pass the policy's floor, every automatic tier drops to explicit.
 
 **The record** (decision 5) is the gate's log: one entry per verdict, written before the gate acts. It is kept for a
 certain amount of time, still to be decided. It holds facts such as paths, counts and tool versions, never code or
-secrets. It is written by a different identity from the one that merges, so a stolen merge key can't fake an entry. The
+secrets, and links the verdict's logs and agent traces, kept as long, to investigate a bad merge. It is written by a different identity from the one that merges, so a stolen merge key can't fake an entry. The
 PR's check run only mirrors it, since GitHub deletes check runs after 90 days by default ([GitHub checks retention]).
 
 ## 6. Policy file
@@ -190,6 +193,7 @@ looser. These are starting guesses that the benchmark checks.
 | Tools | which tool computes each signal, by name and version | chosen per repository |
 | Changed-line coverage | the tests evidence at T2 and T3 | 80%, the coverage on new code that [Sonar's default quality gate][Sonar quality gate] requires |
 | Track record | clean gate merges a tier needs before it may go automatic; restarts when the classifier, a tool, the model or a prompt changes | 150 merges with no fix within 30 days: no fix in 150 shows a fix rate under 2% with 95% confidence |
+| Review quality | wrong approvals and reverts that stop automatic mode | set from the benchmark first |
 | Fix attempts | how many fix rounds before remediate becomes escalate | 2 per commit, 4 per PR |
 | Waivers | signals the repository accepts as unknown | none |
 | Substitutes | proof accepted in place of the normal kind | none |
