@@ -203,14 +203,6 @@ looser. These are starting guesses that the benchmark checks.
 
 Automatic merging needs an approved model for the model check and, beyond docs and digest bumps, post-merge outcome data ([fullsend#6892]).
 
-## 8. First benchmark
-
-On fullsend's 2,232 merged PRs (March to October 2026; fixes labeled by a model, pending a human check), the share that
-needed a fix within 30 days rises with the tier: T0 0.3% (1 of 383), T1 5.3%, T2 3.6%, T3 8.6%, restricted paths 7.9%.
-T0's longest clean run is 215 merges, past the 150 needed; its one failure was a patch bump that broke the docs build.
-Agents' PRs needed fixes as often as people's (5.4% and 6.6%). Five prompt changes that look like docs later needed
-fixes, so agent prompts stay restricted paths even in markdown. Tiers here use only the cheap signals.
-
 [mermaid-architecture]: https://mermaid.live/edit#pako:eNp1VGFr2zAQ_SuHP22QtGn7YSyMjpGGDJZR44TAiMuQrYstZkueJCf1Qv_7TpLtpoN9Snw6vbv37p3OUa44RvPoUKlTXjJtYZ2kEmC528cJ4BGl_ZTp6_umNSWk7WyWfYC8xPzX8KHxKPDkc1jTaHVk1XDEMbMgLNZPMJ3eQ_Lw45wg493nF1eBPikMUs2Ba3awE2AExgP6xAMGbGhQciELUNpHqU1ZoKHk3y0aS1cc-vrxMd5_aW2pNDDJ3_RVEAvjOtHM4pMr7rJhegXSwTtqVwSx3F301VEF33VMTRurRU6VghTMlj2FODCYUGuAz1g31t9ZrDf7NFpUzBhx6EiO25uPt7Cd0Z_Zzd32rqeBrAEjCskqAwehTVA6d9cGCY34g-N_lEZYcRS284kcnTAoc4HGB2yJklqRVQfiQNSQ9x1rZPk4vQxLdhSDlqomOiITFaEOGaUwVukujbxURMaTWu4eiNTyKFxJBCoGVqD2dfr6pNPY-WCGcKIZOUZjrjQfEmoyXgVHtKovRAV8od0yOe9Qc1L8QmWaxxz8JAc90eSsooGGoaA2Sg5HztSgTpLa6xEdEP2EkS4X-3eJb-a9r0wBV6JGXaDP-J6siGvwuWnzHE1guBL2a5uBbqte8nCFfNhiz6LHYicm7CiCB42_bUdQIYFOCj0AN6QPWrDK6xquoX4LqbFGLoiwR1vF_wUrVEUzAudT_30Qz2TSkzMpx8O_sIOMYcibxQjLciuU_OnWTOhXJ5HMxm9Y6DnMV9HyhhEMw9ws3H4NUQdmLpaMtPDHgeiw2f1Gw7Dhr_krv62OiN9Wz6R_XC5Xd-mLOjbah-PHzXafoNVqtGXLReg5IxuXNdPjS3ZpUs_B3XZ4LlTXtGumB13vr2NVibyjjirsF4nj1DmOX_d313Q1vAWpjCYROaVmgtNTe04jGnJNhplDGtFEWFvZNHqhJNZatelkHs2tbnEStQ0nLg-CFZrVIfjyF9Am3n8
 [mermaid-trust-modes]: https://mermaid.live/edit#pako:eNqFUcFqwzAM_RXh42ig7DLIYTDYboNBd5x3UGylFY3tYMtZQ-m_z-mSdqyHnWw_vff0ZB2VCZZUrZKg0DPjNqKrhnvtASxHMsLBw-tmen_cfUJVPcJbkygONEHz9Qy_HPqODUsNCD3FVHRkWRLIjqAPpTZOkoV21jxlCQ6FzT-iC-9Pp0QDRYKQxQRHoPN63TyAYx8itHygtEAtdomgkC0bWUCJaPZQhgzRliOR3AScB6xnA0dxe7VpQ_YWmhEwl8y3OX9N90W070Yw6DHyNZYLXnbdxUCtVOngkG3ZyFGr8gmOtKpBK0st5k60OhUSFuP30RtVS8y0Urm31-39gKdvwWqj1w
 [AISDLC-29]: https://redhat.atlassian.net/browse/AISDLC-29
