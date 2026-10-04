@@ -62,16 +62,16 @@ flowchart LR
 4. **Agents' PRs can merge automatically; humans ON the loop, not in the loop: they oversee the system, not each PR.** People decide
    which tiers merge automatically (a code-owned policy edit), approve every escalation with its evidence, audit a
    monthly sample, and a severe outcome (a security issue, a user-facing regression, data loss, or a halt on a
-   production signal) revokes automatic mode at once.
+   production signal) revokes automatic mode at once. Agents' PRs go automatic only once Red Hat's AI policy owners approve
+   ([AI code assistant guidelines]).
 5. **Every verdict is written down before the gate acts.** The record says which commit was judged and against which
    base and policy version, what each signal found and which tool (and version) found it, what evidence was there, and
-   the verdict. Audits, fullsend's [retro agent], the benchmark (past PRs labeled by what happened after they merged) and the track record read it; only people turn what
+   the verdict. Audits, fullsend's [retro agent], the benchmark (past PRs labeled by what happened after they merged and why each fix was needed: missed intent, internal bug, integration, environment, later change, or unknown) and the track record read it; only people turn what
    they read into policy.
-6. **For now, the system only tightens itself; people loosen it (configurable, per TEAM/ORG).** Each repository and tier runs in **observe**, **explicit** or
+6. **The system only tightens itself; people loosen it (configurable, per TEAM/ORG).** Each repository and tier runs in **observe**, **explicit** or
    **automatic** mode (section 5). A severe outcome, repeated fixes, a drop in the review agent's approval quality, or a change of classifier, tool, model or prompt drops a tier
    back on its own. Promotion is a code-owned edit of the policy file, configurable per team or org, as fullsend's fleet configuration
-   already rejects any loosening that isn't explicitly declared ([ADR 0122]). Once the record holds enough data to learn
-   from, the system may also loosen itself, within limits people set in the policy.
+   already rejects any loosening that isn't explicitly declared ([ADR 0122]). A metric, a model or the retro agent can propose a promotion, never make it.
 
 ## 3. How the tier is set
 
@@ -104,10 +104,10 @@ required, on top of the green required checks and review-agent approval that mad
 | Evidence | T0 | T1 | T2 | T3 |
 |---|---|---|---|---|
 | Tests | existing suite; for docs, the docs build (render, link check) | tests that reference the changed code | tests executed ≥ 80% of the changed hand-written lines | as T2, plus integration or e2e, and consumers' tests if any |
-| Extra proof from the signal that set the tier | – | – | first caller: tests at the caller; flag flip: e2e with the flag on | breaking interface: compatibility report and upgrade test; migration: upgrade test |
+| Extra proof for the class or signal that set the tier | bump: content checked, not just the label; tests only: no shared fixture changed | no callers: no init, registration or reflection path; flag: effective configuration off | first caller: tests at the caller; flag flip: e2e with the flag on | breaking interface: compatibility report and upgrade test; migration: upgrade test |
 | Human approval | explicit mode: today's rule; automatic mode: none | as T0 | a team member | the code owner, with a recovery plan if irreversible |
 | Track record | automatic mode | automatic mode | – | – |
-| Model check, veto only | automatic mode, except docs and digest bumps | automatic mode | advisory | advisory |
+| Model check, veto only | automatic mode, docs and digest bumps included | automatic mode | advisory | advisory |
 
 Two rules on top: the model check can only block, and some proof can be swapped for a declared substitute.
 
@@ -192,7 +192,7 @@ looser. These are starting guesses that the benchmark checks.
 | Signal thresholds | the other numbers in the signals table | as listed there |
 | Tools | which tool computes each signal, by name and version | chosen per repository |
 | Changed-line coverage | the tests evidence at T2 and T3 | 80%, the coverage on new code that [Sonar's default quality gate][Sonar quality gate] requires |
-| Track record | clean gate merges a tier needs before it may go automatic; restarts when the classifier, a tool, the model or a prompt changes | 150 merges with no fix within 30 days: no fix in 150 shows a fix rate under 2% with 95% confidence |
+| Track record | clean gate merges a tier needs before it may go automatic, per repository and change class, after each merge's 30 days; restarts when the classifier, a tool, the model or a prompt changes | 150 merges with no fix within 30 days: no fix in 150 shows a fix rate under 2% with 95% confidence |
 | Review quality | wrong approvals and reverts that stop automatic mode | set from the benchmark first |
 | Fix attempts | how many fix rounds before remediate becomes escalate | 2 per commit, 4 per PR |
 | Waivers | signals the repository accepts as unknown | none |
@@ -201,7 +201,7 @@ looser. These are starting guesses that the benchmark checks.
 
 ## 7. What it depends on
 
-Automatic merging beyond docs and digest bumps needs post-merge outcome data ([fullsend#6892]) and an approved model.
+Automatic merging needs an approved model for the model check and, beyond docs and digest bumps, post-merge outcome data ([fullsend#6892]).
 
 [mermaid-architecture]: https://mermaid.live/edit#pako:eNp1VGFr2zAQ_SuHP22QtGn7YSyMjpGGDJZR44TAiMuQrYstZkueJCf1Qv_7TpLtpoN9Snw6vbv37p3OUa44RvPoUKlTXjJtYZ2kEmC528cJ4BGl_ZTp6_umNSWk7WyWfYC8xPzX8KHxKPDkc1jTaHVk1XDEMbMgLNZPMJ3eQ_Lw45wg493nF1eBPikMUs2Ba3awE2AExgP6xAMGbGhQciELUNpHqU1ZoKHk3y0aS1cc-vrxMd5_aW2pNDDJ3_RVEAvjOtHM4pMr7rJhegXSwTtqVwSx3F301VEF33VMTRurRU6VghTMlj2FODCYUGuAz1g31t9ZrDf7NFpUzBhx6EiO25uPt7Cd0Z_Zzd32rqeBrAEjCskqAwehTVA6d9cGCY34g-N_lEZYcRS284kcnTAoc4HGB2yJklqRVQfiQNSQ9x1rZPk4vQxLdhSDlqomOiITFaEOGaUwVukujbxURMaTWu4eiNTyKFxJBCoGVqD2dfr6pNPY-WCGcKIZOUZjrjQfEmoyXgVHtKovRAV8od0yOe9Qc1L8QmWaxxz8JAc90eSsooGGoaA2Sg5HztSgTpLa6xEdEP2EkS4X-3eJb-a9r0wBV6JGXaDP-J6siGvwuWnzHE1guBL2a5uBbqte8nCFfNhiz6LHYicm7CiCB42_bUdQIYFOCj0AN6QPWrDK6xquoX4LqbFGLoiwR1vF_wUrVEUzAudT_30Qz2TSkzMpx8O_sIOMYcibxQjLciuU_OnWTOhXJ5HMxm9Y6DnMV9HyhhEMw9ws3H4NUQdmLpaMtPDHgeiw2f1Gw7Dhr_krv62OiN9Wz6R_XC5Xd-mLOjbah-PHzXafoNVqtGXLReg5IxuXNdPjS3ZpUs_B3XZ4LlTXtGumB13vr2NVibyjjirsF4nj1DmOX_d313Q1vAWpjCYROaVmgtNTe04jGnJNhplDGtFEWFvZNHqhJNZatelkHs2tbnEStQ0nLg-CFZrVIfjyF9Am3n8
 [mermaid-trust-modes]: https://mermaid.live/edit#pako:eNqFUcFqwzAM_RXh42ig7DLIYTDYboNBd5x3UGylFY3tYMtZQ-m_z-mSdqyHnWw_vff0ZB2VCZZUrZKg0DPjNqKrhnvtASxHMsLBw-tmen_cfUJVPcJbkygONEHz9Qy_HPqODUsNCD3FVHRkWRLIjqAPpTZOkoV21jxlCQ6FzT-iC-9Pp0QDRYKQxQRHoPN63TyAYx8itHygtEAtdomgkC0bWUCJaPZQhgzRliOR3AScB6xnA0dxe7VpQ_YWmhEwl8y3OX9N90W070Yw6DHyNZYLXnbdxUCtVOngkG3ZyFGr8gmOtKpBK0st5k60OhUSFuP30RtVS8y0Urm31-39gKdvwWqj1w
