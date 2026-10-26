@@ -118,11 +118,15 @@ September 2026):
 
 ## Limits
 
-- The labels are AI code reads. Automatic defect labels are known to be noisy:
-  in five open-source projects, 33.8% of issue reports were misclassified and
-  39% of files marked defective never had a bug (Herzig, Just and Zeller, ICSE
-  2013). Ours use a different method, two independent code reads per defect,
-  but the blind human check of 40 pairs hasn't run yet.
+- The labels are AI code reads. Automatic defect labels are known to be noisy.
+  Closest to ours, a 2026 preprint checked PR-SZZ labels (fix-to-introducing-PR
+  links) by hand on 420 commits in six projects: about 12% were wrong, and
+  scoring models against the manual labels cut precision from 0.27 to 0.19
+  ([Research Square, rs-9846265](https://www.researchsquare.com/article/rs-9846265/v1)).
+  Earlier, 33.8% of issue reports in five projects were misclassified and 39%
+  of files marked defective never had a bug (Herzig, Just and Zeller, ICSE
+  2013). Ours use two independent code reads per defect, but the blind human
+  check of 40 pairs hasn't run yet.
 - A fix that never touches the original's lines and never names it is missed.
   Forward samples in five repositories (212 PRs, each followed for 30 days)
   held 39 medium+ defects; this method found 35 of them, and all 15
