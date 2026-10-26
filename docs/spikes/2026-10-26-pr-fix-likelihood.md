@@ -75,19 +75,23 @@ in their later half, too few to confirm a rule on their own.
 
 ### What added nothing
 
-Each of these gained under 0.01 AUC on later PRs once size and kind were in:
+None of these improved on size and kind of change:
 
 - 12 merge-time signals beyond size: directories, churn, the files' fix
   history, reviews, commits, hours open, author history, tests changed, CI and
-  dependency files, generated share and bot authorship. Only touching CI added
-  a little (+0.02), and the bands already count CI, build or release as a
-  riskier kind of change.
-- Four file-history signals from the defect-prediction literature: change
+  dependency files, generated share and bot authorship. Each added nothing to
+  size on held-out repositories, except touching CI (+0.02), which the bands
+  already count as a riskier kind of change. A model with every signal scores
+  AUC 0.717, below size and kind alone (0.763).
+- Four file-history signals from the defect-prediction literature (change
   entropy, developers on the files in 90 days, days since the files last
-  changed, and top contributor share.
+  changed, top contributor share): size and kind plus these score 0.749.
 - 52 review, approval and merge-process fields on `fullsend` and `agents`,
-  including open review findings and fix runs.
-- The non-LLM metrics of DRS-OSS, which mostly restate size.
+  including open review findings and fix runs: the best one adds 0.008. Open
+  findings rise with size, mostly low-severity ones, and high-severity open
+  findings add nothing either.
+- The non-LLM change metrics of DRS-OSS score 0.729 on their own, below size
+  and kind; they mostly restate size.
 
 An independent pipeline, with a 60-day window and its own labels, also found no
 established gain from structural signals beyond repository and kind of change.
