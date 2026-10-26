@@ -36,7 +36,7 @@ The only PR-level risk mechanism today is the
 review post-script turns an approval into a comment if the score reaches a
 threshold or is missing
 ([`scripts/post-review.src.sh` at `15e2d79`](https://github.com/fullsend-ai/agents/blob/15e2d79acdac44bb264d114d232e80b7ed579b33/scripts/post-review.src.sh#L627-L700)).
-Being a weighted model judgement, it can average a severe signal away, and it
+Being a weighted model judgment, it can average a severe signal away, and it
 says nothing about the evidence a PR needs.
 
 We replayed the rules below on 1,796 merged `fullsend` and `agents` pull
@@ -77,7 +77,7 @@ data, permissions or secrets change, and how hard it is to undo.
 | T3 | Sensitive, cross-repository, incompatible or hard to recover |
 
 A serious signal sets a floor. Other signals, and unknown facts, can only raise
-the tier. A model judgement, such as an LLM's view of how central a feature is,
+the tier. A model judgment, such as an LLM's view of how central a feature is,
 may raise a tier but never lower it; the first version doesn't use one. Changes
 to protected paths (policy, prompts, credentials, workflows, evaluators) always
 need a human, whatever their tier.
@@ -115,7 +115,7 @@ Forgejo need their own state adapters; neither is built.
 
 ## Consequences
 
-- A serious signal can no longer be outweighed by favourable ones, and every
+- A serious signal can no longer be outweighed by favorable ones, and every
   eligibility decision traces to rules, facts and evidence.
 - Repositories must declare their core and protected paths; until they do,
   unknown reach raises the tier.

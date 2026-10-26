@@ -130,7 +130,7 @@ September 2026):
 ## Open questions
 
 - 30 or 60 days as the outcome window.
-- Whether a model judgement of how central a changed feature is would raise the
+- Whether a model judgment of how central a changed feature is would raise the
   right PRs. Under ADR 0037 it can only raise a tier, and declared core paths
   come first.
 - An LLM diff scorer (the DRS-OSS model) hasn't been piloted. It needs a GPU and
