@@ -82,7 +82,7 @@ An independent pipeline, with a 60-day window and its own labels, also found
 no established gain from structural signals beyond repository and kind of change.
 
 **The ADR 0089 score.** On the 283 PRs that carry it (19 medium+ fixes, a
-small sample), it ranks fixes at AUC 0.62 (90% interval 0.52–0.72), against
+small sample), it ranks fixes at AUC 0.62 (95% interval 0.52–0.72), against
 0.78 (0.66–0.89) for the bands on the same PRs. The review result
 records the composite score and the signal values, but not per-tier scores, so
 it cannot be calibrated.
