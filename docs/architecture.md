@@ -660,6 +660,9 @@ ADR 0002: [Building block 11](ADRs/0002-initial-fullsend-design.md#11-review-age
 - PR-level risk assessment scoring: pre-pass sub-agent computes a composite 1–5
   risk score from metadata, git history, and linked-issue signals
   ([ADR 0089](ADRs/0089-pr-risk-assessment-scoring.md)).
+- PR fix likelihood, including that score, only raises scrutiny and counts as
+  evidence for an auto-merge grant only after it is validated on the repository
+  ([ADR 0079](ADRs/0079-pr-fix-likelihood-is-advisory-and-validated-per-repository.md)).
 
 ### 12. Coordinator merge algorithm
 
@@ -670,6 +673,13 @@ Aggregates review verdicts and applies labels:
 - split/conflicting (including conflicting security severities) → `requires-manual-review`
 - each **review run start** (including push-triggered re-review) clears **`ready-for-merge`** together with **`ready-for-review`** so merge approval is never stale after new commits
 ADR 0002: [Building block 12](ADRs/0002-initial-fullsend-design.md#12-coordinator-merge-algorithm).
+
+**Decided:**
+
+- Auto-merge eligibility: deterministic consequence tiers T0–T3, required
+  evidence per tier, shadow by default, and unattended merge only under a
+  human-approved cohort grant
+  ([ADR 0037](ADRs/0037-auto-merge-eligibility-from-consequence-tiers.md)).
 
 ### 13. Observability
 
