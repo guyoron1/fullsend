@@ -18,7 +18,7 @@ Date: 2026-10-26
 
 ## Status
 
-Accepted
+Review TBD
 
 ## Context
 
