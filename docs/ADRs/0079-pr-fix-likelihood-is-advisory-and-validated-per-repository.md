@@ -33,8 +33,9 @@ medium- or high-severity fix within 30 days as the outcome
 ([spike](../spikes/2026-10-26-pr-fix-likelihood.md)). PR size within its
 repository and the kind of change carry the signal: on later PRs, 1.7% of the
 lowest band needed a fix and 13.4% of the highest. Nothing else added to
-them: about 20 merge-time signals, four file-history signals from the
-defect-prediction literature, and 52 review, approval and merge-process
+them: 12 other merge-time signals (only touching CI added a little, and the
+bands already count CI changes as riskier), four file-history signals from
+the defect-prediction literature, and 52 review, approval and merge-process
 fields on `fullsend` and `agents`. The bands rank poorly in three of the nine repositories.
 The best formula depends on use: a size-ordered model catches more fixes when
 gating PRs, but far fewer within a fixed budget of reviewed lines. The

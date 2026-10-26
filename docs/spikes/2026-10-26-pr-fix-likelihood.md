@@ -1,6 +1,6 @@
 # SPIKE: Can we measure how likely a merged PR is to need a fix?
 
-**ADRs:** [0037](../ADRs/0037-auto-merge-eligibility-from-consequence-tiers.md) (eligibility) · [0079](../ADRs/0079-pr-fix-likelihood-is-advisory-and-validated-per-repository.md) (likelihood) · **Problem:** [graduated-approval-policy](../problems/graduated-approval-policy.md) · **Data and code:** `pr-risk-signals` (to be public before the ADRs merge) · **Date:** 2026-10-26
+**ADRs:** [0037](../ADRs/0037-auto-merge-eligibility-from-consequence-tiers.md) (eligibility) · [0079](../ADRs/0079-pr-fix-likelihood-is-advisory-and-validated-per-repository.md) (likelihood) · **Problem:** [graduated-approval-policy](../problems/graduated-approval-policy.md) · **Data and code:** `pr-risk-signals` (to be public before the ADRs merge); every number below, its source and the command that recomputes it: `EVIDENCE.md` there · **Date:** 2026-10-26
 
 ## Answer
 
@@ -66,8 +66,11 @@ medium+ fixes in their later half, too few to confirm a rule on their own.
 
 **What added nothing on top of size and kind** (later-PR AUC gain under 0.01):
 
-- about 20 merge-time signals: files, directories, churn, review counts,
-  commits, hours open, author history, tests changed, CI and dependency files;
+- 12 merge-time signals beyond size: directories, churn, the files' fix
+  history, reviews, commits, hours open, author history, tests changed, CI
+  and dependency files, generated share and bot authorship. Only touching CI
+  added a little (+0.02), and the bands already count CI, build or release
+  as a riskier kind of change;
 - four file-history signals from the defect-prediction literature (change
   entropy, developers on the files in 90 days, days since the files last
   changed, top contributor share);
@@ -79,8 +82,8 @@ An independent pipeline, with a 60-day window and its own labels, also found
 no established gain from structural signals beyond repository and kind of change.
 
 **The ADR 0089 score.** On the 283 PRs that carry it (19 medium+ fixes, a
-small sample), it ranks fixes at AUC 0.62, against 0.78 for the bands on the
-same PRs. The review result
+small sample), it ranks fixes at AUC 0.62 (90% interval 0.52–0.72), against
+0.78 (0.66–0.89) for the bands on the same PRs. The review result
 records the composite score and the signal values, but not per-tier scores, so
 it cannot be calibrated.
 
@@ -97,12 +100,16 @@ it cannot be calibrated.
 
 ## Limits
 
-- **Labels are AI code reads.** The literature finds about one automatic defect
-  label in eight wrong. A blind human check of 40 pairs is prepared but has
-  not run.
+- **Labels are AI code reads.** Automatically produced defect labels are known
+  to be noisy: in five open-source projects, 33.8% of issue reports were
+  misclassified, and 39% of files marked defective never had a bug (Herzig,
+  Just and Zeller, ICSE 2013). Ours come from a different method, two
+  independent code reads per defect, but a blind human check of 40 pairs is
+  prepared and has not run.
 - **Missed fixes.** A fix that never touches the original's lines and never
-  names it is missed. Forward checks found this rare for medium+ defects, but
-  not absent.
+  names it is missed. Forward samples in five repositories (212 PRs, each
+  followed for 30 days) found 35 of 39 medium+ defects by this method, and
+  all 15 high-severity ones.
 - **No observed fix is not proof of safety.** For example, 0 fixes in 128 T0
   PRs bounds the rate below about 2.3% at 95%, and says nothing about
   undetected defects.
