@@ -121,7 +121,8 @@ September 2026):
   but the blind human check of 40 pairs hasn't run yet.
 - A fix that never touches the original's lines and never names it is missed.
   Forward samples in five repositories (212 PRs, each followed for 30 days)
-  found 35 of 39 medium+ defects this way, and all 15 high-severity ones.
+  held 39 medium+ defects; this method found 35 of them, and all 15
+  high-severity ones.
 - No observed fix is not proof of safety. 0 fixes in 128 T0 PRs bounds the rate
   below about 2.3% at 95%, and says nothing about undetected defects.
 - Size includes generated and vendored code. That is how the bands were
