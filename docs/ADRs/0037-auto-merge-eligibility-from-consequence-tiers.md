@@ -30,7 +30,12 @@ the credential and re-checks forge state. It leaves eligibility, cohorts and
 rollout to follow-up work. The
 [graduated approval problem doc](../problems/graduated-approval-policy.md) asks
 for risk routing with thresholds "derived from observed outcomes, not guessed"
-that a compromised or poorly calibrated scorer can't steer.
+that a compromised or poorly calibrated scorer can't steer. A spike that tried the
+Gemara policy model for auto-merge reached the same starting point: our own
+rules on GitHub with fullsend's own repositories first, with structured,
+trustworthy evidence as the main gap
+([#8790](https://github.com/fullsend-ai/fullsend/pull/8790),
+[experiment](https://github.com/fullsend-ai/experiments/tree/main/0029-gemara-auto-merge)).
 
 The only PR-level risk mechanism today is the
 [ADR 0089](0089-pr-risk-assessment-scoring.md) score. When it is enabled, the
