@@ -116,8 +116,10 @@ never sets or lowers a tier.
 ## Forge scope
 
 Forge-neutral. The rules need a PR's diff, files, review and CI state, and the
-repository's declared core paths. GitHub comes first, as in ADR 0110. GitLab and
-Forgejo need their own state adapters; neither is built.
+repository's declared core paths. GitHub comes first, as in ADR 0110. There,
+each decision is published as a check run on the PR's head commit, so branch
+protection and the merge queue can require it like any other CI check. GitLab
+and Forgejo need their own state adapters; neither is built.
 
 ## Consequences
 
