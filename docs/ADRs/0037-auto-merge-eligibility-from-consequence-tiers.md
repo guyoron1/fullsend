@@ -24,10 +24,11 @@ Review TBD
 
 ## Context
 
-ADR 0110 (in review, [#7151](https://github.com/fullsend-ai/fullsend/pull/7151))
-decides who may merge: a dedicated Auto-Merge stage whose trusted runtime holds
-the credential and re-checks forge state. It leaves eligibility, cohorts and
-rollout to follow-up work. The
+An earlier draft, ADR 0110
+([#7151](https://github.com/fullsend-ai/fullsend/pull/7151), closed), proposed a
+dedicated Auto-Merge agent that decides each merge. That path was dropped: the
+decision stays deterministic, and GitHub's own branch protection and merge queue
+do the merging. The
 [graduated approval problem doc](../problems/graduated-approval-policy.md) asks
 for risk routing with thresholds "derived from observed outcomes, not guessed"
 that a compromised or poorly calibrated scorer can't steer. A spike that tried the
@@ -56,8 +57,9 @@ T3 15.2% ([spike](../spikes/2026-10-26-pr-fix-likelihood.md)).
 - **The ADR 0089 score as the tier.** Rejected. A good average can hide one
   serious signal, and the score ranks fixes worse than PR size and kind of
   change (see the spike).
-- **A model decides eligibility.** Rejected. ADR 0110 keeps the model advisory,
-  and a model-assigned tier is open to prompt injection and drift.
+- **A model decides eligibility.** Rejected. A model-assigned tier is open to
+  prompt injection and drift. A model's approve or reject can still be recorded
+  next to each decision, so an eval can measure its accuracy.
 - **Protected path lists only.** Rejected. Paths miss reach: a small change to
   a shared library can break three repositories. Paths stay as one input that
   can only raise the tier.
@@ -116,7 +118,7 @@ never sets or lowers a tier.
 ## Forge scope
 
 Forge-neutral. The rules need a PR's diff, files, review and CI state, and the
-repository's declared core paths. GitHub comes first, as in ADR 0110. There,
+repository's declared core paths. GitHub comes first. There,
 each decision is published as a check run on the PR's head commit, so branch
 protection and the merge queue can require it like any other CI check. GitLab
 and Forgejo need their own state adapters; neither is built.
