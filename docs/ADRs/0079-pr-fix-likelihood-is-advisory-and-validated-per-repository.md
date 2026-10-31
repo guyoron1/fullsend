@@ -18,7 +18,7 @@ Date: 2026-10-26
 
 ## Status
 
-Review TBD
+Accepted
 
 ## Context
 
@@ -44,7 +44,13 @@ repositories. The best formula depends on use: a size-ordered model catches
 more fixes when gating PRs, but far fewer within a fixed budget of reviewed
 lines. And the outcome labels are AI code reads that no person has checked yet.
 
+This ADR aims to let likelihood signals add caution without ever becoming a
+way for a PR to merge.
+
 ## Decision
+
+We adopt likelihood as a raise-only signal, validated per repository before
+it counts as evidence, so a wrong or gamed score costs review time, not safety.
 
 1. **Likelihood only raises scrutiny.** A signal may order review, send a PR to
    a human, downgrade an approval or raise its evidence requirement. It never

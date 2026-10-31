@@ -19,7 +19,7 @@ Date: 2026-10-26
 
 ## Status
 
-Review TBD
+Accepted
 
 
 ## Context
@@ -52,6 +52,9 @@ T3 and 23% on protected paths. None of the 128 T0 PRs needed a medium- or
 high-severity fix within 30 days; T1 needed one 4.2% of the time, T2 9.5% and
 T3 15.2% ([spike](../spikes/2026-10-26-pr-fix-likelihood.md)).
 
+This ADR aims to make auto-merge eligibility a deterministic decision that
+traces to rules and evidence, and that no score or model judgment can open.
+
 ## Options
 
 - **The ADR 0089 score as the tier.** Rejected. A good average can hide one
@@ -67,7 +70,8 @@ T3 15.2% ([spike](../spikes/2026-10-26-pr-fix-likelihood.md)).
 
 ## Decision
 
-The Auto-Merge stage decides eligibility with a versioned, deterministic policy.
+We adopt a versioned, deterministic policy, run as a check on each PR, so that
+only rules, facts and evidence can make a PR eligible for auto-merge.
 
 ### Tier
 
@@ -105,7 +109,7 @@ waiver is a human policy decision and stays visible in the record.
 
 ### Grants
 
-By default the stage records each PR's tier, evidence state and recommendation,
+By default the check records each PR's tier, evidence state and recommendation,
 and merges nothing. Unattended merge needs a person to grant a cohort: a
 repository, a work class, a tier and an agent configuration. A grant is
 time-bounded and backed by measured outcomes. A severe outcome suspends it
